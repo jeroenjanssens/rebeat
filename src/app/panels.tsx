@@ -13,6 +13,8 @@ import {
 import { DrumMachine } from "../panels/drum-machine/DrumMachine";
 import { InspectorPanel } from "../panels/inspector/InspectorPanel";
 import { LibraryPanel } from "../panels/library/LibraryPanel";
+import { MasterScopePanel } from "../panels/master-scope/MasterScopePanel";
+import { MixerPanel } from "../panels/mixer/MixerPanel";
 
 export interface PanelProps {
   params: Record<string, unknown>;
@@ -68,7 +70,7 @@ export const PANELS: PanelDef[] = [
     id: "mixer",
     title: "Mixer",
     icon: SlidersVertical,
-    component: placeholder("Mixer", "Phase 5"),
+    component: MixerPanel,
     minHeight: 160,
   },
   {
@@ -96,7 +98,7 @@ export const PANELS: PanelDef[] = [
     id: "master-scope",
     title: "Master scope",
     icon: Activity,
-    component: placeholder("Master scope", "Phase 5"),
+    component: MasterScopePanel,
     minWidth: 200,
     minHeight: 120,
   },

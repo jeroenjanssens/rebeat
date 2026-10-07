@@ -39,6 +39,31 @@ interface Props {
   isSelected: boolean;
 }
 
+/** The enlarged scope of a track, with a waveform / spectrum switch. */
+function ScopeZoom({ trackId, name, color }: { trackId: string; name: string; color: string }) {
+  const [mode, setMode] = useState<"wave" | "spectrum">("wave");
+  return (
+    <div className="p-2">
+      <div className="mb-1.5 flex items-center gap-2">
+        <span className="label" style={{ color }}>
+          {name}
+        </span>
+        <div className="segmented ml-auto">
+          <button data-active={mode === "wave"} onClick={() => setMode("wave")}>
+            Scope
+          </button>
+          <button data-active={mode === "spectrum"} onClick={() => setMode("spectrum")}>
+            Spectrum
+          </button>
+        </div>
+      </div>
+      <div style={{ width: 360, height: 150 }}>
+        <Scope trackId={trackId} color={color} mode={mode} />
+      </div>
+    </div>
+  );
+}
+
 function chips(
   label: string,
   options: { label: string; active: boolean; onClick: () => void }[],
@@ -497,14 +522,7 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
               useMenu.getState().show(r.right - 380, r.bottom + 4, [
                 {
                   render: () => (
-                    <div className="p-2">
-                      <div className="label mb-1.5" style={{ color: track.color }}>
-                        {track.name} · scope
-                      </div>
-                      <div style={{ width: 360, height: 150 }}>
-                        <Scope trackId={track.id} color={track.color} />
-                      </div>
-                    </div>
+                    <ScopeZoom trackId={track.id} name={track.name} color={track.color} />
                   ),
                 },
               ]);

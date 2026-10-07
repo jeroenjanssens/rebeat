@@ -9,6 +9,7 @@ interface Props {
   color: string;
   meter?: boolean;
   className?: string;
+  mode?: "wave" | "spectrum";
 }
 
 const THRESHOLD = 0.012;
@@ -24,7 +25,7 @@ export function triggerIndex(w: Float32Array, span: number): number {
  * Per-track oscilloscope + level meter. Draws only while the track makes sound;
  * otherwise it shows a dim, still line and costs nothing.
  */
-export function Scope({ trackId, color, meter = true, className = "" }: Props) {
+export function Scope({ trackId, color, meter = true, className = "", mode = "wave" }: Props) {
   const state = useRef({ level: 0, peak: 0, peakAt: 0, active: true });
 
   const draw = (ctx: CanvasRenderingContext2D, w: number, h: number, now: number) => {
@@ -40,7 +41,19 @@ export function Scope({ trackId, color, meter = true, className = "" }: Props) {
     const mid = h / 2;
     ctx.lineWidth = 1.25;
     const wave = s.level >= THRESHOLD ? engine.waveform(trackId) : null;
-    if (!wave) {
+    const spec = wave && mode === "spectrum" ? engine.spectrum(trackId) : null;
+    if (spec) {
+      // log-frequency bars from 30 Hz
+      ctx.fillStyle = color;
+      const bars = Math.max(16, Math.floor(sw / 4));
+      for (let b = 0; b < bars; b++) {
+        const f0 = 30 * Math.pow(20000 / 30, b / bars);
+        const bin = Math.min(spec.length - 1, Math.round((f0 / 22050) * spec.length));
+        const v = Math.max(0, (spec[bin] + 90) / 90);
+        const bh = v * (h - 4);
+        ctx.fillRect(3 + (b / bars) * (sw - 6), h - 2 - bh, Math.max(1, (sw - 6) / bars - 1), bh);
+      }
+    } else if (!wave) {
       ctx.strokeStyle = token("scope-idle");
       ctx.beginPath();
       ctx.moveTo(3, mid);
@@ -87,7 +100,7 @@ export function Scope({ trackId, color, meter = true, className = "" }: Props) {
 
   const { ref, size } = useCanvas(
     (ctx, { width, height }) => draw(ctx, width, height, performance.now()),
-    [color],
+    [color, mode],
   );
 
   useEffect(
@@ -112,7 +125,7 @@ export function Scope({ trackId, color, meter = true, className = "" }: Props) {
         draw(ctx, width, height, now);
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [trackId, color],
+    [trackId, color, mode],
   );
 
   return <canvas ref={ref} className={`block h-full w-full ${className}`} />;
