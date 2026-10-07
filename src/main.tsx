@@ -8,6 +8,10 @@ import { createAudioContext } from "./engine/context";
 
 createAudioContext();
 
+// offline support for the web app (the desktop app ships its files)
+if (location.protocol.startsWith("http") && "serviceWorker" in navigator && import.meta.env.PROD)
+  void import("virtual:pwa-register").then(({ registerSW }) => registerSW({ immediate: true }));
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <App />

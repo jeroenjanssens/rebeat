@@ -6,3 +6,6 @@ test-results
 playwright-report
 coverage
 shot.tmp.mjs
+release
+electron/dist
+probe*.tmp.mjs

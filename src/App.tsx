@@ -2,7 +2,9 @@ import { useEffect } from "react";
 import { MenuHost } from "./components/Menu";
 import { AudioStartOverlay } from "./app/AudioStartOverlay";
 import { CommandPalette } from "./app/CommandPalette";
-import { addKeyHook, installKeyboard, registerCommands } from "./app/commands";
+import { addKeyHook, installKeyboard, registerCommands, runCommand } from "./app/commands";
+import { importProjectFile } from "./app/projectActions";
+import { desktop } from "./platform";
 import { defaultCommands } from "./app/defaultCommands";
 import { Dock } from "./app/Dock";
 import { trackFullscreen } from "./app/PanelFrame";
@@ -32,6 +34,11 @@ export function App() {
         if (e.key === "Shift") useStore.getState().setUi({ shiftHeld: down });
         return false;
       }),
+      // desktop app: native menu items and files opened from the OS
+      desktop?.onCommand((id) => runCommand(id)) ?? (() => {}),
+      desktop?.onOpenFile(
+        (f) => void importProjectFile(new File([f.data as Uint8Array<ArrayBuffer>], f.name)),
+      ) ?? (() => {}),
     ];
     return () => offs.forEach((off) => off());
   }, []);

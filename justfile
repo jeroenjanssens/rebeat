@@ -13,6 +13,7 @@ dev: install
 # Type-check, lint, and run unit tests
 check:
     pnpm tsc --noEmit
+    pnpm tsc -p electron/tsconfig.json --noEmit
     pnpm eslint .
     pnpm vitest run
 
@@ -39,4 +40,19 @@ fmt:
 
 # Remove build output and dependencies
 clean:
-    rm -rf dist node_modules test-results playwright-report
+    rm -rf dist node_modules test-results playwright-report release electron/dist
+
+# Run the desktop app against the dev server (Electron)
+desktop: install
+    pnpm tsc -p electron/tsconfig.json
+    pnpm concurrently -k -n vite,electron "pnpm vite" "pnpm wait-on http://localhost:5173 && REBEAT_DEV_URL=http://localhost:5173 pnpm electron ."
+
+# Package the desktop app for this OS into release/ (unsigned unless CSC_* / APPLE_* are set)
+desktop-build: build
+    pnpm tsc -p electron/tsconfig.json
+    pnpm electron-builder --publish never
+
+# Run the desktop app tests (builds the web app and the Electron shell first)
+e2e-desktop: build
+    pnpm tsc -p electron/tsconfig.json
+    pnpm playwright test -c playwright.desktop.config.ts

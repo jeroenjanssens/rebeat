@@ -11,6 +11,8 @@ export default defineConfig({
     // installable and usable offline; installing also helps keep the microphone permission (D15)
     VitePWA({
       registerType: "autoUpdate",
+      // registered in main.tsx, only over http(s) (not in the desktop app)
+      injectRegister: false,
       includeAssets: ["icon.svg", "apple-touch-icon.png", "favicon-32.png", "worklets/*.js", "popout.html"],
       manifest: {
         name: "Rebeat",
