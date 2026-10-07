@@ -26,6 +26,8 @@ export interface TriggerOptions {
   pitch?: number;
   /** Page transpose in semitones (instrument tracks). */
   transpose?: number;
+  /** Parameter locks for this step ("sound.tune" → value). */
+  locks?: Record<string, number>;
   gate?: number;
 }
 
@@ -303,7 +305,7 @@ function playDrum(track: Track, velocity: number, time: number, o: TriggerOption
   const buffer = getBuffer(track.sampleId);
   if (!buffer) return;
   const ctx = raw();
-  const p = track.params;
+  const p = o.locks ? { ...track.params, ...o.locks } : track.params;
   const group = chokeGroup(track);
   if (group > 0) {
     const { project } = useStore.getState();
@@ -330,6 +332,7 @@ function playDrum(track: Track, velocity: number, time: number, o: TriggerOption
   src.connect(env);
   Tone.connect(env, channel(track.id).input);
   const end = time + Math.min(natural, length + 0.25);
+  if (o.locks) channel(track.id).lockStep(o.locks, track.params, time, time + (o.stepDur ?? 0.12));
   src.start(time, offset);
   src.stop(end);
   const voice: Voice = { src, env, trackId: track.id, end };

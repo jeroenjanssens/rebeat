@@ -15,7 +15,9 @@ export interface Step {
   gate: number; // 0..1 of a step (drum) / unused for notes
   accent: boolean;
   condition?: string; // e.g. "1:2", "FILL"
-  locked?: boolean; // has a parameter lock
+  locked?: boolean; // legacy flag (mockup demo)
+  /** Parameter locks: this step's own values for the track's sound parameters ("sound.tune"…). */
+  locks?: Record<string, number>;
   /** Instrument tracks: the notes starting on this step (a chord when several). */
   notes?: Note[];
 }

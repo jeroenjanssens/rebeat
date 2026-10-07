@@ -29,10 +29,13 @@ interface Slot {
   value: number | null;
   onChange: (v: number) => void;
   midiTarget?: string;
+  /** Parameter lock mode: this slot has a lock on the selected step. */
+  locked?: boolean;
+  onClear?: () => void;
 }
 
 /** What the 8 encoders control for the selected track and bank. */
-function useEncoderSlots(track: Track): { slots: Slot[]; note?: string } {
+function useEncoderSlots(track: Track): { slots: Slot[]; note?: string; locking?: boolean } {
   const pattern = useEditPattern();
   const { bank, fxIndex, commit } = useStore();
   const selected = useStore((s) => s.selectedSteps);
@@ -53,6 +56,42 @@ function useEncoderSlots(track: Track): { slots: Slot[]; note?: string } {
         onChange: nop,
       })),
     ].slice(0, 8);
+
+  // SOUND with steps selected: the encoders set parameter locks on those steps
+  const lockIndices =
+    bank === "sound" && Object.keys(selected).length ? selectedIndices(track.id) : [];
+  const lockLane = pattern.lanes[track.id];
+  if (lockIndices.length && lockLane?.kind === "steps") {
+    const first = lockLane.steps[lockIndices[0]];
+    return {
+      note: `Locks on ${lockIndices.length} step${lockIndices.length > 1 ? "s" : ""} (Alt+click a knob to clear it)`,
+      locking: true,
+      slots: SOUND_PARAMS[track.kind].map((def) => {
+        const key = `sound.${def.id}`;
+        return {
+          def,
+          value: first.locks?.[key] ?? track.params[key] ?? def.default,
+          locked: first.locks?.[key] !== undefined,
+          onChange: (v: number) =>
+            editSteps(
+              lockIndices.map((i) => stepKey(track.id, i)),
+              (s) => void (s.locks = { ...s.locks, [key]: v }),
+              `lock-${key}`,
+            ),
+          onClear: () =>
+            editSteps(
+              lockIndices.map((i) => stepKey(track.id, i)),
+              (s) => {
+                if (!s.locks) return;
+                delete s.locks[key];
+                if (!Object.keys(s.locks).length) delete s.locks;
+              },
+              `unlock-${key}`,
+            ),
+        };
+      }),
+    };
+  }
 
   if (bank === "sound" || bank === "mix") {
     const defs = bank === "sound" ? SOUND_PARAMS[track.kind] : MIX_PARAMS;
@@ -197,7 +236,7 @@ function Display({ track, width }: { track: Track; width: number }) {
 export function EncoderStrip({ sizeClass }: { sizeClass: SizeClass }) {
   const track = useSelectedTrack();
   const { bank, fxIndex, setUi } = useStore();
-  const { slots, note } = useEncoderSlots(track);
+  const { slots, note, locking } = useEncoderSlots(track);
   const [open, setOpen] = useState(false);
   const fx = track.effects[fxIndex];
 
@@ -247,15 +286,31 @@ export function EncoderStrip({ sizeClass }: { sizeClass: SizeClass }) {
       <div className="flex items-start justify-between gap-1">
         {slots.map((s, i) =>
           s.def ? (
-            <Encoder
+            <div
               key={`${bank}-${i}-${s.def.id}`}
-              def={s.def}
-              value={s.value}
-              onChange={s.onChange}
-              midiTarget={s.midiTarget}
-              color={track.color}
-              size={knobSize}
-            />
+              className="relative"
+              onPointerDownCapture={(e) => {
+                if (e.altKey && s.onClear) {
+                  e.stopPropagation();
+                  s.onClear();
+                }
+              }}
+            >
+              <Encoder
+                def={s.def}
+                value={s.value}
+                onChange={s.onChange}
+                midiTarget={s.midiTarget}
+                color={locking ? (s.locked ? "#ffffff" : track.color) : track.color}
+                size={knobSize}
+              />
+              {s.locked && (
+                <span
+                  className="absolute right-2 top-3 h-1.5 w-1.5 rounded-full bg-white"
+                  title="Locked on this step"
+                />
+              )}
+            </div>
           ) : (
             <div
               key={i}

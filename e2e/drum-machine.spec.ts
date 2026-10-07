@@ -59,3 +59,37 @@ test("converts a track type from its context menu", async ({ page }) => {
   await page.locator(".menu").getByRole("button", { name: "Instrument", exact: true }).click();
   await expect(page.locator("[data-track-row]").first().locator(".note").first()).toBeVisible();
 });
+
+test("sets a parameter lock on a selected step", async ({ page }) => {
+  const pad = dm(page).locator('[data-pad][data-i="0"]').first();
+  await pad.click({ modifiers: ["Alt"] });
+  await dm(page).getByRole("button", { name: "Sound", exact: true }).click();
+  const tune = dm(page).getByText("Tune", { exact: true }).locator("..").locator("svg");
+  await tune.hover();
+  await page.mouse.wheel(0, -100);
+  const locks = await page.evaluate(() => {
+    const s = (
+      window as never as {
+        __rebeat: {
+          store: {
+            getState(): {
+              project: {
+                tracks: { id: string }[];
+                slots: { id: string; patternId: string }[];
+                patterns: Record<
+                  string,
+                  { lanes: Record<string, { steps: { locks?: Record<string, number> }[] }> }
+                >;
+              };
+              editSlotId: string;
+            };
+          };
+        };
+      }
+    ).__rebeat.store.getState();
+    const pat = s.project.patterns[s.project.slots.find((x) => x.id === s.editSlotId)!.patternId];
+    return pat.lanes[s.project.tracks[0].id].steps[0].locks;
+  });
+  expect(locks?.["sound.tune"]).toBeGreaterThan(0.5);
+  await expect(pad.locator(".lock")).toBeVisible();
+});

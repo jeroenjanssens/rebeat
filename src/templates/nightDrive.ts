@@ -22,7 +22,7 @@ function drum(pattern: Pattern, track: Track, code: string) {
     if (ch === "<") s.nudge = -0.2;
     if (ch === ">") s.nudge = 0.2;
     if (ch === "c") s.condition = "1:2";
-    if (ch === "l") s.locked = true;
+    if (ch === "l") s.locks = { "sound.tune": 0.6, "sound.decay": 0.5 };
   });
 }
 

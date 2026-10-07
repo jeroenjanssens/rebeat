@@ -139,6 +139,27 @@ export class TrackChannel {
     this.sendB.gain.rampTo(b, 0.02);
   }
 
+  /** Parameter locks on the channel's sound (filter, drive) for one step. */
+  lockStep(
+    locks: Record<string, number>,
+    params: Record<string, number>,
+    from: number,
+    until: number,
+  ) {
+    const hz = (k: string) => Math.min(20000, toUnit.hz(k in locks ? locks[k] : (params[k] ?? 1)));
+    if ("sound.cutoff" in locks) {
+      this.filter.frequency.setValueAtTime(hz("sound.cutoff"), from);
+      this.filter.frequency.setValueAtTime(
+        Math.min(20000, toUnit.hz(params["sound.cutoff"] ?? 1)),
+        until,
+      );
+    }
+    if ("sound.reso" in locks) {
+      this.filter.Q.setValueAtTime(toUnit.q(locks["sound.reso"]), from);
+      this.filter.Q.setValueAtTime(toUnit.q(params["sound.reso"] ?? 0.1), until);
+    }
+  }
+
   /** Reverb/delay throws push the sends up while held. */
   setSendBoost(a: number, b: number) {
     this.sendBoost = { a, b };

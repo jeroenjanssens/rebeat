@@ -284,6 +284,7 @@ export function playPageStep(
         notes: step.accent ? step.notes?.map((n) => ({ ...n, velocity: 1 })) : step.notes,
         pitch: step.pitch,
         gate: step.gate,
+        locks: step.locks,
       });
     };
     if (!lane.stepSizeOverride || lane.stepSizeOverride === pattern.stepSize) {
