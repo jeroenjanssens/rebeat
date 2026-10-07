@@ -1,20 +1,24 @@
 import { chromium } from "@playwright/test";
 const browser = await chromium.launch({ args: ["--autoplay-policy=no-user-gesture-required"] });
-const page = await browser.newPage();
+const page = await browser.newPage({ viewport: { width: 1600, height: 950 } });
 const errors = [];
 page.on("pageerror", (e) => errors.push("PAGEERR " + String(e.stack || e)));
-page.on("console", (m) => (m.type() === "error" || m.type() === "warning") && errors.push(m.text()));
+page.on("console", (m) => (m.type() === "error") && errors.push(m.text()));
+await page.addInitScript(() => localStorage.setItem("rebeat.settings", JSON.stringify({ state: { theme: "studio-dark" }, version: 1 })));
 await page.goto("http://localhost:5173");
 await page.getByTestId("audio-overlay").click();
-await page.waitForTimeout(1500);
-await page.evaluate(() => { const s = window.__rebeat.store.getState(); s.commit((p) => void (p.bpm = 140)); s.setUi({ editSlotId: "slot-verse" }); });
-await page.keyboard.press("Space");
-await page.waitForTimeout(2500);
-console.log(await page.evaluate(async () => {
-  const r = window.__rebeat; const vox = r.store.getState().project.tracks.find((t) => t.name === "Vox");
-  let peak = 0; const end = performance.now() + 1500;
-  while (performance.now() < end) { peak = Math.max(peak, r.engine.level(vox.id)); await new Promise((res) => setTimeout(res, 20)); }
-  return "vox peak " + peak.toFixed(3) + " pos " + r.engine.clipPosition(vox.id)?.toFixed(3);
-}));
+await page.waitForTimeout(1000);
+const chooser = page.waitForEvent("filechooser");
+await page.getByTestId("library-import").click();
+await (await chooser).setFiles("/tmp/drumloop.wav");
+await page.waitForTimeout(800);
+await page.getByTestId("library-list").locator("[data-sample]").first().dblclick();
+await page.waitForTimeout(800);
+await page.keyboard.press("ControlOrMeta+Shift+M");
+await page.waitForTimeout(500);
+await page.getByRole("button", { name: "Slice", exact: true }).click(); await page.getByRole("button", { name: "By transients" }).click();
+
+await page.waitForTimeout(500);
+await page.screenshot({ path: "/tmp/shots/editor.png" });
 console.log(errors.join("\n") || "no errors");
 await browser.close();

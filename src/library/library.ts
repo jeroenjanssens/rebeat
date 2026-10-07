@@ -12,6 +12,7 @@ import { useStore } from "../state/store";
 import { db, type SampleRecord } from "../storage/db";
 import { detectBpm, guessCategory, toMono } from "./analysis";
 import { encodeWav } from "./wav";
+import { isDefault, renderSettings, withDefaults, type SampleSettings } from "./processing";
 
 export const AUDIO_EXT = /\.(wav|wave|mp3|ogg|oga|opus|flac|aac|m4a|aif|aiff|webm|caf)$/i;
 const MIME: Record<string, string> = {
@@ -210,6 +211,71 @@ export async function saveRecording(
 // ---------- decoding on demand ----------
 
 const loading = new Map<string, Promise<AudioBuffer | null>>();
+const originals = new Map<string, AudioBuffer>();
+
+/** The sample's audio before its settings (for the editor). */
+export async function loadOriginal(id: string): Promise<AudioBuffer | null> {
+  if (originals.has(id)) return originals.get(id)!;
+  if (isBuiltIn(id)) return getBuffer(id) ?? null;
+  await loadSample(id);
+  if (originals.has(id)) return originals.get(id)!;
+  // imported this session: decode the stored file again
+  const blob = await db.blobs.get(id);
+  if (!blob) return null;
+  try {
+    const buf = await audioContext().decodeAudioData(await blob.blob.arrayBuffer());
+    originals.set(id, buf);
+    return buf;
+  } catch {
+    return null;
+  }
+}
+
+/** Store new settings on a sample: every track that uses it hears the change (D19). */
+export async function applySettings(id: string, settings: SampleSettings) {
+  const original = await loadOriginal(id);
+  const rec = await db.samples.get(id);
+  if (!original || !rec) return;
+  await db.samples.update(id, { settings: isDefault(settings) ? undefined : settings });
+  const buffer = isDefault(settings) ? original : await renderSettings(original, settings);
+  registerSample({ id, name: rec.name, category: guessCategory(rec.name), bpm: rec.bpm }, buffer);
+  await refresh();
+}
+
+/** Save audio as a new library sample (a new version of `parentId`); returns its id. */
+export async function saveVersion(
+  channels: Float32Array[],
+  sampleRate: number,
+  name: string,
+  parentId?: string,
+  bpm?: number,
+) {
+  const parent = parentId ? await db.samples.get(parentId) : undefined;
+  const data = encodeWav(channels, sampleRate, 24);
+  const [id] = await importItems([
+    {
+      name: `${name}.wav`,
+      data,
+      folder: parent?.folder ?? "",
+      tags: parent?.tags ?? [],
+      bpm: bpm ?? parent?.bpm,
+    },
+  ]);
+  if (id && parentId) await db.samples.update(id, { parentId });
+  await refresh();
+  return id;
+}
+
+/** Point every track in the open project from one sample to another. */
+export function replaceInProject(from: string, to: string) {
+  useStore.getState().commit((p) => {
+    for (const t of p.tracks) {
+      if (t.sampleId === from) t.sampleId = to;
+      if (t.instrument?.sampleId === from) t.instrument.sampleId = to;
+      for (const l of t.layers ?? []) if (l.sampleId === from) l.sampleId = to;
+    }
+  });
+}
 
 /** Make sure a sample's audio is decoded and available to the engine. */
 export function loadSample(id: string): Promise<AudioBuffer | null> {
@@ -222,7 +288,10 @@ export function loadSample(id: string): Promise<AudioBuffer | null> {
       const [rec, blob] = await Promise.all([db.samples.get(id), db.blobs.get(id)]);
       if (!rec || !blob) return null;
       try {
-        const buffer = await audioContext().decodeAudioData(await blob.blob.arrayBuffer());
+        const original = await audioContext().decodeAudioData(await blob.blob.arrayBuffer());
+        originals.set(id, original);
+        const settings = withDefaults(rec.settings as Partial<SampleSettings>);
+        const buffer = isDefault(settings) ? original : await renderSettings(original, settings);
         registerSample(
           { id, name: rec.name, category: guessCategory(rec.name), bpm: rec.bpm },
           buffer,

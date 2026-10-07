@@ -9,6 +9,8 @@ import type { Effect } from "../model/types";
 export interface FxNode {
   input: Tone.Gain;
   output: Tone.Gain;
+  /** Resolves when the effect can process audio (the reverb builds its impulse response). */
+  ready: Promise<void>;
   update(fx: Effect, bpm: number): void;
   dispose(): void;
 }
@@ -24,7 +26,11 @@ const DELAY_QUARTERS: Record<string, number> = {
   "1/2": 2,
 };
 
-type Inner = { nodes: Tone.ToneAudioNode[]; set: (p: Record<string, number>, bpm: number) => void };
+type Inner = {
+  nodes: Tone.ToneAudioNode[];
+  set: (p: Record<string, number>, bpm: number) => void;
+  ready?: Promise<void>;
+};
 
 const v = (p: Record<string, number>, k: string, d = 0.5) => p[k] ?? d;
 const ms = (lo: number, hi: number, x: number) => toUnit.ms(lo, hi)(x) / 1000;
@@ -125,20 +131,23 @@ function build(name: string, p: Record<string, number>): Inner {
       };
     }
     case "Reverb": {
-      const r = new Tone.Reverb({ decay: 2, preDelay: 0.01 });
+      const decayOf = (q: Record<string, number>) =>
+        Math.max(0.1, ms(100, 10000, v(q, "decay", 0.4)) * (0.5 + v(q, "size", 0.5)));
+      let lastDecay = decayOf(p);
+      const r = new Tone.Reverb({ decay: lastDecay, preDelay: 0.01 });
       r.wet.value = 1;
       const damp = new Tone.Filter(12000, "lowpass");
       let timer = 0;
-      let lastDecay = 0;
       return {
         nodes: [r, damp],
+        ready: r.ready,
         set: (p) => {
-          const decay = ms(100, 10000, v(p, "decay", 0.4)) * (0.5 + v(p, "size", 0.5));
+          const decay = decayOf(p);
           // regenerating the impulse response is costly: only for real changes, debounced
-          if (Math.abs(decay - lastDecay) / Math.max(decay, 0.01) > 0.03) {
+          if (Math.abs(decay - lastDecay) / decay > 0.03) {
             lastDecay = decay;
             clearTimeout(timer);
-            timer = window.setTimeout(() => (r.decay = Math.max(0.1, decay)), lastDecay ? 250 : 0);
+            timer = window.setTimeout(() => (r.decay = decay), 250);
           }
           r.preDelay = ms(1, 250, v(p, "predelay", 0.1));
           damp.frequency.value = 20000 * Math.pow(1500 / 20000, v(p, "damp", 0.5));
@@ -221,6 +230,7 @@ export function createFx(fx: Effect, bpm: number): FxNode {
   const node: FxNode = {
     input,
     output,
+    ready: inner.ready ?? Promise.resolve(),
     update(e, bpm) {
       inner.set(e.params, bpm);
       const mix = e.bypass ? 0 : (e.params.mix ?? 1);

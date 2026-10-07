@@ -217,6 +217,9 @@ importers:
       tone:
         specifier: ^15.1.22
         version: 15.1.22
+      wavesurfer.js:
+        specifier: ^8.0.1
+        version: 8.0.1
       zustand:
         specifier: ^5.0.15
         version: 5.0.15(@types/react@19.3.0)(immer@11.1.21)(react@19.3.0)
@@ -2303,6 +2306,9 @@ packages:
       jsdom:
         optional: true
 
+  wavesurfer.js@8.0.1:
+    resolution: {integrity: sha512-h0OnRWSVTqIYLSw3/IVrBtsun/xw9L5u4FA3bjfSDTFMX/xswVWS1JwK4fFu3ulmxRUSHg8zQORl6zENG983eg==}
+
   which@2.0.2:
     resolution: {integrity: sha512-BLI3Tl1TW3Pvl70l3yq3Y64i+awpwXqsGBYWkkqMtnbXgrMD+yj7rhW0kuEDxzJaYXGjEW5ogapKNMEKNMjibA==}
     engines: {node: '>= 8'}
@@ -4310,6 +4316,8 @@ snapshots:
       '@types/node': 26.6.4
     transitivePeerDependencies:
       - msw
+
+  wavesurfer.js@8.0.1: {}
 
   which@2.0.2:
     dependencies:

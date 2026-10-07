@@ -19,8 +19,14 @@ export function EffectEditor({
   color,
   midiPrefix,
   removable = true,
+  onLocalChange,
+  onLocalRemove,
 }: {
-  target: FxTarget;
+  /** Where the effect lives in the project (omit when using the local callbacks). */
+  target?: FxTarget;
+  /** Edit an effect that isn't in the project (e.g. the sample editor's render chain). */
+  onLocalChange?: (e: Effect) => void;
+  onLocalRemove?: () => void;
   effect: Effect;
   index: number;
   count: number;
@@ -29,6 +35,17 @@ export function EffectEditor({
   removable?: boolean;
 }) {
   const defs = EFFECT_PARAMS[effect.name] ?? [];
+  const local = !!onLocalChange;
+  const bypass = () =>
+    local
+      ? onLocalChange({ ...effect, bypass: !effect.bypass })
+      : target && toggleBypass(target, index);
+  const remove = () => (local ? onLocalRemove?.() : target && removeEffect(target, index));
+  const move = (d: number) => target && moveEffect(target, index, d);
+  const setParam = (id: string, v: number) =>
+    local
+      ? onLocalChange({ ...effect, params: { ...effect.params, [id]: v } })
+      : target && setEffectParam(target, index, id, v);
   return (
     <div
       className="rounded-md border border-line bg-surface/60"
@@ -39,33 +56,29 @@ export function EffectEditor({
           className="tool-btn !h-5 !min-w-5 !p-0"
           data-active={!effect.bypass}
           title={effect.bypass ? "Bypassed: click to enable" : "On: click to bypass"}
-          onClick={() => toggleBypass(target, index)}
+          onClick={bypass}
         >
           <Power size={11} />
         </button>
         <span className="label flex-1 truncate !text-ink">{effect.name}</span>
         <button
           className="tool-btn !h-5 !min-w-5 !p-0"
-          disabled={index === 0}
+          disabled={local || index === 0}
           title="Move up"
-          onClick={() => moveEffect(target, index, -1)}
+          onClick={() => move(-1)}
         >
           <ChevronUp size={11} />
         </button>
         <button
           className="tool-btn !h-5 !min-w-5 !p-0"
-          disabled={index === count - 1}
+          disabled={local || index === count - 1}
           title="Move down"
-          onClick={() => moveEffect(target, index, 1)}
+          onClick={() => move(1)}
         >
           <ChevronDown size={11} />
         </button>
         {removable && (
-          <button
-            className="tool-btn !h-5 !min-w-5 !p-0"
-            title="Remove"
-            onClick={() => removeEffect(target, index)}
-          >
+          <button className="tool-btn !h-5 !min-w-5 !p-0" title="Remove" onClick={remove}>
             <X size={11} />
           </button>
         )}
@@ -78,7 +91,7 @@ export function EffectEditor({
             size={30}
             color={color}
             value={effect.params[def.id] ?? def.default}
-            onChange={(v) => setEffectParam(target, index, def.id, v)}
+            onChange={(v) => setParam(def.id, v)}
             midiTarget={midiPrefix ? `${midiPrefix}:${effect.id}:${def.id}` : undefined}
           />
         ))}

@@ -16,6 +16,7 @@ import { LibraryPanel } from "../panels/library/LibraryPanel";
 import { MasterScopePanel } from "../panels/master-scope/MasterScopePanel";
 import { MixerPanel } from "../panels/mixer/MixerPanel";
 import { PianoRollPanel } from "../panels/piano-roll/PianoRollPanel";
+import { SampleEditorPanel } from "../panels/sample-editor/SampleEditorPanel";
 
 export interface PanelProps {
   params: Record<string, unknown>;
@@ -78,7 +79,7 @@ export const PANELS: PanelDef[] = [
     id: "sample-editor",
     title: "Sample editor",
     icon: AudioWaveform,
-    component: placeholder("Sample editor", "Phase 7"),
+    component: SampleEditorPanel,
     minHeight: 160,
   },
   {
