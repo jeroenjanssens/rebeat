@@ -53,6 +53,12 @@ export function TrackList({ geo }: { geo: Geometry }) {
 
   const slot = project.slots.find((s) => s.id === editSlotId)!;
   const pattern = project.patterns[slot.patternId];
+  // pages slide in from the side they come from
+  const slotIndex = project.slots.indexOf(slot);
+  const [slide, setSlide] = useState({ index: slotIndex, from: "24px" });
+  if (slide.index !== slotIndex)
+    setSlide({ index: slotIndex, from: slotIndex > slide.index ? "24px" : "-24px" });
+  const slideFrom = slide.from;
 
   const selectedByTrack = useMemo(() => {
     const map = new Map<string, Set<number>>();
@@ -254,6 +260,7 @@ export function TrackList({ geo }: { geo: Geometry }) {
         data-steps-zone
         key={pattern.id}
         className="page-slide flex min-w-max flex-col gap-px px-3 pb-2 pt-1"
+        style={{ "--slide-from": slideFrom } as CSSProperties}
       >
         <DndContext
           sensors={sensors}

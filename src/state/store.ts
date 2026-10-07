@@ -55,6 +55,8 @@ export interface UiState {
   fillLatched: boolean;
   repeatRate: RepeatRate;
   playMode: "loop" | "song";
+  /** Song mode: start over after the last page (otherwise stop). */
+  songLoop: boolean;
   playing: boolean;
   recording: boolean;
   playSlotId: string;
@@ -138,6 +140,7 @@ export const useStore = create<State>()((set, get) => ({
   fillLatched: false,
   repeatRate: "1/16",
   playMode: "loop",
+  songLoop: true,
   playing: false,
   recording: false,
   playSlotId: project.slots[1].id,

@@ -27,7 +27,14 @@ import {
   unlinkSlot,
   type Project,
 } from "../../model/project";
-import type { PageSlot, Pattern, Track } from "../../model/types";
+import { LINK_COLORS, TRACK_PALETTE } from "../../model/colors";
+import {
+  STEP_COUNT_PRESETS,
+  STEP_SIZES,
+  type PageSlot,
+  type Pattern,
+  type Track,
+} from "../../model/types";
 import { onFrame } from "../../render/raf";
 import { alpha, token } from "../../render/theme";
 import { useCanvas } from "../../render/useCanvas";
@@ -73,6 +80,49 @@ function Thumbnail({ pattern, tracks }: { pattern: Pattern; tracks: Track[] }) {
   return <canvas ref={ref} className="block h-full w-full rounded-[3px]" />;
 }
 
+function pageChips(
+  label: string,
+  options: { label: string; active: boolean; onClick: () => void; color?: string }[],
+): MenuItem {
+  return {
+    render: (close) => (
+      <div className="px-2 py-1.5">
+        <div className="label mb-1.5">{label}</div>
+        <div className="flex max-w-[260px] flex-wrap gap-1">
+          {options.map((o) =>
+            o.color ? (
+              <button
+                key={o.label}
+                className="h-4 w-4 rounded-sm"
+                style={{
+                  background: o.color,
+                  outline: o.active ? "2px solid var(--select)" : undefined,
+                }}
+                onClick={() => {
+                  o.onClick();
+                  close();
+                }}
+              />
+            ) : (
+              <button
+                key={o.label}
+                className="tool-btn !h-6 border border-line"
+                data-active={o.active}
+                onClick={() => {
+                  o.onClick();
+                  close();
+                }}
+              >
+                {o.label}
+              </button>
+            ),
+          )}
+        </div>
+      </div>
+    ),
+  };
+}
+
 function PageThumb({
   slot,
   index,
@@ -88,6 +138,7 @@ function PageThumb({
     id: slot.id,
   });
   const progress = useRef<HTMLDivElement>(null);
+  const thumbRef = useRef<HTMLDivElement | null>(null);
   const { editSlotId, playSlotId, queuedSlotId, playing, setUi, commit } = useStore();
   const pattern = project.patterns[slot.patternId];
   const linked = linkCount(project, slot.patternId) > 1;
@@ -95,6 +146,11 @@ function PageThumb({
   const isPlay = playing && slot.id === playSlotId;
   const isQueued = slot.id === queuedSlotId;
   const w = size === "large" ? 148 : size === "compact" ? 84 : 126;
+
+  // the strip follows the playing page
+  useEffect(() => {
+    if (isPlay) thumbRef.current?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [isPlay]);
 
   useEffect(() => {
     if (!isPlay) return;
@@ -129,23 +185,54 @@ function PageThumb({
       },
     },
     { separator: true },
-    ...[1, 2, 4, 8].map((n) => ({
-      label: `Repeat ×${n}`,
-      checked: slot.repeats === n,
-      onSelect: () => commit((p) => void (p.slots.find((s) => s.id === slot.id)!.repeats = n)),
-    })),
+    pageChips(
+      "Repeat",
+      [1, 2, 3, 4, 6, 8, 12, 16].map((n) => ({
+        label: `×${n}`,
+        active: slot.repeats === n,
+        onClick: () => commit((p) => void (p.slots.find((s) => s.id === slot.id)!.repeats = n)),
+      })),
+    ),
+    pageChips(
+      "Steps",
+      STEP_COUNT_PRESETS.map((n) => ({
+        label: String(n),
+        active: pattern.stepCount === n,
+        onClick: () => commit((p) => void (p.patterns[pattern.id].stepCount = n)),
+      })),
+    ),
+    pageChips(
+      "Step size",
+      STEP_SIZES.map((sz) => ({
+        label: sz,
+        active: pattern.stepSize === sz,
+        onClick: () => commit((p) => void (p.patterns[pattern.id].stepSize = sz)),
+      })),
+    ),
+    pageChips(
+      "Color",
+      [...LINK_COLORS, ...TRACK_PALETTE.filter((_, i) => i % 3 === 0)].map((c) => ({
+        label: c,
+        color: c,
+        active: pattern.linkColor === c,
+        onClick: () => commit((p) => void (p.patterns[pattern.id].linkColor = c)),
+      })),
+    ),
   ];
 
   return (
     <div
-      ref={setNodeRef}
+      ref={(el) => {
+        setNodeRef(el);
+        thumbRef.current = el;
+      }}
       style={{
         transform: CSS.Translate.toString(transform),
         transition,
         zIndex: isDragging ? 5 : undefined,
         width: w,
       }}
-      className={`group relative shrink-0 cursor-pointer rounded-md p-1 ${isQueued ? "queued" : ""}`}
+      className={`page-thumb group relative shrink-0 cursor-pointer rounded-md p-1 ${isQueued ? "queued" : ""}`}
       {...attributes}
       {...listeners}
       onClick={() => {
@@ -214,7 +301,7 @@ function PageThumb({
 
 export function PageStrip({ sizeClass }: { sizeClass: SizeClass }) {
   const project = useStore((s) => s.project);
-  const { playMode, editSlotId, setUi, commit } = useStore();
+  const { playMode, songLoop, editSlotId, setUi, commit } = useStore();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const mods = useRef({ alt: false, shift: false });
 
@@ -277,6 +364,20 @@ export function PageStrip({ sizeClass }: { sizeClass: SizeClass }) {
           <Plus size={14} />
         </button>
       </div>
+      {playMode === "song" && (
+        <button
+          className="tool-btn shrink-0"
+          data-active={songLoop}
+          title={
+            songLoop
+              ? "Song loops (click to stop at the end)"
+              : "Song stops at the end (click to loop)"
+          }
+          onClick={() => setUi({ songLoop: !songLoop })}
+        >
+          <Repeat size={13} />
+        </button>
+      )}
       <div className="segmented shrink-0" title="Playback mode">
         <button data-active={playMode === "loop"} onClick={() => setUi({ playMode: "loop" })}>
           Loop page

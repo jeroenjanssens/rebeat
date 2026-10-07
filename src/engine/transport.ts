@@ -162,10 +162,15 @@ function nextSlot(atPageEnd: boolean, pattern: Pattern): string | null {
   if (!atPageEnd) return null;
   repeatCount += 1;
   if (s.playMode === "song" && repeatCount >= slot.repeats) {
-    return slots[(slots.indexOf(slot) + 1) % slots.length].id;
+    const i = slots.indexOf(slot);
+    if (i === slots.length - 1 && !s.songLoop) return END;
+    return slots[(i + 1) % slots.length].id;
   }
   return slot.id;
 }
+
+const END = "__end";
+let ending = false;
 
 function scheduleStep(time: number) {
   const state = useStore.getState();
@@ -176,6 +181,12 @@ function scheduleStep(time: number) {
   pageStep += 1;
   const atEnd = pageStep >= pattern.stepCount;
   const next = pageStep > 0 ? nextSlot(atEnd, pattern) : null;
+  if (next === END) {
+    // the song is over: stop when the last page has been heard
+    ending = true;
+    Tone.getDraw().schedule(() => stop(), time);
+    return;
+  }
   if (atEnd || (next && next !== slot.id)) {
     if (atEnd) cycles.set(slot.id, (cycles.get(slot.id) ?? 0) + 1);
     pageStep = 0;
@@ -279,7 +290,7 @@ function onTick() {
   const horizon = audioNow() + LOOKAHEAD;
   // a stalled main thread (hidden tab, debugger): resync instead of catching up
   if (horizon - nextTime > 1) nextTime = audioNow() + 0.02;
-  while (nextTime < horizon) scheduleStep(nextTime);
+  while (nextTime < horizon && !ending) scheduleStep(nextTime);
 }
 
 export function play() {
@@ -288,6 +299,7 @@ export function play() {
   initEngine();
   pageStep = -1;
   tick = 0;
+  ending = false;
   repeatCount = 0;
   cycles.clear();
   history.length = 0;
