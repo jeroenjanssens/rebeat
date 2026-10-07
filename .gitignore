@@ -9,3 +9,4 @@ shot.tmp.mjs
 release
 electron/dist
 probe*.tmp.mjs
+*.tsbuildinfo
