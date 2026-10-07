@@ -74,7 +74,7 @@ export function InstrumentSection({ track }: { track: Track }) {
       }
     >
       <div className="flex flex-col gap-2">
-        <div className="segmented self-start">
+        <div className="segmented self-start" data-hint="inspector.instrument.source">
           {(
             [
               ["synth", "Synth"],
@@ -111,6 +111,7 @@ export function InstrumentSection({ track }: { track: Track }) {
             value={src.preset}
             onChange={(e) => setSource({ source: "synth", preset: e.target.value })}
             data-testid="synth-preset"
+            data-hint="inspector.instrument.synth.preset"
           >
             {SYNTH_PRESETS.map((p) => (
               <option key={p.id} value={p.id}>
@@ -126,6 +127,7 @@ export function InstrumentSection({ track }: { track: Track }) {
               className="input"
               value={src.preset}
               onChange={(e) => setSource({ source: "smplr", preset: e.target.value })}
+              data-hint="inspector.instrument.smplr.preset"
             >
               {SAMPLED_INSTRUMENTS.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -143,6 +145,7 @@ export function InstrumentSection({ track }: { track: Track }) {
           <div
             className="rounded-md border border-dashed p-2 text-[11.5px]"
             style={{ borderColor: hover ? "var(--accent)" : "var(--border-strong)" }}
+            data-hint="inspector.instrument.sampler.drop"
             onDragOver={(e) => {
               e.preventDefault();
               setHover(true);
@@ -169,6 +172,7 @@ export function InstrumentSection({ track }: { track: Track }) {
                 className="input !h-6"
                 value={src.rootNote ?? 60}
                 onChange={(e) => setSource({ ...src, rootNote: Number(e.target.value) })}
+                data-hint="inspector.instrument.sampler.rootnote"
               >
                 {Array.from({ length: 61 }, (_, i) => 24 + i).map((m) => (
                   <option key={m} value={m}>
@@ -181,15 +185,17 @@ export function InstrumentSection({ track }: { track: Track }) {
         )}
 
         <div className="flex flex-wrap items-center gap-2">
-          <DragValue
-            label="Transpose"
-            value={track.transpose ?? 0}
-            min={-24}
-            max={24}
-            defaultValue={0}
-            format={(v) => `${v > 0 ? "+" : ""}${v} st`}
-            onChange={(v) => update((t) => (t.transpose = v), `transpose-${track.id}`)}
-          />
+          <span data-hint="inspector.instrument.transpose">
+            <DragValue
+              label="Transpose"
+              value={track.transpose ?? 0}
+              min={-24}
+              max={24}
+              defaultValue={0}
+              format={(v) => `${v > 0 ? "+" : ""}${v} st`}
+              onChange={(v) => update((t) => (t.transpose = v), `transpose-${track.id}`)}
+            />
+          </span>
         </div>
 
         <div className="rounded-md border border-line p-2">
@@ -200,6 +206,7 @@ export function InstrumentSection({ track }: { track: Track }) {
               data-active={arp.on}
               onClick={() => setArp({ on: !arp.on })}
               data-testid="arp-toggle"
+              data-hint="inspector.arp.toggle"
             >
               {arp.on ? "On" : "Off"}
             </button>
@@ -209,6 +216,7 @@ export function InstrumentSection({ track }: { track: Track }) {
               className="input !h-6"
               value={arp.mode}
               onChange={(e) => setArp({ mode: e.target.value as Arpeggiator["mode"] })}
+              data-hint="inspector.arp.mode"
             >
               {["up", "down", "updown", "random", "played"].map((m) => (
                 <option key={m} value={m}>
@@ -220,6 +228,7 @@ export function InstrumentSection({ track }: { track: Track }) {
               className="input !h-6"
               value={arp.rate}
               onChange={(e) => setArp({ rate: e.target.value as StepSize })}
+              data-hint="inspector.arp.rate"
             >
               {ARP_RATES.map((r) => (
                 <option key={r} value={r}>
@@ -231,6 +240,7 @@ export function InstrumentSection({ track }: { track: Track }) {
               className="input !h-6"
               value={arp.octaves}
               onChange={(e) => setArp({ octaves: Number(e.target.value) })}
+              data-hint="inspector.arp.octaves"
             >
               {[1, 2, 3].map((o) => (
                 <option key={o} value={o}>
@@ -238,16 +248,18 @@ export function InstrumentSection({ track }: { track: Track }) {
                 </option>
               ))}
             </select>
-            <DragValue
-              label="Gate"
-              value={Math.round(arp.gate * 100)}
-              min={5}
-              max={100}
-              step={5}
-              defaultValue={60}
-              format={(v) => `${v}%`}
-              onChange={(v) => setArp({ gate: v / 100 })}
-            />
+            <span data-hint="inspector.arp.gate">
+              <DragValue
+                label="Gate"
+                value={Math.round(arp.gate * 100)}
+                min={5}
+                max={100}
+                step={5}
+                defaultValue={60}
+                format={(v) => `${v}%`}
+                onChange={(v) => setArp({ gate: v / 100 })}
+              />
+            </span>
           </div>
         </div>
       </div>

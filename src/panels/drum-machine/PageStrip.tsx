@@ -233,6 +233,7 @@ function PageThumb({
         width: w,
       }}
       className={`page-thumb group relative shrink-0 cursor-pointer rounded-md p-1 ${isQueued ? "queued" : ""}`}
+      data-hint="dm.page.thumb"
       {...attributes}
       {...listeners}
       onClick={() => {
@@ -355,6 +356,7 @@ export function PageStrip({ sizeClass }: { sizeClass: SizeClass }) {
         <button
           className="tool-btn ml-1 shrink-0 self-stretch border border-dashed border-line-strong"
           title="New page"
+          data-hint="dm.page.add"
           onClick={() => {
             let id = "";
             commit((p) => void (id = newSlot(p, editSlotId)));
@@ -373,12 +375,13 @@ export function PageStrip({ sizeClass }: { sizeClass: SizeClass }) {
               ? "Song loops (click to stop at the end)"
               : "Song stops at the end (click to loop)"
           }
+          data-hint="dm.page.song-loop"
           onClick={() => setUi({ songLoop: !songLoop })}
         >
           <Repeat size={13} />
         </button>
       )}
-      <div className="segmented shrink-0" title="Playback mode">
+      <div className="segmented shrink-0" title="Playback mode" data-hint="dm.page.mode">
         <button data-active={playMode === "loop"} onClick={() => setUi({ playMode: "loop" })}>
           Loop page
         </button>

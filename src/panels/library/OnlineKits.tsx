@@ -72,7 +72,7 @@ export function OnlineKits() {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="shrink-0 border-b border-line px-2.5 py-1.5">
-        <label className="field w-full">
+        <label className="field w-full" data-hint="library.online.search">
           <Search size={12} className="text-dim" />
           <input
             className="min-w-0 flex-1 bg-transparent text-[12px] outline-none placeholder:text-faint"
@@ -98,6 +98,7 @@ export function OnlineKits() {
               <div className="flex h-8 items-center gap-2 rounded-md px-1.5 hover:bg-surface">
                 <button
                   className="min-w-0 flex-1 truncate text-left text-[12px]"
+                  data-hint="library.online.machine"
                   onClick={() => setOpen(isOpen ? null : kit.machine)}
                 >
                   {machineName(kit.machine)}
@@ -106,6 +107,7 @@ export function OnlineKits() {
                 <button
                   className="tool-btn !h-6 shrink-0 border border-line !text-[10.5px]"
                   disabled={!!busy}
+                  data-hint="library.online.load"
                   onClick={() => load(kit)}
                 >
                   {busy === kit.machine ? (
@@ -124,6 +126,7 @@ export function OnlineKits() {
                         className="tool-btn !h-6 border border-line !text-[10.5px]"
                         disabled={!!busy}
                         title="Download and preview"
+                        data-hint="library.online.sound"
                         onClick={() => preview(kit, t, v)}
                       >
                         {typeName(t)}

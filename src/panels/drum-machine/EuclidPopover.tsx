@@ -36,6 +36,7 @@ function EuclidEditor({ track }: { track: Track }) {
         <span className="label !text-ink">Euclid · {track.name}</span>
         <button
           className="tool-btn ml-auto !h-6 !min-w-6 !p-0"
+          data-hint="dm.euclid.close"
           onClick={() => setUi({ euclidOpen: false })}
         >
           <X size={13} />
@@ -66,6 +67,7 @@ function EuclidEditor({ track }: { track: Track }) {
           value={pulses / 32}
           onChange={(v) => update(Math.round(v * 32), length, rotation)}
           color={track.color}
+          hint="dm.euclid.pulses"
         />
         <Encoder
           def={{
@@ -78,6 +80,7 @@ function EuclidEditor({ track }: { track: Track }) {
           value={(length - 1) / 63}
           onChange={(v) => update(pulses, Math.round(v * 63) + 1, rotation)}
           color={track.color}
+          hint="dm.euclid.steps"
         />
         <Encoder
           def={{
@@ -90,6 +93,7 @@ function EuclidEditor({ track }: { track: Track }) {
           value={rotation / 31}
           onChange={(v) => update(pulses, length, Math.round(v * 31))}
           color={track.color}
+          hint="dm.euclid.rotate"
         />
       </div>
     </div>

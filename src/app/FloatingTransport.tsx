@@ -45,6 +45,7 @@ export function FloatingTransport() {
         className="hw-btn !min-h-[26px] !flex-row gap-1.5"
         data-lit={playing}
         onClick={clock.toggle}
+        data-hint="transport.play"
       >
         {playing ? (
           <Square size={11} fill="currentColor" />
@@ -53,16 +54,18 @@ export function FloatingTransport() {
         )}
         {playing ? "Stop" : "Play"}
       </button>
-      <DragValue
-        label="BPM"
-        value={bpm}
-        min={20}
-        max={300}
-        defaultValue={120}
-        format={(v) => v.toFixed(0)}
-        onChange={(v) => useStore.getState().commit((p) => void (p.bpm = v), "bpm")}
-      />
-      <div className="segmented">
+      <span data-hint="transport.bpm">
+        <DragValue
+          label="BPM"
+          value={bpm}
+          min={20}
+          max={300}
+          defaultValue={120}
+          format={(v) => v.toFixed(0)}
+          onChange={(v) => useStore.getState().commit((p) => void (p.bpm = v), "bpm")}
+        />
+      </span>
+      <div className="segmented" data-hint="transport.playmode">
         <button
           data-active={playMode === "loop"}
           onClick={() => useStore.getState().setUi({ playMode: "loop" })}
@@ -80,6 +83,7 @@ export function FloatingTransport() {
         className="tool-btn"
         title="Leave full screen (Esc)"
         onClick={() => platform.fullscreen.exit()}
+        data-hint="app.fullscreen"
       >
         <Minimize size={14} />
       </button>

@@ -24,9 +24,13 @@ Open the [project browser](command:project.home) ({{key:project.home}}) to start
 - The **transport bar** along the top: play, record, tempo and everything that applies to the whole song. See [The transport bar](#transport-bar).
 - Below it, **panels** that you can arrange freely: the drum machine, the library, the inspector, the mixer and more. See [Panels and layouts](#panels).
 
+## Explain mode
+
+Turn on **Explain mode** with the speech-bubble button in the transport bar ({{key:app.explain}}). Then hover over any button, knob or fader: a card explains what it does and shows its keyboard shortcut. Press {{key:app.guide}} while the card is showing to open the matching part of this guide. Turn it off the same way when you know your way around.
+
 ## Getting help
 
 - This guide: open it from the **?** button in the transport bar or with {{key:app.guide}}.
 - The [command palette](command:app.palette) ({{key:app.palette}}) finds every action by name.
 - The [shortcut list](command:app.shortcuts) ({{key:app.shortcuts}}) shows all keyboard shortcuts, and lets you change them.
-- Most buttons show what they do when you hover over them.
+- Most buttons show what they do when you hover over them, and **Explain mode** tells you more.

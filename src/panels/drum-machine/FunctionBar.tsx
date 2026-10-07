@@ -141,6 +141,7 @@ function FnButton({ def, shift }: { def: FnDef; shift: boolean }) {
       data-lit={lit}
       data-shift={shift && !!secondary}
       title={`${def.title}${def.shortcut ? ` (${def.shortcut})` : ""}`}
+      data-hint={`dm.fn.${def.key}`}
       onPointerDown={(e) => {
         e.currentTarget.setPointerCapture(e.pointerId);
         fnPress(def.key);
@@ -169,6 +170,7 @@ export function FunctionBar({ sizeClass }: { sizeClass: SizeClass }) {
         <button
           ref={moreRef}
           className="hw-btn"
+          data-hint="dm.fn.more"
           onClick={() =>
             dropdown(
               moreRef.current!,

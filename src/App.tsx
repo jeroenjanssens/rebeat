@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { MenuHost } from "./components/Menu";
 import { AudioStartOverlay } from "./app/AudioStartOverlay";
 import { CommandPalette } from "./app/CommandPalette";
+import { installHints } from "./app/hintLayer";
 import { addKeyHook, installKeyboard, registerCommands, runCommand } from "./app/commands";
 import { importProjectFile } from "./app/projectActions";
 import { desktop } from "./platform";
@@ -27,6 +28,7 @@ export function App() {
     const offs = [
       registerCommands(defaultCommands()),
       installKeyboard(),
+      installHints(window),
       trackFullscreen(),
       // the SHIFT function button follows the Shift key
       addKeyHook((e, down) => {

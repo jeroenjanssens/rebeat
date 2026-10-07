@@ -10,16 +10,20 @@ export function Fader({
   onChange,
   color = "var(--accent)",
   height = 140,
+  hint,
 }: {
   value: number;
   onChange: (v: number) => void;
   color?: string;
   height?: number;
+  /** Explain-mode hint id (help/hints). */
+  hint?: string;
 }) {
   const drag = useRef<{ y: number; v: number } | null>(null);
   const clamp = (v: number) => Math.min(1, Math.max(0, v));
   return (
     <div
+      data-hint={hint}
       className="relative w-7 cursor-ns-resize touch-none"
       style={{ height }}
       title={`${VOLUME_FORMAT(value)} dB · drag · double-click = 0 dB`}

@@ -56,6 +56,7 @@ export function ParamLane({
       </div>
       <div
         className="flex touch-none items-end py-1 pl-1"
+        data-hint="dm.param-lane.bars"
         style={{ gap: geo.beatGap, height: h + 8 }}
         onPointerDown={(e) => {
           e.currentTarget.setPointerCapture(e.pointerId);

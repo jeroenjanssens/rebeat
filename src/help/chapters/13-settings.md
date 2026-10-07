@@ -10,6 +10,7 @@ Open [Settings](command:app.settings) with the gear in the transport bar ({{key:
 | **Accent color**   | The highlight color; **Theme** uses the theme's own.                                                                    |
 | **UI scale**       | Make everything smaller or bigger (80–150%).                                                                            |
 | **Spacing**        | Comfortable or Compact.                                                                                                 |
+| **Explain mode**   | Detailed cards when you hover over buttons (see [Explain mode](#getting-started-explain-mode)).                         |
 | **Reduced motion** | Fewer animations: follow the system, or always on/off.                                                                  |
 
 ## Audio

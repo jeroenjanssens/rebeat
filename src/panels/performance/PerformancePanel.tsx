@@ -58,12 +58,14 @@ function HoldButton({
   onChange,
   title,
   color,
+  hint,
 }: {
   label: string;
   on: boolean;
   onChange: (on: boolean) => void;
   title?: string;
   color?: string;
+  hint?: string;
 }) {
   return (
     <button
@@ -71,6 +73,7 @@ function HoldButton({
       data-lit={on}
       style={on && color ? { color, borderColor: color } : undefined}
       title={title}
+      data-hint={hint}
       onPointerDown={(e) => {
         e.currentTarget.setPointerCapture(e.pointerId);
         onChange(true);
@@ -106,6 +109,7 @@ function Pads() {
             data-perf-pad={t.id}
             className="perf-pad flex touch-none flex-col justify-end p-2 text-left"
             style={{ "--c": t.color } as CSSProperties}
+            data-hint="perf.pad"
             onPointerDown={(e) => {
               const r = e.currentTarget.getBoundingClientRect();
               const v = Math.min(1, Math.max(0.25, 1 - (e.clientY - r.top) / r.height + 0.3));
@@ -143,6 +147,7 @@ function PageLauncher() {
             className={`hw-btn !min-h-[48px] !items-start !px-2 ${slot.id === queuedSlotId ? "queued" : ""}`}
             data-lit={isPlay}
             style={{ borderLeft: `3px solid ${p.linkColor}` }}
+            data-hint="perf.page"
             onClick={() => {
               setUi({ editSlotId: slot.id });
               if (playing && slot.id !== playSlotId) setUi({ queuedSlotId: slot.id });
@@ -204,6 +209,7 @@ function Mutes() {
               opacity: t.mute ? 0.55 : 1,
             }}
             data-lit={t.solo}
+            data-hint="perf.mute"
             title="Click = mute · Shift+click = solo · right-click = crossfader side"
             onClick={(e) =>
               commit((p) => {
@@ -227,6 +233,7 @@ function Mutes() {
             key={gi}
             className={`hw-btn !min-h-[36px] flex-1 ${pending.includes(gi) ? "queued" : ""}`}
             title="Toggle the group · right-click to choose its tracks"
+            data-hint="perf.muteGroup"
             onClick={() => toggleMuteGroup(gi)}
             onContextMenu={(e) => groupMenu(e, gi)}
           >
@@ -239,6 +246,7 @@ function Mutes() {
           data-active={queued}
           onClick={() => usePerf.setState({ queuedMutes: !queued })}
           title="Mute changes wait for the next bar"
+          data-hint="perf.queueBar"
         >
           Queue to bar
         </button>
@@ -317,6 +325,7 @@ function PlatterFor({
         className="input !h-6 w-full !text-[11px]"
         value={track.id}
         onChange={(e) => onPick(e.target.value)}
+        data-hint="perf.scratch.track"
       >
         {tracks.map((t) => (
           <option key={t.id} value={t.id}>
@@ -346,6 +355,7 @@ function PlatterFor({
             ])
           }
           data-testid="platter"
+          data-hint="perf.scratch.platter"
         >
           <circle cx={50} cy={50} r={49} fill="var(--display)" stroke="var(--border-strong)" />
           {[44, 38, 32, 26].map((r) => (
@@ -374,12 +384,14 @@ function PlatterFor({
           on={cut}
           onChange={(v) => (setCut(v), s.cut(v))}
           title="Hold to cut the sound"
+          hint="perf.scratch.cut"
         />
         <button
           className="hw-btn flex-1"
           data-lit={keep}
           onClick={() => setKeep(!keep)}
           title="Off: snap back to the beat on release · On: carry on from where you let go"
+          data-hint="perf.scratch.sync"
         >
           {keep ? "Keep pos" : "Sync"}
         </button>
@@ -411,6 +423,7 @@ function MasterFx() {
           value={perf.filter}
           onChange={setFilter}
           size={64}
+          hint="perf.filter"
           midiTarget="perf:filter"
         />
         <div className="flex min-w-[200px] flex-1 flex-col gap-1.5">
@@ -427,17 +440,29 @@ function MasterFx() {
                 on={perf.repeat === stepsFor(q as number)}
                 onChange={(on) => setRepeat(on ? stepsFor(q as number) : null)}
                 title="Beat repeat while held"
+                hint={`perf.rpt.${(label as string).replace("/", "_")}`}
               />
             ))}
           </div>
           <div className="flex gap-1.5">
-            <HoldButton label="Throw verb" on={perf.throwA} onChange={(on) => setThrow("A", on)} />
-            <HoldButton label="Throw delay" on={perf.throwB} onChange={(on) => setThrow("B", on)} />
+            <HoldButton
+              label="Throw verb"
+              on={perf.throwA}
+              onChange={(on) => setThrow("A", on)}
+              hint="perf.throwVerb"
+            />
+            <HoldButton
+              label="Throw delay"
+              on={perf.throwB}
+              onChange={(on) => setThrow("B", on)}
+              hint="perf.throwDelay"
+            />
             <button
               className="hw-btn !min-h-[44px] flex-1"
               data-lit={perf.tapeStopping}
               onClick={() => tapeStop()}
               title="Slow down to a stop"
+              data-hint="perf.tapeStop"
             >
               Tape stop
             </button>
@@ -457,15 +482,17 @@ function MasterFx() {
           className="flex-1 accent-[var(--accent)]"
           title="Crossfader (assign tracks with a right-click on their mute buttons)"
           data-testid="crossfader"
+          data-hint="perf.crossfader"
         />
         <span className="label w-4">B</span>
       </div>
       <div className="flex items-center gap-1.5">
-        <button className="hw-btn flex-1" onClick={tapTempo}>
+        <button className="hw-btn flex-1" onClick={tapTempo} data-hint="perf.tap">
           Tap
         </button>
         <button
           className="hw-btn"
+          data-hint="perf.bpmDown"
           onClick={() => commit((p) => void (p.bpm = Math.max(20, p.bpm - 1)), "bpm")}
         >
           −
@@ -473,6 +500,7 @@ function MasterFx() {
         <span className="num w-16 text-center text-[14px] text-lit">{bpm.toFixed(1)}</span>
         <button
           className="hw-btn"
+          data-hint="perf.bpmUp"
           onClick={() => commit((p) => void (p.bpm = Math.min(300, p.bpm + 1)), "bpm")}
         >
           +

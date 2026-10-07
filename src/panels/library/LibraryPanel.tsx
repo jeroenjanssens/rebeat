@@ -395,6 +395,7 @@ export function LibraryPanel() {
           <button
             ref={locRef}
             className="field mr-auto max-w-[60%] shrink-0"
+            data-hint="library.location"
             onClick={() =>
               dropdown(
                 locRef.current!,
@@ -410,7 +411,10 @@ export function LibraryPanel() {
             <ChevronDown size={12} className="shrink-0 text-dim" />
           </button>
         )}
-        <label className="field order-first min-w-[140px] flex-1 basis-full @[420px]:order-none @[420px]:basis-0">
+        <label
+          className="field order-first min-w-[140px] flex-1 basis-full @[420px]:order-none @[420px]:basis-0"
+          data-hint="library.search"
+        >
           <Search size={12} className="shrink-0 text-dim" />
           <input
             className="min-w-0 flex-1 bg-transparent text-[12px] outline-none placeholder:text-faint"
@@ -425,6 +429,7 @@ export function LibraryPanel() {
           className="tool-btn shrink-0"
           data-active={type !== "all" || !!tag || length !== "any"}
           title="Filter"
+          data-hint="library.filter"
           onClick={() =>
             dropdown(filterRef.current!, [
               ...(["all", "loops", "oneshots"] as TypeFilter[]).map((t) => ({
@@ -462,6 +467,7 @@ export function LibraryPanel() {
           ref={sortRef}
           className="tool-btn shrink-0"
           title="Sort"
+          data-hint="library.sort"
           onClick={() =>
             dropdown(
               sortRef.current!,
@@ -478,6 +484,7 @@ export function LibraryPanel() {
         <button
           className="tool-btn shrink-0"
           title="Import files (or drop files, folders and zips here)"
+          data-hint="library.import.files"
           onClick={async () =>
             doImport(await platform.files.open({ accept: ["audio/*", ".zip"], multiple: true }))
           }
@@ -488,6 +495,7 @@ export function LibraryPanel() {
         <button
           className="tool-btn shrink-0"
           title="Import a folder"
+          data-hint="library.import.folder"
           onClick={async () => doImport(await platform.files.open({ directory: true }))}
         >
           <FolderInput size={13} />
@@ -512,6 +520,7 @@ export function LibraryPanel() {
                     className="tool-btn w-full !justify-start !text-[11.5px]"
                     style={{ paddingLeft: 7 + (l.depth ?? 0) * 10 }}
                     data-active={sameLoc(l.loc, loc)}
+                    data-hint="library.sidebar"
                     onClick={() => setLoc(l.loc)}
                     onDragOver={(e) =>
                       l.loc.kind === "folder" &&
@@ -543,6 +552,7 @@ export function LibraryPanel() {
                   draggable
                   onDragStart={kitDrag}
                   title="Drag onto the drum machine to add the whole kit"
+                  data-hint="library.kit.header"
                 >
                   <span className="label !text-ink">{loc.kit} kit</span>
                   <span className="text-[11px] text-faint">
@@ -550,6 +560,7 @@ export function LibraryPanel() {
                   </span>
                   <button
                     className="tool-btn ml-auto border border-line"
+                    data-hint="library.kit.load"
                     onClick={() => {
                       const sounds = kitSounds(loc.kit);
                       addSampleTracks(
@@ -586,6 +597,7 @@ export function LibraryPanel() {
                     <div
                       key={item.id}
                       data-sample={item.id}
+                      data-hint="library.sample"
                       draggable
                       onDragStart={(e) => {
                         e.dataTransfer.setData(SAMPLE_MIME, item.id);
@@ -657,6 +669,7 @@ export function LibraryPanel() {
                           <button
                             className={`shrink-0 ${item.favorite ? "text-lit" : "text-faint opacity-0 group-hover:opacity-100"}`}
                             title="Favorite"
+                            data-hint="library.sample.favorite"
                             onClick={(e) => {
                               e.stopPropagation();
                               updateSample(item.id, { favorite: item.favorite ? 0 : 1 });
@@ -687,12 +700,14 @@ export function LibraryPanel() {
           onChange={(e) => setPreviewVolume(Number(e.target.value))}
           className="w-16 accent-[var(--accent)]"
           title="Preview volume"
+          data-hint="library.preview.volume"
         />
         <button
           className="tool-btn !h-5 !text-[10px]"
           data-active={sync}
           onClick={() => setSync(!sync)}
           title="Play loops at the song tempo, starting on the beat"
+          data-hint="library.sync"
         >
           Sync
         </button>

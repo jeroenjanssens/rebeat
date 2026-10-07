@@ -11,6 +11,8 @@ interface Props {
   size?: number;
   /** Id for MIDI learn, e.g. "track:<id>:sound.cutoff". */
   midiTarget?: string;
+  /** Explain-mode hint id (help/hints). */
+  hint?: string;
 }
 
 const START = -135;
@@ -43,6 +45,7 @@ export function Encoder({
   color = "var(--accent)",
   size = 40,
   midiTarget,
+  hint,
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const drag = useRef<{ y: number; v: number } | null>(null);
@@ -80,6 +83,7 @@ export function Encoder({
 
   return (
     <div
+      data-hint={hint}
       ref={ref}
       className="flex flex-col items-center gap-0.5"
       style={{ opacity: disabled ? 0.4 : 1, width: size + 18 }}

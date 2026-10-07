@@ -10,6 +10,7 @@ import {
   Square,
   Timer,
   CircleHelp,
+  MessageSquareText,
 } from "lucide-react";
 import { DragValue } from "../components/DragValue";
 import { LevelMeter } from "../components/LevelMeter";
@@ -20,6 +21,7 @@ import { TIME_SIGNATURES, createTapTempo } from "../model/tempo";
 import { STEP_SIZE_QUARTERS } from "../model/types";
 import { platform } from "../platform";
 import { frameLoad, onFrame } from "../render/raf";
+import { useSettings } from "../state/settings";
 import { useStore } from "../state/store";
 import { isExampleId } from "../templates/examples";
 import { LAYOUT_PRESETS, applyPreset, openPanel } from "./layouts";
@@ -38,11 +40,13 @@ function Toggle({
   lit,
   onClick,
   title,
+  hint,
   children,
 }: {
   lit: boolean;
   onClick: () => void;
   title: string;
+  hint?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -51,6 +55,7 @@ function Toggle({
       data-lit={lit}
       onClick={onClick}
       title={title}
+      data-hint={hint}
     >
       {children}
     </button>
@@ -84,6 +89,7 @@ function Position() {
       ref={ref}
       className="num w-[52px] rounded border border-line bg-display px-1.5 py-0.5 text-center text-[11px] text-lit"
       title="Bar . beat . step"
+      data-hint="transport.position"
     >
       1.1.1
     </span>
@@ -122,7 +128,7 @@ function CpuMeter() {
     });
   }, []);
   return (
-    <div className="flex items-center gap-1.5" title="UI/scheduler load">
+    <div className="flex items-center gap-1.5" title="UI/scheduler load" data-hint="transport.cpu">
       <span className="label">CPU</span>
       <div className="h-[6px] w-10 overflow-hidden rounded-sm bg-pad">
         <div
@@ -163,6 +169,7 @@ function AudioStatus() {
       title={error || text}
       data-testid="audio-status"
       data-status={status}
+      data-hint="transport.audiostatus"
     >
       <span
         className="h-2 w-2 rounded-full"
@@ -185,6 +192,7 @@ export function TransportBar() {
   const { commit, setUi } = useStore.getState();
   const fullscreen = useShell((s) => s.fullscreen);
   const set = useShell((s) => s.set);
+  const explain = useSettings((s) => s.explain);
   const [tapFlash, setTapFlash] = useState(false);
   const layoutRef = useRef<HTMLButtonElement>(null);
   const sigRef = useRef<HTMLButtonElement>(null);
@@ -218,6 +226,7 @@ export function TransportBar() {
         title="Projects (Ctrl/Cmd+O)"
         onClick={() => set({ homeOpen: true })}
         data-testid="project-name"
+        data-hint="transport.project"
       >
         <span className="truncate">{project.name}</span>
         {isExampleId(projectId) ? (
@@ -240,6 +249,7 @@ export function TransportBar() {
         onClick={clock.toggle}
         title="Play / stop (Space)"
         data-testid="play"
+        data-hint="transport.play"
       >
         {playing ? (
           <Square size={12} fill="currentColor" />
@@ -254,6 +264,7 @@ export function TransportBar() {
         style={recording ? { color: "#ef4444", borderColor: "#ef4444" } : undefined}
         onClick={() => setUi({ recording: !recording })}
         title="Record (R): live pad recording and armed audio tracks"
+        data-hint="transport.record"
       >
         <Circle size={11} fill={recording ? "currentColor" : "none"} />
         <span className="hidden @[1000px]:inline">Rec</span>
@@ -262,6 +273,7 @@ export function TransportBar() {
         ref={loopRef}
         className="field hidden @[1050px]:inline-flex"
         title="Loop recording length"
+        data-hint="transport.loop"
         onClick={() =>
           dropdown(
             loopRef.current!,
@@ -278,20 +290,23 @@ export function TransportBar() {
       </button>
       <Position />
 
-      <DragValue
-        label="BPM"
-        value={project.bpm}
-        min={20}
-        max={300}
-        step={0.1}
-        defaultValue={120}
-        format={(v) => (Number.isInteger(v) ? v.toFixed(0) : v.toFixed(1))}
-        onChange={(v) => commit((p) => void (p.bpm = Math.round(v * 10) / 10), "bpm")}
-      />
+      <span data-hint="transport.bpm">
+        <DragValue
+          label="BPM"
+          value={project.bpm}
+          min={20}
+          max={300}
+          step={0.1}
+          defaultValue={120}
+          format={(v) => (Number.isInteger(v) ? v.toFixed(0) : v.toFixed(1))}
+          onChange={(v) => commit((p) => void (p.bpm = Math.round(v * 10) / 10), "bpm")}
+        />
+      </span>
       <button
         className="hw-btn !min-h-[26px]"
         data-lit={tapFlash}
         title="Tap tempo (T)"
+        data-hint="transport.tap"
         onClick={() => {
           tapTempo();
           setTapFlash(true);
@@ -304,6 +319,7 @@ export function TransportBar() {
         ref={sigRef}
         className="field num"
         title="Time signature"
+        data-hint="transport.timesig"
         onClick={() =>
           dropdown(
             sigRef.current!,
@@ -321,6 +337,7 @@ export function TransportBar() {
         lit={project.metronome}
         onClick={() => commit((p) => void (p.metronome = !p.metronome))}
         title="Metronome (K)"
+        hint="transport.metronome"
       >
         <Timer size={12} />
         <span className="hidden @[1200px]:inline">Click</span>
@@ -329,10 +346,11 @@ export function TransportBar() {
         lit={project.countIn}
         onClick={() => commit((p) => void (p.countIn = !p.countIn))}
         title="Count-in: one bar of clicks before playing/recording from a stop"
+        hint="transport.countin"
       >
         <span>1234</span>
       </Toggle>
-      <span className="hidden @[1150px]:inline-flex">
+      <span className="hidden @[1150px]:inline-flex" data-hint="transport.swing">
         <DragValue
           label="Swing"
           value={Math.round(project.swing * 100)}
@@ -348,6 +366,7 @@ export function TransportBar() {
         ref={qRef}
         className="field hidden @[1250px]:inline-flex"
         title="Quantize for live recording"
+        data-hint="transport.quantize"
         onClick={() =>
           dropdown(
             qRef.current!,
@@ -362,7 +381,7 @@ export function TransportBar() {
         <span className="label">Q</span>
         <span className="num">{quantize}</span>
       </button>
-      <div className="segmented" title="Playback mode (L)">
+      <div className="segmented" title="Playback mode (L)" data-hint="transport.playmode">
         <button data-active={playMode === "loop"} onClick={() => setUi({ playMode: "loop" })}>
           Page
         </button>
@@ -376,13 +395,16 @@ export function TransportBar() {
       <span className="hidden @[1300px]:flex">
         <CpuMeter />
       </span>
-      <LevelMeter read={() => engine.masterLevel()} width={64} height={11} title="Master level" />
+      <span data-hint="transport.masterlevel">
+        <LevelMeter read={() => engine.masterLevel()} width={64} height={11} title="Master level" />
+      </span>
       <AudioStatus />
       <div className="mx-1 h-5 w-px bg-line" />
       <button
         className="tool-btn"
         title="Command palette (Ctrl/Cmd+K)"
         onClick={() => set({ paletteOpen: true })}
+        data-hint="app.palette"
       >
         <CommandIcon size={14} />
       </button>
@@ -391,6 +413,7 @@ export function TransportBar() {
         className="tool-btn"
         title="Layouts and panels"
         onClick={() => dropdown(layoutRef.current!, layoutItems())}
+        data-hint="app.layouts"
       >
         <LayoutPanelLeft size={14} />
       </button>
@@ -398,14 +421,27 @@ export function TransportBar() {
         className="tool-btn"
         title="Full screen (Ctrl/Cmd+Shift+F)"
         onClick={() => (fullscreen ? platform.fullscreen.exit() : platform.fullscreen.enter())}
+        data-hint="app.fullscreen"
       >
         {fullscreen ? <Minimize size={14} /> : <Expand size={14} />}
+      </button>
+      <button
+        className="tool-btn"
+        title="Explain mode (Shift+F1)"
+        data-hint="transport.explain"
+        data-active={explain}
+        aria-pressed={explain}
+        onClick={() => useSettings.getState().set({ explain: !explain })}
+        data-testid="toggle-explain"
+      >
+        <MessageSquareText size={14} />
       </button>
       <button
         className="tool-btn"
         title="Guide (F1)"
         onClick={() => openGuide()}
         data-testid="open-guide"
+        data-hint="app.guide"
       >
         <CircleHelp size={14} />
       </button>
@@ -414,6 +450,7 @@ export function TransportBar() {
         title="Settings (Ctrl/Cmd+,)"
         onClick={() => set({ settingsOpen: true })}
         data-testid="open-settings"
+        data-hint="app.settings"
       >
         <Settings size={14} />
       </button>

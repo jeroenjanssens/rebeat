@@ -11,6 +11,7 @@ import {
 import "dockview-react/dist/styles/dockview.css";
 import { Expand, ExternalLink, Maximize2, Minimize2 } from "lucide-react";
 import { installKeyboard } from "./commands";
+import { installHints } from "./hintLayer";
 import { applyPreset, restoreLayout, saveLayout } from "./layouts";
 import { PanelFrame, togglePanelFullscreen } from "./PanelFrame";
 import { PANELS } from "./panels";
@@ -58,6 +59,7 @@ function HeaderActions({ group, activePanel, containerApi }: IDockviewHeaderActi
           className="tool-btn !h-6 !min-w-6 !p-0"
           title="Pop out into a new window"
           onClick={() => activePanel && containerApi.addPopoutGroup(activePanel)}
+          data-hint="app.panel.popout"
         >
           <ExternalLink size={12} />
         </button>
@@ -66,6 +68,7 @@ function HeaderActions({ group, activePanel, containerApi }: IDockviewHeaderActi
         className="tool-btn !h-6 !min-w-6 !p-0"
         title="Panel full screen (Ctrl/Cmd+Shift+Enter)"
         onClick={() => activePanel && togglePanelFullscreen(activePanel.id)}
+        data-hint="app.panel.fullscreen"
       >
         <Expand size={12} />
       </button>
@@ -77,6 +80,7 @@ function HeaderActions({ group, activePanel, containerApi }: IDockviewHeaderActi
             if (isMax) containerApi.exitMaximizedGroup();
             else if (activePanel) containerApi.maximizeGroup(activePanel);
           }}
+          data-hint="app.panel.maximize"
         >
           {isMax ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
         </button>
@@ -127,9 +131,11 @@ export function Dock() {
         const mo = new MutationObserver(sync);
         mo.observe(document.documentElement, { attributes: true });
         const off = installKeyboard(win);
+        const offHints = installHints(win);
         win.addEventListener("pagehide", () => {
           mo.disconnect();
           off();
+          offHints();
         });
       }),
     ];

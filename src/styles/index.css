@@ -767,3 +767,50 @@ kbd,
   padding-left: 0.8em;
   color: var(--text-dim);
 }
+
+/* ---------- explain mode ---------- */
+.hint-card {
+  position: fixed;
+  z-index: 1000;
+  max-width: 300px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--raised);
+  color: var(--text);
+  box-shadow: 0 6px 24px rgb(0 0 0 / 0.35);
+  font-size: 12px;
+  line-height: 1.45;
+  pointer-events: none;
+}
+.hint-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.hint-title {
+  font-weight: 600;
+}
+.hint-keys {
+  white-space: nowrap;
+}
+.hint-text {
+  margin-top: 4px;
+  color: var(--text-dim);
+}
+.hint-extra,
+.hint-more {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+.hint-card kbd {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10.5px;
+  padding: 0 4px;
+  border: 1px solid var(--border-strong);
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  background: var(--surface);
+}

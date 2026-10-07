@@ -72,11 +72,13 @@ function Check({
   value,
   onChange,
   title,
+  hint,
 }: {
   label: string;
   value: boolean;
   onChange: (v: boolean) => void;
   title?: string;
+  hint?: string;
 }) {
   return (
     <button
@@ -84,6 +86,7 @@ function Check({
       data-active={value}
       onClick={() => onChange(!value)}
       title={title}
+      data-hint={hint}
     >
       {label}
     </button>
@@ -275,6 +278,7 @@ function SampleEditor({ sampleId }: { sampleId: string }) {
           onClick={play}
           title={sel ? "Play the selection (Space)" : "Play with the settings (Space)"}
           data-testid="editor-play"
+          data-hint="editor.play"
         >
           {playing ? (
             <Square size={12} fill="currentColor" />
@@ -287,10 +291,11 @@ function SampleEditor({ sampleId }: { sampleId: string }) {
           data-active={loopPlay}
           onClick={() => setLoopPlay(!loopPlay)}
           title="Loop playback"
+          data-hint="editor.loop"
         >
           <Repeat size={13} />
         </button>
-        <div className="segmented">
+        <div className="segmented" data-hint="editor.view">
           <button data-active={view === "wave"} onClick={() => setView("wave")}>
             Wave
           </button>
@@ -303,10 +308,17 @@ function SampleEditor({ sampleId }: { sampleId: string }) {
           disabled={!editor.canUndo}
           onClick={editor.undo}
           title="Undo (in this editor)"
+          data-hint="editor.undo"
         >
           <Undo2 size={13} />
         </button>
-        <button className="tool-btn" disabled={!editor.canRedo} onClick={editor.redo} title="Redo">
+        <button
+          className="tool-btn"
+          disabled={!editor.canRedo}
+          onClick={editor.redo}
+          title="Redo"
+          data-hint="editor.redo"
+        >
           <Redo2 size={13} />
         </button>
         <button
@@ -314,6 +326,7 @@ function SampleEditor({ sampleId }: { sampleId: string }) {
           onClick={saveAsNew}
           disabled={!!busy}
           title="Render everything into a new library sample"
+          data-hint="editor.saveAsNew"
         >
           Save as new
         </button>
@@ -328,6 +341,7 @@ function SampleEditor({ sampleId }: { sampleId: string }) {
               : "Store the changes on this sample"
           }
           data-testid="editor-apply"
+          data-hint="editor.apply"
         >
           {busy || (usage.length > 1 ? `Apply to ${usage.length} tracks` : "Apply")}
         </button>
@@ -347,6 +361,7 @@ function SampleEditor({ sampleId }: { sampleId: string }) {
             key={t.id}
             className="tool-btn !h-6 !text-[10.5px]"
             data-active={tab === t.id}
+            data-hint={`editor.tab.${t.id}`}
             onClick={() => setTab(t.id)}
           >
             {t.label}
@@ -412,51 +427,77 @@ function EditTab({
           value={snap}
           onChange={setSnap}
           title="Trim points snap to zero crossings"
+          hint="editor.snap"
         />
-        <DragValue
-          label="Fade in"
-          value={Math.round(s.fadeIn * 1000)}
-          min={0}
-          max={5000}
-          step={1}
-          defaultValue={0}
-          format={(v) => `${v} ms`}
-          onChange={(v) => update({ fadeIn: v / 1000 }, "fadeIn")}
-        />
-        {curveSelect(s.fadeInCurve, (fadeInCurve) => update({ fadeInCurve }))}
-        <DragValue
-          label="Fade out"
-          value={Math.round(s.fadeOut * 1000)}
-          min={0}
-          max={5000}
-          step={1}
-          defaultValue={0}
-          format={(v) => `${v} ms`}
-          onChange={(v) => update({ fadeOut: v / 1000 }, "fadeOut")}
-        />
-        {curveSelect(s.fadeOutCurve, (fadeOutCurve) => update({ fadeOutCurve }))}
+        <span data-hint="editor.fadeIn">
+          <DragValue
+            label="Fade in"
+            value={Math.round(s.fadeIn * 1000)}
+            min={0}
+            max={5000}
+            step={1}
+            defaultValue={0}
+            format={(v) => `${v} ms`}
+            title=""
+            onChange={(v) => update({ fadeIn: v / 1000 }, "fadeIn")}
+          />
+        </span>
+        <span data-hint="editor.fadeCurve">
+          {curveSelect(s.fadeInCurve, (fadeInCurve) => update({ fadeInCurve }))}
+        </span>
+        <span data-hint="editor.fadeOut">
+          <DragValue
+            label="Fade out"
+            value={Math.round(s.fadeOut * 1000)}
+            min={0}
+            max={5000}
+            step={1}
+            defaultValue={0}
+            format={(v) => `${v} ms`}
+            title=""
+            onChange={(v) => update({ fadeOut: v / 1000 }, "fadeOut")}
+          />
+        </span>
+        <span data-hint="editor.fadeCurve">
+          {curveSelect(s.fadeOutCurve, (fadeOutCurve) => update({ fadeOutCurve }))}
+        </span>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <DragValue
-          label="Gain"
-          value={Math.round(s.gainDb * 10) / 10}
-          min={-24}
-          max={24}
-          step={0.1}
-          defaultValue={0}
-          format={(v) => `${v > 0 ? "+" : ""}${v.toFixed(1)} dB`}
-          onChange={(v) => update({ gainDb: v }, "gain")}
-        />
+        <span data-hint="editor.gain">
+          <DragValue
+            label="Gain"
+            value={Math.round(s.gainDb * 10) / 10}
+            min={-24}
+            max={24}
+            step={0.1}
+            defaultValue={0}
+            format={(v) => `${v > 0 ? "+" : ""}${v.toFixed(1)} dB`}
+            title=""
+            onChange={(v) => update({ gainDb: v }, "gain")}
+          />
+        </span>
         <Check
           label="Normalize"
           value={s.normalize}
           onChange={(normalize) => update({ normalize })}
+          hint="editor.normalize"
         />
-        <Check label="Reverse" value={s.reverse} onChange={(reverse) => update({ reverse })} />
-        <Check label="Remove DC" value={s.dcRemove} onChange={(dcRemove) => update({ dcRemove })} />
+        <Check
+          label="Reverse"
+          value={s.reverse}
+          onChange={(reverse) => update({ reverse })}
+          hint="editor.reverse"
+        />
+        <Check
+          label="Remove DC"
+          value={s.dcRemove}
+          onChange={(dcRemove) => update({ dcRemove })}
+          hint="editor.dcRemove"
+        />
         <button
           className="tool-btn border border-line !text-[10.5px]"
           onClick={() => update({ trimStart: 0, trimEnd: null })}
+          data-hint="editor.resetTrim"
         >
           Reset trim
         </button>
@@ -464,6 +505,7 @@ function EditTab({
           className="tool-btn border border-line !text-[10.5px]"
           onClick={() => editor.replaceSource(stripSilence(source, sr))}
           title="Remove silent gaps (makes new audio)"
+          data-hint="editor.stripSilence"
         >
           Strip silence
         </button>
@@ -474,6 +516,7 @@ function EditTab({
           className="tool-btn border border-line !text-[10.5px]"
           disabled={!sel}
           onClick={cut}
+          data-hint="editor.cut"
         >
           Cut
         </button>
@@ -481,6 +524,7 @@ function EditTab({
           className="tool-btn border border-line !text-[10.5px]"
           disabled={!sel}
           onClick={() => sel && (clipboard = copyRange(source, sr, sel.start, sel.end))}
+          data-hint="editor.copy"
         >
           Copy
         </button>
@@ -488,6 +532,7 @@ function EditTab({
           className="tool-btn border border-line !text-[10.5px]"
           disabled={!clipboard}
           onClick={paste}
+          data-hint="editor.paste"
         >
           Paste
         </button>
@@ -495,12 +540,14 @@ function EditTab({
           className="tool-btn border border-line !text-[10.5px]"
           disabled={!sel}
           onClick={() => sel && editor.replaceSource(silenceRange(source, sr, sel.start, sel.end))}
+          data-hint="editor.silence"
         >
           Silence
         </button>
         <button
           className="tool-btn border border-line !text-[10.5px]"
           disabled={!sel}
+          data-hint="editor.crop"
           onClick={() => {
             if (!sel) return;
             editor.replaceSource(cropRange(source, sr, sel.start, sel.end), {
@@ -516,6 +563,7 @@ function EditTab({
           className="tool-btn border border-line !text-[10.5px]"
           disabled={!sel}
           onClick={() => sel && update({ trimStart: sel.start, trimEnd: sel.end })}
+          data-hint="editor.trimToSel"
         >
           Trim to selection
         </button>
@@ -528,18 +576,27 @@ function EnvelopeTab({ editor }: { editor: Editor }) {
   const { settings: s, update } = editor;
   const env = s.ahdsr;
   const len = (s.trimEnd ?? editor.duration) - s.trimStart;
+  const knobHints: Record<string, string> = {
+    a: "editor.env.attack",
+    h: "editor.env.hold",
+    d: "editor.env.decay",
+    r: "editor.env.release",
+  };
   const knob = (k: "a" | "h" | "d" | "r", label: string) =>
     env && (
-      <DragValue
-        label={label}
-        value={Math.round(env[k] * 1000)}
-        min={0}
-        max={Math.round(len * 1000)}
-        step={1}
-        defaultValue={0}
-        format={(v) => `${v} ms`}
-        onChange={(v) => update({ ahdsr: { ...env, [k]: v / 1000 } }, `env-${k}`)}
-      />
+      <span data-hint={knobHints[k]}>
+        <DragValue
+          label={label}
+          value={Math.round(env[k] * 1000)}
+          min={0}
+          max={Math.round(len * 1000)}
+          step={1}
+          defaultValue={0}
+          format={(v) => `${v} ms`}
+          title=""
+          onChange={(v) => update({ ahdsr: { ...env, [k]: v / 1000 } }, `env-${k}`)}
+        />
+      </span>
     );
   return (
     <div className="flex flex-col gap-2">
@@ -547,6 +604,7 @@ function EnvelopeTab({ editor }: { editor: Editor }) {
         <Check
           label="AHDSR envelope"
           value={!!env}
+          hint="editor.ahdsr"
           onChange={(on) =>
             update({
               ahdsr: on ? { a: 0.005, h: 0.05, d: 0.2, s: 0.6, r: Math.min(0.3, len / 3) } : null,
@@ -557,15 +615,18 @@ function EnvelopeTab({ editor }: { editor: Editor }) {
         {knob("h", "Hold")}
         {knob("d", "Decay")}
         {env && (
-          <DragValue
-            label="Sustain"
-            value={Math.round(env.s * 100)}
-            min={0}
-            max={100}
-            defaultValue={60}
-            format={(v) => `${v}%`}
-            onChange={(v) => update({ ahdsr: { ...env, s: v / 100 } }, "env-s")}
-          />
+          <span data-hint="editor.env.sustain">
+            <DragValue
+              label="Sustain"
+              value={Math.round(env.s * 100)}
+              min={0}
+              max={100}
+              defaultValue={60}
+              format={(v) => `${v}%`}
+              title=""
+              onChange={(v) => update({ ahdsr: { ...env, s: v / 100 } }, "env-s")}
+            />
+          </span>
         )}
         {knob("r", "Release")}
       </div>
@@ -573,6 +634,7 @@ function EnvelopeTab({ editor }: { editor: Editor }) {
         <Check
           label="Volume envelope"
           value={!!s.volumeEnvelope}
+          hint="editor.volumeEnv"
           onChange={(on) =>
             update({
               volumeEnvelope: on
@@ -603,41 +665,51 @@ function TuneTab({ editor, setBusy }: { editor: Editor; setBusy: (s: string) => 
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
-        <DragValue
-          label="Semitones"
-          value={s.tuneSemis}
-          min={-24}
-          max={24}
-          defaultValue={0}
-          format={(v) => `${v > 0 ? "+" : ""}${v}`}
-          onChange={(v) => update({ tuneSemis: v }, "semis")}
-        />
-        <DragValue
-          label="Cents"
-          value={s.tuneCents}
-          min={-100}
-          max={100}
-          defaultValue={0}
-          format={(v) => `${v > 0 ? "+" : ""}${v}`}
-          onChange={(v) => update({ tuneCents: v }, "cents")}
-        />
+        <span data-hint="editor.semitones">
+          <DragValue
+            label="Semitones"
+            value={s.tuneSemis}
+            min={-24}
+            max={24}
+            defaultValue={0}
+            format={(v) => `${v > 0 ? "+" : ""}${v}`}
+            title=""
+            onChange={(v) => update({ tuneSemis: v }, "semis")}
+          />
+        </span>
+        <span data-hint="editor.cents">
+          <DragValue
+            label="Cents"
+            value={s.tuneCents}
+            min={-100}
+            max={100}
+            defaultValue={0}
+            format={(v) => `${v > 0 ? "+" : ""}${v}`}
+            title=""
+            onChange={(v) => update({ tuneCents: v }, "cents")}
+          />
+        </span>
         <Check
           label="Keep length"
           value={s.keepLength}
           onChange={(keepLength) => update({ keepLength })}
           title="Pitch shift with time-stretching instead of resampling"
+          hint="editor.keepLength"
         />
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <DragValue
-          label="Stretch"
-          value={Math.round(s.stretch * 100)}
-          min={25}
-          max={400}
-          defaultValue={100}
-          format={(v) => `${v}%`}
-          onChange={(v) => update({ stretch: v / 100 }, "stretch")}
-        />
+        <span data-hint="editor.stretch">
+          <DragValue
+            label="Stretch"
+            value={Math.round(s.stretch * 100)}
+            min={25}
+            max={400}
+            defaultValue={100}
+            format={(v) => `${v}%`}
+            title=""
+            onChange={(v) => update({ stretch: v / 100 }, "stretch")}
+          />
+        </span>
         <span className="text-[11px] text-dim">→ {(len * s.stretch).toFixed(2)} s</span>
         <Field label="To BPM">
           <input
@@ -645,6 +717,7 @@ function TuneTab({ editor, setBusy }: { editor: Editor; setBusy: (s: string) => 
             className="input !h-6 w-16"
             value={target}
             onChange={(e) => setTarget(Number(e.target.value) || bpm)}
+            data-hint="editor.stretchBpm.target"
           />
         </Field>
         <button
@@ -652,6 +725,7 @@ function TuneTab({ editor, setBusy }: { editor: Editor; setBusy: (s: string) => 
           disabled={!rec?.bpm}
           title={rec?.bpm ? `From ${rec.bpm} BPM` : "The sample has no detected tempo"}
           onClick={() => rec?.bpm && update({ stretch: rec.bpm / target })}
+          data-hint="editor.stretchToBpm"
         >
           Stretch to BPM
         </button>
@@ -677,6 +751,7 @@ function TuneTab({ editor, setBusy }: { editor: Editor; setBusy: (s: string) => 
             }
           }}
           title="Render the stretch into the audio"
+          data-hint="editor.renderStretch"
         >
           Render
         </button>
@@ -693,6 +768,7 @@ function LoopTab({ editor }: { editor: Editor }) {
       <Check
         label="Loop points"
         value={!!s.loop}
+        hint="editor.loop.points"
         onChange={(on) =>
           update({ loop: on ? { start: len * 0.25, end: len * 0.9, crossfade: 0.02 } : null })
         }
@@ -702,18 +778,22 @@ function LoopTab({ editor }: { editor: Editor }) {
           <span className="num text-[11px] text-dim">
             {s.loop.start.toFixed(3)}–{s.loop.end.toFixed(3)} s
           </span>
-          <DragValue
-            label="Crossfade"
-            value={Math.round(s.loop.crossfade * 1000)}
-            min={0}
-            max={500}
-            defaultValue={20}
-            format={(v) => `${v} ms`}
-            onChange={(v) => update({ loop: { ...s.loop!, crossfade: v / 1000 } }, "xf")}
-          />
+          <span data-hint="editor.loop.crossfade">
+            <DragValue
+              label="Crossfade"
+              value={Math.round(s.loop.crossfade * 1000)}
+              min={0}
+              max={500}
+              defaultValue={20}
+              format={(v) => `${v} ms`}
+              title=""
+              onChange={(v) => update({ loop: { ...s.loop!, crossfade: v / 1000 } }, "xf")}
+            />
+          </span>
           <button
             className="tool-btn border border-line !text-[10.5px]"
             disabled={!sel}
+            data-hint="editor.loop.fromSel"
             onClick={() =>
               sel &&
               update({
@@ -790,17 +870,21 @@ function SliceTab({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
-        <DragValue
-          label="Sensitivity"
-          value={sensitivity}
-          min={0}
-          max={100}
-          defaultValue={50}
-          format={(v) => `${v}%`}
-          onChange={setSensitivity}
-        />
+        <span data-hint="editor.slice.sensitivity">
+          <DragValue
+            label="Sensitivity"
+            value={sensitivity}
+            min={0}
+            max={100}
+            defaultValue={50}
+            format={(v) => `${v}%`}
+            title=""
+            onChange={setSensitivity}
+          />
+        </span>
         <button
           className="tool-btn border border-line !text-[10.5px]"
+          data-hint="editor.slice.transients"
           onClick={() => {
             const mono = toMono(toAudioBuffer(copyRange(source, sr, from, to), sr));
             setMarkers(
@@ -812,17 +896,21 @@ function SliceTab({
         >
           By transients
         </button>
-        <DragValue
-          label="Grid"
-          value={grid}
-          min={2}
-          max={64}
-          defaultValue={8}
-          format={(v) => `${v}`}
-          onChange={setGrid}
-        />
+        <span data-hint="editor.slice.grid">
+          <DragValue
+            label="Grid"
+            value={grid}
+            min={2}
+            max={64}
+            defaultValue={8}
+            format={(v) => `${v}`}
+            title=""
+            onChange={setGrid}
+          />
+        </span>
         <button
           className="tool-btn border border-line !text-[10.5px]"
+          data-hint="editor.slice.equalGrid"
           onClick={() => setMarkers(gridMarkers(from, to, grid))}
         >
           Equal grid
@@ -830,6 +918,7 @@ function SliceTab({
         <button
           className="tool-btn border border-line !text-[10.5px]"
           disabled={!editor.selection}
+          data-hint="editor.slice.addMarker"
           onClick={() =>
             editor.selection &&
             setMarkers([...markers, editor.selection.start].sort((a, b) => a - b))
@@ -841,6 +930,7 @@ function SliceTab({
         <button
           className="tool-btn border border-line !text-[10.5px]"
           disabled={!markers.length}
+          data-hint="editor.slice.clear"
           onClick={() => setMarkers([])}
         >
           Clear
@@ -855,6 +945,7 @@ function SliceTab({
           disabled={!markers.length}
           onClick={toTracks}
           data-testid="slices-to-tracks"
+          data-hint="editor.slice.toTracks"
         >
           Slices to new drum tracks
         </button>
@@ -872,6 +963,7 @@ function FxTab({ editor, setBusy }: { editor: Editor; setBusy: (s: string) => vo
         <select
           className="input !h-6 !text-[11px]"
           value=""
+          data-hint="editor.fx.add"
           onChange={(e) => e.target.value && setEffects([...effects, makeEffect(e.target.value)])}
         >
           <option value="">+ Add effect</option>
@@ -884,6 +976,7 @@ function FxTab({ editor, setBusy }: { editor: Editor; setBusy: (s: string) => vo
         <button
           className="hw-btn !min-h-[26px]"
           disabled={!effects.length}
+          data-hint="editor.fx.render"
           onClick={async () => {
             setBusy("Rendering…");
             try {
@@ -901,6 +994,7 @@ function FxTab({ editor, setBusy }: { editor: Editor; setBusy: (s: string) => vo
         <button
           className="tool-btn border border-line !text-[10.5px]"
           disabled={!effects.length}
+          data-hint="editor.fx.preview"
           onClick={async () => {
             const out = await renderWithEffects(editor.source, editor.sampleRate, effects, bpm);
             const ctx = audioContext();
@@ -967,6 +1061,7 @@ function AnalyzeTab({ editor, sampleId }: { editor: Editor; sampleId: string }) 
         <button
           className="tool-btn border border-line !text-[10.5px]"
           onClick={() => updateSample(sampleId, { bpm: result.bpm })}
+          data-hint="editor.analyze.storeTempo"
         >
           Store tempo
         </button>

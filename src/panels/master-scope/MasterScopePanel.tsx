@@ -164,7 +164,7 @@ export function MasterScopePanel() {
   return (
     <div className="flex h-full flex-col" data-testid="master-scope">
       <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-line px-2 py-1.5">
-        <div className="segmented">
+        <div className="segmented" data-hint="scope.mode">
           {MODES.map((m) => (
             <button key={m.id} data-active={mode === m.id} onClick={() => setMode(m.id)}>
               {m.label}
@@ -177,6 +177,7 @@ export function MasterScopePanel() {
             value={windowMs}
             onChange={(e) => setWindowMs(Number(e.target.value))}
             title="Time window"
+            data-hint="scope.window"
           >
             {WINDOWS.map((w) => (
               <option key={w} value={w}>
@@ -190,10 +191,11 @@ export function MasterScopePanel() {
           data-active={frozen}
           onClick={() => setFrozen(!frozen)}
           title="Freeze"
+          data-hint="scope.freeze"
         >
           <Snowflake size={13} />
         </button>
-        <label className="flex items-center gap-1" title="Trail">
+        <label className="flex items-center gap-1" title="Trail" data-hint="scope.trail">
           <span className="label">Trail</span>
           <input
             type="range"
@@ -205,7 +207,7 @@ export function MasterScopePanel() {
             className="w-14 accent-[var(--accent)]"
           />
         </label>
-        <label className="flex items-center gap-1" title="Brightness">
+        <label className="flex items-center gap-1" title="Brightness" data-hint="scope.brightness">
           <span className="label">Glow</span>
           <input
             type="range"
@@ -219,7 +221,7 @@ export function MasterScopePanel() {
         </label>
         <span ref={readout} className="num ml-auto text-[10.5px] text-dim" data-testid="loudness" />
       </div>
-      <div className="min-h-0 flex-1 p-1.5">
+      <div className="min-h-0 flex-1 p-1.5" data-hint="scope.display">
         <div className="relative h-full w-full">
           <canvas ref={ref} className="absolute inset-0 block h-full w-full rounded" />
         </div>

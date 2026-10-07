@@ -88,6 +88,7 @@ export function RecorderStrip() {
         value={inputDeviceId}
         onChange={(e) => useSettings.getState().set({ inputDeviceId: e.target.value })}
         title="Input device"
+        data-hint="library.recorder.device"
       >
         <option value="">Default input</option>
         {devices
@@ -98,18 +99,24 @@ export function RecorderStrip() {
             </option>
           ))}
       </select>
-      <LevelMeter read={() => micLevel()} width={60} height={9} title="Input level" />
+      <span data-hint="library.recorder.level">
+        <LevelMeter read={() => micLevel()} width={60} height={9} title="Input level" />
+      </span>
       <button
         className="tool-btn"
         data-active={monitor}
         title="Monitor the input (use headphones)"
+        data-hint="library.recorder.monitor"
         onClick={() =>
           mic.status === "on" ? setMonitor(!monitor) : openMic().then(() => setMonitor(true))
         }
       >
         <Headphones size={13} />
       </button>
-      <label className="flex items-center gap-1 text-[10.5px] text-dim">
+      <label
+        className="flex items-center gap-1 text-[10.5px] text-dim"
+        data-hint="library.recorder.trim"
+      >
         <input type="checkbox" checked={trim} onChange={(e) => setTrim(e.target.checked)} /> Trim
         silence
       </label>
@@ -120,6 +127,7 @@ export function RecorderStrip() {
           style={{ color: "#ef4444", borderColor: "#ef4444" }}
           onClick={stop}
           data-testid="rec-stop"
+          data-hint="library.recorder.stop"
         >
           <Square size={10} fill="currentColor" /> {elapsed.toFixed(1)} s
         </button>
@@ -128,6 +136,7 @@ export function RecorderStrip() {
           className="hw-btn !min-h-[26px] !flex-row gap-1.5"
           onClick={start}
           data-testid="rec-start"
+          data-hint="library.recorder.record"
         >
           <Circle size={10} fill="#ef4444" stroke="#ef4444" /> Record
         </button>
@@ -142,6 +151,7 @@ export function RecorderStrip() {
           className="text-[10px] text-faint hover:text-ink"
           onClick={closeMic}
           title="Release the microphone"
+          data-hint="library.recorder.release"
         >
           Release mic
         </button>

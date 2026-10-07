@@ -19,6 +19,7 @@ export function EffectsSection({ track }: { track: Track }) {
           ref={addRef}
           className="tool-btn !h-6"
           title="Add an effect"
+          data-hint="inspector.effects.add"
           onClick={() =>
             dropdown(
               addRef.current!,

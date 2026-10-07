@@ -1,3 +1,20 @@
+/**
+ * Hint-id scheme for param.* and fx.* (explain-mode hover cards):
+ *
+ *   param.<group>.<id>   — group is the param key prefix used in track.params
+ *                          e.g. track.params["sound.tune"] → hint "param.sound.tune"
+ *                               track.params["mix.sendA"]  → hint "param.mix.sendA"
+ *                               step params (from stepParams()) → "param.step.<id>"
+ *   fx.<EffectType>      — the effect itself (shown on the header row in EffectEditor)
+ *   fx.<EffectType>.<id> — a parameter of that effect
+ *
+ * When passing a hint to an Encoder in the sound/mix encoder banks:
+ *   hint={`param.${prefix}.${def.id}`}
+ * When passing a hint in an FX encoder bank:
+ *   hint={`fx.${fx.name}.${def.id}`}
+ * When passing a hint in the step encoder bank:
+ *   hint={`param.step.${def.id}`}
+ */
 import type { Step, TrackKind } from "./types";
 import { notesLabel } from "./notes";
 

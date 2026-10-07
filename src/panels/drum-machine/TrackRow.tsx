@@ -415,6 +415,7 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
           <div
             className="my-[3px] flex w-[14px] shrink-0 cursor-grab touch-none items-center justify-center self-stretch rounded-[3px] active:cursor-grabbing"
             style={{ background: track.color, width: compact ? 6 : 14 }}
+            data-hint="dm.track.drag"
             {...attributes}
             {...listeners}
             title="Drag to reorder"
@@ -430,11 +431,13 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
                 {String(index + 1).padStart(2, "0")}
               </span>
             )}
-            <InlineEdit
-              value={track.name}
-              onCommit={(v) => update((t) => (t.name = v))}
-              className="min-w-0 flex-1 text-[11.5px] font-semibold uppercase tracking-wide"
-            />
+            <span data-hint="dm.track.name" className="min-w-0 flex-1">
+              <InlineEdit
+                value={track.name}
+                onCommit={(v) => update((t) => (t.name = v))}
+                className="block w-full text-[11.5px] font-semibold uppercase tracking-wide"
+              />
+            </span>
             {typeIcon && <span className="shrink-0 text-dim">{typeIcon}</span>}
           </div>
           <TrackButton
@@ -442,6 +445,7 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
             title="Mute"
             lit={track.mute}
             color="#f59e0b"
+            hint="dm.track.mute"
             onClick={() => update((t) => (t.mute = !t.mute))}
           />
           {!compact && (
@@ -451,6 +455,7 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
                 title="Solo"
                 lit={track.solo}
                 color="#22d3ee"
+                hint="dm.track.solo"
                 onClick={() => update((t) => (t.solo = !t.solo))}
               />
               <TrackButton
@@ -461,16 +466,19 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
                 lit={track.arm}
                 color="#ef4444"
                 disabled={track.kind === "drum"}
+                hint="dm.track.arm"
                 onClick={() => update((t) => (t.arm = !t.arm))}
               />
               <MiniFader
                 value={track.volume}
                 color={track.color}
                 onChange={(v) => update((t) => (t.volume = v), `vol-${track.id}`)}
+                hint="dm.track.fader"
               />
               <button
                 className="num h-[18px] min-w-[26px] rounded-[3px] border border-line px-1 text-[9.5px] text-dim hover:text-ink"
                 title={track.effects.map((f) => f.name).join(" → ") || "No effects"}
+                data-hint="dm.track.fx"
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={() => {
                   setUi({ selectedTrackId: track.id, bank: "fx", fxIndex: 0 });
@@ -502,6 +510,7 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
                   className="tool-btn !h-[18px] !min-w-[18px] !p-0"
                   data-active={lane.active}
                   title={lane.active ? "Clip active on this page" : "Clip inactive on this page"}
+                  data-hint="dm.track.clip-active"
                   onClick={() => updateLane((l) => l.kind === "clip" && (l.active = !l.active))}
                 >
                   <Power size={11} />
@@ -511,6 +520,7 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
                     className="tool-btn !h-[18px] !min-w-[18px] !p-0"
                     data-active={jogOpen}
                     title="Scratch"
+                    data-hint="dm.track.scratch"
                     onClick={() =>
                       setUi({ jogOpen: { ...useStore.getState().jogOpen, [track.id]: !jogOpen } })
                     }
@@ -519,7 +529,7 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
                   </button>
                 )}
               </div>
-              <div className="relative">
+              <div className="relative" data-hint="dm.track.clip-view">
                 <ClipView
                   track={track}
                   lane={lane}
@@ -536,6 +546,7 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
                     )
                   }
                   title="Launch mode"
+                  data-hint="dm.track.clip-launch"
                 >
                   {lane.launchMode === "loop" ? "Loop" : "1-shot"}
                 </button>
@@ -554,6 +565,7 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
           <button
             className="h-[calc(100%-8px)] w-full"
             title="Click to enlarge"
+            data-hint="dm.track.scope"
             onClick={(e) => {
               const r = e.currentTarget.getBoundingClientRect();
               useMenu.getState().show(r.right - 380, r.bottom + 4, [
@@ -585,6 +597,7 @@ function TrackButton(props: {
   lit: boolean;
   color: string;
   disabled?: boolean;
+  hint?: string;
   onClick: () => void;
 }) {
   return (
@@ -598,6 +611,7 @@ function TrackButton(props: {
       }}
       title={props.title}
       disabled={props.disabled}
+      data-hint={props.hint}
       onPointerDown={(e) => e.stopPropagation()}
       onClick={props.onClick}
     >

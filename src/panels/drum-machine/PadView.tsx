@@ -169,6 +169,7 @@ function DrumPads({ size }: { size: SizeClass }) {
             data-pad-track={t.id}
             className="perf-pad flex touch-none flex-col justify-between p-1.5 text-left"
             data-selected={t.id === selectedTrackId}
+            data-hint="dm.pads.drum-pad"
             style={{ "--c": t.color } as CSSProperties}
             onPointerDown={(e) => {
               if (applyHeld({ trackId: t.id })) return;
@@ -232,6 +233,7 @@ function NotePads({ track, size }: { track: Track; size: SizeClass }) {
             key={i}
             data-midi={p.midi}
             className={`perf-pad num touch-none text-[10px] font-semibold text-ink ${p.root ? "root" : ""}`}
+            data-hint="dm.pads.note-pad"
             style={{ "--c": track.color } as CSSProperties}
             onPointerDown={(e) => hit(e, track, [p.midi])}
             onPointerUp={stopRepeat}
@@ -251,12 +253,18 @@ function NotePads({ track, size }: { track: Track; size: SizeClass }) {
           data-active={scaleLock}
           onClick={() => setUi({ scaleLock: !scaleLock })}
           title="Snap played notes to the key"
+          data-hint="dm.pads.scale-lock"
         >
           Scale lock
         </button>
         <div className="segmented" title="Chord mode: one note plays a chord in the key">
           {(["off", "triad", "seventh"] as const).map((m) => (
-            <button key={m} data-active={chordMode === m} onClick={() => setUi({ chordMode: m })}>
+            <button
+              key={m}
+              data-active={chordMode === m}
+              data-hint={`dm.pads.chord.${m}`}
+              onClick={() => setUi({ chordMode: m })}
+            >
               {m === "off" ? "Notes" : m === "triad" ? "Triads" : "7ths"}
             </button>
           ))}
@@ -325,6 +333,7 @@ export function PadView({ sizeClass, width }: { sizeClass: SizeClass; width: num
             className="tool-btn !h-5 ml-auto border border-line !text-[10px]"
             data-active={keyboardPads}
             title="Play pads with the computer keyboard"
+            data-hint="dm.pads.keyboard"
             onClick={() => setUi({ keyboardPads: !keyboardPads })}
           >
             <Keyboard size={11} /> Keys
@@ -338,6 +347,7 @@ export function PadView({ sizeClass, width }: { sizeClass: SizeClass; width: num
         {track.kind === "instrument" && (
           <button
             className="tool-btn self-start border border-line"
+            data-hint="dm.pads.back"
             onClick={() => setUi({ selectedTrackId: useStore.getState().project.tracks[0].id })}
           >
             ← Back to drum pads
@@ -415,6 +425,7 @@ export function PadView({ sizeClass, width }: { sizeClass: SizeClass; width: num
                 key={n}
                 className="hw-btn !min-h-[26px] min-w-[38px]"
                 data-lit={length === n}
+                data-hint="dm.pads.step-count"
                 onClick={() =>
                   commit((p) => {
                     const l = p.patterns[pattern.id].lanes[track.id];

@@ -48,6 +48,7 @@ export const StepPad = memo(function StepPad({
     <div
       className={cls}
       data-pad=""
+      data-hint="dm.step.pad"
       data-track={trackId}
       data-i={index}
       style={{ "--c": color, "--v": step.accent ? 1 : step.velocity } as CSSProperties}

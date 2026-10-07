@@ -32,13 +32,15 @@ function Segmented<T extends string>({
   value,
   options,
   onChange,
+  hint,
 }: {
   value: T;
   options: { id: T; label: string }[];
   onChange: (v: T) => void;
+  hint?: string;
 }) {
   return (
-    <div className="segmented">
+    <div className="segmented" data-hint={hint}>
       {options.map((o) => (
         <button key={o.id} data-active={value === o.id} onClick={() => onChange(o.id)}>
           {o.label}
@@ -63,10 +65,12 @@ function DeviceSelect({
   kind,
   value,
   onChange,
+  hint,
 }: {
   kind: MediaDeviceKind;
   value: string;
   onChange: (id: string) => void;
+  hint?: string;
 }) {
   const devices = useDevices(kind);
   return (
@@ -74,6 +78,7 @@ function DeviceSelect({
       className="input min-w-[240px]"
       value={value}
       onChange={(e) => onChange(e.target.value)}
+      data-hint={hint}
     >
       <option value="">System default</option>
       {devices
@@ -87,7 +92,15 @@ function DeviceSelect({
   );
 }
 
-function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
+function Toggle({
+  value,
+  onChange,
+  hint,
+}: {
+  value: boolean;
+  onChange: (v: boolean) => void;
+  hint?: string;
+}) {
   return (
     <Segmented
       value={value ? "on" : "off"}
@@ -96,6 +109,7 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
         { id: "off", label: "Off" },
       ]}
       onChange={(v) => onChange(v === "on")}
+      hint={hint}
     />
   );
 }
@@ -111,7 +125,7 @@ function StorageInfo() {
   return (
     <>
       <Row label="Used" hint="Projects, samples and recordings in this browser">
-        <span className="num text-[12px]">
+        <span className="num text-[12px]" data-hint="app.settings.storageused">
           {info ? `${mb(info.usage)} of ${mb(info.quota)}` : "Unknown"}
         </span>
       </Row>
@@ -121,6 +135,7 @@ function StorageInfo() {
           <button
             className="tool-btn border border-line"
             onClick={() => platform.storage.persist().then(setPersisted)}
+            data-hint="app.settings.persiststorage"
           >
             Request
           </button>
@@ -155,6 +170,7 @@ export function SettingsDialog() {
                 className="tool-btn !justify-start"
                 data-active={tab === t.id}
                 onClick={() => setTab(t.id)}
+                data-hint="app.settings.tab"
               >
                 {t.label}
               </button>
@@ -163,6 +179,7 @@ export function SettingsDialog() {
             <button
               className="tool-btn !justify-start"
               onClick={() => shell({ settingsOpen: false, shortcutsOpen: true })}
+              data-hint="app.settings.shortcuts"
             >
               Shortcuts…
             </button>
@@ -176,6 +193,7 @@ export function SettingsDialog() {
                     value={s.theme}
                     onChange={(e) => set({ theme: e.target.value as Settings["theme"] })}
                     data-testid="theme-select"
+                    data-hint="app.settings.theme"
                   >
                     <option value="system">System (Studio Dark / Paper)</option>
                     {THEMES.map((t) => (
@@ -186,32 +204,37 @@ export function SettingsDialog() {
                   </select>
                 </Row>
                 <Row label="Accent color">
-                  <button
-                    className="tool-btn border border-line"
-                    data-active={s.accent === null}
-                    onClick={() => set({ accent: null })}
+                  <div
+                    className="flex flex-wrap items-center gap-2"
+                    data-hint="app.settings.accent"
                   >
-                    Theme
-                  </button>
-                  {ACCENTS.map((c) => (
                     <button
-                      key={c}
-                      className="h-6 w-6 rounded-full"
-                      style={{
-                        background: c,
-                        outline: s.accent === c ? "2px solid var(--select)" : undefined,
-                        outlineOffset: 2,
-                      }}
-                      onClick={() => set({ accent: c })}
-                      aria-label={`Accent ${c}`}
+                      className="tool-btn border border-line"
+                      data-active={s.accent === null}
+                      onClick={() => set({ accent: null })}
+                    >
+                      Theme
+                    </button>
+                    {ACCENTS.map((c) => (
+                      <button
+                        key={c}
+                        className="h-6 w-6 rounded-full"
+                        style={{
+                          background: c,
+                          outline: s.accent === c ? "2px solid var(--select)" : undefined,
+                          outlineOffset: 2,
+                        }}
+                        onClick={() => set({ accent: c })}
+                        aria-label={`Accent ${c}`}
+                      />
+                    ))}
+                    <input
+                      type="color"
+                      className="h-6 w-8 cursor-pointer rounded border border-line bg-transparent"
+                      value={s.accent ?? "#7dd3fc"}
+                      onChange={(e) => set({ accent: e.target.value })}
                     />
-                  ))}
-                  <input
-                    type="color"
-                    className="h-6 w-8 cursor-pointer rounded border border-line bg-transparent"
-                    value={s.accent ?? "#7dd3fc"}
-                    onChange={(e) => set({ accent: e.target.value })}
-                  />
+                  </div>
                 </Row>
                 <Row label="UI scale" hint="80–150%">
                   <input
@@ -222,6 +245,7 @@ export function SettingsDialog() {
                     value={s.uiScale}
                     onChange={(e) => set({ uiScale: Number(e.target.value) })}
                     className="w-48 accent-[var(--accent)]"
+                    data-hint="app.settings.scale"
                   />
                   <span className="num w-10 text-[12px]">{Math.round(s.uiScale * 100)}%</span>
                   <button
@@ -239,6 +263,14 @@ export function SettingsDialog() {
                       { id: "compact", label: "Compact" },
                     ]}
                     onChange={(density) => set({ density })}
+                    hint="app.settings.density"
+                  />
+                </Row>
+                <Row label="Explain mode">
+                  <Toggle
+                    value={s.explain}
+                    onChange={(explain) => set({ explain })}
+                    hint="app.settings.explain"
                   />
                 </Row>
                 <Row label="Reduced motion">
@@ -250,6 +282,7 @@ export function SettingsDialog() {
                       { id: "off", label: "Off" },
                     ]}
                     onChange={(reducedMotion) => set({ reducedMotion })}
+                    hint="app.settings.reducedmotion"
                   />
                 </Row>
               </>
@@ -261,6 +294,7 @@ export function SettingsDialog() {
                     kind="audiooutput"
                     value={s.outputDeviceId}
                     onChange={(outputDeviceId) => set({ outputDeviceId })}
+                    hint="app.settings.outputdevice"
                   />
                 </Row>
                 <Row label="Input device" hint="Names appear after the first microphone permission">
@@ -268,6 +302,7 @@ export function SettingsDialog() {
                     kind="audioinput"
                     value={s.inputDeviceId}
                     onChange={(inputDeviceId) => set({ inputDeviceId })}
+                    hint="app.settings.inputdevice"
                   />
                 </Row>
                 <Row
@@ -282,6 +317,7 @@ export function SettingsDialog() {
                       { id: "playback", label: "Safe" },
                     ]}
                     onChange={(latencyMode) => set({ latencyMode })}
+                    hint="app.settings.latency"
                   />
                 </Row>
                 <Row label="Recording latency" hint="Compensation for recorded audio">
@@ -292,11 +328,13 @@ export function SettingsDialog() {
                     min={0}
                     max={1000}
                     onChange={(e) => set({ recordLatencyMs: Number(e.target.value) || 0 })}
+                    data-hint="app.settings.reclatency"
                   />
                   <span className="text-[12px] text-dim">ms</span>
                   <button
                     className="tool-btn border border-line"
                     onClick={() => setCalibrating(true)}
+                    data-hint="app.settings.calibrate"
                   >
                     Calibrate…
                   </button>
@@ -308,6 +346,7 @@ export function SettingsDialog() {
                   <Toggle
                     value={s.freeFirstLoop}
                     onChange={(freeFirstLoop) => set({ freeFirstLoop })}
+                    hint="app.settings.freefirstloop"
                   />
                 </Row>
                 <Row
@@ -317,13 +356,18 @@ export function SettingsDialog() {
                   <Toggle
                     value={s.monitorWhileArmed}
                     onChange={(monitorWhileArmed) => set({ monitorWhileArmed })}
+                    hint="app.settings.monitor"
                   />
                 </Row>
                 <Row
                   label="Speaker mode"
                   hint="Echo cancellation on, for recording without headphones"
                 >
-                  <Toggle value={s.speakerMode} onChange={(speakerMode) => set({ speakerMode })} />
+                  <Toggle
+                    value={s.speakerMode}
+                    onChange={(speakerMode) => set({ speakerMode })}
+                    hint="app.settings.speakermode"
+                  />
                 </Row>
               </>
             )}
@@ -331,7 +375,11 @@ export function SettingsDialog() {
             {tab === "project" && (
               <>
                 <Row label="Autosave" hint="Saves to this browser while you work">
-                  <Toggle value={s.autosave} onChange={(autosave) => set({ autosave })} />
+                  <Toggle
+                    value={s.autosave}
+                    onChange={(autosave) => set({ autosave })}
+                    hint="app.settings.autosave"
+                  />
                 </Row>
                 <Row label="Page switch" hint="When a queued page starts while playing">
                   <Segmented
@@ -342,6 +390,7 @@ export function SettingsDialog() {
                       { id: "beat", label: "Next beat" },
                     ]}
                     onChange={(pageSwitch) => set({ pageSwitch })}
+                    hint="app.settings.pageswitch"
                   />
                 </Row>
                 <Row label="Count-in length">
@@ -352,6 +401,7 @@ export function SettingsDialog() {
                       { id: "2", label: "2 bars" },
                     ]}
                     onChange={(v) => set({ countInBars: Number(v) })}
+                    hint="app.settings.countinlen"
                   />
                 </Row>
               </>

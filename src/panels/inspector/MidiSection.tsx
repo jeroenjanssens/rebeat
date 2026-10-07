@@ -20,6 +20,7 @@ export function MidiSection({ track }: { track: Track }) {
           <button
             className="tool-btn !h-5 !min-w-5 !p-0"
             title="Remove"
+            data-hint="inspector.midi.remove"
             onClick={() =>
               commit((p) => void (p.midiMappings = p.midiMappings.filter((x) => x.id !== m.id)))
             }

@@ -23,11 +23,13 @@ function Dropdown({
   value,
   items,
   title,
+  hint,
 }: {
   label: string;
   value: string;
   items: () => MenuItem[];
   title?: string;
+  hint?: string;
 }) {
   const ref = useRef<HTMLButtonElement>(null);
   return (
@@ -35,6 +37,7 @@ function Dropdown({
       ref={ref}
       className="field"
       title={title}
+      data-hint={hint}
       onClick={() => dropdown(ref.current!, items())}
     >
       <span className="label">{label}</span>
@@ -165,7 +168,7 @@ export function HeaderBar({ sizeClass }: { sizeClass: SizeClass }) {
 
   return (
     <div className="flex h-11 shrink-0 items-center gap-2 border-b border-line px-3">
-      <div className="segmented" title="Grid / Pads view (V)">
+      <div className="segmented" title="Grid / Pads view (V)" data-hint="dm.header.view">
         <button data-active={view === "grid"} onClick={() => setUi({ view: "grid" })}>
           Grid
         </button>
@@ -175,7 +178,7 @@ export function HeaderBar({ sizeClass }: { sizeClass: SizeClass }) {
       </div>
 
       {/* fixed widths (the longest page name and number), so the controls after them don't move */}
-      <div className="flex min-w-0 items-center gap-1.5 px-1">
+      <div className="flex min-w-0 items-center gap-1.5 px-1" data-hint="dm.header.page-name">
         <WidestOf texts={[String(slots.length)]} className="num text-[13px] font-semibold">
           <span style={{ color: pattern.linkColor }}>{pageNumber}</span>
         </WidestOf>
@@ -197,11 +200,18 @@ export function HeaderBar({ sizeClass }: { sizeClass: SizeClass }) {
         value={String(pattern.stepCount)}
         items={stepItems}
         title="Steps on this page"
+        hint="dm.header.steps"
       />
       {!compact && (
-        <Dropdown label="Size" value={pattern.stepSize} items={sizeItems} title="Step size" />
+        <Dropdown
+          label="Size"
+          value={pattern.stepSize}
+          items={sizeItems}
+          title="Step size"
+          hint="dm.header.size"
+        />
       )}
-      {!compact && swing}
+      {!compact && <span data-hint="dm.header.swing">{swing}</span>}
       {!compact && <KeyMenu compact={sizeClass !== "large"} />}
 
       <div className="flex-1" />
@@ -213,6 +223,7 @@ export function HeaderBar({ sizeClass }: { sizeClass: SizeClass }) {
             className="tool-btn"
             data-active={tool === id}
             title={title}
+            data-hint={`dm.header.tool.${id}`}
             onClick={() => setUi({ tool: id })}
           >
             <Icon size={14} />
@@ -228,11 +239,13 @@ export function HeaderBar({ sizeClass }: { sizeClass: SizeClass }) {
             value={quantize}
             items={quantizeItems}
             title="Quantize for live recording"
+            hint="dm.header.quantize"
           />
           <div className="flex items-center">
             <button
               className="tool-btn"
               title="Zoom out (Ctrl/Cmd+scroll)"
+              data-hint="dm.header.zoom-out"
               onClick={() => setUi({ zoom: Math.max(0.6, zoom / 1.15) })}
             >
               <ZoomOut size={14} />
@@ -243,6 +256,7 @@ export function HeaderBar({ sizeClass }: { sizeClass: SizeClass }) {
             <button
               className="tool-btn"
               title="Zoom in (Ctrl/Cmd+scroll)"
+              data-hint="dm.header.zoom-in"
               onClick={() => setUi({ zoom: Math.min(2.5, zoom * 1.15) })}
             >
               <ZoomIn size={14} />
@@ -252,6 +266,7 @@ export function HeaderBar({ sizeClass }: { sizeClass: SizeClass }) {
             className="tool-btn"
             data-active={follow}
             title="Follow the playing page"
+            data-hint="dm.header.follow"
             onClick={() => setUi({ follow: !follow })}
           >
             <Crosshair size={14} />
@@ -261,6 +276,7 @@ export function HeaderBar({ sizeClass }: { sizeClass: SizeClass }) {
             ref={moreRef}
             className="tool-btn"
             title="Lanes"
+            data-hint="dm.header.lanes"
             onClick={() => dropdown(moreRef.current!, laneItems())}
           >
             <Rows3 size={14} />
@@ -273,6 +289,7 @@ export function HeaderBar({ sizeClass }: { sizeClass: SizeClass }) {
           ref={moreRef}
           className="tool-btn"
           title="More"
+          data-hint="dm.header.more"
           onClick={() =>
             dropdown(moreRef.current!, [
               { render: () => <div className="flex flex-col gap-1.5 p-2">{swing}</div> },

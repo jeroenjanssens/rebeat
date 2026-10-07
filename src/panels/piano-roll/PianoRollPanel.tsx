@@ -68,6 +68,7 @@ export function PianoRollPanel() {
             <button
               key={t.id}
               className="tool-btn border border-line"
+              data-hint="roll.trackPick"
               onClick={() => setUi({ selectedTrackId: t.id })}
             >
               <span className="h-2.5 w-1.5 rounded-sm" style={{ background: t.color }} />
@@ -422,6 +423,7 @@ function PianoRoll({ track }: { track: Track }) {
             data-active={tool === "draw"}
             onClick={() => setTool("draw")}
             title="Draw notes (drag to set the length)"
+            data-hint="roll.tool.draw"
           >
             <Pencil size={13} />
           </button>
@@ -430,6 +432,7 @@ function PianoRoll({ track }: { track: Track }) {
             data-active={tool === "select"}
             onClick={() => setTool("select")}
             title="Select (or Shift+drag)"
+            data-hint="roll.tool.select"
           >
             <MousePointer2 size={13} />
           </button>
@@ -439,6 +442,7 @@ function PianoRoll({ track }: { track: Track }) {
           value={noteLen}
           onChange={(e) => setNoteLen(Number(e.target.value))}
           title="Length of new notes"
+          data-hint="roll.noteLen"
         >
           {[1, 2, 3, 4, 6, 8, 16].map((n) => (
             <option key={n} value={n}>
@@ -451,6 +455,7 @@ function PianoRoll({ track }: { track: Track }) {
           data-active={scaleLock}
           onClick={() => useStore.getState().setUi({ scaleLock: !scaleLock })}
           title="Snap notes to the key"
+          data-hint="roll.scaleLock"
         >
           Scale lock
         </button>
@@ -463,6 +468,7 @@ function PianoRoll({ track }: { track: Track }) {
           className="tool-btn"
           onClick={() => setZoom((z) => Math.max(0.5, z / 1.25))}
           title="Zoom out"
+          data-hint="roll.zoomOut"
         >
           −
         </button>
@@ -470,6 +476,7 @@ function PianoRoll({ track }: { track: Track }) {
           className="tool-btn"
           onClick={() => setZoom((z) => Math.min(4, z * 1.25))}
           title="Zoom in"
+          data-hint="roll.zoomIn"
         >
           +
         </button>
@@ -491,6 +498,7 @@ function PianoRoll({ track }: { track: Track }) {
             <div
               className="sticky left-0 z-[3] shrink-0 border-r border-line bg-panel"
               style={{ width: KEYS_W, height: gridH }}
+              data-hint="roll.keys"
             >
               {Array.from({ length: rows }, (_, i) => {
                 const p = HIGH - i;
@@ -521,6 +529,7 @@ function PianoRoll({ track }: { track: Track }) {
                 height: gridH,
                 cursor: tool === "draw" ? "crosshair" : "default",
               }}
+              data-hint="roll.grid"
               onPointerDown={onGridDown}
               onPointerMove={onGridMove}
               onPointerUp={onGridUp}
@@ -538,6 +547,7 @@ function PianoRoll({ track }: { track: Track }) {
                   <div
                     key={k}
                     data-note={k}
+                    data-hint="roll.note"
                     className="absolute rounded-[3px]"
                     style={
                       {
@@ -578,6 +588,7 @@ function PianoRoll({ track }: { track: Track }) {
         <div
           className="absolute inset-x-0 bottom-0 cursor-ns-resize touch-none overflow-hidden border-t border-line bg-panel"
           style={{ height: VEL_H }}
+          data-hint="roll.velocity"
           onPointerDown={(e) => {
             e.currentTarget.setPointerCapture(e.pointerId);
             gesture.current = { kind: "velocity", key: `vel-${performance.now()}` };

@@ -55,11 +55,13 @@ export function ShortcutsDialog() {
           placeholder="Filter…"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
+          data-hint="app.shortcuts.filter"
         />
         <button
           className="tool-btn border border-line"
           onClick={() => useSettings.getState().set({ shortcuts: {} })}
           disabled={Object.keys(overrides).length === 0}
+          data-hint="app.shortcuts.reset"
         >
           <RotateCcw size={12} /> Reset all
         </button>
@@ -80,6 +82,7 @@ export function ShortcutsDialog() {
                       className="flex items-center gap-1 rounded px-1 hover:bg-surface"
                       title="Click, then press the new shortcut (Esc = cancel)"
                       onClick={() => setRecording(c.id)}
+                      data-hint="app.shortcuts.rebind"
                     >
                       {recording === c.id ? (
                         <span className="kbd !text-accent">Press keys…</span>
@@ -97,6 +100,7 @@ export function ShortcutsDialog() {
                           const { [c.id]: _, ...rest } = useSettings.getState().shortcuts;
                           useSettings.getState().set({ shortcuts: rest });
                         }}
+                        data-hint="app.shortcuts.resetone"
                       >
                         <RotateCcw size={10} />
                       </button>

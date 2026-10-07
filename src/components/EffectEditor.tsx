@@ -56,15 +56,19 @@ export function EffectEditor({
           className="tool-btn !h-5 !min-w-5 !p-0"
           data-active={!effect.bypass}
           title={effect.bypass ? "Bypassed: click to enable" : "On: click to bypass"}
+          data-hint="inspector.fx.bypass"
           onClick={bypass}
         >
           <Power size={11} />
         </button>
-        <span className="label flex-1 truncate !text-ink">{effect.name}</span>
+        <span className="label flex-1 truncate !text-ink" data-hint={`fx.${effect.name}`}>
+          {effect.name}
+        </span>
         <button
           className="tool-btn !h-5 !min-w-5 !p-0"
           disabled={local || index === 0}
           title="Move up"
+          data-hint="inspector.fx.move.up"
           onClick={() => move(-1)}
         >
           <ChevronUp size={11} />
@@ -73,12 +77,18 @@ export function EffectEditor({
           className="tool-btn !h-5 !min-w-5 !p-0"
           disabled={local || index === count - 1}
           title="Move down"
+          data-hint="inspector.fx.move.down"
           onClick={() => move(1)}
         >
           <ChevronDown size={11} />
         </button>
         {removable && (
-          <button className="tool-btn !h-5 !min-w-5 !p-0" title="Remove" onClick={remove}>
+          <button
+            className="tool-btn !h-5 !min-w-5 !p-0"
+            title="Remove"
+            data-hint="inspector.fx.remove"
+            onClick={remove}
+          >
             <X size={11} />
           </button>
         )}
@@ -93,6 +103,7 @@ export function EffectEditor({
             value={effect.params[def.id] ?? def.default}
             onChange={(v) => setParam(def.id, v)}
             midiTarget={midiPrefix ? `${midiPrefix}:${effect.id}:${def.id}` : undefined}
+            hint={`fx.${effect.name}.${def.id}`}
           />
         ))}
       </div>

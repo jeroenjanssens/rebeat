@@ -32,6 +32,8 @@ interface Slot {
   /** Parameter lock mode: this slot has a lock on the selected step. */
   locked?: boolean;
   onClear?: () => void;
+  /** Explain-mode hint id passed through to the Encoder knob. */
+  hint?: string;
 }
 
 /** What the 8 encoders control for the selected track and bank. */
@@ -72,6 +74,7 @@ function useEncoderSlots(track: Track): { slots: Slot[]; note?: string; locking?
           def,
           value: first.locks?.[key] ?? track.params[key] ?? def.default,
           locked: first.locks?.[key] !== undefined,
+          hint: `param.sound.${def.id}`,
           onChange: (v: number) =>
             editSteps(
               lockIndices.map((i) => stepKey(track.id, i)),
@@ -102,12 +105,14 @@ function useEncoderSlots(track: Track): { slots: Slot[]; note?: string; locking?
           return {
             def,
             value: track.volume,
+            hint: `param.mix.${def.id}`,
             onChange: (v) => setTrack((t) => (t.volume = v), `enc-${track.id}-vol`),
             midiTarget: `track:${track.id}:volume`,
           };
         return {
           def,
           value: track.params[key] ?? def.default,
+          hint: `param.${bank}.${def.id}`,
           onChange: (v) => setTrack((t) => (t.params[key] = v), `enc-${track.id}-${key}`),
           midiTarget: `track:${track.id}:${key}`,
         };
@@ -128,6 +133,7 @@ function useEncoderSlots(track: Track): { slots: Slot[]; note?: string; locking?
         defs.map((def) => ({
           def,
           value: fx.params[def.id] ?? def.default,
+          hint: `fx.${fx.name}.${def.id}`,
           midiTarget: fx.id ? `track:${track.id}:fx:${fx.id}:${def.id}` : undefined,
           onChange: (v) =>
             setTrack(
@@ -146,7 +152,7 @@ function useEncoderSlots(track: Track): { slots: Slot[]; note?: string; locking?
   if (lane?.kind !== "steps") return { slots: pad([]), note: "Audio tracks have no steps." };
   if (indices.length === 0)
     return {
-      slots: defs.map((def) => ({ def, value: null, onChange: nop })),
+      slots: defs.map((def) => ({ def, value: null, onChange: nop, hint: `param.step.${def.id}` })),
       note: "Select steps to edit them: Alt+click, the Select tool, or hold SELECT.",
     };
   const first = lane.steps[indices[0]];
@@ -154,6 +160,7 @@ function useEncoderSlots(track: Track): { slots: Slot[]; note?: string; locking?
     slots: defs.map((def) => ({
       def,
       value: def.get(first),
+      hint: `param.step.${def.id}`,
       onChange: (v) => {
         const delta = v - def.get(first);
         editSteps(
@@ -209,6 +216,7 @@ function Display({ track, width }: { track: Track; width: number }) {
   return (
     <div
       className="flex shrink-0 flex-col justify-between rounded-md border border-line bg-display px-2.5 py-2"
+      data-hint="dm.encoder.display"
       style={{ width }}
     >
       <div className="flex items-center gap-2 text-[11px]">
@@ -244,7 +252,12 @@ export function EncoderStrip({ sizeClass }: { sizeClass: SizeClass }) {
     <div className="flex items-center gap-1">
       <div className="segmented">
         {BANKS.map((b) => (
-          <button key={b.id} data-active={bank === b.id} onClick={() => setUi({ bank: b.id })}>
+          <button
+            key={b.id}
+            data-active={bank === b.id}
+            data-hint={`dm.encoder.bank.${b.id}`}
+            onClick={() => setUi({ bank: b.id })}
+          >
             {b.label}
           </button>
         ))}
@@ -253,6 +266,7 @@ export function EncoderStrip({ sizeClass }: { sizeClass: SizeClass }) {
         <div className="flex items-center gap-0.5 text-[10px]">
           <button
             className="tool-btn !h-6 !min-w-6 !p-0"
+            data-hint="dm.encoder.fx-prev"
             onClick={() =>
               setUi({ fxIndex: (fxIndex - 1 + track.effects.length) % track.effects.length })
             }
@@ -267,6 +281,7 @@ export function EncoderStrip({ sizeClass }: { sizeClass: SizeClass }) {
           </span>
           <button
             className="tool-btn !h-6 !min-w-6 !p-0"
+            data-hint="dm.encoder.fx-next"
             onClick={() => setUi({ fxIndex: (fxIndex + 1) % track.effects.length })}
           >
             <ChevronRight size={13} />
@@ -303,6 +318,7 @@ export function EncoderStrip({ sizeClass }: { sizeClass: SizeClass }) {
                 midiTarget={s.midiTarget}
                 color={locking ? (s.locked ? "#ffffff" : track.color) : track.color}
                 size={knobSize}
+                hint={s.hint}
               />
               {s.locked && (
                 <span
@@ -339,6 +355,7 @@ export function EncoderStrip({ sizeClass }: { sizeClass: SizeClass }) {
       <div className="relative shrink-0 border-b border-line">
         <button
           className="flex h-8 w-full items-center gap-2 px-3 text-left"
+          data-hint="dm.encoder.compact-toggle"
           onClick={() => setOpen(!open)}
         >
           <span className="h-3 w-1.5 rounded-sm" style={{ background: track.color }} />

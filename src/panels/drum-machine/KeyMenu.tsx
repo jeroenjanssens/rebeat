@@ -65,6 +65,7 @@ export function KeyMenu({ compact = false }: { compact?: boolean }) {
       ref={ref}
       className="field"
       title={override ? "Key (this page)" : "Key (project)"}
+      data-hint="dm.header.key"
       onClick={() => dropdown(ref.current!, items())}
     >
       <span className="label">{override ? "Page key" : "Key"}</span>

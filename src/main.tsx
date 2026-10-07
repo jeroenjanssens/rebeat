@@ -24,11 +24,15 @@ if (import.meta.env.DEV || import.meta.env.MODE === "test") {
     import("./engine/engine"),
     import("./engine/transport"),
     import("./state/store"),
-  ]).then(([engine, transport, store]) => {
+    import("./help/hints"),
+    import("./app/commands"),
+  ]).then(([engine, transport, store, hints, commands]) => {
     (window as unknown as Record<string, unknown>).__rebeat = {
       engine,
       transport,
       store: store.useStore,
+      hints: hints.HINTS,
+      commands: commands.allCommands,
     };
   });
 }

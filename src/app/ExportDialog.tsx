@@ -118,7 +118,7 @@ export function ExportDialog() {
     <Dialog open={open} onOpenChange={(o) => set({ exportOpen: o })} title="Export" width={520}>
       <div className="flex flex-col gap-3 p-4 text-[12px]">
         <div className="flex flex-wrap items-center gap-3">
-          <div className="segmented">
+          <div className="segmented" data-hint="app.export.range">
             <button data-active={range === "song"} onClick={() => setRange("song")}>
               Song
             </button>
@@ -135,6 +135,7 @@ export function ExportDialog() {
             value={track}
             onChange={(e) => setTrack(e.target.value)}
             disabled={stems}
+            data-hint="app.export.source"
           >
             <option value="">Full mix (master)</option>
             {project.tracks.map((t) => (
@@ -146,14 +147,14 @@ export function ExportDialog() {
         </label>
         <div className="flex flex-wrap items-center gap-2">
           <span className="label w-16">WAV</span>
-          <div className="segmented">
+          <div className="segmented" data-hint="app.export.bits">
             {([16, 24, 32] as Bits[]).map((b) => (
               <button key={b} data-active={bits === b} onClick={() => setBits(b)}>
                 {b === 32 ? "32 float" : `${b}-bit`}
               </button>
             ))}
           </div>
-          <label className="flex items-center gap-1.5 text-dim">
+          <label className="flex items-center gap-1.5 text-dim" data-hint="app.export.stems">
             <input type="checkbox" checked={stems} onChange={(e) => setStems(e.target.checked)} />{" "}
             Stems (one file per track)
           </label>
@@ -164,6 +165,7 @@ export function ExportDialog() {
             disabled={!!busy}
             onClick={exportAudio}
             data-testid="export-wav"
+            data-hint="app.export.wav"
           >
             {stems ? "Export stems" : "Export WAV"}
           </button>
@@ -172,6 +174,7 @@ export function ExportDialog() {
             disabled={!!busy}
             onClick={exportMid}
             data-testid="export-midi"
+            data-hint="app.export.midi"
           >
             Export MIDI
           </button>
@@ -180,6 +183,7 @@ export function ExportDialog() {
             disabled={!!busy}
             onClick={() => resample(false)}
             title="Render into a new library sample"
+            data-hint="app.export.resamplelib"
           >
             Resample to library
           </button>
@@ -188,6 +192,7 @@ export function ExportDialog() {
             disabled={!!busy}
             onClick={() => resample(true)}
             title="Render into a new audio track"
+            data-hint="app.export.resampletrack"
           >
             Resample to track
           </button>

@@ -253,5 +253,7 @@ export function Waveform({ editor, snap, playhead, onSeek }: Props) {
     return () => cancelAnimationFrame(raf);
   }, [playhead]);
 
-  return <div ref={box} className="h-full w-full" data-testid="waveform" />;
+  return (
+    <div ref={box} className="h-full w-full" data-testid="waveform" data-hint="editor.waveform" />
+  );
 }

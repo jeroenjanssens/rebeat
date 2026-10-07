@@ -87,6 +87,7 @@ function ChainEditor({
           className="input !h-6 !text-[11px]"
           value=""
           onChange={(e) => e.target.value && addEffect(target, e.target.value)}
+          data-hint="mixer.fx.add"
         >
           <option value="">+ Add effect</option>
           {EFFECT_TYPES.map((t) => (
@@ -121,6 +122,7 @@ function Strip({
   testId,
   selected,
   onSelect,
+  hint,
 }: {
   name: string;
   color: string;
@@ -131,12 +133,14 @@ function Strip({
   testId?: string;
   selected?: boolean;
   onSelect?: () => void;
+  hint?: string;
 }) {
   return (
     <div
       className="flex w-[78px] shrink-0 flex-col items-center gap-1.5 rounded-md border bg-surface/50 px-1 py-1.5"
       style={{ borderColor: selected ? color : "var(--border)" }}
       data-testid={testId}
+      data-hint={hint}
       onPointerDown={onSelect}
     >
       <div className="h-1 w-full rounded-full" style={{ background: color }} />
@@ -162,12 +166,14 @@ function SmallButton({
   color,
   onClick,
   title,
+  hint,
 }: {
   label: string;
   lit: boolean;
   color: string;
   onClick: () => void;
   title: string;
+  hint?: string;
 }) {
   return (
     <button
@@ -180,6 +186,7 @@ function SmallButton({
       onPointerDown={(e) => e.stopPropagation()}
       onClick={onClick}
       title={title}
+      data-hint={hint}
     >
       {label}
     </button>
@@ -212,11 +219,13 @@ function TrackStrip({
       testId="mixer-strip"
       selected={selected}
       onSelect={() => useStore.getState().setUi({ selectedTrackId: track.id })}
+      hint="mixer.track.select"
       fader={
         <Fader
           value={track.volume}
           color={track.color}
           height={faderH}
+          hint="param.mix.volume"
           onChange={(v) => update((t) => (t.volume = v), `mix-vol-${track.id}`)}
         />
       }
@@ -230,6 +239,7 @@ function TrackStrip({
               lit={track.mute}
               color="#f59e0b"
               title="Mute"
+              hint="mixer.track.mute"
               onClick={() => update((t) => (t.mute = !t.mute))}
             />
             <SmallButton
@@ -237,6 +247,7 @@ function TrackStrip({
               lit={track.solo}
               color="#22d3ee"
               title="Solo"
+              hint="mixer.track.solo"
               onClick={() => update((t) => (t.solo = !t.solo))}
             />
           </div>
@@ -248,6 +259,7 @@ function TrackStrip({
         ref={fxRef}
         className="num h-[18px] w-full truncate rounded-[3px] border border-line px-1 text-[9.5px] text-dim hover:text-ink"
         title={track.effects.map((f) => f.name).join(" → ") || "No insert effects"}
+        data-hint="mixer.track.fx"
         onPointerDown={(e) => e.stopPropagation()}
         onClick={() =>
           chainPopover(
@@ -271,6 +283,7 @@ function TrackStrip({
                 size={26}
                 color={track.color}
                 value={track.params[`mix.${def.id}`] ?? 0}
+                hint={`param.mix.${def.id}`}
                 onChange={(v) =>
                   update((t) => (t.params[`mix.${def.id}`] = v), `mix-${def.id}-${track.id}`)
                 }
@@ -283,6 +296,7 @@ function TrackStrip({
             size={26}
             color={track.color}
             value={track.params["mix.pan"] ?? 0.5}
+            hint="param.mix.pan"
             onChange={(v) => update((t) => (t.params["mix.pan"] = v), `mix-pan-${track.id}`)}
             midiTarget={`track:${track.id}:mix.pan`}
           />
@@ -309,6 +323,7 @@ function BusStrip({ bus, faderH }: { bus: Bus; faderH: number }) {
         <Fader
           value={bus.volume}
           height={faderH}
+          hint="mixer.bus.fader"
           onChange={(v) => update((b) => (b.volume = v), `bus-vol-${bus.id}`)}
         />
       }
@@ -321,6 +336,7 @@ function BusStrip({ bus, faderH }: { bus: Bus; faderH: number }) {
             lit={bus.mute}
             color="#f59e0b"
             title="Mute the return"
+            hint="mixer.bus.mute"
             onClick={() => update((b) => (b.mute = !b.mute))}
           />
           <span className="label !text-[8.5px]">Return {bus.id === "bus-a" ? "A" : "B"}</span>
@@ -330,6 +346,7 @@ function BusStrip({ bus, faderH }: { bus: Bus; faderH: number }) {
       <button
         ref={fxRef}
         className="num h-[18px] w-full truncate rounded-[3px] border border-line px-1 text-[9.5px] text-dim hover:text-ink"
+        data-hint="mixer.bus.fx"
         onClick={() =>
           chainPopover(fxRef.current!, { bus: bus.id }, `${bus.name} bus`, bus.effects)
         }
@@ -353,6 +370,7 @@ function MasterStrip({ faderH }: { faderH: number }) {
         <Fader
           value={master.volume}
           height={faderH}
+          hint="mixer.master.fader"
           onChange={(v) => commit((p) => void (p.master.volume = v), "master-vol")}
         />
       }
@@ -362,6 +380,7 @@ function MasterStrip({ faderH }: { faderH: number }) {
           <span className="num text-[9.5px] text-dim">{VOLUME_FORMAT(master.volume)}</span>
           <button
             className="label !text-[8.5px] hover:!text-ink"
+            data-hint="mixer.master.scope"
             onClick={() => focusPanel("master-scope")}
           >
             Scope
@@ -372,6 +391,7 @@ function MasterStrip({ faderH }: { faderH: number }) {
       <button
         ref={fxRef}
         className="num h-[18px] w-full truncate rounded-[3px] border border-line px-1 text-[9.5px] text-dim hover:text-ink"
+        data-hint="mixer.master.fx"
         onClick={() => chainPopover(fxRef.current!, "master", "Master chain", master.effects)}
         title={master.effects.map((f) => `${f.name}${f.bypass ? " (off)" : ""}`).join(" → ")}
       >

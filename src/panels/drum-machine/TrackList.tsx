@@ -357,18 +357,21 @@ export function TrackList({ geo }: { geo: Geometry }) {
           <span className="hidden @[600px]:inline">Drop samples here to add tracks ·</span>
           <button
             className="tool-btn border border-line"
+            data-hint="dm.track.add-drum"
             onClick={() => add("drum", "perc", "Perc", "808 Cowbell", "kit:808:cowbell")}
           >
             + Drum
           </button>
           <button
             className="tool-btn border border-line"
+            data-hint="dm.track.add-instrument"
             onClick={() => add("instrument", "keys", "Keys", "Poly · Init")}
           >
             + Instrument
           </button>
           <button
             className="tool-btn border border-line"
+            data-hint="dm.track.add-audio"
             onClick={() => add("audio", "vocal", "Audio", "No clip")}
           >
             + Audio

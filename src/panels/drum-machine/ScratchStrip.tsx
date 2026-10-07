@@ -30,6 +30,7 @@ export function ScratchStrip({ track, width }: { track: Track; width: number }) 
         width={44}
         height={44}
         className="shrink-0 cursor-grab touch-none active:cursor-grabbing"
+        data-hint="dm.scratch.platter"
         onPointerDown={down}
         onPointerMove={move}
         onPointerUp={s.end}
@@ -54,6 +55,7 @@ export function ScratchStrip({ track, width }: { track: Track; width: number }) 
       </svg>
       <div
         className="relative h-8 flex-1 cursor-ew-resize touch-none overflow-hidden rounded-md border border-line bg-display"
+        data-hint="dm.scratch.strip"
         onPointerDown={down}
         onPointerMove={move}
         onPointerUp={s.end}
@@ -80,6 +82,7 @@ export function ScratchStrip({ track, width }: { track: Track; width: number }) 
       <button
         className="hw-btn"
         data-lit={cut}
+        data-hint="dm.scratch.cut"
         onPointerDown={() => (setCut(true), s.cut(true))}
         onPointerUp={() => (setCut(false), s.cut(false))}
         onPointerLeave={() => cut && (setCut(false), s.cut(false))}

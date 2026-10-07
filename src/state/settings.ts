@@ -52,6 +52,8 @@ export interface Settings {
   /** When nothing plays yet, the first loop recording sets the tempo (loop-pedal style). */
   freeFirstLoop: boolean;
   onboarded: boolean;
+  /** Explain mode: detailed hover cards on buttons (D71). */
+  explain: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -75,6 +77,7 @@ export const DEFAULT_SETTINGS: Settings = {
   previewVolume: 0.8,
   freeFirstLoop: false,
   onboarded: false,
+  explain: false,
 };
 
 interface SettingsState extends Settings {

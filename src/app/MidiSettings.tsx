@@ -26,6 +26,7 @@ export function MidiSettings() {
             onClick={async () => {
               if (await startMidi()) useSettings.getState().set({ midiEnabled: true });
             }}
+            data-hint="app.midi.enable"
           >
             Enable MIDI
           </button>
@@ -43,7 +44,11 @@ export function MidiSettings() {
               <div className="text-faint">No MIDI inputs connected.</div>
             )}
             {midi.inputs.map((p) => (
-              <label key={p.id} className="flex items-center gap-2 py-0.5">
+              <label
+                key={p.id}
+                className="flex items-center gap-2 py-0.5"
+                data-hint="app.midi.input"
+              >
                 <input
                   type="checkbox"
                   checked={p.enabled}
@@ -67,6 +72,7 @@ export function MidiSettings() {
                       : "No Launchpad or Push found",
                   );
                 }}
+                data-hint="app.midi.connect"
               >
                 Connect Launchpad / Push
               </button>
@@ -101,6 +107,7 @@ export function MidiSettings() {
               onClick={() =>
                 commit((p) => void (p.midiMappings = p.midiMappings.filter((x) => x.id !== m.id)))
               }
+              data-hint="app.midi.removemap"
             >
               Remove
             </button>

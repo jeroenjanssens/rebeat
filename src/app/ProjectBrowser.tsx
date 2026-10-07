@@ -86,7 +86,11 @@ export function ProjectBrowser() {
           </span>
           <span className="label mt-1">Projects</span>
           <div className="flex-1" />
-          <button className="tool-btn border border-line" onClick={() => importProjectFile()}>
+          <button
+            className="tool-btn border border-line"
+            onClick={() => importProjectFile()}
+            data-hint="app.project.import"
+          >
             <Upload size={13} /> Import .rebeat
           </button>
           <button className="tool-btn" title="Close (Esc)" onClick={() => set({ homeOpen: false })}>
@@ -101,6 +105,7 @@ export function ProjectBrowser() {
               key={t.id}
               className="group flex flex-col gap-1 rounded-lg border border-line bg-panel p-3 text-left hover:border-accent"
               onClick={() => newFromTemplate(t.id)}
+              data-hint="app.project.template"
             >
               <span className="flex items-center gap-1.5 text-[13px] font-semibold">
                 <Plus size={13} className="text-dim group-hover:text-accent" />
@@ -126,6 +131,7 @@ export function ProjectBrowser() {
                 style={{ borderColor: id === currentId ? "var(--accent)" : "var(--border)" }}
                 onClick={() => open(id)}
                 data-testid="example-card"
+                data-hint="app.project.example"
               >
                 <span className="truncate text-[12.5px] font-semibold">{e.name}</span>
                 <span className="truncate text-[10.5px] text-dim">{e.artist}</span>
@@ -152,6 +158,7 @@ export function ProjectBrowser() {
               onClick={() => open(p.id)}
               onContextMenu={(e) => contextMenu(e, menu(p))}
               data-testid="project-card"
+              data-hint="app.project.card"
             >
               {p.thumbnail ? (
                 <img
@@ -168,24 +175,32 @@ export function ProjectBrowser() {
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="min-w-0 flex-1">
-                  <InlineEdit
-                    value={p.name}
-                    onCommit={(v) => renameProject(p.id, v).then(refresh)}
-                    className="block text-[12.5px] font-semibold"
-                  />
+                  <span data-hint="app.project.rename">
+                    <InlineEdit
+                      value={p.name}
+                      onCommit={(v) => renameProject(p.id, v).then(refresh)}
+                      className="block text-[12.5px] font-semibold"
+                    />
+                  </span>
                   <div className="text-[10.5px] text-faint">
                     {p.id === currentId ? "Open now · " : ""}
                     {ago(p.updatedAt)}
                   </div>
                 </div>
                 <div className="flex opacity-0 transition-opacity group-hover:opacity-100">
-                  <button className="tool-btn !px-1" title="Open" onClick={() => open(p.id)}>
+                  <button
+                    className="tool-btn !px-1"
+                    title="Open"
+                    onClick={() => open(p.id)}
+                    data-hint="app.project.card"
+                  >
                     <FolderOpen size={13} />
                   </button>
                   <button
                     className="tool-btn !px-1"
                     title="Duplicate"
                     onClick={() => duplicate(p.id).then(refresh)}
+                    data-hint="app.project.duplicate"
                   >
                     <Copy size={13} />
                   </button>
@@ -193,6 +208,7 @@ export function ProjectBrowser() {
                     className="tool-btn !px-1"
                     title="Export .rebeat"
                     onClick={() => exportProject(p.id)}
+                    data-hint="app.project.export"
                   >
                     <Download size={13} />
                   </button>
@@ -201,6 +217,7 @@ export function ProjectBrowser() {
                     title={p.id === currentId ? "Can't delete the open project" : "Delete"}
                     disabled={p.id === currentId}
                     onClick={() => setConfirm(p.id)}
+                    data-hint="app.project.delete"
                   >
                     <Trash2 size={13} />
                   </button>

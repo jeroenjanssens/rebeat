@@ -79,6 +79,7 @@ export function GuidePanel({ params }: PanelProps) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             data-testid="guide-search"
+            data-hint="guide.search"
           />
         </div>
         <ul className="min-h-0 flex-1 overflow-y-auto px-1 pb-2 text-[12px]">

@@ -12,7 +12,10 @@ export function AudioStartOverlay() {
       onPointerDown={() => startAudio()}
       data-testid="audio-overlay"
     >
-      <button className="flex flex-col items-center gap-3 rounded-xl border border-line-strong bg-raised px-10 py-8 shadow-2xl">
+      <button
+        className="flex flex-col items-center gap-3 rounded-xl border border-line-strong bg-raised px-10 py-8 shadow-2xl"
+        data-hint="app.audiostart"
+      >
         <span className="flex h-14 w-14 items-center justify-center rounded-full border border-line-strong bg-surface text-lit">
           <Power size={24} />
         </span>

@@ -24,6 +24,7 @@ The bar along the top of the window controls playback and settings for the whole
 | Layout button             | Switch between layout presets and show any panel. See [Panels and layouts](#panels).                                                                                                                          |
 | Full screen               | The whole app full screen ({{key:view.fullscreen}}). Esc leaves full screen.                                                                                                                                  |
 | **?**                     | This guide.                                                                                                                                                                                                   |
+| Speech bubble             | **Explain mode** ({{key:app.explain}}): hover over any button for a card that explains it, with its shortcut. See [Explain mode](#getting-started-explain-mode).                                              |
 | Gear                      | [Settings](command:app.settings) ({{key:app.settings}}).                                                                                                                                                      |
 
 On narrow windows some controls hide; they're always available in the command palette.

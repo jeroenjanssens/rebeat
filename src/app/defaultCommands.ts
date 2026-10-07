@@ -11,6 +11,7 @@ import * as projectActions from "./projectActions";
 import { toggleMaximize } from "./Dock";
 import { LAYOUT_PRESETS, applyPreset, openPanel } from "./layouts";
 import { togglePanelFullscreen } from "./PanelFrame";
+import { hoveredHint } from "./hintLayer";
 import { openGuide } from "./openers";
 import { PANELS } from "./panels";
 import { dock, useShell } from "./shell";
@@ -382,7 +383,16 @@ export function defaultCommands(): Command[] {
       category: "View",
       keys: ["F1"],
       global: true,
-      run: () => openGuide(),
+      // over a button in explain mode: its section of the guide
+      run: () => openGuide(hoveredHint()?.guide),
+    },
+    {
+      id: "app.explain",
+      title: "Explain mode",
+      category: "View",
+      keys: ["Shift+F1"],
+      global: true,
+      run: () => useSettings.getState().set({ explain: !useSettings.getState().explain }),
     },
     {
       id: "app.shortcuts",

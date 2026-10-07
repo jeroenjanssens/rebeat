@@ -6,13 +6,16 @@ interface Props {
   color: string;
   onChange: (v: number) => void;
   width?: number;
+  /** Explain-mode hint id (help/hints). */
+  hint?: string;
 }
 
 /** Small horizontal volume fader. Drag (Shift = fine); double-click = 0 dB. */
-export function MiniFader({ value, color, onChange, width = 44 }: Props) {
+export function MiniFader({ value, color, onChange, width = 44, hint }: Props) {
   const drag = useRef<{ x: number; v: number } | null>(null);
   return (
     <div
+      data-hint={hint}
       className="relative h-[14px] cursor-ew-resize touch-none rounded-[3px] bg-pad"
       style={{ width }}
       title={`Volume ${VOLUME_FORMAT(value)} dB · drag · double-click = 0 dB`}

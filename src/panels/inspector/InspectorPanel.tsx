@@ -73,6 +73,7 @@ function EncoderGrid({
               }, `insp-${track.id}-${key}`)
             }
             midiTarget={isVolume ? `track:${track.id}:volume` : `track:${track.id}:${key}`}
+            hint={`param.${prefix}.${def.id}`}
           />
         );
       })}
@@ -96,6 +97,7 @@ function SampleSection({ track }: { track: Track }) {
             <button
               className="tool-btn !h-6 !min-w-6 !p-0"
               title="Show in library"
+              data-hint="inspector.sample.show"
               onClick={() => {
                 focusPanel("library");
                 useLibrary.getState().set({ selectedId: id });
@@ -107,6 +109,7 @@ function SampleSection({ track }: { track: Track }) {
               <button
                 className="tool-btn !h-6 !min-w-6 !p-0"
                 title="Edit in the sample editor"
+                data-hint="inspector.sample.edit"
                 onClick={() => openSampleEditor(id)}
               >
                 <Pencil size={12} />
@@ -120,6 +123,7 @@ function SampleSection({ track }: { track: Track }) {
         ref={ref}
         className="rounded-md border bg-display p-2"
         style={{ borderColor: hover ? "var(--accent)" : "var(--border)" }}
+        data-hint="inspector.sample"
         onDragOver={(e) => {
           const t = [...e.dataTransfer.types];
           if (!t.includes(SAMPLE_MIME) && !t.includes("Files")) return;
@@ -172,11 +176,13 @@ export function InspectorPanel() {
       <div className="flex items-center gap-2 border-b border-line px-3 py-2.5">
         <span className="h-6 w-1.5 shrink-0 rounded-sm" style={{ background: track.color }} />
         <span className="num text-[11px] text-faint">{String(index + 1).padStart(2, "0")}</span>
-        <InlineEdit
-          value={track.name}
-          onCommit={(v) => update((t) => (t.name = v))}
-          className="min-w-0 flex-1 text-[13px] font-semibold uppercase tracking-wide"
-        />
+        <span data-hint="inspector.name" className="min-w-0 flex-1">
+          <InlineEdit
+            value={track.name}
+            onCommit={(v) => update((t) => (t.name = v))}
+            className="text-[13px] font-semibold uppercase tracking-wide"
+          />
+        </span>
         {Icon && <Icon size={13} className="text-dim" />}
         <span className="label">{track.kind}</span>
       </div>

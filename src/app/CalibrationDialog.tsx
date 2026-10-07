@@ -78,7 +78,7 @@ export function CalibrationDialog({ open, onClose }: { open: boolean; onClose: (
               recordings arrive. Use speakers (not headphones), or a loopback cable from your
               interface's output to its input.
             </p>
-            <button className="hw-btn self-start" onClick={run}>
+            <button className="hw-btn self-start" onClick={run} data-hint="app.calibration.start">
               Start
             </button>
           </>
@@ -102,10 +102,15 @@ export function CalibrationDialog({ open, onClose }: { open: boolean; onClose: (
                   onClose();
                   setState("intro");
                 }}
+                data-hint="app.calibration.use"
               >
                 Use {result.ms} ms
               </button>
-              <button className="tool-btn border border-line" onClick={run}>
+              <button
+                className="tool-btn border border-line"
+                onClick={run}
+                data-hint="app.calibration.again"
+              >
                 Measure again
               </button>
             </div>
@@ -114,7 +119,11 @@ export function CalibrationDialog({ open, onClose }: { open: boolean; onClose: (
         {state === "error" && (
           <>
             <p className="text-[#fca5a5]">{error}</p>
-            <button className="tool-btn self-start border border-line" onClick={run}>
+            <button
+              className="tool-btn self-start border border-line"
+              onClick={run}
+              data-hint="app.calibration.again"
+            >
               Try again
             </button>
           </>
