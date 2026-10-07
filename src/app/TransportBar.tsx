@@ -176,6 +176,8 @@ export function TransportBar() {
   const playMode = useStore((s) => s.playMode);
   const quantize = useStore((s) => s.quantize);
   const recording = useStore((s) => s.recording);
+  const loopBars = useStore((s) => s.loopBars);
+  const loopRef = useRef<HTMLButtonElement>(null);
   const { commit, setUi } = useStore.getState();
   const fullscreen = useShell((s) => s.fullscreen);
   const set = useShell((s) => s.set);
@@ -241,6 +243,24 @@ export function TransportBar() {
       >
         <Circle size={11} fill={recording ? "currentColor" : "none"} />
         <span className="hidden @[1000px]:inline">Rec</span>
+      </button>
+      <button
+        ref={loopRef}
+        className="field hidden @[1050px]:inline-flex"
+        title="Loop recording length"
+        onClick={() =>
+          dropdown(
+            loopRef.current!,
+            [0, 1, 2, 4, 8].map((n) => ({
+              label: n === 0 ? "Page length" : `${n} bar${n > 1 ? "s" : ""}`,
+              checked: loopBars === n,
+              onSelect: () => setUi({ loopBars: n }),
+            })),
+          )
+        }
+      >
+        <span className="label">Loop</span>
+        <span className="num">{loopBars ? `${loopBars} bar` : "Page"}</span>
       </button>
       <Position />
 

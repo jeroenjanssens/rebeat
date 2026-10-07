@@ -45,6 +45,7 @@ let tick = 0;
 let slotId = "";
 let repeatCount = 0;
 let countInUntil = 0;
+let firstStepTime = 0;
 const cycles = new Map<string, number>();
 /** Recently scheduled steps, for mapping audio time → position. */
 const history: ScheduledStep[] = [];
@@ -115,6 +116,23 @@ export function nextBeatTime(): number | null {
     cur.time +
     left * (60 / useStore.getState().project.bpm) * STEP_SIZE_QUARTERS[cur.pattern.stepSize]
   );
+}
+
+/** Audio time of the next bar line while playing. */
+export function nextBarTime(): number | null {
+  const now = audioNow();
+  const cur = [...history].reverse().find((h) => h.time <= now) ?? history[0];
+  if (!cur) return null;
+  const spb = stepsPerBeat(cur.pattern);
+  const bar = spb * useStore.getState().project.timeSignature[0];
+  const stepSec = (60 / useStore.getState().project.bpm) * STEP_SIZE_QUARTERS[cur.pattern.stepSize];
+  const left = bar - (cur.pageStep % bar);
+  return cur.time + left * stepSec;
+}
+
+/** When the first step plays (after any count-in), for the current run. */
+export function playStartTime() {
+  return firstStepTime;
 }
 
 export function isCountingIn() {
@@ -352,6 +370,7 @@ export function play() {
     countInUntil = start;
   }
   nextTime = start;
+  firstStepTime = start;
   stopTicker = startTicker(onTick);
   onTick();
 }

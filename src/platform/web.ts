@@ -32,6 +32,34 @@ async function saveFile(name: string, data: Blob) {
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
+/**
+ * A synthetic microphone for end-to-end tests (beeps on every half second), enabled with
+ * `window.__REBEAT_TEST_MIC__ = true` before the app loads. Headless browsers can't always open
+ * even a fake capture device.
+ */
+function testMicStream(): MediaStream {
+  const ctx = new AudioContext();
+  const osc = ctx.createOscillator();
+  const gate = ctx.createGain();
+  osc.frequency.value = 660;
+  gate.gain.value = 0;
+  const lfo = ctx.createOscillator();
+  lfo.type = "square";
+  lfo.frequency.value = 2;
+  const depth = ctx.createGain();
+  depth.gain.value = 0.25;
+  lfo.connect(depth).connect(gate.gain);
+  const dest = ctx.createMediaStreamDestination();
+  osc.connect(gate).connect(dest);
+  osc.start();
+  lfo.start();
+  return dest.stream;
+}
+
+const useTestMic = () =>
+  typeof window !== "undefined" &&
+  !!(window as { __REBEAT_TEST_MIC__?: boolean }).__REBEAT_TEST_MIC__;
+
 export const webPlatform: Platform = {
   kind: "web",
 
@@ -97,7 +125,8 @@ export const webPlatform: Platform = {
   },
 
   media: {
-    getUserMedia: (c) => navigator.mediaDevices.getUserMedia(c),
+    getUserMedia: (c) =>
+      useTestMic() ? Promise.resolve(testMicStream()) : navigator.mediaDevices.getUserMedia(c),
     devices: async () => (await navigator.mediaDevices?.enumerateDevices?.()) ?? [],
     onDevicesChange: (fn) => {
       navigator.mediaDevices?.addEventListener("devicechange", fn);

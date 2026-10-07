@@ -8,6 +8,8 @@ export default defineConfig({
   use: {
     baseURL: "http://localhost:5174",
     trace: "retain-on-failure",
+    // the fake microphone (see the launch flags) needs the permission granted up front
+    permissions: ["microphone"],
     launchOptions: {
       args: [
         "--autoplay-policy=no-user-gesture-required",

@@ -28,6 +28,7 @@
     "radix-ui": "^1.7.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
+    "signalsmith-stretch": "^1.3.2",
     "smplr": "^1.1.0",
     "tone": "^15.1.22",
     "zustand": "^5.0.15"

@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Dialog } from "../components/Dialog";
 import { platform } from "../platform";
 import { ACCENTS, THEMES, useSettings, type Settings } from "../state/settings";
+import { CalibrationDialog } from "./CalibrationDialog";
 import { useShell } from "./shell";
 
 type Tab = "appearance" | "audio" | "midi" | "project" | "storage";
@@ -133,218 +134,243 @@ export function SettingsDialog() {
   const shell = useShell((s) => s.set);
   const s = useSettings();
   const [tab, setTab] = useState<Tab>("appearance");
+  const [calibrating, setCalibrating] = useState(false);
   const set = (p: Partial<Settings>) => s.set(p);
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(o) => shell({ settingsOpen: o })}
-      title="Settings"
-      width={720}
-    >
-      <div className="flex min-h-[420px]">
-        <nav className="flex w-36 shrink-0 flex-col gap-0.5 border-r border-line p-2">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              className="tool-btn !justify-start"
-              data-active={tab === t.id}
-              onClick={() => setTab(t.id)}
-            >
-              {t.label}
-            </button>
-          ))}
-          <div className="flex-1" />
-          <button
-            className="tool-btn !justify-start"
-            onClick={() => shell({ settingsOpen: false, shortcutsOpen: true })}
-          >
-            Shortcuts…
-          </button>
-        </nav>
-        <div className="min-w-0 flex-1 divide-y divide-line px-5 py-2">
-          {tab === "appearance" && (
-            <>
-              <Row label="Theme" hint="System follows your OS light/dark setting">
-                <select
-                  className="input"
-                  value={s.theme}
-                  onChange={(e) => set({ theme: e.target.value as Settings["theme"] })}
-                  data-testid="theme-select"
-                >
-                  <option value="system">System (Studio Dark / Paper)</option>
-                  {THEMES.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
-              </Row>
-              <Row label="Accent color">
-                <button
-                  className="tool-btn border border-line"
-                  data-active={s.accent === null}
-                  onClick={() => set({ accent: null })}
-                >
-                  Theme
-                </button>
-                {ACCENTS.map((c) => (
-                  <button
-                    key={c}
-                    className="h-6 w-6 rounded-full"
-                    style={{
-                      background: c,
-                      outline: s.accent === c ? "2px solid var(--select)" : undefined,
-                      outlineOffset: 2,
-                    }}
-                    onClick={() => set({ accent: c })}
-                    aria-label={`Accent ${c}`}
-                  />
-                ))}
-                <input
-                  type="color"
-                  className="h-6 w-8 cursor-pointer rounded border border-line bg-transparent"
-                  value={s.accent ?? "#7dd3fc"}
-                  onChange={(e) => set({ accent: e.target.value })}
-                />
-              </Row>
-              <Row label="UI scale" hint="80–150%">
-                <input
-                  type="range"
-                  min={0.8}
-                  max={1.5}
-                  step={0.05}
-                  value={s.uiScale}
-                  onChange={(e) => set({ uiScale: Number(e.target.value) })}
-                  className="w-48 accent-[var(--accent)]"
-                />
-                <span className="num w-10 text-[12px]">{Math.round(s.uiScale * 100)}%</span>
-                <button className="tool-btn border border-line" onClick={() => set({ uiScale: 1 })}>
-                  Reset
-                </button>
-              </Row>
-              <Row label="Spacing">
-                <Segmented
-                  value={s.density}
-                  options={[
-                    { id: "comfortable", label: "Comfortable" },
-                    { id: "compact", label: "Compact" },
-                  ]}
-                  onChange={(density) => set({ density })}
-                />
-              </Row>
-              <Row label="Reduced motion">
-                <Segmented
-                  value={s.reducedMotion}
-                  options={[
-                    { id: "system", label: "System" },
-                    { id: "on", label: "On" },
-                    { id: "off", label: "Off" },
-                  ]}
-                  onChange={(reducedMotion) => set({ reducedMotion })}
-                />
-              </Row>
-            </>
-          )}
-          {tab === "audio" && (
-            <>
-              <Row label="Output device" hint="Chromium browsers only">
-                <DeviceSelect
-                  kind="audiooutput"
-                  value={s.outputDeviceId}
-                  onChange={(outputDeviceId) => set({ outputDeviceId })}
-                />
-              </Row>
-              <Row label="Input device" hint="Names appear after the first microphone permission">
-                <DeviceSelect
-                  kind="audioinput"
-                  value={s.inputDeviceId}
-                  onChange={(inputDeviceId) => set({ inputDeviceId })}
-                />
-              </Row>
-              <Row label="Latency" hint="Lower = more responsive, higher = fewer dropouts">
-                <Segmented
-                  value={s.latencyMode}
-                  options={[
-                    { id: "interactive", label: "Low" },
-                    { id: "balanced", label: "Balanced" },
-                    { id: "playback", label: "Safe" },
-                  ]}
-                  onChange={(latencyMode) => set({ latencyMode })}
-                />
-              </Row>
-              <Row label="Recording latency" hint="Compensation for recorded audio">
-                <input
-                  type="number"
-                  className="input w-24"
-                  value={s.recordLatencyMs}
-                  min={0}
-                  max={1000}
-                  onChange={(e) => set({ recordLatencyMs: Number(e.target.value) || 0 })}
-                />
-                <span className="text-[12px] text-dim">ms</span>
-              </Row>
-              <Row label="Monitor while armed" hint="Turn off if your interface monitors directly">
-                <Toggle
-                  value={s.monitorWhileArmed}
-                  onChange={(monitorWhileArmed) => set({ monitorWhileArmed })}
-                />
-              </Row>
-              <Row
-                label="Speaker mode"
-                hint="Echo cancellation on, for recording without headphones"
+    <>
+      <CalibrationDialog open={calibrating} onClose={() => setCalibrating(false)} />
+      <Dialog
+        open={open}
+        onOpenChange={(o) => shell({ settingsOpen: o })}
+        title="Settings"
+        width={720}
+      >
+        <div className="flex min-h-[420px]">
+          <nav className="flex w-36 shrink-0 flex-col gap-0.5 border-r border-line p-2">
+            {TABS.map((t) => (
+              <button
+                key={t.id}
+                className="tool-btn !justify-start"
+                data-active={tab === t.id}
+                onClick={() => setTab(t.id)}
               >
-                <Toggle value={s.speakerMode} onChange={(speakerMode) => set({ speakerMode })} />
-              </Row>
-            </>
-          )}
-          {tab === "midi" && (
-            <Row
-              label="MIDI"
-              hint={
-                platform.midi.supported
-                  ? "Inputs are listed once MIDI is enabled"
-                  : "Web MIDI is not supported in this browser"
-              }
+                {t.label}
+              </button>
+            ))}
+            <div className="flex-1" />
+            <button
+              className="tool-btn !justify-start"
+              onClick={() => shell({ settingsOpen: false, shortcutsOpen: true })}
             >
-              <span className="text-[12px] text-dim">
-                {platform.midi.supported
-                  ? "Configured in the MIDI section (Phase 8)."
-                  : "Unavailable"}
-              </span>
-            </Row>
-          )}
-          {tab === "project" && (
-            <>
-              <Row label="Autosave" hint="Saves to this browser while you work">
-                <Toggle value={s.autosave} onChange={(autosave) => set({ autosave })} />
+              Shortcuts…
+            </button>
+          </nav>
+          <div className="min-w-0 flex-1 divide-y divide-line px-5 py-2">
+            {tab === "appearance" && (
+              <>
+                <Row label="Theme" hint="System follows your OS light/dark setting">
+                  <select
+                    className="input"
+                    value={s.theme}
+                    onChange={(e) => set({ theme: e.target.value as Settings["theme"] })}
+                    data-testid="theme-select"
+                  >
+                    <option value="system">System (Studio Dark / Paper)</option>
+                    {THEMES.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.label}
+                      </option>
+                    ))}
+                  </select>
+                </Row>
+                <Row label="Accent color">
+                  <button
+                    className="tool-btn border border-line"
+                    data-active={s.accent === null}
+                    onClick={() => set({ accent: null })}
+                  >
+                    Theme
+                  </button>
+                  {ACCENTS.map((c) => (
+                    <button
+                      key={c}
+                      className="h-6 w-6 rounded-full"
+                      style={{
+                        background: c,
+                        outline: s.accent === c ? "2px solid var(--select)" : undefined,
+                        outlineOffset: 2,
+                      }}
+                      onClick={() => set({ accent: c })}
+                      aria-label={`Accent ${c}`}
+                    />
+                  ))}
+                  <input
+                    type="color"
+                    className="h-6 w-8 cursor-pointer rounded border border-line bg-transparent"
+                    value={s.accent ?? "#7dd3fc"}
+                    onChange={(e) => set({ accent: e.target.value })}
+                  />
+                </Row>
+                <Row label="UI scale" hint="80–150%">
+                  <input
+                    type="range"
+                    min={0.8}
+                    max={1.5}
+                    step={0.05}
+                    value={s.uiScale}
+                    onChange={(e) => set({ uiScale: Number(e.target.value) })}
+                    className="w-48 accent-[var(--accent)]"
+                  />
+                  <span className="num w-10 text-[12px]">{Math.round(s.uiScale * 100)}%</span>
+                  <button
+                    className="tool-btn border border-line"
+                    onClick={() => set({ uiScale: 1 })}
+                  >
+                    Reset
+                  </button>
+                </Row>
+                <Row label="Spacing">
+                  <Segmented
+                    value={s.density}
+                    options={[
+                      { id: "comfortable", label: "Comfortable" },
+                      { id: "compact", label: "Compact" },
+                    ]}
+                    onChange={(density) => set({ density })}
+                  />
+                </Row>
+                <Row label="Reduced motion">
+                  <Segmented
+                    value={s.reducedMotion}
+                    options={[
+                      { id: "system", label: "System" },
+                      { id: "on", label: "On" },
+                      { id: "off", label: "Off" },
+                    ]}
+                    onChange={(reducedMotion) => set({ reducedMotion })}
+                  />
+                </Row>
+              </>
+            )}
+            {tab === "audio" && (
+              <>
+                <Row label="Output device" hint="Chromium browsers only">
+                  <DeviceSelect
+                    kind="audiooutput"
+                    value={s.outputDeviceId}
+                    onChange={(outputDeviceId) => set({ outputDeviceId })}
+                  />
+                </Row>
+                <Row label="Input device" hint="Names appear after the first microphone permission">
+                  <DeviceSelect
+                    kind="audioinput"
+                    value={s.inputDeviceId}
+                    onChange={(inputDeviceId) => set({ inputDeviceId })}
+                  />
+                </Row>
+                <Row label="Latency" hint="Lower = more responsive, higher = fewer dropouts">
+                  <Segmented
+                    value={s.latencyMode}
+                    options={[
+                      { id: "interactive", label: "Low" },
+                      { id: "balanced", label: "Balanced" },
+                      { id: "playback", label: "Safe" },
+                    ]}
+                    onChange={(latencyMode) => set({ latencyMode })}
+                  />
+                </Row>
+                <Row label="Recording latency" hint="Compensation for recorded audio">
+                  <input
+                    type="number"
+                    className="input w-24"
+                    value={s.recordLatencyMs}
+                    min={0}
+                    max={1000}
+                    onChange={(e) => set({ recordLatencyMs: Number(e.target.value) || 0 })}
+                  />
+                  <span className="text-[12px] text-dim">ms</span>
+                  <button
+                    className="tool-btn border border-line"
+                    onClick={() => setCalibrating(true)}
+                  >
+                    Calibrate…
+                  </button>
+                </Row>
+                <Row
+                  label="Free first loop"
+                  hint="When nothing plays yet, the first loop recording sets the tempo"
+                >
+                  <Toggle
+                    value={s.freeFirstLoop}
+                    onChange={(freeFirstLoop) => set({ freeFirstLoop })}
+                  />
+                </Row>
+                <Row
+                  label="Monitor while armed"
+                  hint="Turn off if your interface monitors directly"
+                >
+                  <Toggle
+                    value={s.monitorWhileArmed}
+                    onChange={(monitorWhileArmed) => set({ monitorWhileArmed })}
+                  />
+                </Row>
+                <Row
+                  label="Speaker mode"
+                  hint="Echo cancellation on, for recording without headphones"
+                >
+                  <Toggle value={s.speakerMode} onChange={(speakerMode) => set({ speakerMode })} />
+                </Row>
+              </>
+            )}
+            {tab === "midi" && (
+              <Row
+                label="MIDI"
+                hint={
+                  platform.midi.supported
+                    ? "Inputs are listed once MIDI is enabled"
+                    : "Web MIDI is not supported in this browser"
+                }
+              >
+                <span className="text-[12px] text-dim">
+                  {platform.midi.supported
+                    ? "Configured in the MIDI section (Phase 8)."
+                    : "Unavailable"}
+                </span>
               </Row>
-              <Row label="Page switch" hint="When a queued page starts while playing">
-                <Segmented
-                  value={s.pageSwitch}
-                  options={[
-                    { id: "page", label: "End of page" },
-                    { id: "bar", label: "Next bar" },
-                    { id: "beat", label: "Next beat" },
-                  ]}
-                  onChange={(pageSwitch) => set({ pageSwitch })}
-                />
-              </Row>
-              <Row label="Count-in length">
-                <Segmented
-                  value={String(s.countInBars) as "1" | "2"}
-                  options={[
-                    { id: "1", label: "1 bar" },
-                    { id: "2", label: "2 bars" },
-                  ]}
-                  onChange={(v) => set({ countInBars: Number(v) })}
-                />
-              </Row>
-            </>
-          )}
-          {tab === "storage" && <StorageInfo />}
+            )}
+            {tab === "project" && (
+              <>
+                <Row label="Autosave" hint="Saves to this browser while you work">
+                  <Toggle value={s.autosave} onChange={(autosave) => set({ autosave })} />
+                </Row>
+                <Row label="Page switch" hint="When a queued page starts while playing">
+                  <Segmented
+                    value={s.pageSwitch}
+                    options={[
+                      { id: "page", label: "End of page" },
+                      { id: "bar", label: "Next bar" },
+                      { id: "beat", label: "Next beat" },
+                    ]}
+                    onChange={(pageSwitch) => set({ pageSwitch })}
+                  />
+                </Row>
+                <Row label="Count-in length">
+                  <Segmented
+                    value={String(s.countInBars) as "1" | "2"}
+                    options={[
+                      { id: "1", label: "1 bar" },
+                      { id: "2", label: "2 bars" },
+                    ]}
+                    onChange={(v) => set({ countInBars: Number(v) })}
+                  />
+                </Row>
+              </>
+            )}
+            {tab === "storage" && <StorageInfo />}
+          </div>
         </div>
-      </div>
-    </Dialog>
+      </Dialog>
+    </>
   );
 }

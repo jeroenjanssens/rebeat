@@ -9,7 +9,9 @@ import type { Note, Track } from "../model/types";
 import { isAudible, useStore } from "../state/store";
 import { BusChannel, TrackChannel, faderGain } from "./channel";
 import { FxChain } from "./effects";
-import { getBuffer } from "./samples";
+import { getBuffer, sampleInfo } from "./samples";
+import { warper } from "./stretch";
+import type { StretchNode } from "signalsmith-stretch";
 import { createInstrument, instrumentKey, type InstrumentVoice } from "./instruments";
 
 export interface TriggerOptions {
@@ -34,7 +36,8 @@ interface Voice {
 }
 
 interface Clip {
-  src: AudioBufferSourceNode;
+  sources: AudioBufferSourceNode[];
+  warp: StretchNode | null;
   start: number;
   /** Seconds of buffer per second of playback. */
   rate: number;
@@ -42,6 +45,9 @@ interface Clip {
   loopLength: number;
   oneshot: boolean;
   offset: number;
+  bufferDuration: number;
+  from: number;
+  until: number;
 }
 
 const channels = new Map<string, TrackChannel>();
@@ -318,48 +324,98 @@ export function trigger(track: Track, velocity: number, o: TriggerOptions = {}) 
 export function startClip(track: Track, time: number, pageDur: number, oneshot: boolean) {
   stopClip(track.id, time);
   const buffer = getBuffer(track.sampleId);
-  if (!buffer) return;
+  if (!buffer || !track.sampleId) return;
   const p = track.params;
-  const src = raw().createBufferSource();
-  src.buffer = buffer;
+  const bpm = useStore.getState().project.bpm;
+  const clipBpm = sampleInfo(track.sampleId)?.bpm;
   const pitch = toUnit.semis(12)(p["sound.pitch"] ?? 0.5);
-  // warp by repitching until the time-stretch engine (Phase 6)
-  const rate = Math.pow(2, pitch / 12);
-  src.playbackRate.value = rate;
-  const offset = (p["sound.start"] ?? 0) * buffer.duration;
-  const env = raw().createGain();
-  env.gain.value = Math.pow(10, toUnit.db(-12, 12)(p["sound.gain"] ?? 0.5) / 20);
-  src.connect(env);
-  Tone.connect(env, channel(track.id).input);
-  if (!oneshot) {
-    src.loop = true;
-    src.loopStart = offset;
-    src.loopEnd = buffer.duration;
+  // warp: follow the song tempo; without a known tempo the clip plays at its own speed
+  const ratio = (p["sound.warp"] ?? 1) >= 0.5 && clipBpm ? bpm / clipBpm : 1;
+  const startOffset = (p["sound.start"] ?? 0) * buffer.duration;
+  let offset = startOffset;
+  let t = time;
+  const now = audioNow();
+  // a loop that was just recorded starts late: join in at the right place
+  if (t < now) {
+    offset += (now - t) * ratio;
+    t = now;
   }
-  src.start(time, offset);
-  const playable = oneshot ? (buffer.duration - offset) / rate : pageDur;
-  src.stop(time + Math.min(pageDur, playable) + 0.005);
-  src.onended = () => env.disconnect();
+  const loopLength = buffer.duration - startOffset;
+  if (!oneshot && loopLength > 0) offset = startOffset + ((offset - startOffset) % loopLength);
+  const gain = Math.pow(10, toUnit.db(-12, 12)(p["sound.gain"] ?? 0.5) / 20);
+  const playable = oneshot ? (buffer.duration - offset) / ratio : pageDur - (t - time);
+  const end = t + Math.max(0, Math.min(pageDur - (t - time), playable));
+  const dest = channel(track.id).input;
+
+  let warp: StretchNode | null = null;
+  const sources: AudioBufferSourceNode[] = [];
+  if (Math.abs(ratio - 1) > 0.002 || Math.abs(pitch) > 0.01) {
+    warp = warper(track.id, track.sampleId, dest);
+    if (warp) {
+      warp.schedule({
+        output: t,
+        active: true,
+        input: offset,
+        rate: ratio,
+        semitones: pitch,
+        loopStart: oneshot ? 0 : startOffset,
+        loopEnd: oneshot ? 0 : buffer.duration,
+      });
+      warp.schedule({ output: end, active: false });
+    }
+  }
+  const play = (buf: AudioBuffer, level: number, isMain: boolean) => {
+    if (isMain && warp) return;
+    const src = raw().createBufferSource();
+    src.buffer = buf;
+    // repitch fallback: speed and pitch change together
+    src.playbackRate.value = ratio * (warp ? 1 : Math.pow(2, pitch / 12));
+    const env = raw().createGain();
+    env.gain.value = level;
+    src.connect(env);
+    Tone.connect(env, dest);
+    if (!oneshot) {
+      src.loop = true;
+      src.loopStart = Math.min(startOffset, buf.duration);
+      src.loopEnd = buf.duration;
+    }
+    src.start(t, Math.min(offset, Math.max(0, buf.duration - 0.001)));
+    src.stop(end + 0.005);
+    src.onended = () => env.disconnect();
+    sources.push(src);
+  };
+  play(buffer, gain, true);
+  for (const l of track.layers ?? []) {
+    const lb = getBuffer(l.sampleId);
+    if (lb && !l.mute) play(lb, gain * l.gain, false);
+  }
   clips.set(track.id, {
-    src,
-    start: time,
-    rate,
-    duration: Math.min(pageDur, playable),
-    loopLength: (buffer.duration - offset) / rate,
+    sources,
+    warp,
+    start: t - (offset - startOffset) / ratio,
+    rate: ratio,
+    duration: end - t,
+    loopLength: loopLength / ratio,
     oneshot,
-    offset,
+    offset: startOffset,
+    bufferDuration: buffer.duration,
+    from: t,
+    until: end,
   });
-  activeUntil.set(track.id, time + Math.min(pageDur, playable) + 0.1);
+  activeUntil.set(track.id, end + 0.1);
 }
 
 export function stopClip(trackId: string, time = audioNow()) {
   const c = clips.get(trackId);
   if (!c) return;
-  try {
-    c.src.stop(Math.max(time, audioNow()));
-  } catch {
-    // not started or already stopped
-  }
+  const at = Math.max(time, audioNow());
+  for (const src of c.sources)
+    try {
+      src.stop(at);
+    } catch {
+      // not started or already stopped
+    }
+  c.warp?.schedule({ output: at, active: false });
   clips.delete(trackId);
 }
 
@@ -368,12 +424,12 @@ export function clipPosition(trackId: string): number | null {
   const sc = scratchState.get(trackId);
   if (sc) return sc.pos;
   const c = clips.get(trackId);
-  if (!c) return null;
-  const t = audioNow() - c.start;
-  if (t < 0 || t > c.duration) return null;
-  const buf = c.src.buffer!;
-  const pos = c.offset + ((t * c.rate) % (c.loopLength * c.rate));
-  return pos / buf.duration;
+  const now = audioNow();
+  if (!c || now < c.from || now > c.until) return null;
+  // `start` is where the clip would have started from its beginning (earlier for late joins)
+  const t = now - c.start;
+  const into = c.oneshot ? t : t % c.loopLength;
+  return (c.offset + into * c.rate) / c.bufferDuration;
 }
 
 /** Scratching (a simple version; the AudioWorklet scratch voice arrives in Phase 8). */

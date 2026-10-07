@@ -4,6 +4,8 @@ import { useShell } from "../app/shell";
 import { useSettings } from "../state/settings";
 import { initEngine } from "./engine";
 import { renderKits } from "./kits";
+import { startLiveInput } from "./liveInput";
+import { startLooper } from "./looper";
 
 let created = false;
 
@@ -43,6 +45,8 @@ export async function startAudio(): Promise<boolean> {
     await Tone.start();
     await renderKits();
     initEngine();
+    startLooper();
+    startLiveInput();
     const { outputDeviceId } = useSettings.getState();
     if (outputDeviceId) await setOutputDevice(outputDeviceId);
     shell.set({ audio: "running" });

@@ -63,6 +63,15 @@ export interface UiState {
   songLoop: boolean;
   playing: boolean;
   recording: boolean;
+  /** Loop recording length in bars (0 = the page length). */
+  loopBars: number;
+  /** What the looper is doing, for the UI. */
+  looper: {
+    status: "idle" | "waiting" | "recording" | "saving";
+    trackId: string;
+    start: number;
+    end: number;
+  };
   playSlotId: string;
   queuedSlotId: string | null;
   jogOpen: Record<string, boolean>;
@@ -149,6 +158,8 @@ export const useStore = create<State>()((set, get) => ({
   songLoop: true,
   playing: false,
   recording: false,
+  loopBars: 0,
+  looper: { status: "idle", trackId: "", start: 0, end: 0 },
   playSlotId: project.slots[1].id,
   queuedSlotId: null,
   jogOpen: {},

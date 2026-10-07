@@ -11,6 +11,7 @@ import { projectSampleIds } from "../model/schema";
 import { useStore } from "../state/store";
 import { db, type SampleRecord } from "../storage/db";
 import { detectBpm, guessCategory, toMono } from "./analysis";
+import { encodeWav } from "./wav";
 
 export const AUDIO_EXT = /\.(wav|wave|mp3|ogg|oga|opus|flac|aac|m4a|aif|aiff|webm|caf)$/i;
 const MIME: Record<string, string> = {
@@ -68,6 +69,8 @@ export interface ImportItem {
   data: ArrayBuffer;
   folder: string;
   tags?: string[];
+  /** Known tempo (e.g. a loop recorded at the song tempo); skips detection. */
+  bpm?: number;
 }
 
 /** Import one file; returns the sample id (existing or new), or null if it can't be decoded. */
@@ -84,7 +87,8 @@ async function importOne(item: ImportItem): Promise<string | null> {
   const ext = item.name.split(".").pop()?.toLowerCase() ?? "";
   const name = baseName(item.name);
   const bpm =
-    buffer.duration >= 1.2 && buffer.duration <= 40 ? detectBpm(toMono(buffer)) : undefined;
+    item.bpm ??
+    (buffer.duration >= 1.2 && buffer.duration <= 40 ? detectBpm(toMono(buffer)) : undefined);
   const record: SampleRecord = {
     id,
     name,
@@ -187,6 +191,20 @@ export async function filesFromDrop(dt: DataTransfer): Promise<File[]> {
   };
   for (const e of entries) await walk(e, "");
   return out;
+}
+
+/** Store a recording (WAV) in the library's Recordings folder; returns its sample id. */
+export async function saveRecording(
+  channels: Float32Array[],
+  sampleRate: number,
+  name: string,
+  bpm?: number,
+) {
+  const data = encodeWav(channels, sampleRate, 24);
+  const [id] = await importItems([
+    { name: `${name}.wav`, data, folder: "Recordings", tags: ["recording"], bpm },
+  ]);
+  return id;
 }
 
 // ---------- decoding on demand ----------

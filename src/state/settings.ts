@@ -47,6 +47,8 @@ export interface Settings {
   countInBars: number;
   midiInputs: Record<string, boolean>;
   previewVolume: number;
+  /** When nothing plays yet, the first loop recording sets the tempo (loop-pedal style). */
+  freeFirstLoop: boolean;
   onboarded: boolean;
 }
 
@@ -68,6 +70,7 @@ export const DEFAULT_SETTINGS: Settings = {
   countInBars: 1,
   midiInputs: {},
   previewVolume: 0.8,
+  freeFirstLoop: false,
   onboarded: false,
 };
 
