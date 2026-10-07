@@ -1,10 +1,10 @@
 import { useEffect, useRef } from "react";
-import * as engine from "../mock/engine";
-import { fakePeaks } from "../mock/peaks";
-import type { ClipLane, Track } from "../model/types";
-import { onFrame } from "../render/raf";
-import { alpha, token } from "../render/theme";
-import { useCanvas } from "../render/useCanvas";
+import * as engine from "../../mock/engine";
+import { fakePeaks } from "../../mock/peaks";
+import type { ClipLane, Track } from "../../model/types";
+import { onFrame } from "../../render/raf";
+import { alpha, token } from "../../render/theme";
+import { useCanvas } from "../../render/useCanvas";
 
 interface Props {
   track: Track;

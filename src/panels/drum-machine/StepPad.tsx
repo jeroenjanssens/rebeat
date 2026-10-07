@@ -1,6 +1,6 @@
 import { memo, type CSSProperties } from "react";
-import { notesLabel } from "../model/notes";
-import type { Step } from "../model/types";
+import { notesLabel } from "../../model/notes";
+import type { Step } from "../../model/types";
 
 interface Props {
   trackId: string;

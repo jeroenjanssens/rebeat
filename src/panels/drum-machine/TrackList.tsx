@@ -9,10 +9,10 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, arrayMove, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { restrictToVerticalAxis } from "./dndModifiers";
-import { addTrack, makeTrack } from "../model/project";
-import type { SoundCategory, TrackKind } from "../model/types";
-import { applyHeld, editSteps, setStep, toggleSelected } from "../state/actions";
-import { stepKey, useStore } from "../state/store";
+import { addTrack, makeTrack } from "../../model/project";
+import type { SoundCategory, TrackKind } from "../../model/types";
+import { applyHeld, editSteps, setStep, toggleSelected } from "../../state/actions";
+import { stepKey, useStore } from "../../state/store";
 import type { Geometry } from "./layout";
 import { ParamLane } from "./ParamLane";
 import { TrackRow } from "./TrackRow";

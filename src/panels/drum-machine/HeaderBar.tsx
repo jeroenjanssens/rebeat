@@ -10,11 +10,11 @@ import {
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
-import { DragValue } from "../components/DragValue";
-import { InlineEdit } from "../components/InlineEdit";
-import { dropdown, type MenuItem } from "../components/Menu";
-import { STEP_COUNT_PRESETS, STEP_SIZES, type StepSize } from "../model/types";
-import { useEditPattern, useStore, type Tool } from "../state/store";
+import { DragValue } from "../../components/DragValue";
+import { InlineEdit } from "../../components/InlineEdit";
+import { dropdown, type MenuItem } from "../../components/Menu";
+import { STEP_COUNT_PRESETS, STEP_SIZES, type StepSize } from "../../model/types";
+import { useEditPattern, useStore, type Tool } from "../../state/store";
 import type { SizeClass } from "./layout";
 
 function Dropdown({
@@ -113,15 +113,18 @@ export function HeaderBar({ sizeClass }: { sizeClass: SizeClass }) {
       onSelect: () => setUi({ lanes: { ...lanes, [f]: !lanes[f] } }),
     }));
 
+  const globalSwing = useStore((s) => s.project.swing);
   const swing = (
     <DragValue
-      label="Swing"
-      value={Math.round(pattern.swing * 100)}
+      label={pattern.swing === undefined ? "Swing" : "Page swing"}
+      value={Math.round((pattern.swing ?? globalSwing) * 100)}
       min={50}
       max={75}
-      defaultValue={50}
+      defaultValue={Math.round(globalSwing * 100)}
       format={(v) => `${v}%`}
       onChange={(v) => setPattern((p) => (p.swing = v / 100), "swing")}
+      onReset={() => setPattern((p) => (p.swing = undefined))}
+      title="Page swing · double-click = follow the global swing"
     />
   );
 

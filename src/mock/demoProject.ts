@@ -71,6 +71,10 @@ export function demoProject(): Project {
   const project: Project = {
     name: "Night Drive",
     bpm: 112,
+    timeSignature: [4, 4],
+    swing: 0.5,
+    metronome: false,
+    countIn: false,
     tracks: [kick, snare, clap, hat, ohat, perc, bass, chords, vox],
     patterns: {},
     slots: [],

@@ -1,7 +1,7 @@
 import { useRef } from "react";
-import type { Step, StepLane, Track } from "../model/types";
-import { editSteps } from "../state/actions";
-import { stepKey } from "../state/store";
+import type { Step, StepLane, Track } from "../../model/types";
+import { editSteps } from "../../state/actions";
+import { stepKey } from "../../state/store";
 import type { Geometry } from "./layout";
 
 type Field = "velocity" | "probability" | "nudge";

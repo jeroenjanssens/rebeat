@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { usePortalTarget } from "./portal";
 import { createPortal } from "react-dom";
 import { Check } from "lucide-react";
 import { create } from "zustand";
@@ -39,17 +40,6 @@ export function contextMenu(
 export function dropdown(el: HTMLElement, items: MenuItem[]) {
   const r = el.getBoundingClientRect();
   useMenu.getState().show(r.left, r.bottom + 4, items, r.width);
-}
-
-/** Menus render inside the full-screen element when there is one, so they stay visible. */
-function usePortalTarget() {
-  const [target, setTarget] = useState<Element>(() => document.fullscreenElement ?? document.body);
-  useEffect(() => {
-    const update = () => setTarget(document.fullscreenElement ?? document.body);
-    document.addEventListener("fullscreenchange", update);
-    return () => document.removeEventListener("fullscreenchange", update);
-  }, []);
-  return target;
 }
 
 export function MenuHost() {

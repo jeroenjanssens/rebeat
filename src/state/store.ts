@@ -25,8 +25,6 @@ export type FnKey =
 
 export type Bank = "sound" | "step" | "fx" | "mix";
 export type Tool = "draw" | "erase" | "select";
-export type ThemeId = "studio-dark" | "midnight" | "paper";
-export type SizeMode = "auto" | "compact" | "regular" | "large";
 export type RepeatRate = "1/8" | "1/16" | "1/32";
 
 export interface UiState {
@@ -52,10 +50,9 @@ export interface UiState {
   repeatRate: RepeatRate;
   playMode: "loop" | "song";
   playing: boolean;
+  recording: boolean;
   playSlotId: string;
   queuedSlotId: string | null;
-  theme: ThemeId;
-  sizeMode: SizeMode;
   jogOpen: Record<string, boolean>;
   clipboard: Step[] | null;
   euclidOpen: boolean;
@@ -104,10 +101,9 @@ export const useStore = create<State>()((set, get) => ({
   repeatRate: "1/16",
   playMode: "loop",
   playing: false,
+  recording: false,
   playSlotId: project.slots[1].id,
   queuedSlotId: null,
-  theme: "studio-dark",
-  sizeMode: "auto",
   jogOpen: {},
   clipboard: null,
   euclidOpen: false,

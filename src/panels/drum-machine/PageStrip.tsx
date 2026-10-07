@@ -15,9 +15,9 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Link2, Plus, Repeat } from "lucide-react";
-import { InlineEdit } from "../components/InlineEdit";
-import { contextMenu, type MenuItem } from "../components/Menu";
-import { position } from "../mock/clock";
+import { InlineEdit } from "../../components/InlineEdit";
+import { contextMenu, type MenuItem } from "../../components/Menu";
+import { position } from "../../mock/clock";
 import {
   cloneSlot,
   copySlot,
@@ -26,13 +26,13 @@ import {
   newSlot,
   unlinkSlot,
   type Project,
-} from "../model/project";
-import type { PageSlot, Pattern, Track } from "../model/types";
-import { onFrame } from "../render/raf";
-import { alpha, token } from "../render/theme";
-import { useCanvas } from "../render/useCanvas";
-import { applyHeld } from "../state/actions";
-import { useStore } from "../state/store";
+} from "../../model/project";
+import type { PageSlot, Pattern, Track } from "../../model/types";
+import { onFrame } from "../../render/raf";
+import { alpha, token } from "../../render/theme";
+import { useCanvas } from "../../render/useCanvas";
+import { applyHeld } from "../../state/actions";
+import { useStore } from "../../state/store";
 import { restrictToHorizontalAxis } from "./dndModifiers";
 import type { SizeClass } from "./layout";
 

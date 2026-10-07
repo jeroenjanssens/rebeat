@@ -78,6 +78,56 @@
   --shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 1px 2px rgba(0, 0, 0, 0.12);
 }
 
+[data-theme="ember"] {
+  color-scheme: dark;
+  --bg: #0c0907;
+  --panel: #14100d;
+  --surface: #1a1511;
+  --raised: #231c17;
+  --display: #0e0b09;
+  --pad-bg: #2a221c;
+  --border: #322821;
+  --border-strong: #43362c;
+  --text: #f3e9df;
+  --text-dim: #a8968a;
+  --text-faint: #6a5c52;
+  --accent: #fb923c;
+  --select: #fff7ed;
+  --lit: #fb923c;
+  --pad-off-mix: 14%;
+  --pad-on-min: 42%;
+  --head: rgba(251, 146, 60, 0.14);
+  --hatch: rgba(0, 0, 0, 0.45);
+  --scope-idle: #3a2f27;
+  --scope-bg: #0e0b09;
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="high-contrast"] {
+  color-scheme: dark;
+  --bg: #000000;
+  --panel: #000000;
+  --surface: #0a0a0a;
+  --raised: #141414;
+  --display: #000000;
+  --pad-bg: #262626;
+  --border: #6b6b6b;
+  --border-strong: #a3a3a3;
+  --text: #ffffff;
+  --text-dim: #e5e5e5;
+  --text-faint: #a3a3a3;
+  --accent: #ffd60a;
+  --select: #ffffff;
+  --lit: #ffd60a;
+  --pad-off-mix: 22%;
+  --pad-on-min: 60%;
+  --head: rgba(255, 255, 255, 0.22);
+  --hatch: rgba(0, 0, 0, 0.6);
+  --scope-idle: #525252;
+  --scope-bg: #000000;
+  --shadow: none;
+}
+
 @theme inline {
   --color-bg: var(--bg);
   --color-panel: var(--panel);
@@ -100,6 +150,12 @@ html,
 body,
 #root {
   height: 100%;
+}
+
+/* UI scale: the root element is zoomed, so shrink its box to keep filling the window */
+html {
+  height: calc(100vh / var(--ui-scale, 1));
+  width: calc(100vw / var(--ui-scale, 1));
 }
 
 body {
@@ -472,11 +528,131 @@ body {
   scrollbar-color: var(--border-strong) transparent;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .pad.trig,
-  .perf-pad.trig,
-  .queued,
-  .page-slide {
-    animation: none;
-  }
+[data-reduced-motion="true"] :is(.pad.trig, .perf-pad.trig, .queued, .page-slide) {
+  animation: none;
+}
+
+[data-density="compact"] {
+  --dv-tabs-and-actions-container-height: 28px;
+}
+
+/* ---------- Dockview, themed with our tokens ---------- */
+
+.dockview-theme-rebeat {
+  --dv-paneview-active-outline-color: var(--accent);
+  --dv-tabs-and-actions-container-font-size: 11px;
+  --dv-tabs-and-actions-container-height: 32px;
+  --dv-drag-over-background-color: color-mix(in oklab, var(--accent) 18%, transparent);
+  --dv-drag-over-border-color: var(--accent);
+  --dv-edge-dock-indicator-color: var(--accent);
+  --dv-tabs-container-scrollbar-color: var(--border-strong);
+  --dv-icon-hover-background-color: var(--raised);
+  --dv-floating-box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  --dv-floating-border: 1px solid var(--border-strong);
+  --dv-overlay-z-index: 30;
+  --dv-tab-font-size: inherit;
+  --dv-border-radius: 6px;
+  --dv-tab-margin: 0;
+  --dv-sash-color: transparent;
+  --dv-active-sash-color: var(--accent);
+  --dv-active-sash-transition-duration: 0.1s;
+  --dv-active-sash-transition-delay: 0.3s;
+  --dv-spacing-padding: 0px;
+  --dv-tab-border-radius: 0px;
+  --dv-sash-border-radius: 0px;
+  --dv-dropdown-border-radius: 6px;
+  --dv-tab-close-icon-size: inherit;
+  --dv-floating-group-border: 1px solid var(--border-strong);
+  --dv-drag-over-border: 1px solid var(--accent);
+  --dv-floating-group-dragging-opacity: 0.6;
+  --dv-floating-titlebar-height: 22px;
+  --dv-floating-titlebar-background-color: var(--surface);
+  --dv-floating-titlebar-border-bottom: 1px solid var(--border);
+  --dv-tab-group-line-height: 2px;
+  --dv-tab-group-line-opacity: 0.6;
+  --dv-group-view-background-color: var(--panel);
+  --dv-tabs-and-actions-container-background-color: var(--surface);
+  --dv-activegroup-visiblepanel-tab-background-color: var(--panel);
+  --dv-activegroup-hiddenpanel-tab-background-color: var(--surface);
+  --dv-inactivegroup-visiblepanel-tab-background-color: var(--panel);
+  --dv-inactivegroup-hiddenpanel-tab-background-color: var(--surface);
+  --dv-tab-divider-color: var(--border);
+  --dv-activegroup-visiblepanel-tab-color: var(--text);
+  --dv-activegroup-hiddenpanel-tab-color: var(--text-dim);
+  --dv-inactivegroup-visiblepanel-tab-color: var(--text-dim);
+  --dv-inactivegroup-hiddenpanel-tab-color: var(--text-faint);
+  --dv-separator-border: var(--border);
+  --dv-paneview-header-border-color: var(--border);
+  --dv-scrollbar-background-color: var(--border-strong);
+  background: var(--bg);
+}
+.dockview-theme-rebeat .dv-tab {
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.dockview-theme-rebeat .dv-groupview {
+  border: 1px solid var(--border);
+}
+.dockview-theme-rebeat .dv-groupview.dv-active-group {
+  border-color: var(--border-strong);
+}
+.dockview-theme-rebeat .dv-tabs-and-actions-container {
+  border-bottom: 1px solid var(--border);
+}
+.dockview-theme-rebeat .dv-active-tab {
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+/* panel full screen: the panel frame fills the screen */
+.panel-frame:fullscreen {
+  background: var(--panel);
+}
+
+.dialog {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 60;
+  max-height: 85vh;
+  overflow: auto;
+  border-radius: 10px;
+  background: var(--raised);
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+  color: var(--text);
+}
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 59;
+  background: rgba(0, 0, 0, 0.45);
+}
+.input {
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 5px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text);
+  outline: none;
+}
+.input:focus {
+  border-color: var(--accent);
+}
+kbd,
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 4px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  font: 500 10px/1 var(--font-mono);
+  color: var(--text-dim);
 }

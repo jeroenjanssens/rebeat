@@ -1,4 +1,4 @@
-import type { StepLane, Track } from "../model/types";
+import type { StepLane, Track } from "../../model/types";
 import type { Geometry } from "./layout";
 import { StepPad } from "./StepPad";
 

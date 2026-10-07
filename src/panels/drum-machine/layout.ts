@@ -1,19 +1,18 @@
 import { useEffect, useState, type RefObject } from "react";
-import { STEP_SIZE_QUARTERS, type Pattern } from "../model/types";
-import type { SizeMode } from "../state/store";
+import { STEP_SIZE_QUARTERS, type Pattern } from "../../model/types";
 
 export type SizeClass = "compact" | "regular" | "large";
 
 /** The panel's size class comes from its own width (container-based, not the window). */
-export function useSizeClass(ref: RefObject<HTMLElement | null>, mode: SizeMode) {
+export function useSizeClass(ref: RefObject<HTMLElement | null>) {
   const [width, setWidth] = useState(1200);
   useEffect(() => {
     const ro = new ResizeObserver(([e]) => setWidth(e.contentRect.width));
     ro.observe(ref.current!);
     return () => ro.disconnect();
   }, [ref]);
-  const auto: SizeClass = width < 860 ? "compact" : width < 1560 ? "regular" : "large";
-  return { sizeClass: mode === "auto" ? auto : mode, width };
+  const sizeClass: SizeClass = width < 860 ? "compact" : width < 1560 ? "regular" : "large";
+  return { sizeClass, width };
 }
 
 const METRICS = {

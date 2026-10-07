@@ -21,8 +21,11 @@ export function onThemeChange(fn: () => void): () => void {
   };
 }
 
-export function applyTheme(theme: string) {
-  document.documentElement.dataset.theme = theme;
+export function applyTheme(theme: string, accent: string | null = null) {
+  const root = document.documentElement;
+  root.dataset.theme = theme;
+  if (accent) root.style.setProperty("--accent", accent);
+  else root.style.removeProperty("--accent");
   cache = {};
   version += 1;
   for (const fn of listeners) fn();

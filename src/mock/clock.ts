@@ -33,10 +33,11 @@ export function onStep(fn: Listener): () => void {
   };
 }
 
-export function stepMs(pattern: Pattern, bpm: number, index: number): number {
+export function stepMs(pattern: Pattern, bpm: number, index: number, globalSwing = 0.5): number {
   const base = (60000 / bpm) * STEP_SIZE_QUARTERS[pattern.stepSize];
+  const swing = pattern.swing ?? globalSwing;
   // swing: lengthen even steps, shorten odd ones
-  return index % 2 === 0 ? base * 2 * pattern.swing : base * (2 - 2 * pattern.swing);
+  return index % 2 === 0 ? base * 2 * swing : base * (2 - 2 * swing);
 }
 
 export function position(now: number) {
@@ -93,7 +94,7 @@ function advance(time: number) {
   }
 
   stepStartTime = time;
-  stepDuration = stepMs(pattern, project.bpm, pageStep);
+  stepDuration = stepMs(pattern, project.bpm, pageStep, project.swing);
   nextStepTime = time + stepDuration;
 
   const fill = state.fillHeld || state.fillLatched;
@@ -107,7 +108,8 @@ function advance(time: number) {
       if (pageStep === 0) {
         if (lane.active && audible) {
           let ms = 0;
-          for (let i = 0; i < pattern.stepCount; i++) ms += stepMs(pattern, project.bpm, i);
+          for (let i = 0; i < pattern.stepCount; i++)
+            ms += stepMs(pattern, project.bpm, i, project.swing);
           engine.startClip(track, time, ms, lane.launchMode === "oneshot");
         } else engine.stopClip(track.id);
       } else if (!audible) engine.stopClip(track.id);

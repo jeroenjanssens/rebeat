@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
-import * as engine from "../mock/engine";
-import type { Track } from "../model/types";
+import * as engine from "../../mock/engine";
+import type { Track } from "../../model/types";
 
 /**
  * Jog strip for scratching an audio track: grab the platter or the strip and drag to move the

@@ -56,7 +56,8 @@ export interface Pattern {
   linkColor: string;
   stepCount: number;
   stepSize: StepSize;
-  swing: number; // 0.5..0.75
+  /** Page swing (0.5..0.75); undefined = follow the project swing. */
+  swing?: number;
   lanes: Record<string, Lane>;
 }
 

@@ -1,8 +1,8 @@
 import { useRef } from "react";
 import { Menu as MenuIcon } from "lucide-react";
-import { dropdown } from "../components/Menu";
-import { fnClick, fnPress, fnRelease } from "../state/actions";
-import { useShift, useStore, type FnKey } from "../state/store";
+import { dropdown } from "../../components/Menu";
+import { fnClick, fnPress, fnRelease } from "../../state/actions";
+import { useShift, useStore, type FnKey } from "../../state/store";
 import type { SizeClass } from "./layout";
 
 export interface FnDef {

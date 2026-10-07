@@ -1,19 +1,19 @@
 import { useState } from "react";
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from "lucide-react";
-import { Encoder } from "../components/Encoder";
-import { fakePeaks } from "../mock/peaks";
+import { Encoder } from "../../components/Encoder";
+import { fakePeaks } from "../../mock/peaks";
 import {
   EFFECT_PARAMS,
   MIX_PARAMS,
   SOUND_PARAMS,
   stepParams,
   type ParamDef,
-} from "../model/params";
-import type { Track } from "../model/types";
-import { token } from "../render/theme";
-import { useCanvas } from "../render/useCanvas";
-import { editSteps, selectedIndices } from "../state/actions";
-import { stepKey, useEditPattern, useSelectedTrack, useStore, type Bank } from "../state/store";
+} from "../../model/params";
+import type { Track } from "../../model/types";
+import { token } from "../../render/theme";
+import { useCanvas } from "../../render/useCanvas";
+import { editSteps, selectedIndices } from "../../state/actions";
+import { stepKey, useEditPattern, useSelectedTrack, useStore, type Bank } from "../../state/store";
 import type { SizeClass } from "./layout";
 
 const BANKS: { id: Bank; label: string }[] = [

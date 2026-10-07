@@ -20,6 +20,12 @@ import {
 export interface Project {
   name: string;
   bpm: number;
+  /** Beats per bar and beat unit, e.g. [4, 4], [6, 8]. */
+  timeSignature: [number, number];
+  /** Global swing (0.5 = straight .. 0.75). */
+  swing: number;
+  metronome: boolean;
+  countIn: boolean;
   tracks: Track[];
   patterns: Record<string, Pattern>;
   slots: PageSlot[];
@@ -76,7 +82,6 @@ export function makePattern(project: Project, name: string, stepCount = 16): Pat
     linkColor: LINK_COLORS.find((c) => !used.has(c)) ?? LINK_COLORS[0],
     stepCount,
     stepSize: "1/16",
-    swing: 0.5,
     lanes: Object.fromEntries(project.tracks.map((t) => [t.id, emptyLane(t.kind)])),
   };
 }

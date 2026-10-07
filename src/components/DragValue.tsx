@@ -10,6 +10,9 @@ interface Props {
   onChange: (v: number) => void;
   label?: string;
   className?: string;
+  /** Double-click action (default: set `defaultValue`). */
+  onReset?: () => void;
+  title?: string;
 }
 
 /** A number you change by dragging vertically or scrolling; double-click resets. */
@@ -23,13 +26,15 @@ export function DragValue({
   onChange,
   label,
   className = "",
+  onReset,
+  title = "Drag or scroll · double-click = reset",
 }: Props) {
   const drag = useRef<{ y: number; v: number } | null>(null);
   const clamp = (v: number) => Math.min(max, Math.max(min, Math.round(v / step) * step));
   return (
     <span
       className={`field cursor-ns-resize touch-none ${className}`}
-      title="Drag or scroll · double-click = reset"
+      title={title}
       onPointerDown={(e) => {
         e.currentTarget.setPointerCapture(e.pointerId);
         drag.current = { y: e.clientY, v: value };
@@ -41,7 +46,7 @@ export function DragValue({
       }}
       onPointerUp={() => (drag.current = null)}
       onWheel={(e) => onChange(clamp(value - Math.sign(e.deltaY) * step))}
-      onDoubleClick={() => onChange(defaultValue)}
+      onDoubleClick={() => (onReset ? onReset() : onChange(defaultValue))}
     >
       {label && <span className="label">{label}</span>}
       <span className="num text-ink">{format(value)}</span>

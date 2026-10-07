@@ -169,3 +169,10 @@ export function waveform(trackId: string, x: number, phase: number): number {
       return 0.6 * Math.sin(TAU * 5 * x) * (1 - x * 0.5) + 0.3 * noise;
   }
 }
+
+/** Master output level (0..1). */
+export function masterLevel(now: number): number {
+  let sum = 0;
+  for (const id of voices.keys()) sum += level(id, now) ** 2;
+  return Math.min(1, Math.sqrt(sum) * 0.8);
+}

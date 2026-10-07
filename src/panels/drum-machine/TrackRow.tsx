@@ -2,12 +2,12 @@ import { useEffect, useRef, type CSSProperties } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { AudioLines, Disc3, GripVertical, Music2, Power } from "lucide-react";
-import { contextMenu, useMenu, type MenuItem } from "../components/Menu";
-import { InlineEdit } from "../components/InlineEdit";
-import { MiniFader } from "../components/MiniFader";
-import { Scope } from "../components/Scope";
-import { onStep } from "../mock/clock";
-import { TRACK_PALETTE } from "../model/colors";
+import { contextMenu, useMenu, type MenuItem } from "../../components/Menu";
+import { InlineEdit } from "../../components/InlineEdit";
+import { MiniFader } from "../../components/MiniFader";
+import { Scope } from "../../components/Scope";
+import { onStep } from "../../mock/clock";
+import { TRACK_PALETTE } from "../../model/colors";
 import {
   clearLane,
   deleteTrack,
@@ -15,10 +15,10 @@ import {
   randomizeLane,
   reverseLane,
   rotateLane,
-} from "../model/project";
-import type { Lane, Pattern, Track } from "../model/types";
-import { applyHeld } from "../state/actions";
-import { useStore } from "../state/store";
+} from "../../model/project";
+import type { Lane, Pattern, Track } from "../../model/types";
+import { applyHeld } from "../../state/actions";
+import { useStore } from "../../state/store";
 import { ClipView } from "./ClipView";
 import type { Geometry } from "./layout";
 import { ScratchStrip } from "./ScratchStrip";

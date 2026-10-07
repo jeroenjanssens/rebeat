@@ -1,11 +1,11 @@
 import { useEffect, useRef, type CSSProperties } from "react";
-import { Scope } from "../components/Scope";
-import * as engine from "../mock/engine";
-import { onStep } from "../mock/clock";
-import { KEY_ROOT, SCALE_MINOR, noteName } from "../model/notes";
-import { STEP_COUNT_PRESETS, STEP_SIZE_QUARTERS, type Track } from "../model/types";
-import { applyHeld, setStep } from "../state/actions";
-import { useEditPattern, useSelectedTrack, useStore } from "../state/store";
+import { Scope } from "../../components/Scope";
+import * as engine from "../../mock/engine";
+import { onStep } from "../../mock/clock";
+import { KEY_ROOT, SCALE_MINOR, noteName } from "../../model/notes";
+import { STEP_COUNT_PRESETS, STEP_SIZE_QUARTERS, type Track } from "../../model/types";
+import { applyHeld, setStep } from "../../state/actions";
+import { useEditPattern, useSelectedTrack, useStore } from "../../state/store";
 import { geometry, type SizeClass } from "./layout";
 import { StepsArea } from "./StepsArea";
 

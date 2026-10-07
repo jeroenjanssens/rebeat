@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { X } from "lucide-react";
-import { Encoder } from "../components/Encoder";
-import { euclid } from "../model/project";
-import { applyEuclid, laneLen } from "../state/actions";
-import type { Track } from "../model/types";
-import { useSelectedTrack, useStore } from "../state/store";
+import { Encoder } from "../../components/Encoder";
+import { euclid } from "../../model/project";
+import { applyEuclid, laneLen } from "../../state/actions";
+import type { Track } from "../../model/types";
+import { useSelectedTrack, useStore } from "../../state/store";
 
 /** Euclidean rhythm generator for the selected track, opened by the EUCLID button. */
 export function EuclidPopover() {
