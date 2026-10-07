@@ -1,0 +1,282 @@
+import type { Step, TrackKind } from "./types";
+import { notesLabel } from "./notes";
+
+/** An encoder parameter. Values are stored normalized (0..1). */
+export interface ParamDef {
+  id: string;
+  label: string;
+  bipolar?: boolean;
+  default: number;
+  steps?: number; // number of discrete positions, for stepped encoders
+  format: (v: number) => string;
+}
+
+const pct = (v: number) => `${Math.round(v * 100)}%`;
+const lin = (lo: number, hi: number) => (v: number) => lo + v * (hi - lo);
+const expo = (lo: number, hi: number) => (v: number) => lo * Math.pow(hi / lo, v);
+
+const hz = (v: number) => {
+  const f = expo(20, 20000)(v);
+  return f >= 1000 ? `${(f / 1000).toFixed(1)}k` : `${Math.round(f)}`;
+};
+const ms = (lo: number, hi: number) => (v: number) => {
+  const t = expo(lo, hi)(v);
+  return t >= 1000 ? `${(t / 1000).toFixed(2)}s` : `${Math.round(t)}ms`;
+};
+const db = (lo: number, hi: number) => (v: number) => {
+  const d = lin(lo, hi)(v);
+  return `${d > 0 ? "+" : ""}${d.toFixed(1)}`;
+};
+const semis = (range: number) => (v: number) => {
+  const s = (v - 0.5) * 2 * range;
+  return `${s > 0 ? "+" : ""}${s.toFixed(1)}`;
+};
+const pan = (v: number) => {
+  const p = Math.round((v - 0.5) * 200);
+  return p === 0 ? "C" : p < 0 ? `L${-p}` : `R${p}`;
+};
+
+export const VOLUME_FORMAT = (v: number) => {
+  if (v <= 0.001) return "-∞";
+  const dB = 40 * Math.log10(v / 0.8); // 0.8 fader position = 0 dB
+  return `${dB > 0 ? "+" : ""}${dB.toFixed(1)}`;
+};
+
+const SOUND_DRUM: ParamDef[] = [
+  { id: "tune", label: "Tune", bipolar: true, default: 0.5, format: semis(24) },
+  { id: "decay", label: "Decay", default: 0.55, format: ms(10, 2000) },
+  { id: "start", label: "Start", default: 0, format: pct },
+  { id: "cutoff", label: "Cutoff", default: 1, format: hz },
+  { id: "reso", label: "Reso", default: 0.1, format: pct },
+  { id: "drive", label: "Drive", default: 0, format: pct },
+  {
+    id: "choke",
+    label: "Choke",
+    default: 0,
+    steps: 9,
+    format: (v) => (Math.round(v * 8) === 0 ? "—" : `${Math.round(v * 8)}`),
+  },
+  { id: "gain", label: "Gain", bipolar: true, default: 0.5, format: db(-12, 12) },
+];
+
+const SOUND_INSTRUMENT: ParamDef[] = [
+  { id: "attack", label: "Attack", default: 0.05, format: ms(1, 4000) },
+  { id: "decay", label: "Decay", default: 0.4, format: ms(1, 4000) },
+  { id: "sustain", label: "Sustain", default: 0.7, format: pct },
+  { id: "release", label: "Release", default: 0.35, format: ms(1, 8000) },
+  { id: "cutoff", label: "Cutoff", default: 0.7, format: hz },
+  { id: "reso", label: "Reso", default: 0.2, format: pct },
+  { id: "glide", label: "Glide", default: 0, format: ms(1, 1000) },
+  { id: "detune", label: "Detune", bipolar: true, default: 0.5, format: semis(1) },
+];
+
+const SOUND_AUDIO: ParamDef[] = [
+  { id: "gain", label: "Gain", bipolar: true, default: 0.5, format: db(-12, 12) },
+  { id: "start", label: "Start", default: 0, format: pct },
+  { id: "pitch", label: "Pitch", bipolar: true, default: 0.5, format: semis(12) },
+  {
+    id: "warp",
+    label: "Warp",
+    default: 1,
+    steps: 2,
+    format: (v) => (v >= 0.5 ? "On" : "Off"),
+  },
+  { id: "cutoff", label: "Cutoff", default: 1, format: hz },
+  { id: "reso", label: "Reso", default: 0.1, format: pct },
+  { id: "fadein", label: "Fade in", default: 0, format: ms(1, 2000) },
+  { id: "fadeout", label: "Fade out", default: 0, format: ms(1, 2000) },
+];
+
+export const SOUND_PARAMS: Record<TrackKind, ParamDef[]> = {
+  drum: SOUND_DRUM,
+  instrument: SOUND_INSTRUMENT,
+  audio: SOUND_AUDIO,
+};
+
+export const MIX_PARAMS: ParamDef[] = [
+  { id: "volume", label: "Level", default: 0.8, format: VOLUME_FORMAT },
+  { id: "pan", label: "Pan", bipolar: true, default: 0.5, format: pan },
+  { id: "sendA", label: "Reverb", default: 0, format: pct },
+  { id: "sendB", label: "Delay", default: 0, format: pct },
+  { id: "width", label: "Width", default: 1, format: pct },
+  { id: "low", label: "Low", bipolar: true, default: 0.5, format: db(-15, 15) },
+  { id: "mid", label: "Mid", bipolar: true, default: 0.5, format: db(-15, 15) },
+  { id: "high", label: "High", bipolar: true, default: 0.5, format: db(-15, 15) },
+];
+
+export const EFFECT_PARAMS: Record<string, ParamDef[]> = {
+  Distortion: [
+    { id: "drive", label: "Drive", default: 0.4, format: pct },
+    { id: "tone", label: "Tone", default: 0.6, format: hz },
+    { id: "output", label: "Output", bipolar: true, default: 0.5, format: db(-12, 12) },
+    { id: "mix", label: "Mix", default: 1, format: pct },
+  ],
+  Filter: [
+    { id: "cutoff", label: "Cutoff", default: 0.6, format: hz },
+    { id: "reso", label: "Reso", default: 0.3, format: pct },
+    {
+      id: "rate",
+      label: "LFO rate",
+      default: 0.3,
+      format: (v) => `${expo(0.05, 20)(v).toFixed(2)}Hz`,
+    },
+    { id: "depth", label: "LFO amt", default: 0.2, format: pct },
+    { id: "mix", label: "Mix", default: 1, format: pct },
+  ],
+  Delay: [
+    {
+      id: "time",
+      label: "Time",
+      default: 0.5,
+      steps: 6,
+      format: (v) => ["1/32", "1/16", "1/8", "1/8.", "1/4", "1/2"][Math.round(v * 5)],
+    },
+    { id: "feedback", label: "Feedbk", default: 0.35, format: pct },
+    { id: "tone", label: "Tone", default: 0.6, format: hz },
+    { id: "mix", label: "Mix", default: 0.25, format: pct },
+  ],
+  Reverb: [
+    { id: "size", label: "Size", default: 0.5, format: pct },
+    { id: "decay", label: "Decay", default: 0.4, format: ms(100, 10000) },
+    { id: "predelay", label: "Pre-dly", default: 0.1, format: ms(1, 250) },
+    { id: "damp", label: "Damp", default: 0.5, format: pct },
+    { id: "mix", label: "Mix", default: 0.3, format: pct },
+  ],
+  Compressor: [
+    { id: "threshold", label: "Thresh", default: 0.6, format: db(-60, 0) },
+    { id: "ratio", label: "Ratio", default: 0.3, format: (v) => `${lin(1, 20)(v).toFixed(1)}:1` },
+    { id: "attack", label: "Attack", default: 0.2, format: ms(0.1, 200) },
+    { id: "release", label: "Release", default: 0.4, format: ms(10, 2000) },
+    { id: "makeup", label: "Makeup", default: 0.2, format: db(0, 24) },
+    { id: "mix", label: "Mix", default: 1, format: pct },
+  ],
+  Bitcrusher: [
+    {
+      id: "bits",
+      label: "Bits",
+      default: 0.5,
+      steps: 15,
+      format: (v) => `${Math.round(lin(2, 16)(v))}`,
+    },
+    { id: "rate", label: "Rate", default: 0.3, format: pct },
+    { id: "mix", label: "Mix", default: 1, format: pct },
+  ],
+};
+
+export const CONDITIONS = ["—", "1:2", "2:2", "1:3", "1:4", "FILL", "!FILL"];
+
+/** STEP bank: encoder ↔ step field mapping. */
+export interface StepParamDef extends ParamDef {
+  get: (s: Step) => number;
+  set: (s: Step, v: number) => void;
+}
+
+export function stepParams(kind: TrackKind, flats: boolean): StepParamDef[] {
+  return [
+    {
+      id: "velocity",
+      label: "Velocity",
+      default: 0.8,
+      format: (v) => `${Math.round(v * 127)}`,
+      get: (s) => s.velocity,
+      set: (s, v) => (s.velocity = v),
+    },
+    {
+      id: "probability",
+      label: "Prob",
+      default: 1,
+      format: pct,
+      get: (s) => s.probability,
+      set: (s, v) => (s.probability = v),
+    },
+    {
+      id: "nudge",
+      label: "Nudge",
+      bipolar: true,
+      default: 0.5,
+      format: (v) => {
+        const n = Math.round((v - 0.5) * 100);
+        return `${n > 0 ? "+" : ""}${n}%`;
+      },
+      get: (s) => s.nudge + 0.5,
+      set: (s, v) => (s.nudge = v - 0.5),
+    },
+    {
+      id: "ratchet",
+      label: "Ratchet",
+      default: 0,
+      steps: 8,
+      format: (v) => `${Math.round(v * 7) + 1}×`,
+      get: (s) => (s.ratchet - 1) / 7,
+      set: (s, v) => (s.ratchet = Math.round(v * 7) + 1),
+    },
+    kind === "instrument"
+      ? {
+          id: "note",
+          label: "Note",
+          default: 0.5,
+          steps: 61,
+          format: (v) => notesLabel([Math.round(24 + v * 60)], flats),
+          get: (s) => ((s.notes?.[0] ?? 48) - 24) / 60,
+          set: (s, v) => {
+            const root = Math.round(24 + v * 60);
+            const old = s.notes ?? [root];
+            const shift = root - old[0];
+            s.notes = old.map((n) => n + shift);
+          },
+        }
+      : {
+          id: "pitch",
+          label: "Pitch",
+          bipolar: true,
+          default: 0.5,
+          steps: 25,
+          format: semis(12),
+          get: (s) => (s.pitch + 12) / 24,
+          set: (s, v) => (s.pitch = Math.round(v * 24) - 12),
+        },
+    kind === "instrument"
+      ? {
+          id: "length",
+          label: "Length",
+          default: 0,
+          steps: 16,
+          format: (v) => `${Math.round(v * 15) + 1} st`,
+          get: (s) => ((s.length ?? 1) - 1) / 15,
+          set: (s, v) => (s.length = Math.round(v * 15) + 1),
+        }
+      : {
+          id: "gate",
+          label: "Gate",
+          default: 1,
+          format: pct,
+          get: (s) => s.gate,
+          set: (s, v) => (s.gate = v),
+        },
+    {
+      id: "condition",
+      label: "Cond",
+      default: 0,
+      steps: CONDITIONS.length,
+      format: (v) => CONDITIONS[Math.round(v * (CONDITIONS.length - 1))],
+      get: (s) => CONDITIONS.indexOf(s.condition ?? "—") / (CONDITIONS.length - 1),
+      set: (s, v) => {
+        const c = CONDITIONS[Math.round(v * (CONDITIONS.length - 1))];
+        s.condition = c === "—" ? undefined : c;
+      },
+    },
+    {
+      id: "accent",
+      label: "Accent",
+      default: 0,
+      steps: 2,
+      format: (v) => (v >= 0.5 ? "On" : "Off"),
+      get: (s) => (s.accent ? 1 : 0),
+      set: (s, v) => (s.accent = v >= 0.5),
+    },
+  ];
+}
+
+export function defaultParams(defs: ParamDef[]): Record<string, number> {
+  return Object.fromEntries(defs.map((d) => [d.id, d.default]));
+}

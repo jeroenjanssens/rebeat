@@ -1,0 +1,482 @@
+@import "tailwindcss";
+
+/* ---------- design tokens ---------- */
+
+:root,
+[data-theme="studio-dark"] {
+  color-scheme: dark;
+  --bg: #08090b;
+  --panel: #101114;
+  --surface: #15161a;
+  --raised: #1c1e23;
+  --display: #0b0c0e;
+  --pad-bg: #202227;
+  --border: #272a31;
+  --border-strong: #353943;
+  --text: #e8eaef;
+  --text-dim: #8d929d;
+  --text-faint: #565b65;
+  --accent: #7dd3fc;
+  --select: #f8fafc;
+  --lit: #ffb547;
+  --pad-off-mix: 13%;
+  --pad-on-min: 42%;
+  --head: rgba(255, 255, 255, 0.1);
+  --hatch: rgba(0, 0, 0, 0.45);
+  --scope-idle: #2c3038;
+  --scope-bg: #0b0c0e;
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="midnight"] {
+  color-scheme: dark;
+  --bg: #05070d;
+  --panel: #0b0f1a;
+  --surface: #0f1524;
+  --raised: #151d31;
+  --display: #070a12;
+  --pad-bg: #18213a;
+  --border: #1e2943;
+  --border-strong: #2a3858;
+  --text: #dde6ff;
+  --text-dim: #7f8cb3;
+  --text-faint: #4a5677;
+  --accent: #a78bfa;
+  --select: #e0e7ff;
+  --lit: #a78bfa;
+  --pad-off-mix: 18%;
+  --pad-on-min: 45%;
+  --head: rgba(167, 139, 250, 0.16);
+  --hatch: rgba(0, 0, 0, 0.5);
+  --scope-idle: #26314f;
+  --scope-bg: #070a12;
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+[data-theme="paper"] {
+  color-scheme: light;
+  --bg: #dfe1e5;
+  --panel: #eceef1;
+  --surface: #f6f7f9;
+  --raised: #ffffff;
+  --display: #1a1c20;
+  --pad-bg: #dcdfe5;
+  --border: #d0d4db;
+  --border-strong: #b9bec8;
+  --text: #16181c;
+  --text-dim: #5b616d;
+  --text-faint: #9aa0aa;
+  --accent: #2563eb;
+  --select: #111318;
+  --lit: #f97316;
+  --pad-off-mix: 14%;
+  --pad-on-min: 55%;
+  --head: rgba(0, 0, 0, 0.08);
+  --hatch: rgba(255, 255, 255, 0.55);
+  --scope-idle: #c9cdd5;
+  --scope-bg: #e4e7ec;
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-panel: var(--panel);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-display: var(--display);
+  --color-pad: var(--pad-bg);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
+  --color-ink: var(--text);
+  --color-dim: var(--text-dim);
+  --color-faint: var(--text-faint);
+  --color-accent: var(--accent);
+  --color-lit: var(--lit);
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  overflow: hidden;
+}
+
+/* small uppercase hardware labels */
+.label {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- controls ---------- */
+
+.hw-btn {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  min-height: 30px;
+  padding: 3px 9px;
+  border-radius: 5px;
+  background: var(--raised);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  color: var(--text);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  transition:
+    background 80ms,
+    border-color 80ms,
+    color 80ms;
+}
+.hw-btn:hover {
+  border-color: var(--border-strong);
+}
+.hw-btn:active,
+.hw-btn[data-held="true"] {
+  background: color-mix(in oklab, var(--raised) 70%, var(--text) 8%);
+}
+.hw-btn[data-lit="true"] {
+  color: var(--lit);
+  border-color: color-mix(in oklab, var(--lit) 55%, var(--border));
+  box-shadow:
+    0 0 10px color-mix(in oklab, var(--lit) 25%, transparent),
+    var(--shadow);
+}
+.hw-btn .secondary {
+  font-size: 7.5px;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+}
+.hw-btn[data-shift="true"] .primary {
+  color: var(--text-faint);
+}
+.hw-btn[data-shift="true"] .secondary {
+  color: var(--lit);
+}
+
+.tool-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 26px;
+  min-width: 26px;
+  padding: 0 7px;
+  gap: 5px;
+  border-radius: 5px;
+  color: var(--text-dim);
+  font-size: 11px;
+  transition:
+    background 80ms,
+    color 80ms;
+}
+.tool-btn:hover {
+  background: var(--raised);
+  color: var(--text);
+}
+.tool-btn[data-active="true"] {
+  background: var(--raised);
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 45%, transparent);
+}
+
+.segmented {
+  display: inline-flex;
+  padding: 2px;
+  gap: 2px;
+  border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.segmented > button {
+  white-space: nowrap;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.segmented > button[data-active="true"] {
+  background: var(--raised);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+.field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 5px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 11px;
+}
+.field:hover {
+  border-color: var(--border-strong);
+}
+
+.menu {
+  position: fixed;
+  z-index: 50;
+  min-width: 180px;
+  padding: 4px;
+  border-radius: 8px;
+  background: var(--raised);
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  font-size: 12px;
+}
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 4px;
+  text-align: left;
+  color: var(--text);
+}
+.menu-item:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--accent) 18%, transparent);
+}
+.menu-item:disabled {
+  color: var(--text-faint);
+}
+.menu-sep {
+  height: 1px;
+  margin: 4px 2px;
+  background: var(--border);
+}
+
+/* ---------- step pads ---------- */
+
+.pad {
+  --v: 0.8;
+  position: relative;
+  flex: none;
+  width: var(--pad-w);
+  height: var(--pad-h);
+  border-radius: var(--pad-r);
+  background: color-mix(in oklab, var(--c) var(--pad-off-mix), var(--pad-bg));
+  overflow: visible;
+  cursor: pointer;
+}
+.pad > .fill {
+  position: absolute;
+  inset: auto 0 0 0;
+  border-radius: inherit;
+  background: color-mix(
+    in oklab,
+    var(--c) calc(var(--pad-on-min) + var(--v) * (100% - var(--pad-on-min))),
+    var(--pad-bg)
+  );
+  box-shadow: 0 0 calc(2px + var(--v) * 9px)
+    color-mix(in oklab, var(--c) calc(var(--v) * 45%), transparent);
+}
+.pad.partial > .fill {
+  border-top-left-radius: 1px;
+  border-top-right-radius: 1px;
+}
+.pad.accent > .fill::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  top: 2px;
+  height: 2px;
+  border-radius: 1px;
+  background: rgba(255, 255, 255, 0.85);
+}
+.pad .ratchet {
+  position: absolute;
+  top: 25%;
+  bottom: 25%;
+  width: 1.5px;
+  background: rgba(0, 0, 0, 0.5);
+}
+.pad .nudge {
+  position: absolute;
+  bottom: -4px;
+  width: 6px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--text-dim);
+}
+.pad .cond {
+  position: absolute;
+  left: 2px;
+  bottom: 1px;
+  font: 600 7.5px/1 var(--font-mono);
+  color: rgba(0, 0, 0, 0.7);
+}
+.pad .lock {
+  position: absolute;
+  right: 2px;
+  top: 2px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+.pad .note {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 600 var(--note-size, 9px) / 1 var(--font-mono);
+  color: rgba(0, 0, 0, 0.78);
+  white-space: nowrap;
+  overflow: hidden;
+  pointer-events: none;
+}
+.pad.tie > .fill {
+  background: color-mix(in oklab, var(--c) 52%, var(--pad-bg));
+  box-shadow: none;
+}
+.pad.tie::before {
+  /* connector bridging the gap to the previous pad */
+  content: "";
+  position: absolute;
+  top: 30%;
+  bottom: 30%;
+  right: 100%;
+  width: var(--tie-gap, 4px);
+  background: color-mix(in oklab, var(--c) 52%, var(--pad-bg));
+}
+.pad .slide {
+  position: absolute;
+  right: 2px;
+  top: 2px;
+  font: 700 8px/1 var(--font-mono);
+  color: rgba(0, 0, 0, 0.7);
+}
+.pad .velbar {
+  position: absolute;
+  left: 3px;
+  bottom: 3px;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.45);
+}
+.pad.beyond {
+  background-image: repeating-linear-gradient(135deg, var(--hatch) 0 2px, transparent 2px 5px);
+  opacity: 0.55;
+}
+.pad.selected {
+  outline: 2px solid var(--select);
+  outline-offset: 1px;
+  z-index: 1;
+}
+.pad.head::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--head);
+  pointer-events: none;
+}
+.pad.trig {
+  animation: pad-flash 220ms ease-out;
+}
+@keyframes pad-flash {
+  0% {
+    filter: brightness(1.9) saturate(1.2);
+    box-shadow: 0 0 16px 2px color-mix(in oklab, var(--c) 80%, transparent);
+  }
+  100% {
+    filter: none;
+    box-shadow: none;
+  }
+}
+
+/* big performance pads (pad view) */
+.perf-pad {
+  position: relative;
+  border-radius: 8px;
+  background: color-mix(in oklab, var(--c) 22%, var(--pad-bg));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--c) 35%, transparent);
+  transition: background 120ms;
+}
+.perf-pad[data-selected="true"] {
+  box-shadow:
+    inset 0 0 0 2px var(--select),
+    0 0 12px color-mix(in oklab, var(--c) 35%, transparent);
+}
+.perf-pad.trig {
+  animation: perf-pad-flash 260ms ease-out;
+}
+@keyframes perf-pad-flash {
+  0% {
+    background: color-mix(in oklab, var(--c) 90%, var(--pad-bg));
+    box-shadow: 0 0 18px 2px color-mix(in oklab, var(--c) 70%, transparent);
+  }
+}
+.perf-pad.root {
+  background: color-mix(in oklab, var(--c) 48%, var(--pad-bg));
+}
+.perf-pad.off-scale {
+  background: var(--pad-bg);
+  box-shadow: none;
+}
+
+.queued {
+  animation: queued-pulse 0.9s ease-in-out infinite;
+}
+@keyframes queued-pulse {
+  50% {
+    box-shadow: 0 0 0 2px var(--lit);
+  }
+}
+
+.page-slide {
+  animation: page-slide 140ms ease-out;
+}
+@keyframes page-slide {
+  from {
+    transform: translateX(var(--slide-from, 24px));
+    opacity: 0.4;
+  }
+}
+
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pad.trig,
+  .perf-pad.trig,
+  .queued,
+  .page-slide {
+    animation: none;
+  }
+}
