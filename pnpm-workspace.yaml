@@ -1,2 +1,5 @@
 allowBuilds:
+  # downloads the Electron binary
   electron: true
+  # only needed for Squirrel.Windows installers; we build NSIS
+  electron-winstaller: false
