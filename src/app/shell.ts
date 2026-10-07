@@ -8,6 +8,7 @@ interface ShellState {
   paletteOpen: boolean;
   settingsOpen: boolean;
   shortcutsOpen: boolean;
+  homeOpen: boolean;
   /** Panel id shown in panel full screen, or "app" for app full screen. */
   fullscreen: string | null;
   maximized: boolean;
@@ -20,6 +21,7 @@ export const useShell = create<ShellState>()((set) => ({
   paletteOpen: false,
   settingsOpen: false,
   shortcutsOpen: false,
+  homeOpen: false,
   fullscreen: null,
   maximized: false,
   audio: "suspended",

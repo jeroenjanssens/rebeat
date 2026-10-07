@@ -52,7 +52,35 @@ export interface Track {
   arm: boolean;
   volume: number; // 0..1 fader position
   params: Record<string, number>; // encoder values keyed by parameter id
-  effects: { name: string; params: Record<string, number> }[];
+  effects: Effect[];
+  /** Instrument tracks: the sound source (synth preset, keyboard sampler or sampled instrument). */
+  instrument?: InstrumentSource;
+  /** Audio tracks: overdub layers recorded on top of the clip. */
+  layers?: ClipLayer[];
+}
+
+export interface Effect {
+  /** Stable id (for reordering); older projects may not have one. */
+  id?: string;
+  name: string;
+  params: Record<string, number>;
+  bypass?: boolean;
+}
+
+export interface InstrumentSource {
+  source: "synth" | "sampler" | "smplr";
+  /** Synth preset id or smplr instrument name. */
+  preset: string;
+  /** Keyboard sampler: the sample and the note it was recorded at. */
+  sampleId?: string;
+  rootNote?: number;
+}
+
+export interface ClipLayer {
+  id: string;
+  sampleId: string;
+  gain: number;
+  mute: boolean;
 }
 
 export interface Pattern {

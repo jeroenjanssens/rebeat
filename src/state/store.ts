@@ -64,8 +64,15 @@ export interface UiState {
   euclidOpen: boolean;
 }
 
+export type SaveStatus = "saved" | "dirty" | "saving" | "error";
+
 interface State extends UiState {
   project: Project;
+  /** Id of the project in storage. */
+  projectId: string;
+  saveStatus: SaveStatus;
+  /** Replace the project (open, new, import): resets undo history and selection. */
+  loadProject: (project: Project, id: string) => void;
   past: Project[];
   future: Project[];
   lastCommitKey: string | null;
@@ -81,6 +88,28 @@ const project = demoProject();
 
 export const useStore = create<State>()((set, get) => ({
   project,
+  projectId: "",
+  saveStatus: "saved",
+  loadProject: (p, id) => {
+    const firstStepTrack = p.tracks.find((t) => t.kind !== "audio") ?? p.tracks[0];
+    set({
+      project: p,
+      projectId: id,
+      past: [],
+      future: [],
+      lastCommitKey: null,
+      saveStatus: "saved",
+      selectedTrackId: firstStepTrack?.id ?? "",
+      editSlotId: p.slots[0]?.id ?? "",
+      playSlotId: p.slots[0]?.id ?? "",
+      queuedSlotId: null,
+      selectedSteps: {},
+      cursor: null,
+      fxIndex: 0,
+      euclidOpen: false,
+      jogOpen: {},
+    });
+  },
   past: [],
   future: [],
   lastCommitKey: null,

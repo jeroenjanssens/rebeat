@@ -4,7 +4,9 @@ import { clearSelection, fnClick, fnPress, fnRelease } from "../state/actions";
 import { cursorToggle, moveCursor, velocityDigit } from "../state/input";
 import { THEMES, useSettings } from "../state/settings";
 import { useStore } from "../state/store";
+import { TEMPLATES } from "../templates";
 import type { Command } from "./commands";
+import * as projectActions from "./projectActions";
 import { toggleMaximize } from "./Dock";
 import { LAYOUT_PRESETS, applyPreset, openPanel } from "./layouts";
 import { togglePanelFullscreen } from "./PanelFrame";
@@ -61,6 +63,56 @@ export function defaultCommands(): Command[] {
       keys: ["-"],
       run: () => store().commit((p) => void (p.bpm = Math.max(20, Math.round(p.bpm) - 1)), "bpm"),
     },
+
+    // ---- project ----
+    {
+      id: "project.home",
+      title: "Projects…",
+      category: "Project",
+      keys: ["Mod+O"],
+      global: true,
+      run: () => shell().set({ homeOpen: true }),
+    },
+    {
+      id: "project.save",
+      title: "Save",
+      category: "Project",
+      keys: ["Mod+S"],
+      global: true,
+      run: () => void projectActions.save(),
+    },
+    {
+      id: "project.export",
+      title: "Export .rebeat…",
+      category: "Project",
+      keys: ["Mod+Shift+E"],
+      run: () => void projectActions.exportProject(),
+    },
+    {
+      id: "project.import",
+      title: "Import .rebeat…",
+      category: "Project",
+      run: () => void projectActions.importProjectFile(),
+    },
+    {
+      id: "project.folder",
+      title: "Save to folder…",
+      category: "Project",
+      enabled: () => platform.files.supportsFolders,
+      run: () => void projectActions.saveToFolder(),
+    },
+    {
+      id: "project.duplicate",
+      title: "Duplicate project",
+      category: "Project",
+      run: () => void projectActions.duplicate(store().projectId),
+    },
+    ...TEMPLATES.map((t) => ({
+      id: `project.new.${t.id}`,
+      title: `New project: ${t.name}`,
+      category: "Project",
+      run: () => void projectActions.newFromTemplate(t.id),
+    })),
 
     // ---- edit ----
     {

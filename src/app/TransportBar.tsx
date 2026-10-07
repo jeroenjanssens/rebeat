@@ -87,6 +87,23 @@ function Position() {
   );
 }
 
+function SaveDot() {
+  const status = useStore((s) => s.saveStatus);
+  const color =
+    status === "error" ? "#ef4444" : status === "saved" ? "transparent" : "var(--text-faint)";
+  return (
+    <span
+      className="h-1.5 w-1.5 shrink-0 rounded-full"
+      style={{ background: color }}
+      title={
+        status === "error" ? "Saving failed" : status === "saved" ? "Saved" : "Unsaved changes"
+      }
+      data-testid="save-status"
+      data-status={status}
+    />
+  );
+}
+
 function CpuMeter() {
   const ref = useRef<HTMLDivElement>(null);
   const label = useRef<HTMLSpanElement>(null);
@@ -185,9 +202,15 @@ export function TransportBar() {
       <span className="text-[15px] font-bold tracking-tight">
         re<span className="text-lit">beat</span>
       </span>
-      <span className="hidden max-w-[160px] truncate text-[12px] text-dim @[900px]:inline">
-        {project.name}
-      </span>
+      <button
+        className="hidden max-w-[180px] items-center gap-1.5 truncate rounded px-1.5 py-0.5 text-[12px] text-dim hover:bg-surface hover:text-ink @[900px]:flex"
+        title="Projects (Ctrl/Cmd+O)"
+        onClick={() => set({ homeOpen: true })}
+        data-testid="project-name"
+      >
+        <span className="truncate">{project.name}</span>
+        <SaveDot />
+      </button>
       <div className="mx-1 h-5 w-px bg-line" />
 
       <button

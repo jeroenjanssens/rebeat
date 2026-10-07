@@ -10,7 +10,11 @@ import { SettingsDialog } from "./app/SettingsDialog";
 import { ShortcutsDialog } from "./app/ShortcutsDialog";
 import { TransportBar } from "./app/TransportBar";
 import { useAppearance } from "./app/useAppearance";
+import { ProjectBrowser } from "./app/ProjectBrowser";
+import { ToastHost } from "./components/Toast";
 import { useStore } from "./state/store";
+import { startProjects } from "./storage/projects";
+import { demoProject } from "./templates/nightDrive";
 
 export function App() {
   useAppearance();
@@ -29,6 +33,10 @@ export function App() {
     return () => offs.forEach((off) => off());
   }, []);
 
+  useEffect(() => {
+    void startProjects(demoProject);
+  }, []);
+
   return (
     <div className="flex h-full flex-col">
       <TransportBar />
@@ -39,6 +47,8 @@ export function App() {
       <CommandPalette />
       <SettingsDialog />
       <ShortcutsDialog />
+      <ProjectBrowser />
+      <ToastHost />
       <AudioStartOverlay />
     </div>
   );

@@ -14,6 +14,7 @@ export function DrumMachine() {
   const ref = useRef<HTMLDivElement>(null);
   const view = useStore((s) => s.view);
   const zoom = useStore((s) => s.zoom);
+  const hasTracks = useStore((s) => s.project.tracks.length > 0);
   const pattern = useEditPattern();
   const { sizeClass, width } = useSizeClass(ref);
   const geo = geometry(width, pattern, sizeClass, zoom);
@@ -26,8 +27,12 @@ export function DrumMachine() {
     >
       <HeaderBar sizeClass={sizeClass} />
       <PageStrip sizeClass={sizeClass} />
-      <EncoderStrip sizeClass={sizeClass} />
-      {view === "grid" ? <TrackList geo={geo} /> : <PadView sizeClass={sizeClass} width={width} />}
+      {hasTracks && <EncoderStrip sizeClass={sizeClass} />}
+      {view === "grid" || !hasTracks ? (
+        <TrackList geo={geo} />
+      ) : (
+        <PadView sizeClass={sizeClass} width={width} />
+      )}
       <FunctionBar sizeClass={sizeClass} />
       <EuclidPopover />
     </div>
