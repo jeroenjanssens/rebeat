@@ -45,6 +45,7 @@ type Location =
 
 type Sort = "name" | "recent" | "duration";
 type TypeFilter = "all" | "loops" | "oneshots";
+type Length = "any" | "short" | "medium" | "long";
 
 /** What the list shows: library samples or built-in kit sounds, normalized. */
 interface Item {
@@ -100,6 +101,7 @@ export function LibraryPanel() {
   const [sort, setSort] = useState<Sort>("recent");
   const [type, setType] = useState<TypeFilter>("all");
   const [tag, setTag] = useState<string | null>(null);
+  const [length, setLength] = useState<Length>("any");
   const [sync, setSync] = useState(false);
   const [dropHover, setDropHover] = useState(false);
   const [renaming, setRenaming] = useState<string | null>(null);
@@ -176,13 +178,16 @@ export function LibraryPanel() {
     if (type === "loops") list = list.filter((i) => i.bpm);
     if (type === "oneshots") list = list.filter((i) => !i.bpm);
     if (tag) list = list.filter((i) => i.tags.includes(tag));
+    if (length === "short") list = list.filter((i) => i.duration < 1);
+    if (length === "medium") list = list.filter((i) => i.duration >= 1 && i.duration <= 5);
+    if (length === "long") list = list.filter((i) => i.duration > 5);
     const by: Record<Sort, (a: Item, b: Item) => number> = {
       name: (a, b) => a.name.localeCompare(b.name),
       recent: (a, b) => b.createdAt - a.createdAt,
       duration: (a, b) => a.duration - b.duration,
     };
     return loc.kind === "kit" ? list : list.sort(by[sort]);
-  }, [loc, samples, query, type, tag, sort, usedIds]);
+  }, [loc, samples, query, type, tag, length, sort, usedIds]);
 
   // selecting a track shows its sample in the library
   useEffect(() => {
@@ -418,7 +423,7 @@ export function LibraryPanel() {
         <button
           ref={filterRef}
           className="tool-btn shrink-0"
-          data-active={type !== "all" || !!tag}
+          data-active={type !== "all" || !!tag || length !== "any"}
           title="Filter"
           onClick={() =>
             dropdown(filterRef.current!, [
@@ -427,6 +432,19 @@ export function LibraryPanel() {
                   t === "all" ? "All types" : t === "loops" ? "Loops (with tempo)" : "One-shots",
                 checked: type === t,
                 onSelect: () => setType(t),
+              })),
+              { separator: true },
+              ...(["any", "short", "medium", "long"] as Length[]).map((l) => ({
+                label:
+                  l === "any"
+                    ? "Any length"
+                    : l === "short"
+                      ? "Short (< 1 s)"
+                      : l === "medium"
+                        ? "Medium (1–5 s)"
+                        : "Long (> 5 s)",
+                checked: length === l,
+                onSelect: () => setLength(l),
               })),
               { separator: true },
               { label: "Any tag", checked: !tag, onSelect: () => setTag(null) },

@@ -270,7 +270,10 @@ export function SettingsDialog() {
                     onChange={(inputDeviceId) => set({ inputDeviceId })}
                   />
                 </Row>
-                <Row label="Latency" hint="Lower = more responsive, higher = fewer dropouts">
+                <Row
+                  label="Latency"
+                  hint="Lower = more responsive, higher = fewer dropouts (applies after a reload)"
+                >
                   <Segmented
                     value={s.latencyMode}
                     options={[

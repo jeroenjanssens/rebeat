@@ -25,7 +25,7 @@ import {
   rotateLane,
 } from "../../model/project";
 import { STEP_SIZES, type Lane, type Pattern, type Track } from "../../model/types";
-import { applyHeld } from "../../state/actions";
+import { applyHeld, fnClick } from "../../state/actions";
 import { useStore } from "../../state/store";
 import { ClipView } from "./ClipView";
 import type { Geometry } from "./layout";
@@ -244,6 +244,24 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
         : []),
       { separator: true },
       {
+        label: "Copy steps",
+        shortcut: "⌘C",
+        disabled: !steps,
+        onSelect: () => {
+          setUi({ selectedTrackId: track.id });
+          fnClick("copy");
+        },
+      },
+      {
+        label: "Paste steps",
+        shortcut: "⌘V",
+        disabled: !steps || !useStore.getState().clipboard,
+        onSelect: () => {
+          setUi({ selectedTrackId: track.id });
+          fnClick("paste");
+        },
+      },
+      {
         label: "Clear steps",
         shortcut: "CLEAR",
         disabled: !steps,
@@ -454,7 +472,10 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
                 className="num h-[18px] min-w-[26px] rounded-[3px] border border-line px-1 text-[9.5px] text-dim hover:text-ink"
                 title={track.effects.map((f) => f.name).join(" → ") || "No effects"}
                 onPointerDown={(e) => e.stopPropagation()}
-                onClick={() => setUi({ selectedTrackId: track.id, bank: "fx", fxIndex: 0 })}
+                onClick={() => {
+                  setUi({ selectedTrackId: track.id, bank: "fx", fxIndex: 0 });
+                  focusPanel("inspector");
+                }}
               >
                 FX{track.effects.length ? ` ${track.effects.length}` : ""}
               </button>

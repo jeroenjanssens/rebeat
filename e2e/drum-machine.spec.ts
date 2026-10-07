@@ -93,3 +93,18 @@ test("sets a parameter lock on a selected step", async ({ page }) => {
   expect(locks?.["sound.tune"]).toBeGreaterThan(0.5);
   await expect(pad.locator(".lock")).toBeVisible();
 });
+
+test("right-drag erases steps; right-click opens the step menu", async ({ page }) => {
+  const kickPads = dm(page).locator("[data-track-row]").first().locator("[data-pad]");
+  // the intro kick plays on steps 0, 4, 8, 12
+  const a = (await kickPads.nth(0).boundingBox())!;
+  const b = (await kickPads.nth(4).boundingBox())!;
+  await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
+  await page.mouse.down({ button: "right" });
+  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 6 });
+  await page.mouse.up({ button: "right" });
+  await expect(kickPads.nth(0)).not.toHaveClass(/\bon\b/);
+  await expect(kickPads.nth(4)).not.toHaveClass(/\bon\b/);
+  await kickPads.nth(8).click({ button: "right" });
+  await expect(page.locator(".menu").getByText("Probability")).toBeVisible();
+});

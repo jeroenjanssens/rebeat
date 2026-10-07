@@ -11,7 +11,9 @@ import { SortableContext, arrayMove, verticalListSortingStrategy } from "@dnd-ki
 import { restrictToVerticalAxis } from "./dndModifiers";
 import { addTrack, makeTrack } from "../../model/project";
 import type { SoundCategory, TrackKind } from "../../model/types";
+import { contextMenu } from "../../components/Menu";
 import { applyHeld, editSteps, setStep, toggleSelected } from "../../state/actions";
+import { stepMenu } from "./stepMenu";
 import { stepKey, useStore } from "../../state/store";
 import { KIT_MIME, SAMPLE_MIME, addSampleTracks } from "../../state/trackActions";
 import { filesFromDrop, importFiles } from "../../library/library";
@@ -21,6 +23,15 @@ import { TrackRow } from "./TrackRow";
 
 type Gesture =
   | { kind: "paint"; on: boolean; key: string }
+  | {
+      kind: "rightErase";
+      trackId: string;
+      index: number;
+      moved: boolean;
+      key: string;
+      x: number;
+      y: number;
+    }
   | { kind: "velocity"; trackId: string; index: number; y: number; v: number; key: string }
   | {
       kind: "marquee";
@@ -99,6 +110,21 @@ export function TrackList({ geo }: { geo: Geometry }) {
   };
 
   const onPointerDown = (e: React.PointerEvent) => {
+    if (e.button === 2) {
+      // right-drag erases; a right-click without moving opens the step menu
+      const hit = padAt(e.clientX, e.clientY);
+      if (hit && hit.index < lengthOf(hit.trackId))
+        begin(e, {
+          kind: "rightErase",
+          trackId: hit.trackId,
+          index: hit.index,
+          moved: false,
+          key: `re-${performance.now()}`,
+          x: e.clientX,
+          y: e.clientY,
+        });
+      return;
+    }
     if (e.button !== 0) return;
     const hit = padAt(e.clientX, e.clientY);
     if (!hit) {
@@ -157,6 +183,12 @@ export function TrackList({ geo }: { geo: Geometry }) {
     if (g.kind === "paint") {
       const hit = padAt(e.clientX, e.clientY);
       if (hit && hit.index < lengthOf(hit.trackId)) setStep(hit.trackId, hit.index, g.on, g.key);
+    } else if (g.kind === "rightErase") {
+      const hit = padAt(e.clientX, e.clientY);
+      if (!hit || (hit.trackId === g.trackId && hit.index === g.index && !g.moved)) return;
+      if (!g.moved) setStep(g.trackId, g.index, false, g.key);
+      g.moved = true;
+      if (hit.index < lengthOf(hit.trackId)) setStep(hit.trackId, hit.index, false, g.key);
     } else if (g.kind === "velocity") {
       const v = Math.min(1, Math.max(0.02, g.v + (g.y - e.clientY) / 90));
       editSteps([stepKey(g.trackId, g.index)], (s) => (s.velocity = v), g.key);
@@ -189,8 +221,16 @@ export function TrackList({ geo }: { geo: Geometry }) {
     }
   };
 
-  const onPointerUp = () => {
+  const onPointerUp = (e: React.PointerEvent) => {
     const g = gesture.current;
+    if (g?.kind === "rightErase" && !g.moved) {
+      gesture.current = null;
+      contextMenu(
+        { clientX: e.clientX, clientY: e.clientY, preventDefault: () => {} },
+        stepMenu(g.trackId, g.index),
+      );
+      return;
+    }
     if (g?.kind === "marquee" && !g.moved && g.start)
       toggleSelected(g.start.trackId, g.start.index, g.additive);
     gesture.current = null;
@@ -249,6 +289,7 @@ export function TrackList({ geo }: { geo: Geometry }) {
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
+      onContextMenu={(e) => (e.target as HTMLElement).closest("[data-pad]") && e.preventDefault()}
       onWheel={(e) => {
         if (!(e.ctrlKey || e.metaKey)) return;
         e.preventDefault();

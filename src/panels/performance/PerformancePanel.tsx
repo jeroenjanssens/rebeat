@@ -15,6 +15,7 @@ import {
 } from "../../engine/perf";
 import { onStep } from "../../engine/transport";
 import { STEP_SIZE_QUARTERS, type Track } from "../../model/types";
+import { startMidiLearn } from "../../midi/learn";
 import { padInput } from "../../state/input";
 import { useStore } from "../../state/store";
 
@@ -336,6 +337,14 @@ function PlatterFor({
           onPointerMove={(e) => s.active() && s.move(unwrap(angleAt(e)))}
           onPointerUp={s.end}
           onPointerCancel={s.end}
+          onContextMenu={(e) =>
+            contextMenu(e, [
+              {
+                label: "MIDI learn: jog wheel",
+                onSelect: () => startMidiLearn("perf:jog", "Jog wheel"),
+              },
+            ])
+          }
           data-testid="platter"
         >
           <circle cx={50} cy={50} r={49} fill="var(--display)" stroke="var(--border-strong)" />

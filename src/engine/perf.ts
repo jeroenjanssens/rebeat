@@ -6,7 +6,15 @@
 import * as Tone from "tone";
 import { create } from "zustand";
 import { useStore } from "../state/store";
-import { audioNow, forEachChannel, masterPerfPoints } from "./engine";
+import type { Track } from "../model/types";
+import {
+  audioNow,
+  forEachChannel,
+  masterPerfPoints,
+  scratchBegin,
+  scratchEnd,
+  scratchMove,
+} from "./engine";
 import { nextBarTime, setBeatRepeat, stop } from "./transport";
 
 interface PerfState {
@@ -157,6 +165,31 @@ export function setPerfControl(name: string, v: number, continuous: boolean) {
   else if (name === "throwB") setThrow("B", continuous ? on : !usePerf.getState().throwB);
   else if (name === "repeat") setRepeat(on ? 2 : null);
   else if (name.startsWith("mute")) toggleMuteGroup(Number(name.slice(4)));
+  else if (name === "jog") jog(v);
+}
+
+let jogTimer = 0;
+let jogging: Track | null = null;
+
+/** A MIDI jog wheel (relative CC, learned as "perf:jog") scratches the selected audio track. */
+function jog(v: number) {
+  const s = useStore.getState();
+  const track =
+    s.project.tracks.find((t) => t.id === s.selectedTrackId && t.kind === "audio" && t.sampleId) ??
+    s.project.tracks.find((t) => t.kind === "audio" && t.sampleId);
+  if (!track) return;
+  const raw = Math.round(v * 127);
+  const ticks = raw < 64 ? raw : raw - 128;
+  if (!jogging) {
+    jogging = track;
+    void scratchBegin(track);
+  }
+  scratchMove(track.id, Math.max(-4, Math.min(4, ticks / 4)));
+  clearTimeout(jogTimer);
+  jogTimer = window.setTimeout(() => {
+    if (jogging) scratchEnd(jogging);
+    jogging = null;
+  }, 120);
 }
 
 export function startPerf() {

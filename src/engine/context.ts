@@ -54,6 +54,10 @@ export async function startAudio(): Promise<boolean> {
     const { outputDeviceId } = useSettings.getState();
     if (outputDeviceId) await setOutputDevice(outputDeviceId);
     shell.set({ audio: "running" });
+    useSettings.subscribe(
+      (s, prev) =>
+        s.outputDeviceId !== prev.outputDeviceId && void setOutputDevice(s.outputDeviceId),
+    );
     const ctx = audioContext();
     ctx.addEventListener("statechange", () =>
       useShell.getState().set({ audio: ctx.state === "running" ? "running" : "suspended" }),
