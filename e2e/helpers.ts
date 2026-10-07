@@ -4,7 +4,7 @@ import type { Page } from "@playwright/test";
 export async function openApp(page: Page) {
   await page.goto("/");
   await page.getByTestId("audio-overlay").click();
-  await page.getByTestId("audio-status").waitFor();
+  await page.locator('[data-testid="audio-status"][data-status="running"]').waitFor();
   await waitForProject(page);
 }
 

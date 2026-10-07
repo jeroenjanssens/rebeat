@@ -69,7 +69,7 @@ export function ProjectBrowser() {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[65] flex flex-col bg-bg/95 backdrop-blur-sm"
+      className="fixed inset-0 z-[1050] flex flex-col bg-bg/95 backdrop-blur-sm"
       data-testid="project-browser"
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => {

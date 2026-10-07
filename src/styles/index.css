@@ -297,9 +297,10 @@ body {
   border-color: var(--border-strong);
 }
 
+/* overlays stack above Dockview (its sashes and drop targets use z-index up to ~999) */
 .menu {
   position: fixed;
-  z-index: 50;
+  z-index: 1150;
   min-width: 180px;
   padding: 4px;
   border-radius: 8px;
@@ -620,7 +621,7 @@ body {
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  z-index: 60;
+  z-index: 1101;
   max-height: 85vh;
   overflow: auto;
   border-radius: 10px;
@@ -632,7 +633,7 @@ body {
 .dialog-overlay {
   position: fixed;
   inset: 0;
-  z-index: 59;
+  z-index: 1100;
   background: rgba(0, 0, 0, 0.45);
 }
 .input {

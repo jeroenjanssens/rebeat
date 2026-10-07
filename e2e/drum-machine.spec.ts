@@ -23,8 +23,8 @@ test("makes sound when playing and is silent when stopped", async ({ page }) => 
   await page.keyboard.press("Space");
   expect(await peakWhilePlaying(page)).toBeGreaterThan(0.1);
   await page.keyboard.press("Space");
-  await page.waitForTimeout(1500);
-  expect(await peakWhilePlaying(page, 300)).toBeLessThan(0.01);
+  // reverb and delay tails ring out after stopping
+  await expect.poll(() => peakWhilePlaying(page, 300), { timeout: 10000 }).toBeLessThan(0.01);
 });
 
 test("moves the step cursor with the arrow keys and toggles with Enter", async ({ page }) => {

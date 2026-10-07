@@ -155,7 +155,12 @@ function AudioStatus() {
           ? "Starting…"
           : "Audio off";
   return (
-    <span className="flex items-center gap-1.5" title={error || text} data-testid="audio-status">
+    <span
+      className="flex items-center gap-1.5"
+      title={error || text}
+      data-testid="audio-status"
+      data-status={status}
+    >
       <span
         className="h-2 w-2 rounded-full"
         style={{ background: color, boxShadow: `0 0 6px ${color}` }}

@@ -8,7 +8,7 @@ export function AudioStartOverlay() {
   if (status === "running") return null;
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/55 backdrop-blur-[2px]"
+      className="fixed inset-0 z-[1300] flex items-center justify-center bg-black/55 backdrop-blur-[2px]"
       onPointerDown={() => startAudio()}
       data-testid="audio-overlay"
     >
