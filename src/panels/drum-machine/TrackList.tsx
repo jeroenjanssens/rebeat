@@ -191,8 +191,15 @@ export function TrackList({ geo }: { geo: Geometry }) {
 
   // ---------- add tracks ----------
 
-  const add = (kind: TrackKind, category: SoundCategory, name: string, source: string) => {
+  const add = (
+    kind: TrackKind,
+    category: SoundCategory,
+    name: string,
+    source: string,
+    sampleId?: string,
+  ) => {
     const track = makeTrack(kind, category, name, source);
+    track.sampleId = sampleId;
     commit((p) => addTrack(p, track));
     setUi({ selectedTrackId: track.id });
   };
@@ -313,7 +320,7 @@ export function TrackList({ geo }: { geo: Geometry }) {
           <span className="hidden @[600px]:inline">Drop samples here to add tracks ·</span>
           <button
             className="tool-btn border border-line"
-            onClick={() => add("drum", "perc", "Perc", "perc-909.wav")}
+            onClick={() => add("drum", "perc", "Perc", "808 Cowbell", "kit:808:cowbell")}
           >
             + Drum
           </button>
@@ -325,7 +332,7 @@ export function TrackList({ geo }: { geo: Geometry }) {
           </button>
           <button
             className="tool-btn border border-line"
-            onClick={() => add("audio", "vocal", "Audio", "empty")}
+            onClick={() => add("audio", "vocal", "Audio", "No clip")}
           >
             + Audio
           </button>

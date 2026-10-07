@@ -8,10 +8,11 @@ interface Props {
   length: number;
   geo: Geometry;
   selected: Set<number>;
+  cursor?: number;
 }
 
 /** The pads of one track, grouped by beat with a divider at each bar. */
-export function StepsArea({ track, lane, length, geo, selected }: Props) {
+export function StepsArea({ track, lane, length, geo, selected, cursor = -1 }: Props) {
   const instrument = track.kind === "instrument";
 
   // note continuations (ties) for instrument tracks
@@ -45,6 +46,7 @@ export function StepsArea({ track, lane, length, geo, selected }: Props) {
                 selected={selected.has(i)}
                 velBar={geo.sizeClass === "large"}
                 instrument={instrument}
+                cursor={cursor === i}
               />
             ))}
           </div>

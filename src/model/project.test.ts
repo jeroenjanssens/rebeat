@@ -4,6 +4,7 @@ import { demoProject } from "../templates/nightDrive";
 import { notesLabel, noteName } from "./notes";
 import {
   cloneSlot,
+  convertTrack,
   copySlot,
   deleteSlot,
   doublePattern,
@@ -76,5 +77,25 @@ describe("helpers", () => {
     expect(noteName(60)).toBe("C4");
     expect(notesLabel([60, 63, 67], true)).toBe("Cm");
     expect(notesLabel([56, 60, 63], true)).toBe("A♭");
+  });
+});
+
+describe("convertTrack", () => {
+  it("turns drum hits into notes and back", () => {
+    const p = demoProject();
+    const kick = p.tracks[0];
+    convertTrack(p, kick.id, "instrument");
+    const lane = Object.values(p.patterns)[1].lanes[kick.id];
+    expect(kick.kind).toBe("instrument");
+    expect(lane.kind === "steps" && lane.steps[0].notes).toEqual([60]);
+    convertTrack(p, kick.id, "drum");
+    expect(lane.kind === "steps" && lane.steps[0].notes).toBeUndefined();
+    expect(kick.params["sound.tune"]).toBe(0.5);
+  });
+
+  it("gives audio tracks a clip lane", () => {
+    const p = demoProject();
+    convertTrack(p, p.tracks[0].id, "audio");
+    expect(Object.values(p.patterns)[0].lanes[p.tracks[0].id].kind).toBe("clip");
   });
 });

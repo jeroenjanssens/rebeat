@@ -452,6 +452,11 @@ body {
   outline-offset: 1px;
   z-index: 1;
 }
+.pad.cursor {
+  outline: 2px dashed var(--accent);
+  outline-offset: 1px;
+  z-index: 1;
+}
 .pad.head::after {
   content: "";
   position: absolute;

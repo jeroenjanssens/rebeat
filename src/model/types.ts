@@ -25,6 +25,8 @@ export interface StepLane {
   kind: "steps";
   steps: Step[]; // always MAX_STEPS long; steps beyond the count are kept, just hidden
   stepCountOverride?: number;
+  /** The track's own step size on this page (polyrhythms); default = the page's. */
+  stepSizeOverride?: StepSize;
 }
 
 export interface ClipLane {

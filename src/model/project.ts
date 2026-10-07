@@ -247,3 +247,32 @@ export function stepAt(pattern: Pattern, trackId: string, index: number): Step |
   const lane = pattern.lanes[trackId];
   return lane?.kind === "steps" ? lane.steps[index] : undefined;
 }
+
+/** Change a track's type; step data carries over between drum and instrument tracks. */
+export function convertTrack(project: Project, trackId: string, kind: TrackKind) {
+  const track = project.tracks.find((t) => t.id === trackId);
+  if (!track || track.kind === kind) return;
+  const from = track.kind;
+  track.kind = kind;
+  for (const key of Object.keys(track.params))
+    if (key.startsWith("sound.")) delete track.params[key];
+  Object.assign(track.params, prefixed("sound", defaultParams(SOUND_PARAMS[kind])));
+  if (kind === "instrument") track.source = "Poly · Init";
+  for (const p of Object.values(project.patterns)) {
+    const lane = p.lanes[trackId];
+    if (!lane) continue;
+    if (lane.kind === "steps" && kind !== "audio") {
+      for (const s of lane.steps) {
+        if (kind === "instrument" && from === "drum" && s.on) {
+          s.notes = [60 + s.pitch];
+          s.length = 1;
+        }
+        if (kind === "drum") {
+          delete s.notes;
+          delete s.length;
+          delete s.slide;
+        }
+      }
+    } else p.lanes[trackId] = emptyLane(kind);
+  }
+}

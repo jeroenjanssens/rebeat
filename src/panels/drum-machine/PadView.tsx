@@ -4,7 +4,10 @@ import * as engine from "../../engine/engine";
 import { onStep } from "../../engine/transport";
 import { KEY_ROOT, SCALE_MINOR, noteName } from "../../model/notes";
 import { STEP_COUNT_PRESETS, STEP_SIZE_QUARTERS, type Track } from "../../model/types";
+import { Keyboard } from "lucide-react";
+import { addKeyHook, keyName } from "../../app/commands";
 import { applyHeld, setStep } from "../../state/actions";
+import { padInput } from "../../state/input";
 import { useEditPattern, useSelectedTrack, useStore } from "../../state/store";
 import { geometry, type SizeClass } from "./layout";
 import { StepsArea } from "./StepsArea";
@@ -14,6 +17,36 @@ function flash(el: Element | null | undefined) {
   el.classList.remove("trig");
   void (el as HTMLElement).offsetWidth;
   el.classList.add("trig");
+}
+
+/** Pad 1 is bottom-left, like on hardware: Z X C V / A S D F / Q W E R / 1 2 3 4. */
+const DRUM_KEYS = ["Z", "X", "C", "V", "A", "S", "D", "F", "Q", "W", "E", "R", "1", "2", "3", "4"];
+/** A piano on the home row: A = C, W = C#, S = D … */
+const PIANO_KEYS: Record<string, number> = {
+  A: 0,
+  W: 1,
+  S: 2,
+  E: 3,
+  D: 4,
+  F: 5,
+  T: 6,
+  G: 7,
+  Y: 8,
+  H: 9,
+  U: 10,
+  J: 11,
+  K: 12,
+  O: 13,
+  L: 14,
+  P: 15,
+  ";": 16,
+};
+
+/** Play a pad: sound, flash, and step entry / live recording. */
+function playPad(track: Track, velocity: number, notes?: number[], el?: Element | null) {
+  engine.trigger(track, velocity, { notes, lengthSteps: notes ? 2 : undefined, stepDur: 0.12 });
+  flash(el);
+  padInput(track, velocity, notes);
 }
 
 /** Hit a pad: velocity from the vertical position; with REPEAT held it retriggers at the repeat rate. */
@@ -32,23 +65,66 @@ function usePadHit() {
     const velocity = s.accentMode
       ? 1
       : Math.min(1, Math.max(0.2, 1 - (e.clientY - r.top) / r.height + 0.25));
-    const fire = () => {
-      engine.trigger(track, velocity, {
-        notes,
-        lengthSteps: notes ? 2 : undefined,
-        stepDur: 0.12,
-      });
-      flash(el);
-    };
-    fire();
+    playPad(track, velocity, notes, el);
     if (s.held === "repeat") {
       useStore.getState().setUi({ heldUsed: true });
       const ms = (60000 / s.project.bpm) * STEP_SIZE_QUARTERS[s.repeatRate];
       stopRepeat();
-      repeatTimer.current = window.setInterval(fire, ms);
+      repeatTimer.current = window.setInterval(() => playPad(track, velocity * 0.9, notes, el), ms);
     }
   };
   return { hit, stopRepeat };
+}
+
+/** The computer keyboard plays the pads (drum tracks) or a piano (instrument tracks). */
+function useKeyboardPads(track: Track, root: React.RefObject<HTMLElement | null>) {
+  useEffect(
+    () =>
+      addKeyHook((e, down) => {
+        const s = useStore.getState();
+        if (!s.keyboardPads || e.metaKey || e.ctrlKey || e.altKey) return false;
+        const key = keyName(e);
+        if (!key) return false;
+        const velocity = s.accentMode ? 1 : e.shiftKey ? 1 : 0.8;
+        if (track.kind === "instrument") {
+          if (key === "Z" || key === "X") {
+            if (down && !e.repeat)
+              s.setUi({
+                keyboardOctave: Math.max(
+                  -3,
+                  Math.min(3, s.keyboardOctave + (key === "Z" ? -1 : 1)),
+                ),
+              });
+            return true;
+          }
+          const semis = PIANO_KEYS[key];
+          if (semis === undefined) return false;
+          if (down && !e.repeat) {
+            const base = (track.category === "bass" ? 36 : 48) + s.keyboardOctave * 12;
+            const midi = base + semis;
+            playPad(track, velocity, [midi], root.current?.querySelector(`[data-midi="${midi}"]`));
+          }
+          return true;
+        }
+        const i = DRUM_KEYS.indexOf(key);
+        if (i < 0) return false;
+        if (down && !e.repeat) {
+          const t = s.project.tracks[i];
+          if (t && t.kind !== "audio") {
+            s.setUi({ selectedTrackId: t.id });
+            if (!t.mute)
+              playPad(
+                t,
+                velocity,
+                undefined,
+                root.current?.querySelector(`[data-pad-track="${t.id}"]`),
+              );
+          }
+        }
+        return true;
+      }),
+    [track, root],
+  );
 }
 
 function DrumPads({ size }: { size: SizeClass }) {
@@ -92,12 +168,17 @@ function DrumPads({ size }: { size: SizeClass }) {
             onPointerDown={(e) => {
               if (applyHeld({ trackId: t.id })) return;
               setUi({ selectedTrackId: t.id });
-              if (!t.mute) hit(e, t);
+              if (!t.mute && t.kind !== "audio") hit(e, t);
             }}
             onPointerUp={stopRepeat}
             onPointerLeave={stopRepeat}
           >
-            <span className="num text-[9px] text-black/50">{String(ti + 1).padStart(2, "0")}</span>
+            <span className="flex justify-between">
+              <span className="num text-[9px] text-black/50">
+                {String(ti + 1).padStart(2, "0")}
+              </span>
+              <span className="num text-[9px] text-black/40">{DRUM_KEYS[ti]}</span>
+            </span>
             <span
               className={`truncate text-[10px] font-bold uppercase tracking-wide ${t.mute ? "text-faint line-through" : "text-ink"}`}
             >
@@ -113,8 +194,9 @@ function DrumPads({ size }: { size: SizeClass }) {
 /** In-key note layout: rows go up by a fourth (3 scale degrees), the root is highlighted. */
 function NotePads({ track, size }: { track: Track; size: SizeClass }) {
   const { hit, stopRepeat } = usePadHit();
+  const octave = useStore((s) => s.keyboardOctave);
   const padSize = size === "large" ? 64 : size === "compact" ? 36 : 50;
-  const base = track.category === "bass" ? 36 : 48;
+  const base = (track.category === "bass" ? 36 : 48) + octave * 12;
   const rows = 4;
   const cols = 8;
   const pads = [];
@@ -137,6 +219,7 @@ function NotePads({ track, size }: { track: Track; size: SizeClass }) {
         {pads.map((p, i) => (
           <button
             key={i}
+            data-midi={p.midi}
             className={`perf-pad num touch-none text-[10px] font-semibold text-ink ${p.root ? "root" : ""}`}
             style={{ "--c": track.color } as CSSProperties}
             onPointerDown={(e) => hit(e, track, [p.midi])}
@@ -147,7 +230,10 @@ function NotePads({ track, size }: { track: Track; size: SizeClass }) {
           </button>
         ))}
       </div>
-      <div className="label">C minor · in key · root highlighted</div>
+      <div className="label">
+        C minor · in key · root highlighted · keys A–; play, Z/X octave ({octave >= 0 ? "+" : ""}
+        {octave})
+      </div>
     </div>
   );
 }
@@ -161,6 +247,10 @@ export function PadView({ sizeClass, width }: { sizeClass: SizeClass; width: num
   const length =
     lane?.kind === "steps" ? (lane.stepCountOverride ?? pattern.stepCount) : pattern.stepCount;
   const paint = useRef<{ on: boolean; key: string } | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const keyboardPads = useStore((s) => s.keyboardPads);
+  const cursor = useStore((s) => (s.cursor?.trackId === track.id ? s.cursor.index : -1));
+  useKeyboardPads(track, rootRef);
 
   useEffect(() => {
     let head: Element | null = null;
@@ -168,7 +258,8 @@ export function PadView({ sizeClass, width }: { sizeClass: SizeClass; width: num
       head?.classList.remove("head");
       head = null;
       if (e.pageStep < 0 || e.patternId !== pattern.id) return;
-      const el = stepsRef.current?.querySelector(`[data-i="${e.pageStep % length}"]`);
+      const i = e.laneSteps.get(track.id) ?? e.pageStep % length;
+      const el = stepsRef.current?.querySelector(`[data-i="${i}"]`);
       if (!el) return;
       head = el;
       el.classList.add("head");
@@ -196,10 +287,20 @@ export function PadView({ sizeClass, width }: { sizeClass: SizeClass; width: num
   };
 
   return (
-    <div className="scroll-thin flex min-h-0 flex-1 gap-6 overflow-auto p-4">
+    <div ref={rootRef} className="scroll-thin flex min-h-0 flex-1 gap-6 overflow-auto p-4">
       <div className="flex flex-col gap-3">
-        <div className="label">
-          {track.kind === "instrument" ? `Notes · ${track.name}` : "Pads · one per track"}
+        <div className="flex items-center gap-2">
+          <span className="label">
+            {track.kind === "instrument" ? `Notes · ${track.name}` : "Pads · one per track"}
+          </span>
+          <button
+            className="tool-btn !h-5 ml-auto border border-line !text-[10px]"
+            data-active={keyboardPads}
+            title="Play pads with the computer keyboard"
+            onClick={() => setUi({ keyboardPads: !keyboardPads })}
+          >
+            <Keyboard size={11} /> Keys
+          </button>
         </div>
         {track.kind === "instrument" ? (
           <NotePads track={track} size={sizeClass} />
@@ -267,6 +368,7 @@ export function PadView({ sizeClass, width }: { sizeClass: SizeClass; width: num
                     length={length}
                     geo={{ ...geo, groups }}
                     selected={selected}
+                    cursor={cursor}
                   />
                 </div>
               );

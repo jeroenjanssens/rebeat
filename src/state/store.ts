@@ -40,6 +40,12 @@ export interface UiState {
   editSlotId: string;
   /** Keys are `${trackId}:${stepIndex}` in the page being edited. */
   selectedSteps: Record<string, true>;
+  /** Keyboard step cursor (arrows / Enter / 1–9), also the step-entry position. */
+  cursor: { trackId: string; index: number } | null;
+  /** The computer keyboard plays pads/notes in the pad view. */
+  keyboardPads: boolean;
+  /** Octave offset for the computer-keyboard piano. */
+  keyboardOctave: number;
   held: FnKey | null;
   heldUsed: boolean;
   shiftLatched: boolean;
@@ -91,6 +97,9 @@ export const useStore = create<State>()((set, get) => ({
   selectedTrackId: project.tracks[1].id,
   editSlotId: project.slots[1].id,
   selectedSteps: {},
+  cursor: null,
+  keyboardPads: true,
+  keyboardOctave: 0,
   held: null,
   heldUsed: false,
   shiftLatched: false,

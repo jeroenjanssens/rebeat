@@ -88,7 +88,7 @@ export function toggleSelected(trackId: string, index: number, additive = true) 
 }
 
 export function clearSelection() {
-  get().setUi({ selectedSteps: {} });
+  get().setUi({ selectedSteps: {}, cursor: null, euclidOpen: false });
 }
 
 // ---------- function buttons ----------

@@ -8,15 +8,18 @@ import { MiniFader } from "../../components/MiniFader";
 import { Scope } from "../../components/Scope";
 import { onStep } from "../../engine/transport";
 import { TRACK_PALETTE } from "../../model/colors";
+import { KITS, KIT_SOUNDS, kitSounds } from "../../engine/kits";
+import { toUnit } from "../../model/params";
 import {
   clearLane,
+  convertTrack,
   deleteTrack,
   duplicateTrack,
   randomizeLane,
   reverseLane,
   rotateLane,
 } from "../../model/project";
-import type { Lane, Pattern, Track } from "../../model/types";
+import { STEP_SIZES, type Lane, type Pattern, type Track } from "../../model/types";
 import { applyHeld } from "../../state/actions";
 import { useStore } from "../../state/store";
 import { ClipView } from "./ClipView";
@@ -34,6 +37,71 @@ interface Props {
   isSelected: boolean;
 }
 
+function chips(
+  label: string,
+  options: { label: string; active: boolean; onClick: () => void }[],
+): MenuItem {
+  return {
+    render: (close) => (
+      <div className="px-2 py-1.5">
+        <div className="label mb-1.5">{label}</div>
+        <div className="flex flex-wrap gap-1">
+          {options.map((o) => (
+            <button
+              key={o.label}
+              className="tool-btn border border-line"
+              data-active={o.active}
+              onClick={() => {
+                o.onClick();
+                close();
+              }}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    ),
+  };
+}
+
+/** Replace the track's sound with a built-in kit sound (the library adds your own in Phase 3). */
+function SamplePicker({
+  current,
+  audio,
+  onPick,
+}: {
+  current?: string;
+  audio: boolean;
+  onPick: (id: string, name: string) => void;
+}) {
+  const groups = audio
+    ? [{ label: "Loops", sounds: KIT_SOUNDS.filter((k) => k.bpm) }]
+    : KITS.map((kit) => ({ label: `${kit} kit`, sounds: kitSounds(kit) }));
+  return (
+    <div className="max-w-[300px] px-2 py-1.5">
+      <div className="label mb-1.5">Replace sound</div>
+      {groups.map((g) => (
+        <div key={g.label} className="mb-1.5">
+          <div className="mb-1 text-[10px] text-faint">{g.label}</div>
+          <div className="flex flex-wrap gap-1">
+            {g.sounds.map((k) => (
+              <button
+                key={k.id}
+                className="tool-btn border border-line !h-6 !text-[10.5px]"
+                data-active={current === k.id}
+                onClick={() => onPick(k.id, k.name)}
+              >
+                {k.name.replace(/^\d+ /, "")}
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSelected }: Props) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: track.id,
@@ -42,6 +110,7 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
   const commit = useStore((s) => s.commit);
   const setUi = useStore((s) => s.setUi);
   const jogOpen = useStore((s) => !!s.jogOpen[track.id]);
+  const cursorIndex = useStore((s) => (s.cursor?.trackId === track.id ? s.cursor.index : -1));
   const compact = geo.sizeClass === "compact";
   const length =
     lane.kind === "steps" ? (lane.stepCountOverride ?? pattern.stepCount) : pattern.stepCount;
@@ -53,7 +122,8 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
       head?.classList.remove("head");
       head = null;
       if (e.pageStep < 0 || e.patternId !== pattern.id || lane.kind !== "steps") return;
-      const el = stepsRef.current?.querySelector(`[data-i="${e.pageStep % length}"]`);
+      const i = e.laneSteps.get(track.id) ?? e.pageStep % length;
+      const el = stepsRef.current?.querySelector(`[data-i="${i}"]`);
       if (!el) return;
       head = el;
       el.classList.add("head");
@@ -110,7 +180,25 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
           </div>
         ),
       },
-      { label: "Replace sample… (Phase 3)", disabled: true },
+      ...(track.kind !== "instrument"
+        ? [
+            {
+              render: (close: () => void) => (
+                <SamplePicker
+                  current={track.sampleId}
+                  audio={track.kind === "audio"}
+                  onPick={(id, name) => {
+                    update((t) => {
+                      t.sampleId = id;
+                      t.source = name;
+                    });
+                    close();
+                  }}
+                />
+              ),
+            },
+          ]
+        : []),
       { separator: true },
       {
         label: "Clear steps",
@@ -146,35 +234,47 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
         onSelect: () => setUi({ selectedTrackId: track.id, euclidOpen: true }),
       },
       { separator: true },
-      ...(steps
+      ...(steps && lane.kind === "steps"
         ? [
-            {
-              render: () => (
-                <div className="px-2 py-1.5">
-                  <div className="label mb-1.5">Track length on this page</div>
-                  <div className="flex flex-wrap gap-1">
-                    {[undefined, 3, 5, 6, 7, 12].map((n) => (
-                      <button
-                        key={n ?? "page"}
-                        className="tool-btn border border-line"
-                        data-active={(lane.kind === "steps" && lane.stepCountOverride) === n}
-                        onClick={() => {
-                          updateLane((l) => l.kind === "steps" && (l.stepCountOverride = n));
-                          useMenu.getState().close();
-                        }}
-                      >
-                        {n ?? "Page"}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ),
-            },
+            chips(
+              "Track length on this page",
+              [undefined, 3, 5, 6, 7, 12].map((n) => ({
+                label: n === undefined ? "Page" : String(n),
+                active: lane.stepCountOverride === n,
+                onClick: () => updateLane((l) => l.kind === "steps" && (l.stepCountOverride = n)),
+              })),
+            ),
+            chips(
+              "Track rate on this page",
+              [undefined, ...STEP_SIZES].map((sz) => ({
+                label: sz ?? "Page",
+                active: lane.stepSizeOverride === sz,
+                onClick: () => updateLane((l) => l.kind === "steps" && (l.stepSizeOverride = sz)),
+              })),
+            ),
             { separator: true },
           ]
         : []),
-      { label: "Choke group… (Phase 1)", disabled: true },
-      { label: "Convert type… (later)", disabled: true },
+      ...(track.kind === "drum"
+        ? [
+            chips(
+              "Choke group",
+              Array.from({ length: 9 }, (_, g) => ({
+                label: g === 0 ? "None" : String(g),
+                active: toUnit.choke(track.params["sound.choke"] ?? 0) === g,
+                onClick: () => update((t) => (t.params["sound.choke"] = g / 8)),
+              })),
+            ),
+          ]
+        : []),
+      chips(
+        "Convert to",
+        (["drum", "instrument", "audio"] as const).map((k) => ({
+          label: k[0].toUpperCase() + k.slice(1),
+          active: track.kind === k,
+          onClick: () => commit((p) => convertTrack(p, track.id, k)),
+        })),
+      ),
     ];
   };
 
@@ -282,6 +382,7 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
               length={length}
               geo={geo}
               selected={selectedSteps}
+              cursor={cursorIndex}
             />
           ) : (
             <div className="flex items-center gap-1.5">

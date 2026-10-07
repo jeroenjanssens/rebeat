@@ -12,6 +12,7 @@ interface Props {
   selected: boolean;
   velBar: boolean;
   instrument: boolean;
+  cursor?: boolean;
 }
 
 export const StepPad = memo(function StepPad({
@@ -24,6 +25,7 @@ export const StepPad = memo(function StepPad({
   selected,
   velBar,
   instrument,
+  cursor = false,
 }: Props) {
   const on = step.on && !beyond;
   const cls = [
@@ -34,6 +36,7 @@ export const StepPad = memo(function StepPad({
     tie && !on && "tie",
     beyond && "beyond",
     selected && "selected",
+    cursor && "cursor",
   ]
     .filter(Boolean)
     .join(" ");

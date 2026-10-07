@@ -1,6 +1,7 @@
 import * as clock from "../engine/transport";
 import { platform } from "../platform";
 import { clearSelection, fnClick, fnPress, fnRelease } from "../state/actions";
+import { cursorToggle, moveCursor, velocityDigit } from "../state/input";
 import { THEMES, useSettings } from "../state/settings";
 import { useStore } from "../state/store";
 import type { Command } from "./commands";
@@ -213,6 +214,51 @@ export function defaultCommands(): Command[] {
       category: "Drum machine",
       run: () => fnClick("accent"),
     },
+
+    // ---- step cursor ----
+    {
+      id: "cursor.left",
+      title: "Step cursor left",
+      category: "Step cursor",
+      keys: ["Left"],
+      run: () => moveCursor(-1, 0),
+    },
+    {
+      id: "cursor.right",
+      title: "Step cursor right",
+      category: "Step cursor",
+      keys: ["Right"],
+      run: () => moveCursor(1, 0),
+    },
+    {
+      id: "cursor.up",
+      title: "Step cursor up",
+      category: "Step cursor",
+      keys: ["Up"],
+      run: () => moveCursor(0, -1),
+    },
+    {
+      id: "cursor.down",
+      title: "Step cursor down",
+      category: "Step cursor",
+      keys: ["Down"],
+      run: () => moveCursor(0, 1),
+    },
+    {
+      id: "cursor.toggle",
+      title: "Toggle step at cursor",
+      category: "Step cursor",
+      keys: ["Enter"],
+      run: cursorToggle,
+    },
+    ...Array.from({ length: 9 }, (_, i) => ({
+      id: `cursor.velocity${i + 1}`,
+      title: `Velocity ${Math.round(((i + 1) / 9) * 127)}`,
+      category: "Step cursor",
+      keys: [String(i + 1)],
+      hidden: true,
+      run: () => velocityDigit(i + 1),
+    })),
 
     // ---- view ----
     {

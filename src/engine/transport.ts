@@ -4,6 +4,7 @@
  * moment it is heard (via Tone.Draw), so visuals bypass React.
  */
 import * as Tone from "tone";
+import { laneStepsWithin } from "../model/timing";
 import { STEP_SIZE_QUARTERS, type Pattern, type Step } from "../model/types";
 import { useSettings } from "../state/settings";
 import { isAudible, useStore } from "../state/store";
@@ -16,6 +17,8 @@ export interface StepEvent {
   patternId: string;
   pageStep: number;
   triggered: Set<string>;
+  /** Current step index per track (differs from pageStep for tracks with their own length/rate). */
+  laneSteps: Map<string, number>;
 }
 
 type Listener = (e: StepEvent) => void;
@@ -186,7 +189,10 @@ function scheduleStep(time: number) {
   const fill = state.fillHeld || state.fillLatched;
   const cycle = cycles.get(slot.id) ?? 0;
   const triggered = new Set<string>();
+  const laneSteps = new Map<string, number>();
   const spb = stepsPerBeat(pattern);
+  const qPage = STEP_SIZE_QUARTERS[pattern.stepSize];
+  const secPerQ = 60 / project.bpm;
 
   if (project.metronome && pageStep % spb === 0) {
     const beat = Math.floor(pageStep / spb);
@@ -212,21 +218,33 @@ function scheduleStep(time: number) {
       continue;
     }
     const len = lane.stepCountOverride ?? pattern.stepCount;
-    const step: Step = lane.steps[pageStep % len];
-    if (!step.on || !audible) continue;
-    if (Math.random() >= step.probability) continue;
-    if (!conditionPasses(step.condition, cycle, fill)) continue;
-    triggered.add(track.id);
-    trigger(track, step.accent ? 1 : step.velocity, {
-      time: time + step.nudge * dur,
-      ratchet: step.ratchet,
-      stepDur: dur,
-      notes: step.notes,
-      lengthSteps: step.length,
-      pitch: step.pitch,
-      gate: step.gate,
-      slide: step.slide,
-    });
+    const play = (step: Step, t: number, d: number) => {
+      if (!step.on || !audible) return;
+      if (Math.random() >= step.probability) return;
+      if (!conditionPasses(step.condition, cycle, fill)) return;
+      triggered.add(track.id);
+      trigger(track, step.accent ? 1 : step.velocity, {
+        time: t + step.nudge * d,
+        ratchet: step.ratchet,
+        stepDur: d,
+        notes: step.notes,
+        lengthSteps: step.length,
+        pitch: step.pitch,
+        gate: step.gate,
+        slide: step.slide,
+      });
+    };
+    if (!lane.stepSizeOverride || lane.stepSizeOverride === pattern.stepSize) {
+      laneSteps.set(track.id, pageStep % len);
+      play(lane.steps[pageStep % len], time, dur);
+      continue;
+    }
+    // a track with its own rate: play the lane steps that start within this page step
+    const qLane = STEP_SIZE_QUARTERS[lane.stepSizeOverride];
+    const within = laneStepsWithin(pageStep, qPage, qLane, len);
+    laneSteps.set(track.id, within.current);
+    for (const { index, offsetQ } of within.steps)
+      play(lane.steps[index], time + offsetQ * secPerQ, qLane * secPerQ);
   }
 
   const info: ScheduledStep = { time, dur, slotId: slot.id, pattern, pageStep, tick };
@@ -234,7 +252,7 @@ function scheduleStep(time: number) {
   if (history.length > 64) history.shift();
   for (const fn of stepHooks) fn(info);
   tick += 1;
-  emit({ slotId: slot.id, patternId: pattern.id, pageStep, triggered }, time);
+  emit({ slotId: slot.id, patternId: pattern.id, pageStep, triggered, laneSteps }, time);
   nextTime = time + dur;
 }
 
@@ -279,7 +297,14 @@ export function stop() {
   countInUntil = 0;
   history.length = 0;
   useStore.getState().setUi({ playing: false, queuedSlotId: null });
-  for (const fn of listeners) fn({ slotId: "", patternId: "", pageStep: -1, triggered: new Set() });
+  const e = {
+    slotId: "",
+    patternId: "",
+    pageStep: -1,
+    triggered: new Set<string>(),
+    laneSteps: new Map(),
+  };
+  for (const fn of listeners) fn(e);
 }
 
 export function toggle() {

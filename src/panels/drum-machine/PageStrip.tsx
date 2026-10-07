@@ -216,14 +216,35 @@ export function PageStrip({ sizeClass }: { sizeClass: SizeClass }) {
   const project = useStore((s) => s.project);
   const { playMode, editSlotId, setUi, commit } = useStore();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const mods = useRef({ alt: false, shift: false });
+
+  // Alt+drag = copy, Alt+Shift+drag = clone: read the modifiers at the moment of the drop
+  useEffect(() => {
+    const track = (e: PointerEvent | KeyboardEvent) =>
+      (mods.current = { alt: e.altKey, shift: e.shiftKey });
+    window.addEventListener("pointermove", track, true);
+    window.addEventListener("keydown", track, true);
+    window.addEventListener("keyup", track, true);
+    return () => {
+      window.removeEventListener("pointermove", track, true);
+      window.removeEventListener("keydown", track, true);
+      window.removeEventListener("keyup", track, true);
+    };
+  }, []);
 
   const onDragEnd = (e: DragEndEvent) => {
-    if (!e.over || e.active.id === e.over.id) return;
+    if (!e.over) return;
+    const { alt, shift } = mods.current;
+    if (!alt && e.active.id === e.over.id) return;
+    let newId = "";
     commit((p) => {
-      const from = p.slots.findIndex((s) => s.id === e.active.id);
+      let id = String(e.active.id);
+      if (alt) id = newId = (shift ? cloneSlot : copySlot)(p, id);
+      const from = p.slots.findIndex((s) => s.id === id);
       const to = p.slots.findIndex((s) => s.id === e.over!.id);
       p.slots = arrayMove(p.slots, from, to);
     });
+    if (newId) setUi({ editSlotId: newId, selectedSteps: {} });
   };
 
   return (
