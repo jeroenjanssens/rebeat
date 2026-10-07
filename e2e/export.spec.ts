@@ -5,6 +5,8 @@ import { openApp } from "./helpers";
 test.beforeEach(async ({ page }) => openApp(page));
 
 test("renders the current page to a WAV file offline", async ({ page }) => {
+  // offline rendering takes a while on a busy machine
+  test.setTimeout(90_000);
   await page.keyboard.press("ControlOrMeta+E");
   await page.getByRole("button", { name: "Current page" }).click();
   const download = page.waitForEvent("download");

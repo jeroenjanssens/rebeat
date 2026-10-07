@@ -128,5 +128,10 @@ export function Scope({ trackId, color, meter = true, className = "", mode = "wa
     [trackId, color, mode],
   );
 
-  return <canvas ref={ref} className={`block h-full w-full ${className}`} />;
+  // the canvas is out of the layout flow: its default size must never stretch the row it's in
+  return (
+    <div className={`relative h-full w-full ${className}`}>
+      <canvas ref={ref} className="absolute inset-0 block h-full w-full" />
+    </div>
+  );
 }

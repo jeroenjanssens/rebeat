@@ -55,3 +55,22 @@ test("a clone shares its pattern; unlinking makes it independent", async ({ page
   const after = await state(page, "s.project.slots.slice(0, 2).map((x) => x.patternId)");
   expect(after[0]).not.toBe(after[1]);
 });
+
+test("switching pages doesn't resize or overflow the track list", async ({ page }) => {
+  const frames = await page.evaluate(async () => {
+    const dm = document.querySelector('[data-panel="drum-machine"]')!;
+    const scroller = dm.querySelector("[data-steps-zone]")!.parentElement!.parentElement!;
+    const measure = () => `${scroller.scrollWidth - scroller.clientWidth}/${scroller.scrollHeight}`;
+    const out: string[] = [];
+    for (const i of [2, 1, 0]) {
+      const before = measure();
+      (dm.querySelectorAll(".page-thumb")[i] as HTMLElement).click();
+      for (let f = 0; f < 15; f++) {
+        await new Promise((r) => requestAnimationFrame(r));
+        if (measure() !== before) out.push(`page ${i + 1}, frame ${f}: ${before} → ${measure()}`);
+      }
+    }
+    return out;
+  });
+  expect(frames).toEqual([]);
+});

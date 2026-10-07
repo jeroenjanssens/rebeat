@@ -220,7 +220,9 @@ export function MasterScopePanel() {
         <span ref={readout} className="num ml-auto text-[10.5px] text-dim" data-testid="loudness" />
       </div>
       <div className="min-h-0 flex-1 p-1.5">
-        <canvas ref={ref} className="block h-full w-full rounded" />
+        <div className="relative h-full w-full">
+          <canvas ref={ref} className="absolute inset-0 block h-full w-full rounded" />
+        </div>
       </div>
     </div>
   );
