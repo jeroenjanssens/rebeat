@@ -6,6 +6,7 @@
 import * as Tone from "tone";
 import { laneStepsWithin } from "../model/timing";
 import { arpOrder } from "../model/notes";
+import type { Project } from "../model/project";
 import { STEP_SIZE_QUARTERS, type Pattern, type Step, type Track } from "../model/types";
 import { useSettings } from "../state/settings";
 import { isAudible, useStore } from "../state/store";
@@ -230,62 +231,23 @@ function arpeggiate(
   }
 }
 
-function scheduleStep(time: number) {
-  const state = useStore.getState();
-  const { project } = state;
-  let slot = project.slots.find((x) => x.id === slotId) ?? project.slots[0];
-  let pattern = project.patterns[slot.patternId];
-
-  pageStep += 1;
-  if (repeat) {
-    repeat.start ??= Math.max(0, Math.floor((pageStep - 1) / repeat.length) * repeat.length);
-    if (pageStep >= repeat.start + repeat.length || pageStep >= pattern.stepCount)
-      pageStep = repeat.start;
-  }
-  const atEnd = pageStep >= pattern.stepCount;
-  const next = pageStep > 0 ? nextSlot(atEnd, pattern) : null;
-  if (next === END) {
-    // the song is over: stop when the last page has been heard
-    ending = true;
-    Tone.getDraw().schedule(() => stop(), time);
-    return;
-  }
-  if (atEnd || (next && next !== slot.id)) {
-    if (atEnd) cycles.set(slot.id, (cycles.get(slot.id) ?? 0) + 1);
-    pageStep = 0;
-    if (next && next !== slot.id) {
-      repeatCount = 0;
-      slot = project.slots.find((x) => x.id === next)!;
-      pattern = project.patterns[slot.patternId];
-      slotId = slot.id;
-      const newSlot = slot.id;
-      if (state.queuedSlotId) state.setUi({ queuedSlotId: null });
-      Tone.getDraw().schedule(() => {
-        const s = useStore.getState();
-        s.setUi({
-          playSlotId: newSlot,
-          ...(s.follow && s.editSlotId !== newSlot
-            ? { editSlotId: newSlot, selectedSteps: {} }
-            : {}),
-        });
-      }, time);
-    }
-  }
-
-  const dur = stepDuration(pattern, project.bpm, pageStep, project.swing);
-  const fill = state.fillHeld || state.fillLatched;
-  const cycle = cycles.get(slot.id) ?? 0;
-  const triggered = new Set<string>();
-  const laneSteps = new Map<string, number>();
-  const spb = stepsPerBeat(pattern);
+/**
+ * Play every track's sound for one page step (shared by the live transport and offline
+ * rendering). Fills `triggered` and `laneSteps` for the visuals.
+ */
+export function playPageStep(
+  project: Project,
+  pattern: Pattern,
+  pageStep: number,
+  time: number,
+  dur: number,
+  cycle: number,
+  fill: boolean,
+  triggered = new Set<string>(),
+  laneSteps = new Map<string, number>(),
+) {
   const qPage = STEP_SIZE_QUARTERS[pattern.stepSize];
   const secPerQ = 60 / project.bpm;
-
-  if (project.metronome && pageStep % spb === 0) {
-    const beat = Math.floor(pageStep / spb);
-    click(time, beat % project.timeSignature[0] === 0);
-  }
-
   for (const track of project.tracks) {
     const lane = pattern.lanes[track.id];
     if (!lane) continue;
@@ -342,6 +304,63 @@ function scheduleStep(time: number) {
     for (const { index, offsetQ } of within.steps)
       play(lane.steps[index], time + offsetQ * secPerQ, qLane * secPerQ);
   }
+}
+
+function scheduleStep(time: number) {
+  const state = useStore.getState();
+  const { project } = state;
+  let slot = project.slots.find((x) => x.id === slotId) ?? project.slots[0];
+  let pattern = project.patterns[slot.patternId];
+
+  pageStep += 1;
+  if (repeat) {
+    repeat.start ??= Math.max(0, Math.floor((pageStep - 1) / repeat.length) * repeat.length);
+    if (pageStep >= repeat.start + repeat.length || pageStep >= pattern.stepCount)
+      pageStep = repeat.start;
+  }
+  const atEnd = pageStep >= pattern.stepCount;
+  const next = pageStep > 0 ? nextSlot(atEnd, pattern) : null;
+  if (next === END) {
+    // the song is over: stop when the last page has been heard
+    ending = true;
+    Tone.getDraw().schedule(() => stop(), time);
+    return;
+  }
+  if (atEnd || (next && next !== slot.id)) {
+    if (atEnd) cycles.set(slot.id, (cycles.get(slot.id) ?? 0) + 1);
+    pageStep = 0;
+    if (next && next !== slot.id) {
+      repeatCount = 0;
+      slot = project.slots.find((x) => x.id === next)!;
+      pattern = project.patterns[slot.patternId];
+      slotId = slot.id;
+      const newSlot = slot.id;
+      if (state.queuedSlotId) state.setUi({ queuedSlotId: null });
+      Tone.getDraw().schedule(() => {
+        const s = useStore.getState();
+        s.setUi({
+          playSlotId: newSlot,
+          ...(s.follow && s.editSlotId !== newSlot
+            ? { editSlotId: newSlot, selectedSteps: {} }
+            : {}),
+        });
+      }, time);
+    }
+  }
+
+  const dur = stepDuration(pattern, project.bpm, pageStep, project.swing);
+  const fill = state.fillHeld || state.fillLatched;
+  const cycle = cycles.get(slot.id) ?? 0;
+  const triggered = new Set<string>();
+  const laneSteps = new Map<string, number>();
+  const spb = stepsPerBeat(pattern);
+
+  if (project.metronome && pageStep % spb === 0) {
+    const beat = Math.floor(pageStep / spb);
+    click(time, beat % project.timeSignature[0] === 0);
+  }
+
+  playPageStep(project, pattern, pageStep, time, dur, cycle, fill, triggered, laneSteps);
 
   const info: ScheduledStep = { time, dur, slotId: slot.id, pattern, pageStep, tick };
   history.push(info);

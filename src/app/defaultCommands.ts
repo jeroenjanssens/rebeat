@@ -89,6 +89,14 @@ export function defaultCommands(): Command[] {
       run: () => void projectActions.exportProject(),
     },
     {
+      id: "project.exportAudio",
+      title: "Export audio / MIDI…",
+      category: "Project",
+      keys: ["Mod+E"],
+      global: true,
+      run: () => shell().set({ exportOpen: true }),
+    },
+    {
       id: "project.import",
       title: "Import .rebeat…",
       category: "Project",

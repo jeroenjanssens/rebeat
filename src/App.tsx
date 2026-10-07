@@ -10,6 +10,7 @@ import { SettingsDialog } from "./app/SettingsDialog";
 import { ShortcutsDialog } from "./app/ShortcutsDialog";
 import { TransportBar } from "./app/TransportBar";
 import { useAppearance } from "./app/useAppearance";
+import { ExportDialog } from "./app/ExportDialog";
 import { ProjectBrowser } from "./app/ProjectBrowser";
 import { ToastHost } from "./components/Toast";
 import { useStore } from "./state/store";
@@ -50,6 +51,7 @@ export function App() {
       <SettingsDialog />
       <ShortcutsDialog />
       <ProjectBrowser />
+      <ExportDialog />
       <ToastHost />
       <AudioStartOverlay />
     </div>

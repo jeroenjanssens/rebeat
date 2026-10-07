@@ -287,6 +287,11 @@ export class FxChain {
     this.lastBpm = bpm;
   }
 
+  /** Resolves when every effect can process audio (reverb impulse responses are built). */
+  ready() {
+    return Promise.all(this.nodes.map((n) => n.ready));
+  }
+
   dispose() {
     for (const n of this.nodes) n.dispose();
     this.nodes = [];

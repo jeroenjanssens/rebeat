@@ -1,11 +1,12 @@
 /**
  * The audio engine (no React). It reconciles audio nodes against the project in the store:
- * one channel strip per track, voices for drum hits, a synth per instrument track, clips for
+ * one channel strip per track, S.voices for drum hits, a synth per instrument track, S.clips for
  * audio tracks. The UI reads levels, waveforms and clip positions from here.
  */
 import * as Tone from "tone";
 import { toUnit } from "../model/params";
 import type { Note, Track } from "../model/types";
+import type { Project } from "../model/project";
 import { isAudible, useStore } from "../state/store";
 import { BusChannel, TrackChannel, faderGain } from "./channel";
 import { FxChain } from "./effects";
@@ -51,14 +52,7 @@ interface Clip {
   until: number;
 }
 
-const channels = new Map<string, TrackChannel>();
-const synths = new Map<string, InstrumentVoice>();
-const voices: Voice[] = [];
-const clips = new Map<string, Clip>();
-const activeUntil = new Map<string, number>();
-const scratchState = new Map<string, { pos: number; speed: number }>();
-
-let master: {
+interface Master {
   input: Tone.Gain;
   fxOut: Tone.Gain;
   fx: FxChain;
@@ -70,8 +64,61 @@ let master: {
   output: Tone.Gain;
   split: Tone.Split;
   analysers: [AnalyserNode, AnalyserNode];
-} | null = null;
-const buses = new Map<string, BusChannel>();
+}
+
+/**
+ * Everything the engine builds for one audio context. The live engine has one; offline
+ * rendering (export, resampling) runs the same code against a fresh scope.
+ */
+export interface EngineScope {
+  channels: Map<string, TrackChannel>;
+  synths: Map<string, InstrumentVoice>;
+  voices: Voice[];
+  clips: Map<string, Clip>;
+  activeUntil: Map<string, number>;
+  scratchState: Map<string, { pos: number; speed: number }>;
+  master: Master | null;
+  buses: Map<string, BusChannel>;
+  lastTracks: Map<string, { track: Track; audible: boolean; bpm: number }>;
+  live: boolean;
+}
+
+export function newScope(live = false): EngineScope {
+  return {
+    channels: new Map(),
+    synths: new Map(),
+    voices: [],
+    clips: new Map(),
+    activeUntil: new Map(),
+    scratchState: new Map(),
+    master: null,
+    buses: new Map(),
+    lastTracks: new Map(),
+    live,
+  };
+}
+
+let S: EngineScope = newScope(true);
+
+/** Resolves when every effect in a scope is ready to process audio. */
+export function scopeReady(scope: EngineScope) {
+  return Promise.all([
+    ...[...scope.channels.values()].map((c) => c.ready()),
+    ...[...scope.buses.values()].map((b) => b.ready()),
+    scope.master?.fx.ready(),
+  ]);
+}
+
+/** Run engine code against another scope (e.g. inside Tone.Offline). */
+export function withScope<T>(scope: EngineScope, fn: () => T): T {
+  const prev = S;
+  S = scope;
+  try {
+    return fn();
+  } finally {
+    S = prev;
+  }
+}
 
 const raw = () => Tone.getContext().rawContext as AudioContext;
 export const audioNow = () => Tone.getContext().currentTime;
@@ -79,7 +126,7 @@ export const audioNow = () => Tone.getContext().currentTime;
 // ---------- graph ----------
 
 function ensureMaster() {
-  if (master) return master;
+  if (S.master) return S.master;
   const input = new Tone.Gain(1);
   const fxOut = new Tone.Gain(1);
   const fx = new FxChain(input, fxOut);
@@ -102,21 +149,21 @@ function ensureMaster() {
   output.connect(split);
   Tone.connect(split, analysers[0], 0, 0);
   Tone.connect(split, analysers[1], 1, 0);
-  master = { input, fxOut, fx, fader, perfIn, perfOut, limiter, output, split, analysers };
-  return master;
+  S.master = { input, fxOut, fx, fader, perfIn, perfOut, limiter, output, split, analysers };
+  return S.master;
 }
 
 function bus(id: string): BusChannel {
-  let b = buses.get(id);
+  let b = S.buses.get(id);
   if (!b) {
     b = new BusChannel(ensureMaster().input);
-    buses.set(id, b);
+    S.buses.set(id, b);
   }
   return b;
 }
 
 export function getBus(id: string) {
-  return buses.get(id);
+  return S.buses.get(id);
 }
 
 /** The master chain's performance-FX insert point. */
@@ -135,12 +182,12 @@ export function masterOutput() {
 }
 
 function channel(trackId: string): TrackChannel {
-  let ch = channels.get(trackId);
+  let ch = S.channels.get(trackId);
   if (!ch) {
     ch = new TrackChannel(ensureMaster().input);
     ch.sendA.connect(bus("bus-a").input);
     ch.sendB.connect(bus("bus-b").input);
-    channels.set(trackId, ch);
+    S.channels.set(trackId, ch);
     channelListeners.forEach((fn) => fn(trackId, ch!));
   }
   return ch;
@@ -150,39 +197,37 @@ const channelListeners = new Set<(trackId: string, ch: TrackChannel) => void>();
 /** Called when a channel strip is created (effects and sends hook in here). */
 export function onChannel(fn: (trackId: string, ch: TrackChannel) => void) {
   channelListeners.add(fn);
-  for (const [id, ch] of channels) fn(id, ch);
+  for (const [id, ch] of S.channels) fn(id, ch);
   return () => channelListeners.delete(fn);
 }
 
 export function getChannel(trackId: string) {
-  return channels.get(trackId);
+  return S.channels.get(trackId);
 }
 
 export function forEachChannel(fn: (ch: TrackChannel, trackId: string) => void) {
-  for (const [id, ch] of channels) fn(ch, id);
+  for (const [id, ch] of S.channels) fn(ch, id);
 }
 
-const lastTracks = new Map<string, { track: Track; audible: boolean; bpm: number }>();
-
-function reconcile() {
-  const { project } = useStore.getState();
+/** Build/update the audio graph for a project (live: on every change; offline: once). */
+export function reconcile(project: Project = useStore.getState().project) {
   const ids = new Set(project.tracks.map((t) => t.id));
-  for (const [id, ch] of channels) {
+  for (const [id, ch] of S.channels) {
     if (ids.has(id)) continue;
     ch.dispose();
-    channels.delete(id);
-    synths.get(id)?.dispose();
-    synths.delete(id);
-    lastTracks.delete(id);
+    S.channels.delete(id);
+    S.synths.get(id)?.dispose();
+    S.synths.delete(id);
+    S.lastTracks.delete(id);
     stopClip(id);
   }
   const bpm = project.bpm;
   for (const t of project.tracks) {
     const audible = isAudible(t.id, project);
-    const last = lastTracks.get(t.id);
+    const last = S.lastTracks.get(t.id);
     // immer keeps unchanged tracks identical: skip them
     if (last && last.track === t && last.audible === audible && last.bpm === bpm) continue;
-    lastTracks.set(t.id, { track: t, audible, bpm });
+    S.lastTracks.set(t.id, { track: t, audible, bpm });
     channel(t.id).update(t, audible, bpm);
     if (t.kind === "instrument") updateSynth(t);
   }
@@ -213,11 +258,11 @@ export function initEngine() {
 
 function instrument(track: Track): InstrumentVoice {
   const key = instrumentKey(track);
-  let v = synths.get(track.id);
+  let v = S.synths.get(track.id);
   if (!v || v.key !== key) {
     v?.dispose();
     v = createInstrument(track, channel(track.id).input);
-    synths.set(track.id, v);
+    S.synths.set(track.id, v);
   }
   return v;
 }
@@ -235,7 +280,7 @@ function updateSynth(track: Track) {
 
 /** Loading state of a track's sampled instrument. */
 export function instrumentState(trackId: string) {
-  return synths.get(trackId)?.state() ?? "ready";
+  return S.synths.get(trackId)?.state() ?? "ready";
 }
 
 // ---------- triggering ----------
@@ -263,7 +308,7 @@ function playDrum(track: Track, velocity: number, time: number, o: TriggerOption
   if (group > 0) {
     const { project } = useStore.getState();
     const members = new Set(project.tracks.filter((t) => chokeGroup(t) === group).map((t) => t.id));
-    for (const v of voices) if (members.has(v.trackId) && v.end > time) stopVoice(v, time);
+    for (const v of S.voices) if (members.has(v.trackId) && v.end > time) stopVoice(v, time);
   }
   const src = ctx.createBufferSource();
   src.buffer = buffer;
@@ -288,13 +333,13 @@ function playDrum(track: Track, velocity: number, time: number, o: TriggerOption
   src.start(time, offset);
   src.stop(end);
   const voice: Voice = { src, env, trackId: track.id, end };
-  voices.push(voice);
+  S.voices.push(voice);
   src.onended = () => {
     env.disconnect();
-    const i = voices.indexOf(voice);
-    if (i >= 0) voices.splice(i, 1);
+    const i = S.voices.indexOf(voice);
+    if (i >= 0) S.voices.splice(i, 1);
   };
-  activeUntil.set(track.id, Math.max(activeUntil.get(track.id) ?? 0, end + 0.1));
+  S.activeUntil.set(track.id, Math.max(S.activeUntil.get(track.id) ?? 0, end + 0.1));
 }
 
 function playNotes(track: Track, velocity: number, time: number, o: TriggerOptions) {
@@ -308,7 +353,10 @@ function playNotes(track: Track, velocity: number, time: number, o: TriggerOptio
   );
   const dur = Math.max(...notes.map((n) => n.length)) * step;
   const release = toUnit.ms(1, 8000)(track.params["sound.release"] ?? 0.35) / 1000;
-  activeUntil.set(track.id, Math.max(activeUntil.get(track.id) ?? 0, time + dur + release + 0.5));
+  S.activeUntil.set(
+    track.id,
+    Math.max(S.activeUntil.get(track.id) ?? 0, time + dur + release + 0.5),
+  );
 }
 
 /** Play a track's sound (a step, a pad hit, an audition). */
@@ -324,7 +372,7 @@ export function trigger(track: Track, velocity: number, o: TriggerOptions = {}) 
   }
 }
 
-// ---------- audio clips ----------
+// ---------- audio S.clips ----------
 
 export function startClip(track: Track, time: number, pageDur: number, oneshot: boolean) {
   stopClip(track.id, time);
@@ -355,7 +403,8 @@ export function startClip(track: Track, time: number, pageDur: number, oneshot: 
   let warp: StretchNode | null = null;
   const sources: AudioBufferSourceNode[] = [];
   const gains: GainNode[] = [];
-  if (Math.abs(ratio - 1) > 0.002 || Math.abs(pitch) > 0.01) {
+  // offline renders repitch: the stretch nodes belong to the live engine
+  if (S.live && (Math.abs(ratio - 1) > 0.002 || Math.abs(pitch) > 0.01)) {
     warp = warper(track.id, track.sampleId, dest);
     if (warp) {
       warp.schedule({
@@ -397,8 +446,8 @@ export function startClip(track: Track, time: number, pageDur: number, oneshot: 
     if (lb && !l.mute) play(lb, gain * l.gain, false);
   }
   // a clip that restarts while scratching stays silent until the platter is let go
-  if (scratchState.has(track.id)) for (const g of gains) g.gain.value = 0;
-  clips.set(track.id, {
+  if (S.scratchState.has(track.id)) for (const g of gains) g.gain.value = 0;
+  S.clips.set(track.id, {
     sources,
     gains,
     warp,
@@ -412,11 +461,11 @@ export function startClip(track: Track, time: number, pageDur: number, oneshot: 
     from: t,
     until: end,
   });
-  activeUntil.set(track.id, end + 0.1);
+  S.activeUntil.set(track.id, end + 0.1);
 }
 
 export function stopClip(trackId: string, time = audioNow()) {
-  const c = clips.get(trackId);
+  const c = S.clips.get(trackId);
   if (!c) return;
   const at = Math.max(time, audioNow());
   for (const src of c.sources)
@@ -426,14 +475,14 @@ export function stopClip(trackId: string, time = audioNow()) {
       // not started or already stopped
     }
   c.warp?.schedule({ output: at, active: false });
-  clips.delete(trackId);
+  S.clips.delete(trackId);
 }
 
 /** Clip playhead (0..1 of the sample) or null when it isn't playing. */
 export function clipPosition(trackId: string): number | null {
-  const sc = scratchState.get(trackId);
+  const sc = S.scratchState.get(trackId);
   if (sc) return sc.pos;
-  const c = clips.get(trackId);
+  const c = S.clips.get(trackId);
   const now = audioNow();
   if (!c || now < c.from || now > c.until) return null;
   // `start` is where the clip would have started from its beginning (earlier for late joins)
@@ -485,8 +534,8 @@ export async function scratchBegin(track: Track) {
   s.pos = pos;
   s.node.port.postMessage({ pos, rate: 0, gain: 1 });
   setClipGain(track.id, 0);
-  clips.get(track.id)?.warp?.schedule({ output: audioNow(), active: false });
-  scratchState.set(track.id, { pos: pos / buffer.duration, speed: 0 });
+  S.clips.get(track.id)?.warp?.schedule({ output: audioNow(), active: false });
+  S.scratchState.set(track.id, { pos: pos / buffer.duration, speed: 0 });
 }
 
 /** Move the platter: `rate` 1 = normal speed forwards, negative = backwards. */
@@ -494,7 +543,7 @@ export function scratchMove(trackId: string, rate: number) {
   const s = scratches.get(trackId);
   if (!s) return;
   s.node.port.postMessage({ rate });
-  scratchState.set(trackId, { pos: s.pos / s.duration, speed: rate });
+  S.scratchState.set(trackId, { pos: s.pos / s.duration, speed: rate });
 }
 
 /** The cut button: silence while held (transform and crab scratches). */
@@ -507,14 +556,14 @@ export function scratchEnd(track: Track, keepPosition = false) {
   const s = scratches.get(track.id);
   if (!s) return;
   s.node.port.postMessage({ rate: 0, gain: 0 });
-  scratchState.delete(track.id);
-  if (keepPosition && clips.has(track.id)) {
-    const c = clips.get(track.id)!;
+  S.scratchState.delete(track.id);
+  if (keepPosition && S.clips.has(track.id)) {
+    const c = S.clips.get(track.id)!;
     // shift the clip so it continues from where the record was left
     c.start = audioNow() - (s.pos - c.offset) / c.rate;
   }
   setClipGain(track.id, 1);
-  const c = clips.get(track.id);
+  const c = S.clips.get(track.id);
   if (c?.warp) {
     const t = audioNow();
     const into = (t - c.start) % c.loopLength;
@@ -523,7 +572,7 @@ export function scratchEnd(track: Track, keepPosition = false) {
 }
 
 function setClipGain(trackId: string, g: number) {
-  const c = clips.get(trackId);
+  const c = S.clips.get(trackId);
   if (!c) return;
   for (const env of c.gains) env.gain.setTargetAtTime(g, audioNow(), 0.005);
 }
@@ -536,9 +585,9 @@ export function scratch(track: Track, pos: number | null, speed = 0) {
 
 export function stopAll() {
   const t = audioNow();
-  for (const v of voices) stopVoice(v, t);
-  for (const id of [...clips.keys()]) stopClip(id, t);
-  for (const v of synths.values()) v.releaseAll(t);
+  for (const v of S.voices) stopVoice(v, t);
+  for (const id of [...S.clips.keys()]) stopClip(id, t);
+  for (const v of S.synths.values()) v.releaseAll(t);
 }
 
 // ---------- metering ----------
@@ -556,12 +605,12 @@ function buf(key: string, n: number) {
 }
 
 function isActive(trackId: string) {
-  return (activeUntil.get(trackId) ?? 0) > audioNow();
+  return (S.activeUntil.get(trackId) ?? 0) > audioNow();
 }
 
 /** Time-domain samples of a track (after effects and fader), or null when silent. */
 export function waveform(trackId: string): Float32Array | null {
-  const ch = channels.get(trackId);
+  const ch = S.channels.get(trackId);
   if (!ch || !isActive(trackId)) return null;
   const b = buf(trackId, ch.analyser.fftSize);
   ch.analyser.getFloatTimeDomainData(b);
@@ -583,7 +632,7 @@ export function level(trackId: string): number {
 
 /** Peak level of a send/return bus. */
 export function busLevel(id: string): number {
-  const b = buses.get(id);
+  const b = S.buses.get(id);
   if (!b) return 0;
   const w = buf(`bus${id}`, b.analyser.fftSize);
   b.analyser.getFloatTimeDomainData(w);
@@ -594,7 +643,7 @@ export function busLevel(id: string): number {
 
 /** Frequency data (dB per bin) of a track, for the spectrum view. */
 export function spectrum(trackId: string): Float32Array | null {
-  const ch = channels.get(trackId);
+  const ch = S.channels.get(trackId);
   if (!ch) return null;
   const b = buf(`spec${trackId}`, ch.analyser.frequencyBinCount);
   ch.analyser.getFloatFrequencyData(b);
@@ -603,13 +652,13 @@ export function spectrum(trackId: string): Float32Array | null {
 
 /** Master output L/R peak levels. */
 export function masterLevel(): [number, number] {
-  const m = master;
+  const m = S.master;
   if (!m) return [0, 0];
   return m.analysers.map((a, i) => {
-    const b = buf(`master${i}`, a.fftSize);
+    const b = buf(`S.master${i}`, a.fftSize);
     a.getFloatTimeDomainData(b);
     let peak = 0;
-    // only the most recent ~23 ms: the analyser keeps much more for the master scope
+    // only the most recent ~23 ms: the analyser keeps much more for the S.master scope
     for (let j = b.length - 1024; j < b.length; j++) peak = Math.max(peak, Math.abs(b[j]));
     return Math.min(1, peak);
   }) as [number, number];
@@ -617,7 +666,7 @@ export function masterLevel(): [number, number] {
 
 /** Master output L/R time-domain data (for the master scope). */
 export function masterWaveform(): [Float32Array, Float32Array] | null {
-  const m = master;
+  const m = S.master;
   if (!m) return null;
   return m.analysers.map((a, i) => {
     const b = buf(`masterw${i}`, a.fftSize);

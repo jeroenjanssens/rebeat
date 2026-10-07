@@ -34,6 +34,10 @@ export class BusChannel {
     Tone.connect(this.output, this.analyser);
   }
 
+  ready() {
+    return this.fx.ready();
+  }
+
   update(bus: Bus, bpm: number) {
     this.fx.sync(bus.effects, bpm);
     this.fader.gain.rampTo(bus.mute ? 0 : faderGain(bus.volume), 0.02);
@@ -139,6 +143,10 @@ export class TrackChannel {
   setSendBoost(a: number, b: number) {
     this.sendBoost = { a, b };
     this.applySends();
+  }
+
+  ready() {
+    return this.fx.ready();
   }
 
   setXfade(g: number) {
