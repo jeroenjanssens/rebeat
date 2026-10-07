@@ -89,7 +89,13 @@ Work proceeds phase by phase through §7, committing after each feature.
 - **G** ✅ git + private repo `jeroenjanssens/rebeat`.
 - **0** ✅ Dockview shell (`src/app/`: Dock, layouts/presets, PanelFrame with panel full screen, maximize, pop-outs), transport bar, floating transport, command registry + palette + rebindable shortcuts (`app/commands.ts`, `app/defaultCommands.ts`), settings (`state/settings.ts`, persisted via `platform.kv`), themes (Studio Dark, Paper, Midnight, Ember, High Contrast, accent picker, UI scale, density), `platform/` layer, Dexie schema (`storage/db.ts`), Playwright e2e (`just e2e`), CI (`.github/workflows/ci.yml`).
 - **1** ✅ Tone.js engine (`src/engine/`): lookahead scheduler on the audio clock (`transport.ts`, worker ticker), channel strips (`channel.ts`), drum voices/synths/clips/metering (`engine.ts`), offline-synthesized 808/909 kits (`kits.ts`), metronome + count-in, per-track step count/rate/swing, choke groups, keyboard step cursor, keyboard pads with step entry and live recording (`state/input.ts`). `src/mock/` is gone; the demo is `templates/nightDrive.ts`.
-- Next: Phase 2 (projects), then 3, 4, 5, 5b, 6, 7, 8, 8b, 9, 10.
+- **2** ✅ Projects (`storage/projects.ts`, `storage/rebeatFile.ts`, `model/schema.ts` with migrations v0→v3, `app/ProjectBrowser.tsx`, templates in `templates/`).
+- **3** ✅ Library (`library/`: import, hashing, BPM/onset analysis, audition, online kits), Library + Inspector panels.
+- **4** ✅ Pages (repeats, colors, song loop, follow, directional slide, Alt+drag copy/clone).
+- **5** ✅ Effects (`engine/effects.ts` factory + chains), buses, master chain, Mixer and Master Scope panels. Note: the engine uses a native AudioContext (Tone's default wrapper made every connect slow).
+- **5b** ✅ Instrument tracks: per-note length/velocity (schema v3), presets/sampler/smplr (`engine/instruments.ts`), key/scale, scale lock, chord mode, arpeggiator, Piano Roll panel.
+- **6** ✅ Loop station: mic manager (`audio-io/mic.ts`), recorder worklet (`public/worklets/recorder.js`), looper (`engine/looper.ts`), monitoring, calibration, warp (`engine/stretch.ts`). e2e uses a synthetic mic (`window.__REBEAT_TEST_MIC__`) because headless Chromium on macOS can't open capture devices.
+- Next: Phase 7 (sample editor), then 8, 8b, 9, 10.
 
 ---
 
