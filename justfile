@@ -20,8 +20,13 @@ check:
 test:
     pnpm vitest
 
+# Run the end-to-end tests (Playwright, Chromium)
+e2e *args:
+    pnpm playwright test {{args}}
+
 # Build the production version into dist/
 build: install
+    pnpm tsc --noEmit
     pnpm vite build
 
 # Serve the production build locally
@@ -34,4 +39,4 @@ fmt:
 
 # Remove build output and dependencies
 clean:
-    rm -rf dist node_modules
+    rm -rf dist node_modules test-results playwright-report

@@ -7,9 +7,17 @@ export type SizeClass = "compact" | "regular" | "large";
 export function useSizeClass(ref: RefObject<HTMLElement | null>) {
   const [width, setWidth] = useState(1200);
   useEffect(() => {
-    const ro = new ResizeObserver(([e]) => setWidth(e.contentRect.width));
+    let raf = 0;
+    // deferred a frame: changing the layout inside the observer callback causes RO loop errors
+    const ro = new ResizeObserver(([e]) => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => setWidth(e.contentRect.width));
+    });
     ro.observe(ref.current!);
-    return () => ro.disconnect();
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
   }, [ref]);
   const sizeClass: SizeClass = width < 860 ? "compact" : width < 1560 ? "regular" : "large";
   return { sizeClass, width };
