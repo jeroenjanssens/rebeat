@@ -76,9 +76,13 @@ export interface ImportItem {
 
 /** Import one file; returns the sample id (existing or new), or null if it can't be decoded. */
 async function importOne(item: ImportItem): Promise<string | null> {
-  const id = await sha256(item.data);
-  const existing = await db.samples.get(id);
-  if (existing) return id;
+  const hash = await sha256(item.data);
+  // the same audio may already be here: imported as is, or as the result of an in-place edit
+  const same =
+    (await db.samples.where("contentHash").equals(hash).first()) ?? (await db.samples.get(hash));
+  if (same && (same.contentHash ?? same.id) === hash) return same.id;
+  // an edited sample took this file's original id: give the import an id of its own
+  const id = same ? `${hash}-${Date.now().toString(36)}` : hash;
   let buffer: AudioBuffer;
   try {
     buffer = await audioContext().decodeAudioData(item.data.slice(0));
@@ -239,6 +243,47 @@ export async function applySettings(id: string, settings: SampleSettings) {
   await db.samples.update(id, { settings: isDefault(settings) ? undefined : settings });
   const buffer = isDefault(settings) ? original : await renderSettings(original, settings);
   registerSample({ id, name: rec.name, category: guessCategory(rec.name), bpm: rec.bpm }, buffer);
+  await refresh();
+}
+
+/**
+ * Apply an audio edit in place: the sample keeps its id (so every track that uses it, in every
+ * project, gets the new sound) and its stored audio is replaced.
+ */
+export async function replaceAudio(
+  id: string,
+  channels: Float32Array[],
+  sampleRate: number,
+  settings: SampleSettings,
+) {
+  const data = encodeWav(channels, sampleRate, 24);
+  const contentHash = await sha256(data);
+  const original = new AudioBuffer({
+    length: Math.max(1, channels[0].length),
+    numberOfChannels: channels.length,
+    sampleRate,
+  });
+  channels.forEach((c, i) => original.copyToChannel(c as Float32Array<ArrayBuffer>, i));
+  await db.transaction("rw", db.samples, db.blobs, async () => {
+    await db.blobs.put({ id, blob: new Blob([data], { type: "audio/wav" }) });
+    await db.samples.update(id, {
+      contentHash,
+      mime: "audio/wav",
+      size: data.byteLength,
+      duration: original.duration,
+      sampleRate,
+      channels: channels.length,
+      peaks: [...computePeaks(original, 96)].map((v) => Math.round(v * 1000) / 1000),
+      settings: isDefault(settings) ? undefined : settings,
+    });
+  });
+  originals.set(id, original);
+  const rec = await db.samples.get(id);
+  const buffer = isDefault(settings) ? original : await renderSettings(original, settings);
+  registerSample(
+    { id, name: rec?.name ?? id, category: guessCategory(rec?.name ?? ""), bpm: rec?.bpm },
+    buffer,
+  );
   await refresh();
 }
 

@@ -2,7 +2,7 @@
  * Offline rendering (faster than real time): the song or one page, the whole mix or one track.
  * Runs the same engine code as live playback against a fresh scope in an offline context.
  */
-import * as Tone from "tone";
+import { renderOffline } from "./offline";
 import type { Project } from "../model/project";
 import type { PageSlot, Pattern } from "../model/types";
 import { newScope, reconcile, scopeReady, withScope } from "./engine";
@@ -58,7 +58,7 @@ export async function renderProject(project: Project, opts: RenderOptions): Prom
   const { entries, duration } = timeline(proj, opts);
   const tail = opts.tail ?? 2;
   const sr = opts.sampleRate ?? 44100;
-  const rendered = await Tone.Offline(
+  const rendered = await renderOffline(
     async () => {
       const scope = newScope();
       withScope(scope, () => reconcile(proj));
@@ -78,5 +78,5 @@ export async function renderProject(project: Project, opts: RenderOptions): Prom
     2,
     sr,
   );
-  return rendered.get()!;
+  return rendered;
 }

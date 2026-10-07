@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Play, Redo2, Repeat, Square, Undo2 } from "lucide-react";
 import { openSampleEditor } from "../../app/openers";
-import { dock } from "../../app/shell";
 import { DragValue } from "../../components/DragValue";
 import { EffectEditor } from "../../components/EffectEditor";
 import { toast } from "../../components/Toast";
@@ -24,7 +23,7 @@ import {
 import { stft } from "../../library/fft";
 import {
   applySettings,
-  replaceInProject,
+  replaceAudio,
   saveVersion,
   updateSample,
   useLibrary,
@@ -221,20 +220,13 @@ function SampleEditor({ sampleId }: { sampleId: string }) {
   const apply = async () => {
     setBusy("Applying…");
     try {
-      if (!editor.sourceDirty) {
-        await applySettings(sampleId, settings);
-        editor.markSaved();
-        toast(usage.length > 1 ? `Applied to ${usage.length} tracks` : "Applied");
-      } else {
-        const id = await saveVersion(source, sr, editor.name, sampleId);
-        if (!id) return;
-        await applySettings(id, settings);
-        replaceInProject(sampleId, id);
-        toast(
-          `Saved a new version${usage.length ? ` and updated ${usage.length} track${usage.length > 1 ? "s" : ""}` : ""}`,
-        );
-        reopen(id);
-      }
+      // in place: audio edits replace the sample's audio, settings are stored on it
+      if (editor.sourceDirty) await replaceAudio(sampleId, source, sr, settings);
+      else await applySettings(sampleId, settings);
+      editor.markSaved();
+      toast(
+        usage.length ? `Applied to ${usage.length} track${usage.length > 1 ? "s" : ""}` : "Applied",
+      );
     } finally {
       setBusy("");
     }
@@ -255,13 +247,6 @@ function SampleEditor({ sampleId }: { sampleId: string }) {
     } finally {
       setBusy("");
     }
-  };
-
-  const reopen = (id: string) => {
-    const api = dock.api;
-    const old = api?.getPanel(`sample-editor:${sampleId}`);
-    openSampleEditor(id);
-    old?.api.close();
   };
 
   if (!editor.ready) return <div className="p-4 text-[12px] text-faint">Loading…</div>;

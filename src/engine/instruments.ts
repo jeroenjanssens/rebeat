@@ -80,7 +80,7 @@ export const SYNTH_PRESETS: SynthPreset[] = [
           baseFrequency: 120,
           octaves: 3.4,
         },
-        volume: -8,
+        volume: -14,
       }),
   },
   {
@@ -100,7 +100,7 @@ export const SYNTH_PRESETS: SynthPreset[] = [
           baseFrequency: 400,
           octaves: 1,
         },
-        volume: -4,
+        volume: -10,
       }),
   },
   {
@@ -120,7 +120,7 @@ export const SYNTH_PRESETS: SynthPreset[] = [
           baseFrequency: 600,
           octaves: 2.5,
         },
-        volume: -14,
+        volume: -20,
       }),
   },
   {

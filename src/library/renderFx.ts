@@ -1,5 +1,6 @@
 /** Render effects into audio offline (faster than real time), for the sample editor. */
 import * as Tone from "tone";
+import { renderOffline } from "../engine/offline";
 import { createFx } from "../engine/effects";
 import type { Effect } from "../model/types";
 
@@ -14,7 +15,7 @@ export async function renderWithEffects(
   const duration =
     channels[0].length / sampleRate +
     (effects.some((e) => ["Reverb", "Delay"].includes(e.name)) ? tail : 0);
-  const rendered = await Tone.Offline(
+  const rendered = await renderOffline(
     async () => {
       const buf = new Tone.ToneAudioBuffer().fromArray(
         channels.length === 1 ? channels[0] : channels,

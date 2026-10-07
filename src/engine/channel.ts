@@ -7,6 +7,7 @@ import { toUnit } from "../model/params";
 import type { Track } from "../model/types";
 import type { Bus } from "../model/effects";
 import { FxChain } from "./effects";
+import { Drive, FlatEQ } from "./tone";
 
 const FADE = 0.008;
 
@@ -56,10 +57,15 @@ export class TrackChannel {
   readonly preFx = new Tone.Gain(1);
   readonly postFx = new Tone.Gain(1);
   private filter = new Tone.Filter({ type: "lowpass", frequency: 20000, Q: 0.7, rolloff: -12 });
-  private drive = new Tone.Distortion({ distortion: 0, wet: 0, oversample: "2x" });
-  private eq = new Tone.EQ3(0, 0, 0);
-  private widener = new Tone.StereoWidener(0.5);
+  private drive = new Drive();
+  private eq = new FlatEQ();
+  /**
+   * Pan before width: Web Audio pans mono sounds with an equal-power law and balances stereo
+   * ones, and the widener always gets a real stereo signal (given mono, it would play it on the
+   * left only).
+   */
   private panner = new Tone.Panner(0);
+  private widener = new Tone.StereoWidener(0.5);
   private fader = new Tone.Gain(1);
   /** Crossfader gain (performance). */
   private xfade = new Tone.Gain(1);
@@ -78,11 +84,14 @@ export class TrackChannel {
     this.analyser = raw.createAnalyser();
     this.analyser.fftSize = 1024;
     this.analyser.smoothingTimeConstant = 0;
+    // Tone's Panner folds everything to mono first; let stereo sounds through as stereo
+    this.panner.channelCount = 2;
+    this.panner.channelCountMode = "clamped-max";
     this.input.chain(this.filter, this.drive, this.preFx);
     this.postFx.chain(
       this.eq,
-      this.widener,
       this.panner,
+      this.widener,
       this.fader,
       this.xfade,
       this.mute,
@@ -111,18 +120,11 @@ export class TrackChannel {
       );
       this.set("reso", p["sound.reso"] ?? 0.1, (v) => this.filter.Q.rampTo(toUnit.q(v), 0.02, now));
     }
-    this.set("drive", p["sound.drive"] ?? 0, (v) => {
-      this.drive.distortion = v * 0.9;
-      this.drive.wet.rampTo(v > 0.001 ? Math.min(1, v * 3) : 0, 0.02, now);
-    });
-    this.set("low", p["mix.low"] ?? 0.5, (v) =>
-      this.eq.low.rampTo(toUnit.db(-15, 15)(v), 0.02, now),
-    );
-    this.set("mid", p["mix.mid"] ?? 0.5, (v) =>
-      this.eq.mid.rampTo(toUnit.db(-15, 15)(v), 0.02, now),
-    );
-    this.set("high", p["mix.high"] ?? 0.5, (v) =>
-      this.eq.high.rampTo(toUnit.db(-15, 15)(v), 0.02, now),
+    this.set("drive", p["sound.drive"] ?? 0, (v) => this.drive.setAmount(v));
+    const db = toUnit.db(-15, 15);
+    const eq = [p["mix.low"] ?? 0.5, p["mix.mid"] ?? 0.5, p["mix.high"] ?? 0.5];
+    this.set("eq", eq[0] * 1e6 + eq[1] * 1e3 + eq[2], () =>
+      this.eq.setGains(db(eq[0]), db(eq[1]), db(eq[2])),
     );
     this.set("width", p["mix.width"] ?? 1, (v) => this.widener.width.rampTo(v * 0.5, 0.02, now));
     this.set("pan", p["mix.pan"] ?? 0.5, (v) => this.panner.pan.rampTo(toUnit.pan(v), 0.02, now));

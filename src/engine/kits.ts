@@ -3,6 +3,7 @@
  * licensing issues). 808- and 909-style, plus a short vocal-like hook for the demo song.
  */
 import * as Tone from "tone";
+import { renderOffline } from "./offline";
 import type { SoundCategory } from "../model/types";
 import { registerSample, type SampleInfo } from "./samples";
 
@@ -320,7 +321,7 @@ export function renderKits(): Promise<void> {
       starts.push(total);
       total += s.length + gap;
     }
-    const rendered = await Tone.Offline(
+    const rendered = await renderOffline(
       () => {
         all.forEach((s, i) => {
           T = starts[i];
@@ -338,7 +339,8 @@ export function renderKits(): Promise<void> {
       const len = Math.round(s.length * sr);
       const buf = new AudioBuffer({ length: len, sampleRate: sr, numberOfChannels: 1 });
       buf.copyToChannel(data.slice(from, from + len), 0);
-      registerSample(s, normalize(buf, s.id === VOX.id ? 0.8 : 0.95));
+      // −6 dBFS, like typical drum samples: a full kit leaves headroom in the mix
+      registerSample(s, normalize(buf, s.id === VOX.id ? 0.4 : 0.5));
     });
   })();
   return rendering;

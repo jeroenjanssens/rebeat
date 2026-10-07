@@ -33,6 +33,8 @@ export interface SampleRecord {
   settings?: unknown;
   /** The sample this one was rendered from (editor bounce). */
   parentId?: string;
+  /** SHA-256 of the current audio, when it differs from the id (edited in place). */
+  contentHash?: string;
 }
 
 export interface BlobRecord {
@@ -58,6 +60,10 @@ export class RebeatDB extends Dexie {
       samples: "id, name, folder, *tags, favorite, createdAt",
       blobs: "id",
       meta: "key",
+    });
+    // samples edited in place keep their id; `contentHash` says what audio they hold now
+    this.version(2).stores({
+      samples: "id, name, folder, *tags, favorite, createdAt, contentHash",
     });
   }
 }

@@ -40,3 +40,49 @@ test("slices a loop into new drum tracks that play its rhythm", async ({ page })
   await editor.getByTestId("slices-to-tracks").click();
   await expect(page.locator("[data-track-row]")).toHaveCount(before + 8, { timeout: 15000 });
 });
+
+test("Apply after an audio edit changes the sample in place", async ({ page }) => {
+  await openLoopInEditor(page);
+  const editor = page.getByTestId("sample-editor");
+  const db = async () =>
+    page.evaluate(async () => {
+      const path = "/src/storage/db.ts";
+      const { db } = await import(/* @vite-ignore */ path);
+      const s = await db.samples.toArray();
+      return s.map((x: { id: string; duration: number }) => ({ id: x.id, duration: x.duration }));
+    });
+  const [before] = await db();
+  // select the first second and crop to it
+  const wave = page.getByTestId("waveform");
+  const box = (await wave.boundingBox())!;
+  await page.mouse.move(box.x + 5, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * 0.25, box.y + box.height / 2, { steps: 5 });
+  await page.mouse.up();
+  await editor.getByRole("button", { name: "Crop", exact: true }).click();
+  await editor.getByTestId("editor-apply").click();
+  await expect(page.getByText(/^Applied/).first()).toBeVisible();
+  const after = await db();
+  expect(after).toHaveLength(1);
+  expect(after[0].id).toBe(before.id);
+  expect(after[0].duration).toBeLessThan(before.duration * 0.5);
+  // the editor stays on the same sample
+  await expect(page.getByTestId("sample-editor")).toBeVisible();
+});
+
+test("re-importing the original file after an in-place edit adds it again", async ({ page }) => {
+  const files = fixtureFiles({ "Break.wav": wav(clickLoop(100, 8)) });
+  const importIt = async () => {
+    const chooser = page.waitForEvent("filechooser");
+    await page.getByTestId("library-import").click();
+    await (await chooser).setFiles(files);
+  };
+  await importIt();
+  await page.getByTestId("library-list").locator("[data-sample]").first().dblclick();
+  const editor = page.getByTestId("sample-editor");
+  await editor.getByRole("button", { name: "Strip silence", exact: true }).click();
+  await editor.getByTestId("editor-apply").click();
+  await expect(page.getByText(/^Applied/).first()).toBeVisible();
+  await importIt();
+  await expect(page.getByTestId("library-list").locator("[data-sample]")).toHaveCount(2);
+});

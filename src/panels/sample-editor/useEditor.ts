@@ -97,7 +97,8 @@ export function useEditor(sampleId: string): Editor {
     sampleRate,
     source: cur.source,
     settings: cur.settings,
-    sourceDirty: cur.sourceDirty,
+    // compared with what's stored (an Apply resets it)
+    sourceDirty: !!saved && cur.source !== saved.source,
     dirty:
       !!saved &&
       (cur.source !== saved.source ||

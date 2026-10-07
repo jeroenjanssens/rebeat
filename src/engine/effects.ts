@@ -4,6 +4,7 @@
  */
 import * as Tone from "tone";
 import { DELAY_TIMES, lin, toUnit } from "../model/params";
+import { Drive, FlatEQ } from "./tone";
 import type { Effect } from "../model/types";
 
 export interface FxNode {
@@ -39,18 +40,14 @@ const rate = (lo: number, hi: number, x: number) => lo * Math.pow(hi / lo, x);
 function build(name: string, p: Record<string, number>): Inner {
   switch (name) {
     case "EQ3": {
-      const eq = new Tone.EQ3();
+      const eq = new FlatEQ();
       return {
         nodes: [eq],
         set: (p) => {
-          eq.low.value = toUnit.db(-15, 15)(v(p, "low"));
-          eq.mid.value = toUnit.db(-15, 15)(v(p, "mid"));
-          eq.high.value = toUnit.db(-15, 15)(v(p, "high"));
-          eq.lowFrequency.value = Math.min(2000, toUnit.hz(v(p, "lowFreq", 0.33)));
-          eq.highFrequency.value = Math.max(
-            eq.lowFrequency.value * 1.5,
-            toUnit.hz(v(p, "highFreq", 0.75)),
-          );
+          const db = toUnit.db(-15, 15);
+          eq.setGains(db(v(p, "low")), db(v(p, "mid")), db(v(p, "high")));
+          const lowHz = Math.min(2000, toUnit.hz(v(p, "lowFreq", 0.33)));
+          eq.setFrequencies(lowHz, Math.max(lowHz * 1.5, toUnit.hz(v(p, "highFreq", 0.75))));
         },
       };
     }
@@ -90,14 +87,13 @@ function build(name: string, p: Record<string, number>): Inner {
       };
     }
     case "Distortion": {
-      const d = new Tone.Distortion({ distortion: 0.4, oversample: "2x" });
-      d.wet.value = 1;
+      const d = new Drive();
       const tone = new Tone.Filter(8000, "lowpass");
       const out = new Tone.Gain(1);
       return {
         nodes: [d, tone, out],
         set: (p) => {
-          d.distortion = v(p, "drive", 0.4);
+          d.setAmount(v(p, "drive", 0.4));
           tone.frequency.value = toUnit.hz(v(p, "tone", 0.8));
           out.gain.value = Tone.dbToGain(toUnit.db(-12, 12)(v(p, "output")));
         },

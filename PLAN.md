@@ -63,7 +63,8 @@ Key implementation patterns:
 - **Playhead and flashes bypass React**: `onStep` events (via Tone.Draw at the audible time) toggle classes on the DOM; canvases redraw from the shared `onFrame` loop and skip work when idle.
 - **Undo**: every project edit goes through `commit(recipe, key)`; edits with the same key within 600 ms merge.
 - **The engine reconciles** the audio graph against the store; immer's structural sharing lets it skip unchanged tracks and effects.
-- **Engine scope**: `withScope(newScope(), …)` runs the same engine code inside `Tone.Offline` for exports.
+- **Engine scope**: `withScope(newScope(), …)` runs the same engine code offline for exports, via `engine/offline.ts` (a native OfflineAudioContext, like the live engine; Tone.Offline's wrapper rejected some node settings).
+- **Channel strip** (`engine/channel.ts`): filter → drive → inserts → EQ → pan → width → fader. Pan comes before width so mono sounds get an equal-power pan law (−3 dB per side in the middle) and the widener always sees stereo. `engine/tone.ts` replaces two Tone.js nodes that colored the sound: `EQ3` (−17 dB notches at its crossovers even when flat) and `Distortion` (−9.5 dB at low drive). Built-in kits are normalized to −6 dBFS for headroom.
 - **Native AudioContext**: Tone's default wrapper ran graph cycle detection on every `connect`; with a node per drum hit that cost ~90% of the main thread.
 - **Samples are immutable** (SHA-256 ids); edits are settings on the library sample (D19) or new versions.
 
@@ -572,6 +573,7 @@ Format: **Dn — Question.** Default ✅, alternatives.
 - **D17 — Drum kit sources.** ✅ (a) Ship a few **built-in synthesized kits** (808/909-style, generated with Tone.js synths and baked into samples; no license issues), plus (b) an **online kit browser** that fetches from the community `tidal-drum-machines` collection (the one Strudel uses: 808, 909, 707, 606, LinnDrum, DMX, SP-12…) on demand, with a note about licensing; nothing redistributed in our bundle. Plus (c) importing any folder or zip as a kit. Alt: (b) only; (a) only; Freesound API integration.
 - **D18 — Library scope.** ✅ One global library shared by all projects. Projects reference samples by hash, and `.rebeat` export embeds the samples used. Alt: per-project library.
 - **D19 — Sample edits vs. tracks.** ✅ Sample settings live on the library sample and so affect every track that uses it; the editor shows "Used by N tracks" and offers "Save as new sample" to fork. Tracks also have their own lightweight sound parameters (tune/start/decay/filter) for per-track variation. Alt: every track gets its own private copy of the settings.
+- **D19b — Apply in the sample editor.** Applies in place, also for audio edits (cut, crop, rendered FX…): the sample keeps its id and its stored audio is replaced, so every track that uses it changes; "Save as new" makes a separate sample. Samples edited in place record their current `contentHash`, so importing the original file again still adds it.
 - **D20 — Effects in the sample editor.** ✅ Applied by rendering into a new sample version (a bounce), with preview. Alt: keep editor effects live (more CPU per voice).
 - **D21 — Storage of audio blobs.** ✅ IndexedDB (Dexie) for everything at first; move audio to OPFS if performance requires it. Ask for persistent storage (`navigator.storage.persist()`) so the browser doesn't evict data. Alt: OPFS from the start.
 
