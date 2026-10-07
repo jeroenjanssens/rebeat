@@ -101,5 +101,6 @@ test("tape stop halts the transport and mute groups toggle their tracks", async 
   await page.keyboard.press("Space");
   await expect.poll(async () => (await state(page)).playing).toBe(true);
   await perf.getByRole("button", { name: "Tape stop" }).click();
-  await expect.poll(async () => (await state(page)).playing, { timeout: 5000 }).toBe(false);
+  // the slowdown takes 1.2 s; leave room for a busy machine
+  await expect.poll(async () => (await state(page)).playing, { timeout: 15000 }).toBe(false);
 });

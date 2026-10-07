@@ -519,22 +519,12 @@ body {
   }
 }
 
-.page-slide {
-  animation: page-slide 140ms ease-out;
-}
-@keyframes page-slide {
-  from {
-    transform: translateX(var(--slide-from, 24px));
-    opacity: 0.4;
-  }
-}
-
 .scroll-thin {
   scrollbar-width: thin;
   scrollbar-color: var(--border-strong) transparent;
 }
 
-[data-reduced-motion="true"] :is(.pad.trig, .perf-pad.trig, .queued, .page-slide) {
+[data-reduced-motion="true"] :is(.pad.trig, .perf-pad.trig, .queued) {
   animation: none;
 }
 

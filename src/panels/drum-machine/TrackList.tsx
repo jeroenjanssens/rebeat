@@ -64,12 +64,6 @@ export function TrackList({ geo }: { geo: Geometry }) {
 
   const slot = project.slots.find((s) => s.id === editSlotId)!;
   const pattern = project.patterns[slot.patternId];
-  // pages slide in from the side they come from
-  const slotIndex = project.slots.indexOf(slot);
-  const [slide, setSlide] = useState({ index: slotIndex, from: "24px" });
-  if (slide.index !== slotIndex)
-    setSlide({ index: slotIndex, from: slotIndex > slide.index ? "24px" : "-24px" });
-  const slideFrom = slide.from;
 
   const selectedByTrack = useMemo(() => {
     const map = new Map<string, Set<number>>();
@@ -297,96 +291,88 @@ export function TrackList({ geo }: { geo: Geometry }) {
         setUi({ zoom: Math.min(2.5, Math.max(0.6, z * (e.deltaY < 0 ? 1.1 : 0.9))) });
       }}
     >
-      {/* clip the slide-in so it never adds scrollable overflow (no scrollbar flash) */}
-      <div className="w-max min-w-full overflow-x-clip">
-        <div
-          data-steps-zone
-          key={pattern.id}
-          className="page-slide flex min-w-max flex-col gap-px px-3 pb-2 pt-1"
-          style={{ "--slide-from": slideFrom } as CSSProperties}
+      <div data-steps-zone className="flex min-w-max flex-col gap-px px-3 pb-2 pt-1">
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={onDragEnd}
+          modifiers={[restrictToVerticalAxis]}
         >
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={onDragEnd}
-            modifiers={[restrictToVerticalAxis]}
+          <SortableContext
+            items={project.tracks.map((t) => t.id)}
+            strategy={verticalListSortingStrategy}
           >
-            <SortableContext
-              items={project.tracks.map((t) => t.id)}
-              strategy={verticalListSortingStrategy}
-            >
-              {project.tracks.map((track, i) => {
-                const lane = pattern.lanes[track.id];
-                if (!lane) return null;
-                const isSel = track.id === selectedTrackId;
-                return (
-                  <div key={track.id}>
-                    <TrackRow
-                      track={track}
-                      index={i}
-                      lane={lane}
-                      pattern={pattern}
-                      geo={geo}
-                      selectedSteps={selectedByTrack.get(track.id) ?? EMPTY}
-                      isSelected={isSel}
-                    />
-                    {isSel &&
-                      selectedLane?.kind === "steps" &&
-                      (["velocity", "probability", "nudge"] as const)
-                        .filter((f) => lanesVisible[f])
-                        .map((f) => (
-                          <ParamLane
-                            key={f}
-                            track={track}
-                            lane={selectedLane}
-                            length={lengthOf(track.id)}
-                            geo={geo}
-                            field={f}
-                          />
-                        ))}
-                  </div>
-                );
-              })}
-            </SortableContext>
-          </DndContext>
+            {project.tracks.map((track, i) => {
+              const lane = pattern.lanes[track.id];
+              if (!lane) return null;
+              const isSel = track.id === selectedTrackId;
+              return (
+                <div key={track.id}>
+                  <TrackRow
+                    track={track}
+                    index={i}
+                    lane={lane}
+                    pattern={pattern}
+                    geo={geo}
+                    selectedSteps={selectedByTrack.get(track.id) ?? EMPTY}
+                    isSelected={isSel}
+                  />
+                  {isSel &&
+                    selectedLane?.kind === "steps" &&
+                    (["velocity", "probability", "nudge"] as const)
+                      .filter((f) => lanesVisible[f])
+                      .map((f) => (
+                        <ParamLane
+                          key={f}
+                          track={track}
+                          lane={selectedLane}
+                          length={lengthOf(track.id)}
+                          geo={geo}
+                          field={f}
+                        />
+                      ))}
+                </div>
+              );
+            })}
+          </SortableContext>
+        </DndContext>
 
-          {/* drop zone */}
-          <div
-            className="mt-1.5 flex items-center justify-center gap-2 rounded-md border border-dashed py-2.5 text-[11px] text-dim transition-colors"
-            style={{
-              width: `max(100%, ${geo.headerW + geo.stepsW + geo.scopeW}px)`,
-              borderColor: dropHover ? "var(--accent)" : "var(--border-strong)",
-              background: dropHover
-                ? "color-mix(in oklab, var(--accent) 10%, transparent)"
-                : undefined,
-            }}
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDropHover(true);
-            }}
-            onDragLeave={() => setDropHover(false)}
-            onDrop={onDrop}
+        {/* drop zone */}
+        <div
+          className="mt-1.5 flex items-center justify-center gap-2 rounded-md border border-dashed py-2.5 text-[11px] text-dim transition-colors"
+          style={{
+            width: `max(100%, ${geo.headerW + geo.stepsW + geo.scopeW}px)`,
+            borderColor: dropHover ? "var(--accent)" : "var(--border-strong)",
+            background: dropHover
+              ? "color-mix(in oklab, var(--accent) 10%, transparent)"
+              : undefined,
+          }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDropHover(true);
+          }}
+          onDragLeave={() => setDropHover(false)}
+          onDrop={onDrop}
+        >
+          <span className="hidden @[600px]:inline">Drop samples here to add tracks ·</span>
+          <button
+            className="tool-btn border border-line"
+            onClick={() => add("drum", "perc", "Perc", "808 Cowbell", "kit:808:cowbell")}
           >
-            <span className="hidden @[600px]:inline">Drop samples here to add tracks ·</span>
-            <button
-              className="tool-btn border border-line"
-              onClick={() => add("drum", "perc", "Perc", "808 Cowbell", "kit:808:cowbell")}
-            >
-              + Drum
-            </button>
-            <button
-              className="tool-btn border border-line"
-              onClick={() => add("instrument", "keys", "Keys", "Poly · Init")}
-            >
-              + Instrument
-            </button>
-            <button
-              className="tool-btn border border-line"
-              onClick={() => add("audio", "vocal", "Audio", "No clip")}
-            >
-              + Audio
-            </button>
-          </div>
+            + Drum
+          </button>
+          <button
+            className="tool-btn border border-line"
+            onClick={() => add("instrument", "keys", "Keys", "Poly · Init")}
+          >
+            + Instrument
+          </button>
+          <button
+            className="tool-btn border border-line"
+            onClick={() => add("audio", "vocal", "Audio", "No clip")}
+          >
+            + Audio
+          </button>
         </div>
       </div>
 

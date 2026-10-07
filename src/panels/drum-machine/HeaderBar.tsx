@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useMemo, useRef, type ReactNode } from "react";
 import {
   ChevronDown,
   Crosshair,
@@ -44,6 +44,35 @@ function Dropdown({
   );
 }
 
+/**
+ * Sizes itself to the widest of `texts` (rendered invisibly in the same grid cell, so it uses
+ * the real font), and shows `children` on top.
+ */
+function WidestOf({
+  texts,
+  className,
+  children,
+}: {
+  texts: string[];
+  className: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className={`grid min-w-0 ${className}`}>
+      {texts.map((t) => (
+        <span
+          key={t}
+          aria-hidden
+          className="invisible col-start-1 row-start-1 truncate whitespace-nowrap"
+        >
+          {t}
+        </span>
+      ))}
+      <div className="col-start-1 row-start-1 min-w-0">{children}</div>
+    </div>
+  );
+}
+
 const TOOLS: { id: Tool; icon: typeof Pencil; title: string }[] = [
   { id: "draw", icon: Pencil, title: "Draw (D) · Shift-drag = velocity" },
   { id: "erase", icon: Eraser, title: "Erase (E)" },
@@ -56,6 +85,11 @@ export function HeaderBar({ sizeClass }: { sizeClass: SizeClass }) {
   const editSlotId = useStore((s) => s.editSlotId);
   const { view, tool, quantize, zoom, follow, lanes, setUi, commit } = useStore();
   const pageNumber = slots.findIndex((s) => s.id === editSlotId) + 1;
+  const patterns = useStore((s) => s.project.patterns);
+  const pageNames = useMemo(
+    () => [...new Set(slots.map((s) => patterns[s.patternId]?.name ?? ""))],
+    [slots, patterns],
+  );
   const compact = sizeClass === "compact";
   const moreRef = useRef<HTMLButtonElement>(null);
 
@@ -140,16 +174,22 @@ export function HeaderBar({ sizeClass }: { sizeClass: SizeClass }) {
         </button>
       </div>
 
+      {/* fixed widths (the longest page name and number), so the controls after them don't move */}
       <div className="flex min-w-0 items-center gap-1.5 px-1">
-        <span className="num text-[13px] font-semibold" style={{ color: pattern.linkColor }}>
-          {pageNumber}
-        </span>
-        <InlineEdit
-          value={pattern.name}
-          trigger="click"
-          onCommit={(v) => setPattern((p) => (p.name = v))}
-          className="max-w-[140px] text-[13px] font-semibold uppercase tracking-wider"
-        />
+        <WidestOf texts={[String(slots.length)]} className="num text-[13px] font-semibold">
+          <span style={{ color: pattern.linkColor }}>{pageNumber}</span>
+        </WidestOf>
+        <WidestOf
+          texts={pageNames}
+          className="max-w-[180px] text-[13px] font-semibold uppercase tracking-wider"
+        >
+          <InlineEdit
+            value={pattern.name}
+            trigger="click"
+            onCommit={(v) => setPattern((p) => (p.name = v))}
+            className="block w-full text-[13px] font-semibold uppercase tracking-wider"
+          />
+        </WidestOf>
       </div>
 
       <Dropdown

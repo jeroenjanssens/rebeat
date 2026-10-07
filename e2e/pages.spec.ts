@@ -20,7 +20,7 @@ const state = (page: Page, expr: string) =>
 test("a queued page starts when the current page ends", async ({ page }) => {
   await page.evaluate(() => {
     const s = (window as never as { __rebeat: R }).__rebeat.store.getState();
-    s.commit((p: { bpm: number }) => void (p.bpm = 300));
+    s.commit((p: { bpm: number }) => void (p.bpm = 120));
   });
   await page.keyboard.press("Space");
   const thumbs = page.locator('[data-panel="drum-machine"] .page-thumb');
@@ -59,7 +59,7 @@ test("a clone shares its pattern; unlinking makes it independent", async ({ page
 test("switching pages doesn't resize or overflow the track list", async ({ page }) => {
   const frames = await page.evaluate(async () => {
     const dm = document.querySelector('[data-panel="drum-machine"]')!;
-    const scroller = dm.querySelector("[data-steps-zone]")!.parentElement!.parentElement!;
+    const scroller = dm.querySelector("[data-steps-zone]")!.parentElement!;
     const measure = () => `${scroller.scrollWidth - scroller.clientWidth}/${scroller.scrollHeight}`;
     const out: string[] = [];
     for (const i of [2, 1, 0]) {
@@ -73,4 +73,15 @@ test("switching pages doesn't resize or overflow the track list", async ({ page 
     return out;
   });
   expect(frames).toEqual([]);
+});
+
+test("the header controls stay in place when switching pages", async ({ page }) => {
+  const dm = page.locator('[data-panel="drum-machine"]');
+  const steps = dm.getByRole("button", { name: /Steps/ }).first();
+  const xs = new Set<number>();
+  for (let i = 0; i < 5; i++) {
+    await dm.locator(".page-thumb").nth(i).click();
+    xs.add(Math.round((await steps.boundingBox())!.x));
+  }
+  expect([...xs]).toHaveLength(1);
 });
