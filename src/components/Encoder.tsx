@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 import type { ParamDef } from "../model/params";
 import { contextMenu } from "./Menu";
+import { startMidiLearn } from "../midi/learn";
 
 interface Props {
   def: ParamDef;
@@ -8,6 +9,8 @@ interface Props {
   onChange: (v: number) => void;
   color?: string;
   size?: number;
+  /** Id for MIDI learn, e.g. "track:<id>:sound.cutoff". */
+  midiTarget?: string;
 }
 
 const START = -135;
@@ -33,7 +36,14 @@ const clamp = (v: number) => Math.min(1, Math.max(0, v));
  * A rotary encoder with an LED-style value ring. Drag vertically (Shift = fine), scroll,
  * double-click to reset, right-click for MIDI learn.
  */
-export function Encoder({ def, value, onChange, color = "var(--accent)", size = 40 }: Props) {
+export function Encoder({
+  def,
+  value,
+  onChange,
+  color = "var(--accent)",
+  size = 40,
+  midiTarget,
+}: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const drag = useRef<{ y: number; v: number } | null>(null);
   const valueRef = useRef(value);
@@ -97,7 +107,11 @@ export function Encoder({ def, value, onChange, color = "var(--accent)", size = 
           contextMenu(e, [
             { label: "Reset to default", onSelect: () => onChange(def.default), disabled },
             { separator: true },
-            { label: "MIDI learn (Phase 8)", disabled: true },
+            {
+              label: "MIDI learn",
+              disabled: !midiTarget,
+              onSelect: () => midiTarget && startMidiLearn(midiTarget, def.label),
+            },
           ])
         }
       >

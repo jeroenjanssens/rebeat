@@ -34,17 +34,23 @@ export function useCanvas(
 
   useEffect(() => {
     const canvas = ref.current!;
+    let raf = 0;
+    // resize on the next frame: changing the canvas inside the observer can cause RO loop errors
     const ro = new ResizeObserver(([entry]) => {
       const { width, height } = entry.contentRect;
-      const dpr = window.devicePixelRatio || 1;
-      sizeRef.current = { width, height, dpr };
-      canvas.width = Math.max(1, Math.round(width * dpr));
-      canvas.height = Math.max(1, Math.round(height * dpr));
-      redraw();
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const dpr = window.devicePixelRatio || 1;
+        sizeRef.current = { width, height, dpr };
+        canvas.width = Math.max(1, Math.round(width * dpr));
+        canvas.height = Math.max(1, Math.round(height * dpr));
+        redraw();
+      });
     });
     ro.observe(canvas);
     const off = onThemeChange(redraw);
     return () => {
+      cancelAnimationFrame(raf);
       ro.disconnect();
       off();
     };

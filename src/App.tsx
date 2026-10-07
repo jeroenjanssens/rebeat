@@ -14,6 +14,7 @@ import { ProjectBrowser } from "./app/ProjectBrowser";
 import { ToastHost } from "./components/Toast";
 import { useStore } from "./state/store";
 import { startProjects } from "./storage/projects";
+import { startLibrary } from "./library/library";
 import { demoProject } from "./templates/nightDrive";
 
 export function App() {
@@ -34,6 +35,7 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    startLibrary();
     void startProjects(demoProject);
   }, []);
 

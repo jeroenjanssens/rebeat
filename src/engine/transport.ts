@@ -103,6 +103,19 @@ export function scheduledSteps(): readonly ScheduledStep[] {
   return history;
 }
 
+/** Audio time of the next beat while playing (for starting things in time). */
+export function nextBeatTime(): number | null {
+  const now = audioNow();
+  const cur = [...history].reverse().find((h) => h.time <= now);
+  if (!cur) return null;
+  const spb = stepsPerBeat(cur.pattern);
+  const left = spb - (cur.pageStep % spb);
+  return (
+    cur.time +
+    left * (60 / useStore.getState().project.bpm) * STEP_SIZE_QUARTERS[cur.pattern.stepSize]
+  );
+}
+
 export function isCountingIn() {
   return audioNow() < countInUntil;
 }

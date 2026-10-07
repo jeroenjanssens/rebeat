@@ -11,6 +11,8 @@ import {
   Activity,
 } from "lucide-react";
 import { DrumMachine } from "../panels/drum-machine/DrumMachine";
+import { InspectorPanel } from "../panels/inspector/InspectorPanel";
+import { LibraryPanel } from "../panels/library/LibraryPanel";
 
 export interface PanelProps {
   params: Record<string, unknown>;
@@ -52,14 +54,14 @@ export const PANELS: PanelDef[] = [
     id: "library",
     title: "Library",
     icon: Library,
-    component: placeholder("Library", "Phase 3"),
+    component: LibraryPanel,
     minWidth: 200,
   },
   {
     id: "inspector",
     title: "Inspector",
     icon: SlidersHorizontal,
-    component: placeholder("Inspector", "Phase 3"),
+    component: InspectorPanel,
     minWidth: 220,
   },
   {

@@ -13,6 +13,8 @@ import { addTrack, makeTrack } from "../../model/project";
 import type { SoundCategory, TrackKind } from "../../model/types";
 import { applyHeld, editSteps, setStep, toggleSelected } from "../../state/actions";
 import { stepKey, useStore } from "../../state/store";
+import { KIT_MIME, SAMPLE_MIME, addSampleTracks } from "../../state/trackActions";
+import { filesFromDrop, importFiles } from "../../library/library";
 import type { Geometry } from "./layout";
 import { ParamLane } from "./ParamLane";
 import { TrackRow } from "./TrackRow";
@@ -204,25 +206,23 @@ export function TrackList({ geo }: { geo: Geometry }) {
     setUi({ selectedTrackId: track.id });
   };
 
-  const onDrop = (e: React.DragEvent) => {
+  const onDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     setDropHover(false);
-    const files = [...e.dataTransfer.files].filter(
-      (f) => f.type.startsWith("audio/") || /\.(wav|mp3|ogg|flac|aif+|m4a)$/i.test(f.name),
-    );
-    for (const f of files) {
-      const n = f.name.toLowerCase();
-      const category: SoundCategory = n.includes("kick")
-        ? "kick"
-        : n.includes("snare")
-          ? "snare"
-          : n.includes("hat") || n.includes("hh")
-            ? "hat"
-            : n.includes("clap")
-              ? "clap"
-              : "perc";
-      add("drum", category, f.name.replace(/\.[^.]+$/, "").slice(0, 12), f.name);
+    const kit = e.dataTransfer.getData(KIT_MIME);
+    if (kit) {
+      const sounds = JSON.parse(kit) as { id: string; category: SoundCategory }[];
+      addSampleTracks(
+        sounds.map((s) => s.id),
+        undefined,
+        sounds.map((s) => s.category),
+      );
+      return;
     }
+    const id = e.dataTransfer.getData(SAMPLE_MIME);
+    if (id) return void addSampleTracks([id]);
+    const ids = await importFiles(await filesFromDrop(e.dataTransfer));
+    if (ids.length) addSampleTracks(ids);
   };
 
   const selected = project.tracks.find((t) => t.id === selectedTrackId);

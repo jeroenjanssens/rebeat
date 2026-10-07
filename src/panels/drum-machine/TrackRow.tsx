@@ -1,4 +1,6 @@
-import { useEffect, useRef, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { filesFromDrop, importFiles } from "../../library/library";
+import { SAMPLE_MIME, addSampleTracks, replaceSound } from "../../state/trackActions";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { AudioLines, Disc3, GripVertical, Music2, Power } from "lucide-react";
@@ -110,6 +112,7 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
   const commit = useStore((s) => s.commit);
   const setUi = useStore((s) => s.setUi);
   const jogOpen = useStore((s) => !!s.jogOpen[track.id]);
+  const [dropMode, setDropMode] = useState<"replace" | "insert" | null>(null);
   const cursorIndex = useStore((s) => (s.cursor?.trackId === track.id ? s.cursor.index : -1));
   const compact = geo.sizeClass === "compact";
   const length =
@@ -301,7 +304,45 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
     ) : null;
 
   return (
-    <div ref={setNodeRef} style={style} data-track-row={track.id}>
+    <div
+      ref={setNodeRef}
+      style={{
+        ...style,
+        boxShadow: dropMode
+          ? dropMode === "insert"
+            ? "inset 0 -2px 0 var(--accent)"
+            : "inset 0 0 0 1.5px var(--accent)"
+          : undefined,
+        borderRadius: 4,
+      }}
+      data-track-row={track.id}
+      onDragOver={(e) => {
+        const types = [...e.dataTransfer.types];
+        if (!types.includes(SAMPLE_MIME) && !types.includes("Files")) return;
+        e.preventDefault();
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = "copy";
+        setDropMode(e.altKey ? "insert" : "replace");
+      }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropMode(null);
+      }}
+      onDrop={async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setDropMode(null);
+        const insert = e.altKey;
+        let ids = [e.dataTransfer.getData(SAMPLE_MIME)].filter(Boolean);
+        if (!ids.length && e.dataTransfer.files.length)
+          ids = await importFiles(await filesFromDrop(e.dataTransfer));
+        if (!ids.length) return;
+        if (insert) addSampleTracks(ids, index + 1);
+        else {
+          replaceSound(track.id, ids[0]);
+          if (ids.length > 1) addSampleTracks(ids.slice(1), index + 1);
+        }
+      }}
+    >
       <div className="flex w-max min-w-full items-center" style={{ minHeight: geo.padH + 8 }}>
         {/* ---- header ---- */}
         <div
