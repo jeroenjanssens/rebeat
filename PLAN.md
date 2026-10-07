@@ -1,6 +1,6 @@
 # Rebeat — Product & Technical Plan
 
-> **Status (2026-10-07):** plan agreed; **Phase M (drum machine mockup) is built and approved**. The next steps are **Phase G** (git + private GitHub repo) and then **Phase 0**, starting from the mockup code.
+> **Status (2026-10-07):** Phases M, G, 0 and 1 are done (repo: `github.com/jeroenjanssens/rebeat`, private). Work continues through the roadmap in §7; see §0.6 for the current step.
 > Every open question in §6 has a **default**. All defaults were accepted when Phase M was started, except where §6 records a different choice. To change one, refer to it by number (e.g. "D7: B").
 
 ---
@@ -82,11 +82,14 @@ Known gaps in the mockup (fill in during Phase 0/1):
 - Each phase ends with something runnable. `just check` must pass, and visual changes are checked in a real browser (screenshots).
 - Match the existing code style: TypeScript, Prettier (print width 100), small focused modules, comments only where they explain *why*.
 
-### 0.6 Next steps
+### 0.6 Progress and next steps
 
-1. **Phase G**: `git init`, an initial commit of the mockup, and a private GitHub repository (`gh repo create rebeat --private --source . --push`). Confirm the repo name/owner before creating it.
-2. **Phase 0**: the IDE shell around the mockup (Dockview, transport bar, platform layer, full screen, e2e tests).
-3. **Phase 1**: replace `mock/` with the Tone.js engine, so the drum machine makes real sound.
+Work proceeds phase by phase through §7, committing after each feature.
+
+- **G** ✅ git + private repo `jeroenjanssens/rebeat`.
+- **0** ✅ Dockview shell (`src/app/`: Dock, layouts/presets, PanelFrame with panel full screen, maximize, pop-outs), transport bar, floating transport, command registry + palette + rebindable shortcuts (`app/commands.ts`, `app/defaultCommands.ts`), settings (`state/settings.ts`, persisted via `platform.kv`), themes (Studio Dark, Paper, Midnight, Ember, High Contrast, accent picker, UI scale, density), `platform/` layer, Dexie schema (`storage/db.ts`), Playwright e2e (`just e2e`), CI (`.github/workflows/ci.yml`).
+- **1** ✅ Tone.js engine (`src/engine/`): lookahead scheduler on the audio clock (`transport.ts`, worker ticker), channel strips (`channel.ts`), drum voices/synths/clips/metering (`engine.ts`), offline-synthesized 808/909 kits (`kits.ts`), metronome + count-in, per-track step count/rate/swing, choke groups, keyboard step cursor, keyboard pads with step entry and live recording (`state/input.ts`). `src/mock/` is gone; the demo is `templates/nightDrive.ts`.
+- Next: Phase 2 (projects), then 3, 4, 5, 5b, 6, 7, 8, 8b, 9, 10.
 
 ---
 
