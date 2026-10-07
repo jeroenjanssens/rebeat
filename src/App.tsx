@@ -11,6 +11,7 @@ import { ShortcutsDialog } from "./app/ShortcutsDialog";
 import { TransportBar } from "./app/TransportBar";
 import { useAppearance } from "./app/useAppearance";
 import { ExportDialog } from "./app/ExportDialog";
+import { WelcomeDialog } from "./app/WelcomeDialog";
 import { ProjectBrowser } from "./app/ProjectBrowser";
 import { ToastHost } from "./components/Toast";
 import { useStore } from "./state/store";
@@ -52,6 +53,7 @@ export function App() {
       <ShortcutsDialog />
       <ProjectBrowser />
       <ExportDialog />
+      <WelcomeDialog />
       <ToastHost />
       <AudioStartOverlay />
     </div>

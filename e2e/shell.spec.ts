@@ -52,3 +52,16 @@ test("toggles a step pad and undoes it", async ({ page }) => {
   await page.keyboard.press("ControlOrMeta+Z");
   await expect(pad).not.toHaveClass(/\bon\b/);
 });
+
+test("shows the welcome on the first run only", async ({ browser }) => {
+  const page = await browser.newPage();
+  await page.goto("/");
+  await page.getByTestId("audio-overlay").click();
+  await page.getByTestId("welcome-demo").click();
+  await expect(page.getByTestId("welcome-demo")).toHaveCount(0);
+  await page.reload();
+  await page.getByTestId("audio-overlay").click();
+  await page.waitForTimeout(500);
+  await expect(page.getByTestId("welcome-demo")).toHaveCount(0);
+  await page.close();
+});
