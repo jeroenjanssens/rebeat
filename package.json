@@ -43,6 +43,7 @@
     "globals": "^17.13.0",
     "immer": "^11.1.21",
     "lucide-react": "^1.52.0",
+    "marked": "^18.1.0",
     "prettier": "^3.9.9",
     "radix-ui": "^1.7.0",
     "react": "^19.3.0",
@@ -68,7 +69,7 @@
   "build": {
     "appId": "com.jeroenjanssens.rebeat",
     "productName": "Rebeat",
-    "copyright": "Copyright \u00a9 2026 Jeroen Janssens",
+    "copyright": "Copyright © 2026 Jeroen Janssens",
     "directories": {
       "output": "release",
       "buildResources": "electron/build"

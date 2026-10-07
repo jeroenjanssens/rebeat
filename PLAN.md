@@ -9,7 +9,7 @@
 
 ### 0.1 Where we are
 
-- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D69), and the build order is in §7.
+- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D70), and the build order is in §7.
 - Every phase in §7 is built, tested (unit + Playwright e2e) and pushed. The mockup (Phase M) became the app: its components, model and store were kept and extended; `src/mock/` was replaced by the real engine.
 - The desktop app (Phase 10) runs and packages locally (unsigned); signing/notarization need certificates (see `.github/workflows/desktop.yml`).
 
@@ -48,7 +48,9 @@ src/
                          onlineKits (tidal-drum-machines)
   storage/               db (Dexie), projects (autosave, crash recovery), rebeatFile (.rebeat zip)
   panels/                drum-machine/, library/, inspector/, mixer/, master-scope/, piano-roll/, sample-editor/,
-                         performance/
+                         performance/, guide/
+  help/                  the user guide: chapters/*.md (one per topic) and guide.ts (marked renderer; {#id}
+                         anchors, {{key:command}} and {{shortcuts}} placeholders, panel:/command:/# links)
   components/            Encoder, Fader, VMeter, LevelMeter, Scope, PeaksCanvas, EffectEditor, Dialog, Menu,
                          Toast, DragValue, MiniFader, InlineEdit, portal, useScratch, useSamplesVersion
   render/                raf (shared loop + load), useCanvas, theme (tokens), thumbnail
@@ -142,6 +144,7 @@ These terms are used consistently throughout the plan and later in the code.
 - **Command palette** (Ctrl/Cmd+K) and full keyboard shortcuts; a shortcut cheat sheet.
 - Global **undo/redo** for all project edits.
 - **Themes**: light, dark, and several named themes (e.g. "Studio Dark", "Midnight", "Paper", "High Contrast"); follows the OS preference by default. All colors, including canvas drawings, come from one set of design tokens.
+- A built-in **Guide** panel (D70; F1, the **?** button, the welcome dialog, Help menu): a tutorial covering every panel and button, with search and the user's current shortcuts.
 - A one-time "Click to start audio" overlay. Browsers only allow audio to start after a user gesture.
 - Settings dialog: audio input/output device, latency mode, recording latency compensation, theme, MIDI devices, autosave.
 
@@ -635,6 +638,7 @@ Format: **Dn — Question.** Default ✅, alternatives.
 - **D67 — TypeScript version.** ✅ TypeScript 6 for now, because typescript-eslint doesn't support TypeScript 7 yet; move to 7 when it does. Alt: TypeScript 7 for type-checking only, without type-aware linting.
 - **D68 — Page change transition.** None: switching pages is instant (decided after trying a horizontal slide, which was distracting). Alt: slide.
 - **D69 — Example songs.** Read-only and generated (never stored), so they can't be overwritten; the first edit makes a copy named "… (copy)" and the edit continues in it, undo included. They reproduce the grooves, tempos, keys and chord progressions; basslines and synth parts are written in the style of the originals, not copied note for note. Alt: editable examples.
+- **D70 — In-app guide.** Markdown chapters in `src/help/chapters`, bundled with the app (works offline) and shown in a dockable Guide panel. Shortcuts are filled in from the command registry, so rebinding a key updates the guide; links can open panels or run commands. An e2e test checks that every anchor and shortcut reference resolves. Keep the chapters up to date when a panel or button changes. Alt: an external docs site.
 - **D35 — Build order.** ✅ The phases in §7, starting with the mockup (Phase M), each ending with something you can play with.
 
 ---

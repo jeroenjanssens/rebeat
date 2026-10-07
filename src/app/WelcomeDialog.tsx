@@ -1,6 +1,7 @@
 import { Dialog } from "../components/Dialog";
 import { useSettings } from "../state/settings";
 import { formatKeys } from "./commands";
+import { openGuide } from "./openers";
 import { newFromTemplate } from "./projectActions";
 import { useShell } from "./shell";
 
@@ -61,6 +62,16 @@ export function WelcomeDialog() {
             }}
           >
             Loop station
+          </button>
+          <button
+            className="tool-btn ml-auto border border-line"
+            onClick={() => {
+              done();
+              openGuide("getting-started");
+            }}
+            data-testid="welcome-guide"
+          >
+            Read the guide (F1)
           </button>
         </div>
       </div>

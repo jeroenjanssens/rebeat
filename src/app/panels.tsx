@@ -9,6 +9,7 @@ import {
   SlidersHorizontal,
   SlidersVertical,
   Activity,
+  BookOpen,
 } from "lucide-react";
 import { DrumMachine } from "../panels/drum-machine/DrumMachine";
 import { InspectorPanel } from "../panels/inspector/InspectorPanel";
@@ -27,6 +28,7 @@ const PerformancePanel = lazyPanel(() =>
 const PianoRollPanel = lazyPanel(() =>
   import("../panels/piano-roll/PianoRollPanel").then((m) => m.PianoRollPanel),
 );
+const GuidePanel = lazyPanel(() => import("../panels/guide/GuidePanel").then((m) => m.GuidePanel));
 const SampleEditorPanel = lazyPanel(() =>
   import("../panels/sample-editor/SampleEditorPanel").then((m) => m.SampleEditorPanel),
 );
@@ -103,6 +105,13 @@ export const PANELS: PanelDef[] = [
     component: MasterScopePanel,
     minWidth: 200,
     minHeight: 120,
+  },
+  {
+    id: "guide",
+    title: "Guide",
+    icon: BookOpen,
+    component: GuidePanel,
+    minWidth: 360,
   },
 ];
 

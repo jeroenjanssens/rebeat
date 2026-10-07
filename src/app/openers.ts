@@ -27,3 +27,24 @@ export function openSampleEditor(sampleId: string) {
 export function focusPanel(component: string) {
   if (dock.api) openPanel(dock.api, component);
 }
+
+/** The guide, optionally at a section ("mixing", "pad-view"…); opens to the right. */
+export function openGuide(anchor?: string) {
+  const api = dock.api;
+  if (!api) return;
+  const params = { anchor, nonce: Date.now() };
+  const existing = api.getPanel("guide");
+  if (existing) {
+    existing.api.updateParameters(params);
+    return existing.api.setActive();
+  }
+  api.addPanel({
+    id: "guide",
+    component: "guide",
+    title: "Guide",
+    params,
+    minimumWidth: 360,
+    initialWidth: Math.min(640, Math.round(api.width * 0.4)),
+    position: { direction: "right" },
+  });
+}

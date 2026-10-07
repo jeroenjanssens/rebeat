@@ -652,3 +652,118 @@ kbd,
   font: 500 10px/1 var(--font-mono);
   color: var(--text-dim);
 }
+
+/* ---------- the guide ---------- */
+.guide-toc-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 3px 8px;
+  border-radius: 4px;
+  color: var(--text-dim);
+}
+.guide-toc-item:hover {
+  background: var(--raised);
+  color: var(--text);
+}
+.guide-toc-item[data-active="true"] {
+  color: var(--accent);
+}
+.guide {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text);
+  max-width: 100%;
+}
+.guide > * {
+  max-width: 46rem;
+}
+.guide h1 {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 2.2em 0 0.6em;
+  padding-top: 0.6em;
+  border-top: 1px solid var(--border);
+}
+.guide h1:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+.guide h2 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 1.6em 0 0.4em;
+}
+.guide h3 {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 1.2em 0 0.3em;
+}
+.guide p,
+.guide ul,
+.guide ol,
+.guide table {
+  margin: 0.5em 0;
+}
+.guide ul {
+  list-style: disc;
+  padding-left: 1.4em;
+}
+.guide ol {
+  list-style: decimal;
+  padding-left: 1.4em;
+}
+.guide li {
+  margin: 0.2em 0;
+}
+.guide a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.guide strong {
+  font-weight: 600;
+}
+.guide code {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
+  background: var(--surface);
+  padding: 0 4px;
+  border-radius: 3px;
+}
+.guide kbd {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  padding: 1px 5px;
+  border: 1px solid var(--border-strong);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--surface);
+  white-space: nowrap;
+}
+.guide .guide-nokey {
+  color: var(--text-faint);
+  font-style: italic;
+}
+.guide table {
+  border-collapse: collapse;
+  width: 100%;
+}
+.guide th,
+.guide td {
+  border-bottom: 1px solid var(--border);
+  padding: 4px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+.guide th {
+  font-weight: 600;
+  color: var(--text-dim);
+}
+.guide blockquote {
+  border-left: 3px solid var(--accent);
+  padding-left: 0.8em;
+  color: var(--text-dim);
+}

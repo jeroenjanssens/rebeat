@@ -430,6 +430,19 @@ export function startClip(track: Track, time: number, pageDur: number, oneshot: 
     src.playbackRate.value = ratio * (warp ? 1 : Math.pow(2, pitch / 12));
     const env = raw().createGain();
     env.gain.value = level;
+    // Fade in / Fade out (SOUND bank): when the clip starts and before it stops on a page
+    const fadeIn =
+      (p["sound.fadein"] ?? 0) > 0.001 ? toUnit.ms(1, 2000)(p["sound.fadein"]) / 1000 : 0;
+    const fadeOut =
+      (p["sound.fadeout"] ?? 0) > 0.001 ? toUnit.ms(1, 2000)(p["sound.fadeout"]) / 1000 : 0;
+    if (fadeIn) {
+      env.gain.setValueAtTime(0, t);
+      env.gain.linearRampToValueAtTime(level, t + Math.min(fadeIn, end - t));
+    }
+    if (fadeOut && end - fadeOut > t + fadeIn) {
+      env.gain.setValueAtTime(level, end - fadeOut);
+      env.gain.linearRampToValueAtTime(0, end);
+    }
     src.connect(env);
     Tone.connect(env, dest);
     if (!oneshot) {

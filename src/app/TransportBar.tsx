@@ -9,6 +9,7 @@ import {
   Settings,
   Square,
   Timer,
+  CircleHelp,
 } from "lucide-react";
 import { DragValue } from "../components/DragValue";
 import { LevelMeter } from "../components/LevelMeter";
@@ -22,6 +23,7 @@ import { frameLoad, onFrame } from "../render/raf";
 import { useStore } from "../state/store";
 import { isExampleId } from "../templates/examples";
 import { LAYOUT_PRESETS, applyPreset, openPanel } from "./layouts";
+import { openGuide } from "./openers";
 import { PANELS } from "./panels";
 import { dock, useShell } from "./shell";
 
@@ -398,6 +400,14 @@ export function TransportBar() {
         onClick={() => (fullscreen ? platform.fullscreen.exit() : platform.fullscreen.enter())}
       >
         {fullscreen ? <Minimize size={14} /> : <Expand size={14} />}
+      </button>
+      <button
+        className="tool-btn"
+        title="Guide (F1)"
+        onClick={() => openGuide()}
+        data-testid="open-guide"
+      >
+        <CircleHelp size={14} />
       </button>
       <button
         className="tool-btn"

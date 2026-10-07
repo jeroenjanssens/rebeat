@@ -11,6 +11,7 @@ import * as projectActions from "./projectActions";
 import { toggleMaximize } from "./Dock";
 import { LAYOUT_PRESETS, applyPreset, openPanel } from "./layouts";
 import { togglePanelFullscreen } from "./PanelFrame";
+import { openGuide } from "./openers";
 import { PANELS } from "./panels";
 import { dock, useShell } from "./shell";
 import { tapTempo } from "./TransportBar";
@@ -374,6 +375,14 @@ export function defaultCommands(): Command[] {
       keys: ["Mod+,"],
       global: true,
       run: () => shell().set({ settingsOpen: true }),
+    },
+    {
+      id: "app.guide",
+      title: "Guide",
+      category: "View",
+      keys: ["F1"],
+      global: true,
+      run: () => openGuide(),
     },
     {
       id: "app.shortcuts",

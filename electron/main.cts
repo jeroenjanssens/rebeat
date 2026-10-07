@@ -4,7 +4,18 @@
  * native dialogs, menus, `.rebeat` file association, a stage (kiosk) mode and permanent
  * microphone/MIDI permissions.
  */
-import { BrowserWindow, Menu, app, dialog, ipcMain, net, protocol, session, shell, systemPreferences } from "electron";
+import {
+  BrowserWindow,
+  Menu,
+  app,
+  dialog,
+  ipcMain,
+  net,
+  protocol,
+  session,
+  shell,
+  systemPreferences,
+} from "electron";
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -12,10 +23,27 @@ import { autoUpdater } from "electron-updater";
 
 const DEV_URL = process.env.REBEAT_DEV_URL;
 const DIST = path.join(__dirname, "../../dist");
-const ALLOWED = new Set(["media", "midi", "midiSysex", "fullscreen", "clipboard-read", "clipboard-sanitized-write", "speaker-selection"]);
+const ALLOWED = new Set([
+  "media",
+  "midi",
+  "midiSysex",
+  "fullscreen",
+  "clipboard-read",
+  "clipboard-sanitized-write",
+  "speaker-selection",
+]);
 
 protocol.registerSchemesAsPrivileged([
-  { scheme: "rebeat", privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, corsEnabled: true } },
+  {
+    scheme: "rebeat",
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      stream: true,
+      corsEnabled: true,
+    },
+  },
 ]);
 
 const windows = new Set<BrowserWindow>();
@@ -81,13 +109,24 @@ function buildMenu() {
           accelerator: "CmdOrCtrl+Shift+O",
           click: async () => {
             const win = focused();
-            const r = await dialog.showOpenDialog(win, { filters: [{ name: "Rebeat project", extensions: ["rebeat"] }], properties: ["openFile"] });
+            const r = await dialog.showOpenDialog(win, {
+              filters: [{ name: "Rebeat project", extensions: ["rebeat"] }],
+              properties: ["openFile"],
+            });
             if (!r.canceled && r.filePaths[0]) await openFileIn(win, r.filePaths[0]);
           },
         },
         { label: "Save", accelerator: "CmdOrCtrl+S", click: command("project.save") },
-        { label: "Export .rebeat…", accelerator: "CmdOrCtrl+Shift+E", click: command("project.export") },
-        { label: "Export Audio / MIDI…", accelerator: "CmdOrCtrl+E", click: command("project.exportAudio") },
+        {
+          label: "Export .rebeat…",
+          accelerator: "CmdOrCtrl+Shift+E",
+          click: command("project.export"),
+        },
+        {
+          label: "Export Audio / MIDI…",
+          accelerator: "CmdOrCtrl+E",
+          click: command("project.exportAudio"),
+        },
         { type: "separator" },
         { label: "New Window", accelerator: "CmdOrCtrl+Shift+N", click: () => createWindow() },
         { type: "separator" },
@@ -135,6 +174,7 @@ function buildMenu() {
     {
       role: "help",
       submenu: [
+        { label: "Rebeat Guide", accelerator: "F1", click: command("app.guide") },
         { label: "Keyboard Shortcuts", click: command("app.shortcuts") },
         { label: "Settings…", accelerator: "CmdOrCtrl+,", click: command("app.settings") },
       ],
@@ -143,33 +183,57 @@ function buildMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
-ipcMain.handle("dialog:open", async (e, opts: { accept?: string[]; multiple?: boolean; directory?: boolean }) => {
-  const win = BrowserWindow.fromWebContents(e.sender) ?? undefined;
-  const exts = (opts.accept ?? []).filter((a) => a.startsWith(".")).map((a) => a.slice(1));
-  const audio = (opts.accept ?? []).some((a) => a.startsWith("audio/"));
-  const filters = exts.length || audio
-    ? [{ name: "Files", extensions: [...exts, ...(audio ? ["wav", "mp3", "ogg", "flac", "aif", "aiff", "m4a"] : [])] }]
-    : [];
-  const r = await dialog.showOpenDialog(win!, {
-    filters,
-    properties: opts.directory ? ["openDirectory"] : ["openFile", ...(opts.multiple ? (["multiSelections"] as const) : [])],
-  });
-  if (r.canceled) return [];
-  if (opts.directory) {
-    // a picked folder: all files inside, recursively, with their relative paths
-    const { readdir } = await import("node:fs/promises");
-    const root = r.filePaths[0];
-    const entries = await readdir(root, { recursive: true, withFileTypes: true });
-    const files = entries.filter((d) => d.isFile());
+ipcMain.handle(
+  "dialog:open",
+  async (e, opts: { accept?: string[]; multiple?: boolean; directory?: boolean }) => {
+    const win = BrowserWindow.fromWebContents(e.sender) ?? undefined;
+    const exts = (opts.accept ?? []).filter((a) => a.startsWith(".")).map((a) => a.slice(1));
+    const audio = (opts.accept ?? []).some((a) => a.startsWith("audio/"));
+    const filters =
+      exts.length || audio
+        ? [
+            {
+              name: "Files",
+              extensions: [
+                ...exts,
+                ...(audio ? ["wav", "mp3", "ogg", "flac", "aif", "aiff", "m4a"] : []),
+              ],
+            },
+          ]
+        : [];
+    const r = await dialog.showOpenDialog(win!, {
+      filters,
+      properties: opts.directory
+        ? ["openDirectory"]
+        : ["openFile", ...(opts.multiple ? (["multiSelections"] as const) : [])],
+    });
+    if (r.canceled) return [];
+    if (opts.directory) {
+      // a picked folder: all files inside, recursively, with their relative paths
+      const { readdir } = await import("node:fs/promises");
+      const root = r.filePaths[0];
+      const entries = await readdir(root, { recursive: true, withFileTypes: true });
+      const files = entries.filter((d) => d.isFile());
+      return Promise.all(
+        files.map(async (d) => {
+          const full = path.join(d.parentPath, d.name);
+          return {
+            name: d.name,
+            path: path.join(path.basename(root), path.relative(root, full)),
+            data: new Uint8Array(await readFile(full)),
+          };
+        }),
+      );
+    }
     return Promise.all(
-      files.map(async (d) => {
-        const full = path.join(d.parentPath, d.name);
-        return { name: d.name, path: path.join(path.basename(root), path.relative(root, full)), data: new Uint8Array(await readFile(full)) };
-      }),
+      r.filePaths.map(async (f) => ({
+        name: path.basename(f),
+        path: "",
+        data: new Uint8Array(await readFile(f)),
+      })),
     );
-  }
-  return Promise.all(r.filePaths.map(async (f) => ({ name: path.basename(f), path: "", data: new Uint8Array(await readFile(f)) })));
-});
+  },
+);
 
 ipcMain.handle("dialog:save", async (e, name: string, data: Uint8Array) => {
   const win = BrowserWindow.fromWebContents(e.sender) ?? undefined;
@@ -206,12 +270,15 @@ app.whenReady().then(() => {
     return net.fetch(pathToFileURL(file).toString());
   });
   // the desktop app keeps its permissions: no prompt for the mic and MIDI every session
-  session.defaultSession.setPermissionRequestHandler((_wc, permission, cb) => cb(ALLOWED.has(permission)));
+  session.defaultSession.setPermissionRequestHandler((_wc, permission, cb) =>
+    cb(ALLOWED.has(permission)),
+  );
   session.defaultSession.setPermissionCheckHandler((_wc, permission) => ALLOWED.has(permission));
   buildMenu();
   createWindow();
   // releases come from GitHub (see "publish" in package.json); quiet when offline or unpublished
-  if (app.isPackaged && !process.env.REBEAT_NO_UPDATES) autoUpdater.checkForUpdatesAndNotify().catch(() => {});
+  if (app.isPackaged && !process.env.REBEAT_NO_UPDATES)
+    autoUpdater.checkForUpdatesAndNotify().catch(() => {});
   // macOS asks once for the microphone; don't hold up the window for the answer
   if (process.platform === "darwin" && !process.env.REBEAT_NO_MIC_PROMPT)
     void systemPreferences.askForMediaAccess("microphone").catch(() => false);
