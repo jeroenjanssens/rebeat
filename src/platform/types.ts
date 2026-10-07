@@ -51,7 +51,8 @@ export interface Platform {
 
   midi: {
     supported: boolean;
-    request(): Promise<MIDIAccess | null>;
+    /** `sysex` is needed by controllers like Launchpad and Push (LEDs, modes). */
+    request(sysex?: boolean): Promise<MIDIAccess | null>;
   };
 
   /** Run when the user tries to leave (close tab / window). Return true to warn. */

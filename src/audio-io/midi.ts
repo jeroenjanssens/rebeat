@@ -85,11 +85,14 @@ function refreshPorts() {
     input.onmidimessage = enabled(input.id) ? (e) => handle(e, input.name ?? "") : null;
 }
 
-export async function startMidi(): Promise<boolean> {
-  if (access) return true;
+let sysexGranted = false;
+
+export async function startMidi(sysex = false): Promise<boolean> {
+  if (access && (!sysex || sysexGranted)) return true;
   if (!platform.midi.supported) return false;
   useMidi.setState({ status: "asking" });
-  access = await platform.midi.request();
+  access = await platform.midi.request(sysex);
+  sysexGranted ||= sysex && !!access;
   if (!access) {
     useMidi.setState({ status: "denied" });
     return false;

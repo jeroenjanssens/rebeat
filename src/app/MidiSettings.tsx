@@ -1,4 +1,6 @@
+import { connectControllers, useControllers } from "../audio-io/controllers/controllers";
 import { setInputEnabled, startMidi, useMidi } from "../audio-io/midi";
+import { toast } from "../components/Toast";
 import { platform } from "../platform";
 import { useSettings } from "../state/settings";
 import { useStore } from "../state/store";
@@ -7,6 +9,7 @@ import { useStore } from "../state/store";
 export function MidiSettings() {
   const midi = useMidi();
   const mappings = useStore((s) => s.project.midiMappings);
+  const controllers = useControllers((s) => s.connected);
   const commit = useStore((s) => s.commit);
   if (!platform.midi.supported)
     return (
@@ -51,6 +54,33 @@ export function MidiSettings() {
             ))}
           </div>
           <div className="num text-[11px] text-faint">Last message: {midi.last || "—"}</div>
+          <div>
+            <div className="label mb-1">Grid controllers</div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                className="tool-btn border border-line"
+                onClick={async () => {
+                  const n = await connectControllers();
+                  toast(
+                    n
+                      ? `Connected ${n} controller${n > 1 ? "s" : ""}`
+                      : "No Launchpad or Push found",
+                  );
+                }}
+              >
+                Connect Launchpad / Push
+              </button>
+              {controllers.map((c) => (
+                <span key={c.id} className="text-dim">
+                  {c.name} ✓
+                </span>
+              ))}
+            </div>
+            <p className="mt-1 text-[11px] text-faint">
+              Pads show 8 tracks × 8 steps in the track colors; arrows scroll; Push encoders turn
+              the selected track's sound.
+            </p>
+          </div>
           <p className="text-[11px] text-faint">
             Notes play the selected instrument track; on drum tracks, notes 36 and up play pads 1,
             2, 3… Right-click any knob → MIDI learn.

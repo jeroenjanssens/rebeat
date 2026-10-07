@@ -144,10 +144,10 @@ export const webPlatform: Platform = {
 
   midi: {
     supported: typeof navigator !== "undefined" && "requestMIDIAccess" in navigator,
-    request: async () => {
+    request: async (sysex = false) => {
       if (!("requestMIDIAccess" in navigator)) return null;
       try {
-        return await navigator.requestMIDIAccess({ sysex: false });
+        return await navigator.requestMIDIAccess({ sysex });
       } catch {
         return null;
       }
