@@ -1,5 +1,6 @@
 import { current, isDraft, type Draft } from "immer";
 import { CATEGORY_COLOR, LINK_COLORS } from "./colors";
+import type { Bus, Master } from "./effects";
 import { uid } from "./id";
 import { MIX_PARAMS, SOUND_PARAMS, defaultParams } from "./params";
 import {
@@ -29,6 +30,11 @@ export interface Project {
   tracks: Track[];
   patterns: Record<string, Pattern>;
   slots: PageSlot[];
+  /** Send/return buses (A = reverb, B = delay by default). */
+  buses: Bus[];
+  master: Master;
+  /** Project key, for note names, in-scale highlighting and scale lock. */
+  key: { root: number; scale: string };
 }
 
 /** structuredClone that also works on immer drafts. */

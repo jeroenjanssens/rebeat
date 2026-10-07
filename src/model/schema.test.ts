@@ -53,3 +53,19 @@ describe("project schema", () => {
     expect(projectSampleIds(demoProject())).toContain("kit:909:kick");
   });
 });
+
+describe("migration 1 → 2", () => {
+  it("adds buses, a master chain, the key and effect ids", () => {
+    const p = demoProject() as unknown as Record<string, unknown>;
+    delete p.buses;
+    delete p.master;
+    delete p.key;
+    const tracks = p.tracks as { effects: { id?: string }[] }[];
+    for (const t of tracks) for (const fx of t.effects) delete fx.id;
+    const m = deserializeProject({ format: "rebeat-project", schemaVersion: 1, project: p });
+    expect(m.buses.map((b) => b.name)).toEqual(["Reverb", "Delay"]);
+    expect(m.master.effects.map((e) => e.name)).toEqual(["EQ3", "Compressor", "Limiter"]);
+    expect(m.key).toEqual({ root: 0, scale: "minor" });
+    expect(m.tracks[0].effects[0].id).toMatch(/^fx-/);
+  });
+});

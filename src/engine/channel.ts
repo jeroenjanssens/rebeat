@@ -5,6 +5,8 @@
 import * as Tone from "tone";
 import { toUnit } from "../model/params";
 import type { Track } from "../model/types";
+import type { Bus } from "../model/effects";
+import { FxChain } from "./effects";
 
 const FADE = 0.008;
 
@@ -12,6 +14,36 @@ export function faderGain(position: number): number {
   // 0.8 fader position = 0 dB; 40·log10 curve, as on the mini fader
   if (position <= 0.001) return 0;
   return Math.pow(position / 0.8, 2);
+}
+
+/** A send/return bus: effects (e.g. one reverb) shared by every track that sends to it. */
+export class BusChannel {
+  readonly input = new Tone.Gain(1);
+  private fxOut = new Tone.Gain(1);
+  private fader = new Tone.Gain(1);
+  readonly output = new Tone.Gain(1);
+  readonly analyser: AnalyserNode;
+  private fx: FxChain;
+
+  constructor(destination: Tone.InputNode) {
+    this.fx = new FxChain(this.input, this.fxOut);
+    this.fxOut.chain(this.fader, this.output);
+    this.output.connect(destination);
+    this.analyser = (Tone.getContext().rawContext as AudioContext).createAnalyser();
+    this.analyser.fftSize = 1024;
+    Tone.connect(this.output, this.analyser);
+  }
+
+  update(bus: Bus, bpm: number) {
+    this.fx.sync(bus.effects, bpm);
+    this.fader.gain.rampTo(bus.mute ? 0 : faderGain(bus.volume), 0.02);
+  }
+
+  dispose() {
+    this.fx.dispose();
+    for (const n of [this.input, this.fxOut, this.fader, this.output]) n.dispose();
+    this.analyser.disconnect();
+  }
 }
 
 export class TrackChannel {
@@ -32,6 +64,7 @@ export class TrackChannel {
   readonly sendA = new Tone.Gain(0);
   readonly sendB = new Tone.Gain(0);
   private last: Partial<Record<string, number>> = {};
+  private fx: FxChain;
 
   constructor(destination: Tone.InputNode) {
     const raw = Tone.getContext().rawContext as AudioContext;
@@ -40,7 +73,7 @@ export class TrackChannel {
     this.analyser.smoothingTimeConstant = 0;
     this.input.chain(this.filter, this.drive, this.preFx);
     this.postFx.chain(this.eq, this.widener, this.panner, this.fader, this.mute, this.output);
-    this.preFx.connect(this.postFx);
+    this.fx = new FxChain(this.preFx, this.postFx);
     this.output.connect(destination);
     this.output.connect(this.sendA);
     this.output.connect(this.sendB);
@@ -53,7 +86,8 @@ export class TrackChannel {
     apply(value);
   }
 
-  update(track: Track, audible: boolean) {
+  update(track: Track, audible: boolean, bpm: number) {
+    this.fx.sync(track.effects, bpm);
     const p = track.params;
     const now = Tone.now();
     if (track.kind !== "instrument") {
@@ -90,6 +124,7 @@ export class TrackChannel {
   }
 
   dispose() {
+    this.fx.dispose();
     for (const n of [
       this.input,
       this.filter,

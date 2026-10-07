@@ -1,4 +1,5 @@
 import { TRACK_PALETTE } from "../model/colors";
+import { defaultBuses, defaultMaster, makeEffect } from "../model/effects";
 import { makePattern, makeTrack, type Project } from "../model/project";
 import type { Pattern, StepLane, Track } from "../model/types";
 
@@ -39,10 +40,8 @@ function notes(pattern: Pattern, track: Track, list: [number, number[], number, 
 }
 
 export function demoProject(): Project {
-  const kick = makeTrack("drum", "kick", "Kick", "909 Kick", [{ name: "Compressor", params: {} }]);
-  const snare = makeTrack("drum", "snare", "Snare", "909 Snare", [
-    { name: "Distortion", params: {} },
-  ]);
+  const kick = makeTrack("drum", "kick", "Kick", "909 Kick", [makeEffect("Compressor")]);
+  const snare = makeTrack("drum", "snare", "Snare", "909 Snare", [makeEffect("Distortion")]);
   const clap = makeTrack("drum", "clap", "Clap", "909 Clap");
   const hat = makeTrack("drum", "hat", "Cl Hat", "909 Closed Hat");
   const ohat = makeTrack("drum", "hat", "Op Hat", "909 Open Hat");
@@ -51,16 +50,16 @@ export function demoProject(): Project {
   hat.params["sound.choke"] = 1 / 8;
   const perc = makeTrack("drum", "perc", "Rim", "909 Rim");
   const bass = makeTrack("instrument", "bass", "Bass", "Mono Bass · Acid", [
-    { name: "Filter", params: {} },
-    { name: "Distortion", params: {} },
+    makeEffect("Filter"),
+    makeEffect("Distortion"),
   ]);
   const chords = makeTrack("instrument", "keys", "Chords", "Poly · Warm Pad", [
-    { name: "Delay", params: {} },
-    { name: "Reverb", params: {} },
+    makeEffect("Delay"),
+    makeEffect("Reverb"),
   ]);
   const vox = makeTrack("audio", "vocal", "Vox", "Vox hook 112", [
-    { name: "Compressor", params: {} },
-    { name: "Delay", params: {} },
+    makeEffect("Compressor"),
+    makeEffect("Delay"),
   ]);
   kick.sampleId = "kit:909:kick";
   snare.sampleId = "kit:909:snare";
@@ -80,6 +79,9 @@ export function demoProject(): Project {
     swing: 0.5,
     metronome: false,
     countIn: false,
+    buses: defaultBuses(),
+    master: defaultMaster(),
+    key: { root: 0, scale: "minor" },
     tracks: [kick, snare, clap, hat, ohat, perc, bass, chords, vox],
     patterns: {},
     slots: [],

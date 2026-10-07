@@ -12,8 +12,11 @@ export function createAudioContext() {
   if (created) return;
   created = true;
   const { latencyMode } = useSettings.getState();
+  // A native context: Tone's default wrapper (standardized-audio-context) checks the whole graph
+  // for cycles on every connect, which gets very slow with a node per drum hit.
+  const native = new AudioContext({ latencyHint: latencyMode });
   // our scheduler has its own lookahead; keep Tone's small so immediate changes feel instant
-  Tone.setContext(new Tone.Context({ latencyHint: latencyMode, lookAhead: 0.01 }));
+  Tone.setContext(new Tone.Context({ context: native, lookAhead: 0.01 }));
   void renderKits();
 }
 

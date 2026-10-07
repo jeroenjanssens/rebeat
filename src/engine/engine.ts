@@ -7,7 +7,8 @@ import * as Tone from "tone";
 import { toUnit } from "../model/params";
 import type { Track } from "../model/types";
 import { isAudible, useStore } from "../state/store";
-import { TrackChannel } from "./channel";
+import { BusChannel, TrackChannel, faderGain } from "./channel";
+import { FxChain } from "./effects";
 import { getBuffer } from "./samples";
 
 export interface TriggerOptions {
@@ -51,11 +52,18 @@ const scratchState = new Map<string, { pos: number; speed: number }>();
 
 let master: {
   input: Tone.Gain;
+  fxOut: Tone.Gain;
+  fx: FxChain;
+  fader: Tone.Gain;
+  /** Performance FX (filter sweep, stutter, tape stop) are spliced in between these two. */
+  perfIn: Tone.Gain;
+  perfOut: Tone.Gain;
   limiter: Tone.Limiter;
   output: Tone.Gain;
   split: Tone.Split;
   analysers: [AnalyserNode, AnalyserNode];
 } | null = null;
+const buses = new Map<string, BusChannel>();
 
 const raw = () => Tone.getContext().rawContext as AudioContext;
 export const audioNow = () => Tone.getContext().currentTime;
@@ -65,21 +73,48 @@ export const audioNow = () => Tone.getContext().currentTime;
 function ensureMaster() {
   if (master) return master;
   const input = new Tone.Gain(1);
-  const limiter = new Tone.Limiter(-0.5);
+  const fxOut = new Tone.Gain(1);
+  const fx = new FxChain(input, fxOut);
+  const fader = new Tone.Gain(1);
+  const perfIn = new Tone.Gain(1);
+  const perfOut = new Tone.Gain(1);
+  // a fixed safety limiter after everything the user controls
+  const limiter = new Tone.Limiter(-0.3);
   const output = new Tone.Gain(1);
   const split = new Tone.Split(2);
   const analysers: [AnalyserNode, AnalyserNode] = [raw().createAnalyser(), raw().createAnalyser()];
   for (const a of analysers) {
-    a.fftSize = 2048;
-    a.smoothingTimeConstant = 0;
+    a.fftSize = 8192;
+    a.smoothingTimeConstant = 0.6;
   }
-  input.chain(limiter, output);
+  fxOut.chain(fader, perfIn);
+  perfIn.connect(perfOut);
+  perfOut.chain(limiter, output);
   output.toDestination();
   output.connect(split);
   Tone.connect(split, analysers[0], 0, 0);
   Tone.connect(split, analysers[1], 1, 0);
-  master = { input, limiter, output, split, analysers };
+  master = { input, fxOut, fx, fader, perfIn, perfOut, limiter, output, split, analysers };
   return master;
+}
+
+function bus(id: string): BusChannel {
+  let b = buses.get(id);
+  if (!b) {
+    b = new BusChannel(ensureMaster().input);
+    buses.set(id, b);
+  }
+  return b;
+}
+
+export function getBus(id: string) {
+  return buses.get(id);
+}
+
+/** The master chain's performance-FX insert point. */
+export function masterPerfPoints() {
+  const m = ensureMaster();
+  return { input: m.perfIn, output: m.perfOut };
 }
 
 /** The master bus input (tracks, send returns). */
@@ -95,6 +130,8 @@ function channel(trackId: string): TrackChannel {
   let ch = channels.get(trackId);
   if (!ch) {
     ch = new TrackChannel(ensureMaster().input);
+    ch.sendA.connect(bus("bus-a").input);
+    ch.sendB.connect(bus("bus-b").input);
     channels.set(trackId, ch);
     channelListeners.forEach((fn) => fn(trackId, ch!));
   }
@@ -113,6 +150,8 @@ export function getChannel(trackId: string) {
   return channels.get(trackId);
 }
 
+const lastTracks = new Map<string, { track: Track; audible: boolean; bpm: number }>();
+
 function reconcile() {
   const { project } = useStore.getState();
   const ids = new Set(project.tracks.map((t) => t.id));
@@ -122,13 +161,24 @@ function reconcile() {
     channels.delete(id);
     synths.get(id)?.synth.dispose();
     synths.delete(id);
+    lastTracks.delete(id);
     stopClip(id);
   }
+  const bpm = project.bpm;
   for (const t of project.tracks) {
-    channel(t.id).update(t, isAudible(t.id, project));
+    const audible = isAudible(t.id, project);
+    const last = lastTracks.get(t.id);
+    // immer keeps unchanged tracks identical: skip them
+    if (last && last.track === t && last.audible === audible && last.bpm === bpm) continue;
+    lastTracks.set(t.id, { track: t, audible, bpm });
+    channel(t.id).update(t, audible, bpm);
     if (t.kind === "instrument") updateSynth(t);
   }
-  Tone.getTransport().bpm.value = project.bpm;
+  for (const b of project.buses) bus(b.id).update(b, bpm);
+  const m = ensureMaster();
+  m.fx.sync(project.master.effects, bpm);
+  m.fader.gain.rampTo(faderGain(project.master.volume), 0.02);
+  Tone.getTransport().bpm.value = bpm;
 }
 
 let started = false;
@@ -410,6 +460,26 @@ export function level(trackId: string): number {
   return l;
 }
 
+/** Peak level of a send/return bus. */
+export function busLevel(id: string): number {
+  const b = buses.get(id);
+  if (!b) return 0;
+  const w = buf(`bus${id}`, b.analyser.fftSize);
+  b.analyser.getFloatTimeDomainData(w);
+  let peak = 0;
+  for (let i = 0; i < w.length; i += 2) peak = Math.max(peak, Math.abs(w[i]));
+  return Math.min(1, peak);
+}
+
+/** Frequency data (dB per bin) of a track, for the spectrum view. */
+export function spectrum(trackId: string): Float32Array | null {
+  const ch = channels.get(trackId);
+  if (!ch) return null;
+  const b = buf(`spec${trackId}`, ch.analyser.frequencyBinCount);
+  ch.analyser.getFloatFrequencyData(b);
+  return b;
+}
+
 /** Master output L/R peak levels. */
 export function masterLevel(): [number, number] {
   const m = master;
@@ -418,7 +488,8 @@ export function masterLevel(): [number, number] {
     const b = buf(`master${i}`, a.fftSize);
     a.getFloatTimeDomainData(b);
     let peak = 0;
-    for (let j = 0; j < b.length; j += 2) peak = Math.max(peak, Math.abs(b[j]));
+    // only the most recent ~23 ms: the analyser keeps much more for the master scope
+    for (let j = b.length - 1024; j < b.length; j++) peak = Math.max(peak, Math.abs(b[j]));
     return Math.min(1, peak);
   }) as [number, number];
 }

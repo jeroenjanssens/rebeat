@@ -15,6 +15,9 @@ export interface KitSound extends SampleInfo {
 
 const out = () => Tone.getDestination();
 
+/** Start time of the sound being rendered: all sounds render in one offline pass. */
+let T = 0;
+
 function noise(type: "white" | "pink", decay: number, time = 0, filter?: Tone.Filter, gain = 1) {
   const n = new Tone.NoiseSynth({
     noise: { type },
@@ -23,7 +26,7 @@ function noise(type: "white" | "pink", decay: number, time = 0, filter?: Tone.Fi
   });
   if (filter) n.chain(filter, out());
   else n.connect(out());
-  n.triggerAttack(time);
+  n.triggerAttack(T + time);
 }
 
 function tone(
@@ -39,7 +42,7 @@ function tone(
     volume: Tone.gainToDb(gain),
   });
   s.connect(dest ?? out());
-  s.triggerAttack(freq, 0);
+  s.triggerAttack(freq, T);
 }
 
 function membrane(
@@ -56,7 +59,7 @@ function membrane(
     envelope: { attack: 0.001, decay, sustain: 0, release: 0.05 },
     volume: Tone.gainToDb(gain),
   }).connect(out());
-  m.triggerAttack(note, 0);
+  m.triggerAttack(note, T);
 }
 
 function metal(decay: number, freq: number, highpass: number, gain = 0.5) {
@@ -69,8 +72,7 @@ function metal(decay: number, freq: number, highpass: number, gain = 0.5) {
     octaves: 1.5,
     volume: Tone.gainToDb(gain),
   }).connect(hp);
-  m.frequency.value = freq;
-  m.triggerAttack(0, 0, 1);
+  m.triggerAttack(freq, T, 1);
 }
 
 const SOUNDS: KitSound[] = [
@@ -250,7 +252,7 @@ function renderVox() {
   const formants = VOWELS.a.map((f, i) =>
     new Tone.Filter({ frequency: f, type: "bandpass", Q: 8 - i * 2 }).connect(out()),
   );
-  const vib = new Tone.LFO(5.5, -12, 12).start(0);
+  const vib = new Tone.LFO(5.5, -12, 12).start(T);
   const synth = new Tone.MonoSynth({
     oscillator: { type: "sawtooth" },
     envelope: { attack: 0.04, decay: 0.2, sustain: 0.8, release: 0.12 },
@@ -280,7 +282,7 @@ function renderVox() {
     [7.25, 0.5, "C5", "i"],
   ];
   for (const [b, len, note, vowel] of phrase) {
-    const t = b * beat;
+    const t = T + b * beat;
     synth.triggerAttackRelease(note, len * beat, t, 0.8);
     formants.forEach((f, i) => f.frequency.linearRampTo(VOWELS[vowel][i], 0.05, t));
   }
@@ -303,17 +305,41 @@ export function kitSounds(kit: string): KitSound[] {
 
 let rendering: Promise<void> | null = null;
 
-/** Render the built-in sounds once (offline, faster than real time). */
+/** Render the built-in sounds once (offline, faster than real time, all in one pass). */
 export function renderKits(): Promise<void> {
   rendering ??= (async () => {
     const sr = 44100;
-    // one at a time: Tone.Offline swaps the global context while it renders
-    for (const s of SOUNDS) {
-      const buf = await Tone.Offline(() => s.render(), s.length, 1, sr);
-      registerSample(s, normalize(buf.get()!));
+    const all: (SampleInfo & { length: number; render: () => void })[] = [
+      ...SOUNDS,
+      { ...VOX, render: renderVox },
+    ];
+    const gap = 0.25;
+    const starts: number[] = [];
+    let total = 0;
+    for (const s of all) {
+      starts.push(total);
+      total += s.length + gap;
     }
-    const vox = await Tone.Offline(renderVox, VOX.length, 1, sr);
-    registerSample(VOX, normalize(vox.get()!, 0.8));
+    const rendered = await Tone.Offline(
+      () => {
+        all.forEach((s, i) => {
+          T = starts[i];
+          s.render();
+        });
+        T = 0;
+      },
+      total,
+      1,
+      sr,
+    );
+    const data = rendered.getChannelData(0);
+    all.forEach((s, i) => {
+      const from = Math.round(starts[i] * sr);
+      const len = Math.round(s.length * sr);
+      const buf = new AudioBuffer({ length: len, sampleRate: sr, numberOfChannels: 1 });
+      buf.copyToChannel(data.slice(from, from + len), 0);
+      registerSample(s, normalize(buf, s.id === VOX.id ? 0.8 : 0.95));
+    });
   })();
   return rendering;
 }

@@ -122,64 +122,113 @@ export const MIX_PARAMS: ParamDef[] = [
   { id: "high", label: "High", bipolar: true, default: 0.5, format: db(-15, 15) },
 ];
 
+const rate = (lo: number, hi: number) => (v: number) => `${expo(lo, hi)(v).toFixed(2)}Hz`;
+const MIX = (d: number): ParamDef => ({ id: "mix", label: "Mix", default: d, format: pct });
+
+export const DELAY_TIMES = ["1/32", "1/16", "1/8T", "1/8", "1/8.", "1/4", "1/4.", "1/2"];
+
+/** Insert/bus/master effects. Values are normalized; the engine maps them (effects.ts). */
 export const EFFECT_PARAMS: Record<string, ParamDef[]> = {
-  Distortion: [
-    { id: "drive", label: "Drive", default: 0.4, format: pct },
-    { id: "tone", label: "Tone", default: 0.6, format: hz },
-    { id: "output", label: "Output", bipolar: true, default: 0.5, format: db(-12, 12) },
-    { id: "mix", label: "Mix", default: 1, format: pct },
+  EQ3: [
+    { id: "low", label: "Low", bipolar: true, default: 0.5, format: db(-15, 15) },
+    { id: "mid", label: "Mid", bipolar: true, default: 0.5, format: db(-15, 15) },
+    { id: "high", label: "High", bipolar: true, default: 0.5, format: db(-15, 15) },
+    { id: "lowFreq", label: "Lo freq", default: 0.33, format: hz },
+    { id: "highFreq", label: "Hi freq", default: 0.75, format: hz },
   ],
   Filter: [
+    {
+      id: "type",
+      label: "Type",
+      default: 0,
+      steps: 3,
+      format: (v) => ["LP", "HP", "BP"][Math.round(v * 2)],
+    },
     { id: "cutoff", label: "Cutoff", default: 0.6, format: hz },
     { id: "reso", label: "Reso", default: 0.3, format: pct },
+    { id: "rate", label: "LFO rate", default: 0.3, format: rate(0.05, 20) },
+    { id: "depth", label: "LFO amt", default: 0, format: pct },
+    MIX(1),
+  ],
+  Compressor: [
+    { id: "threshold", label: "Thresh", default: 0.6, format: db(-60, 0) },
+    { id: "ratio", label: "Ratio", default: 0.15, format: (v) => `${lin(1, 20)(v).toFixed(1)}:1` },
+    { id: "attack", label: "Attack", default: 0.4, format: ms(0.1, 200) },
+    { id: "release", label: "Release", default: 0.4, format: ms(10, 2000) },
+    { id: "makeup", label: "Makeup", default: 0.1, format: db(0, 24) },
+    MIX(1),
+  ],
+  Distortion: [
+    { id: "drive", label: "Drive", default: 0.4, format: pct },
+    { id: "tone", label: "Tone", default: 0.8, format: hz },
+    { id: "output", label: "Output", bipolar: true, default: 0.5, format: db(-12, 12) },
+    MIX(1),
+  ],
+  Bitcrusher: [
     {
-      id: "rate",
-      label: "LFO rate",
-      default: 0.3,
-      format: (v) => `${expo(0.05, 20)(v).toFixed(2)}Hz`,
+      id: "bits",
+      label: "Bits",
+      default: 0.43,
+      steps: 15,
+      format: (v) => `${Math.round(lin(2, 16)(v))}`,
     },
-    { id: "depth", label: "LFO amt", default: 0.2, format: pct },
-    { id: "mix", label: "Mix", default: 1, format: pct },
+    { id: "tone", label: "Tone", default: 1, format: hz },
+    MIX(1),
   ],
   Delay: [
     {
       id: "time",
       label: "Time",
-      default: 0.5,
-      steps: 6,
-      format: (v) => ["1/32", "1/16", "1/8", "1/8.", "1/4", "1/2"][Math.round(v * 5)],
+      default: 4 / 7,
+      steps: DELAY_TIMES.length,
+      format: (v) => DELAY_TIMES[Math.round(v * (DELAY_TIMES.length - 1))],
     },
     { id: "feedback", label: "Feedbk", default: 0.35, format: pct },
-    { id: "tone", label: "Tone", default: 0.6, format: hz },
-    { id: "mix", label: "Mix", default: 0.25, format: pct },
+    { id: "tone", label: "Tone", default: 0.7, format: hz },
+    {
+      id: "spread",
+      label: "Ping-pong",
+      default: 0,
+      steps: 2,
+      format: (v) => (v >= 0.5 ? "On" : "Off"),
+    },
+    MIX(0.25),
   ],
   Reverb: [
     { id: "size", label: "Size", default: 0.5, format: pct },
     { id: "decay", label: "Decay", default: 0.4, format: ms(100, 10000) },
     { id: "predelay", label: "Pre-dly", default: 0.1, format: ms(1, 250) },
     { id: "damp", label: "Damp", default: 0.5, format: pct },
-    { id: "mix", label: "Mix", default: 0.3, format: pct },
+    MIX(0.3),
   ],
-  Compressor: [
-    { id: "threshold", label: "Thresh", default: 0.6, format: db(-60, 0) },
-    { id: "ratio", label: "Ratio", default: 0.3, format: (v) => `${lin(1, 20)(v).toFixed(1)}:1` },
-    { id: "attack", label: "Attack", default: 0.2, format: ms(0.1, 200) },
-    { id: "release", label: "Release", default: 0.4, format: ms(10, 2000) },
-    { id: "makeup", label: "Makeup", default: 0.2, format: db(0, 24) },
-    { id: "mix", label: "Mix", default: 1, format: pct },
+  Chorus: [
+    { id: "rate", label: "Rate", default: 0.35, format: rate(0.1, 8) },
+    { id: "depth", label: "Depth", default: 0.6, format: pct },
+    { id: "delay", label: "Delay", default: 0.4, format: ms(2, 20) },
+    MIX(0.5),
   ],
-  Bitcrusher: [
-    {
-      id: "bits",
-      label: "Bits",
-      default: 0.5,
-      steps: 15,
-      format: (v) => `${Math.round(lin(2, 16)(v))}`,
-    },
-    { id: "rate", label: "Rate", default: 0.3, format: pct },
-    { id: "mix", label: "Mix", default: 1, format: pct },
+  Phaser: [
+    { id: "rate", label: "Rate", default: 0.3, format: rate(0.05, 8) },
+    { id: "octaves", label: "Octaves", default: 0.5, format: (v) => lin(0.5, 6)(v).toFixed(1) },
+    { id: "base", label: "Base", default: 0.4, format: hz },
+    { id: "q", label: "Q", default: 0.3, format: pct },
+    MIX(0.5),
   ],
+  Tremolo: [
+    { id: "rate", label: "Rate", default: 0.5, format: rate(0.5, 20) },
+    { id: "depth", label: "Depth", default: 0.6, format: pct },
+    { id: "spread", label: "Spread", default: 0, format: pct },
+    MIX(1),
+  ],
+  AutoPan: [
+    { id: "rate", label: "Rate", default: 0.4, format: rate(0.05, 10) },
+    { id: "depth", label: "Depth", default: 0.8, format: pct },
+    MIX(1),
+  ],
+  Limiter: [{ id: "ceiling", label: "Ceiling", default: 0.95, format: db(-24, 0) }],
 };
+
+export const EFFECT_TYPES = Object.keys(EFFECT_PARAMS);
 
 export const CONDITIONS = ["—", "1:2", "2:2", "1:3", "1:4", "FILL", "!FILL"];
 

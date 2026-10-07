@@ -2,11 +2,13 @@
  * Versioned project files. Every change to the saved shape bumps SCHEMA_VERSION and adds a
  * migration from the previous version, so old projects keep loading.
  */
-import { MIX_PARAMS, SOUND_PARAMS, defaultParams } from "./params";
+import { defaultBuses, defaultMaster } from "./effects";
+import { uid } from "./id";
+import { EFFECT_PARAMS, MIX_PARAMS, SOUND_PARAMS, defaultParams } from "./params";
 import { emptyLane, type Project } from "./project";
-import { MAX_STEPS, emptyStep, type Lane, type Step } from "./types";
+import { MAX_STEPS, emptyStep, type Effect, type Lane, type Step } from "./types";
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export interface SerializedProject {
   format: "rebeat-project";
@@ -27,6 +29,17 @@ const migrations: Record<number, Migration> = {
     countIn: false,
     ...p,
   }),
+  // 1 → 2: send/return buses, the master chain, the project key, and ids on effects
+  1: (p) => {
+    const tracks = (p.tracks as { effects?: Json[] }[]) ?? [];
+    for (const t of tracks) for (const fx of t.effects ?? []) fx.id ??= uid("fx");
+    return {
+      buses: defaultBuses(),
+      master: defaultMaster(),
+      key: { root: 0, scale: "minor" },
+      ...p,
+    };
+  },
 };
 
 export function serializeProject(project: Project): SerializedProject {
@@ -68,7 +81,13 @@ export function normalizeProject(p: Project): Project {
     };
     t.effects ??= [];
     t.volume ??= 0.8;
+    normalizeEffects(t.effects);
   }
+  p.buses ??= defaultBuses();
+  p.master ??= defaultMaster();
+  p.key ??= { root: 0, scale: "minor" };
+  for (const b of p.buses) normalizeEffects(b.effects);
+  normalizeEffects(p.master.effects);
   for (const pattern of Object.values(p.patterns)) {
     pattern.lanes ??= {};
     for (const t of p.tracks) {
@@ -94,6 +113,13 @@ export function normalizeProject(p: Project): Project {
     if (first) p.slots.push({ id: `slot-${first}`, patternId: first, repeats: 1 });
   }
   return p;
+}
+
+function normalizeEffects(list: Effect[]) {
+  for (const fx of list) {
+    fx.id ??= uid("fx");
+    fx.params = { ...defaultParams(EFFECT_PARAMS[fx.name] ?? []), ...fx.params };
+  }
 }
 
 export function deserializeProject(data: unknown): Project {
