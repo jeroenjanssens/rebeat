@@ -15,7 +15,7 @@ import { useAppearance } from "./app/useAppearance";
 import { ExportDialog } from "./app/ExportDialog";
 import { WelcomeDialog } from "./app/WelcomeDialog";
 import { ProjectBrowser } from "./app/ProjectBrowser";
-import { ToastHost } from "./components/Toast";
+import { ToastHost, toast } from "./components/Toast";
 import { useStore } from "./state/store";
 import { startProjects } from "./storage/projects";
 import { startLibrary } from "./library/library";
@@ -41,6 +41,17 @@ export function App() {
       ) ?? (() => {}),
     ];
     return () => offs.forEach((off) => off());
+  }, []);
+
+  // D14c: a soft limit of 32 tracks
+  useEffect(() => {
+    let count = useStore.getState().project.tracks.length;
+    return useStore.subscribe((st) => {
+      const n = st.project.tracks.length;
+      if (n > 32 && count <= 32)
+        toast("More than 32 tracks: playback may strain the CPU", "error", 4000);
+      count = n;
+    });
   }, []);
 
   useEffect(() => {
