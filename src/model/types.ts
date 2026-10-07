@@ -16,8 +16,15 @@ export interface Step {
   accent: boolean;
   condition?: string; // e.g. "1:2", "FILL"
   locked?: boolean; // has a parameter lock
-  notes?: number[]; // MIDI notes, instrument tracks
-  length?: number; // note length in steps, instrument tracks
+  /** Instrument tracks: the notes starting on this step (a chord when several). */
+  notes?: Note[];
+}
+
+export interface Note {
+  pitch: number; // MIDI, middle C = 60 = C4
+  length: number; // in steps
+  velocity: number; // 0..1
+  /** 303-style glide into this note (mono synths). */
   slide?: boolean;
 }
 
@@ -57,6 +64,18 @@ export interface Track {
   instrument?: InstrumentSource;
   /** Audio tracks: overdub layers recorded on top of the clip. */
   layers?: ClipLayer[];
+  /** Instrument tracks: transpose in semitones. */
+  transpose?: number;
+  arp?: Arpeggiator;
+}
+
+export interface Arpeggiator {
+  on: boolean;
+  mode: "up" | "down" | "updown" | "random" | "played";
+  rate: StepSize;
+  octaves: number;
+  /** Note length as a share of the arp step (0..1). */
+  gate: number;
 }
 
 export interface Effect {
@@ -92,6 +111,10 @@ export interface Pattern {
   /** Page swing (0.5..0.75); undefined = follow the project swing. */
   swing?: number;
   lanes: Record<string, Lane>;
+  /** The page's own key (overrides the project key). */
+  keyOverride?: { root: number; scale: string };
+  /** Transpose instrument tracks on this page, in semitones. */
+  transpose?: number;
 }
 
 export interface PageSlot {

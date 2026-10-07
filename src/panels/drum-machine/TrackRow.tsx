@@ -10,13 +10,16 @@ import { MiniFader } from "../../components/MiniFader";
 import { Scope } from "../../components/Scope";
 import { onStep } from "../../engine/transport";
 import { TRACK_PALETTE } from "../../model/colors";
+import { focusPanel } from "../../app/openers";
 import { KITS, KIT_SOUNDS, kitSounds } from "../../engine/kits";
 import { toUnit } from "../../model/params";
+import { keyUsesFlats } from "../../model/notes";
 import {
   clearLane,
   convertTrack,
   deleteTrack,
   duplicateTrack,
+  pageKey,
   randomizeLane,
   reverseLane,
   rotateLane,
@@ -138,6 +141,7 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
   const setUi = useStore((s) => s.setUi);
   const jogOpen = useStore((s) => !!s.jogOpen[track.id]);
   const [dropMode, setDropMode] = useState<"replace" | "insert" | null>(null);
+  const flats = useStore((s) => keyUsesFlats(pageKey(s.project, pattern)));
   const cursorIndex = useStore((s) => (s.cursor?.trackId === track.id ? s.cursor.index : -1));
   const compact = geo.sizeClass === "compact";
   const length =
@@ -184,6 +188,17 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
         onSelect: () => commit((p) => void duplicateTrack(p, track.id)),
       },
       { label: "Delete", onSelect: () => commit((p) => deleteTrack(p, track.id)) },
+      ...(track.kind === "instrument"
+        ? [
+            {
+              label: "Open in piano roll",
+              onSelect: () => {
+                setUi({ selectedTrackId: track.id });
+                focusPanel("piano-roll");
+              },
+            },
+          ]
+        : []),
       { separator: true },
       {
         render: (close) => (
@@ -457,6 +472,7 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
               geo={geo}
               selected={selectedSteps}
               cursor={cursorIndex}
+              flats={flats}
             />
           ) : (
             <div className="flex items-center gap-1.5">

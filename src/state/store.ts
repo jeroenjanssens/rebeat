@@ -46,6 +46,10 @@ export interface UiState {
   keyboardPads: boolean;
   /** Octave offset for the computer-keyboard piano. */
   keyboardOctave: number;
+  /** Notes snap to the key (drawing, pads, keyboard, MIDI). */
+  scaleLock: boolean;
+  /** Playing one note plays a chord in the key. */
+  chordMode: "off" | "triad" | "seventh";
   held: FnKey | null;
   heldUsed: boolean;
   shiftLatched: boolean;
@@ -131,6 +135,8 @@ export const useStore = create<State>()((set, get) => ({
   cursor: null,
   keyboardPads: true,
   keyboardOctave: 0,
+  scaleLock: false,
+  chordMode: "off",
   held: null,
   heldUsed: false,
   shiftLatched: false,

@@ -1,8 +1,10 @@
+import { stepNoteLength } from "../../model/notes";
 import type { StepLane, Track } from "../../model/types";
 import type { Geometry } from "./layout";
 import { StepPad } from "./StepPad";
 
 interface Props {
+  flats?: boolean;
   track: Track;
   lane: StepLane;
   length: number;
@@ -12,7 +14,15 @@ interface Props {
 }
 
 /** The pads of one track, grouped by beat with a divider at each bar. */
-export function StepsArea({ track, lane, length, geo, selected, cursor = -1 }: Props) {
+export function StepsArea({
+  track,
+  lane,
+  length,
+  geo,
+  selected,
+  cursor = -1,
+  flats = true,
+}: Props) {
   const instrument = track.kind === "instrument";
 
   // note continuations (ties) for instrument tracks
@@ -20,8 +30,9 @@ export function StepsArea({ track, lane, length, geo, selected, cursor = -1 }: P
   if (instrument) {
     for (let i = 0; i < length; i++) {
       const s = lane.steps[i];
-      if (!s.on || !s.length) continue;
-      for (let k = 1; k < s.length && i + k < length && !lane.steps[i + k].on; k++) tie.add(i + k);
+      const len = stepNoteLength(s);
+      if (!s.on || !len) continue;
+      for (let k = 1; k < len && i + k < length && !lane.steps[i + k].on; k++) tie.add(i + k);
     }
   }
 
@@ -47,6 +58,7 @@ export function StepsArea({ track, lane, length, geo, selected, cursor = -1 }: P
                 velBar={geo.sizeClass === "large"}
                 instrument={instrument}
                 cursor={cursor === i}
+                flats={flats}
               />
             ))}
           </div>

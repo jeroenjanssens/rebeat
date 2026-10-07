@@ -5,7 +5,8 @@
  */
 import * as Tone from "tone";
 import { laneStepsWithin } from "../model/timing";
-import { STEP_SIZE_QUARTERS, type Pattern, type Step } from "../model/types";
+import { arpOrder } from "../model/notes";
+import { STEP_SIZE_QUARTERS, type Pattern, type Step, type Track } from "../model/types";
 import { useSettings } from "../state/settings";
 import { isAudible, useStore } from "../state/store";
 import { audioNow, initEngine, startClip, stopAll, stopClip, trigger } from "./engine";
@@ -172,6 +173,39 @@ function nextSlot(atPageEnd: boolean, pattern: Pattern): string | null {
 const END = "__end";
 let ending = false;
 
+/** Play a step's chord as an arpeggio over the length of its longest note. */
+function arpeggiate(
+  track: Track,
+  step: Step,
+  time: number,
+  stepDur: number,
+  transpose: number,
+  bpm: number,
+) {
+  const arp = track.arp!;
+  const notes = [...step.notes!].sort((a, b) => a.pitch - b.pitch);
+  const total = Math.max(...notes.map((n) => n.length)) * stepDur;
+  const rate = STEP_SIZE_QUARTERS[arp.rate] * (60 / bpm);
+  const order = arpOrder(
+    notes.map((n) => n.pitch),
+    arp.mode,
+    arp.octaves,
+  );
+  const count = Math.max(1, Math.round(total / rate));
+  for (let k = 0; k < count; k++) {
+    const pitch =
+      order[arp.mode === "random" ? Math.floor(Math.random() * order.length) : k % order.length];
+    trigger(track, step.velocity, {
+      time: time + k * rate,
+      stepDur: rate,
+      transpose,
+      notes: [
+        { pitch, length: Math.max(0.05, arp.gate), velocity: step.accent ? 1 : notes[0].velocity },
+      ],
+    });
+  }
+}
+
 function scheduleStep(time: number) {
   const state = useStore.getState();
   const { project } = state;
@@ -247,15 +281,18 @@ function scheduleStep(time: number) {
       if (Math.random() >= step.probability) return;
       if (!conditionPasses(step.condition, cycle, fill)) return;
       triggered.add(track.id);
+      if (track.arp?.on && step.notes?.length) {
+        arpeggiate(track, step, t, d, pattern.transpose ?? 0, project.bpm);
+        return;
+      }
       trigger(track, step.accent ? 1 : step.velocity, {
+        transpose: pattern.transpose,
         time: t + step.nudge * d,
         ratchet: step.ratchet,
         stepDur: d,
-        notes: step.notes,
-        lengthSteps: step.length,
+        notes: step.accent ? step.notes?.map((n) => ({ ...n, velocity: 1 })) : step.notes,
         pitch: step.pitch,
         gate: step.gate,
-        slide: step.slide,
       });
     };
     if (!lane.stepSizeOverride || lane.stepSizeOverride === pattern.stepSize) {

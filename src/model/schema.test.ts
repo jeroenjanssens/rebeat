@@ -69,3 +69,30 @@ describe("migration 1 → 2", () => {
     expect(m.tracks[0].effects[0].id).toMatch(/^fx-/);
   });
 });
+
+describe("migration 2 → 3", () => {
+  it("turns step notes into notes with their own length and velocity", () => {
+    const p = demoProject();
+    const json = JSON.parse(JSON.stringify(p));
+    const pattern = Object.values(
+      json.patterns as Record<
+        string,
+        { lanes: Record<string, { kind: string; steps: Record<string, unknown>[] }> }
+      >,
+    )[1];
+    const bassLane = pattern.lanes[p.tracks[6].id];
+    bassLane.steps[4] = {
+      ...bassLane.steps[4],
+      notes: [39],
+      length: 2,
+      slide: true,
+      velocity: 0.7,
+    };
+    const m = deserializeProject({ format: "rebeat-project", schemaVersion: 2, project: json });
+    const lane = Object.values(m.patterns)[1].lanes[p.tracks[6].id];
+    expect(lane.kind === "steps" && lane.steps[4].notes).toEqual([
+      { pitch: 39, length: 2, velocity: 0.7, slide: true },
+    ]);
+    expect(lane.kind === "steps" && "length" in lane.steps[4]).toBe(false);
+  });
+});

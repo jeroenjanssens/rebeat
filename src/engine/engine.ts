@@ -5,11 +5,12 @@
  */
 import * as Tone from "tone";
 import { toUnit } from "../model/params";
-import type { Track } from "../model/types";
+import type { Note, Track } from "../model/types";
 import { isAudible, useStore } from "../state/store";
 import { BusChannel, TrackChannel, faderGain } from "./channel";
 import { FxChain } from "./effects";
 import { getBuffer } from "./samples";
+import { createInstrument, instrumentKey, type InstrumentVoice } from "./instruments";
 
 export interface TriggerOptions {
   /** Audio time; default = now. */
@@ -17,12 +18,12 @@ export interface TriggerOptions {
   ratchet?: number;
   /** Step duration in seconds (for ratchets, gate and note lengths). */
   stepDur?: number;
-  notes?: number[];
-  lengthSteps?: number;
+  notes?: Note[];
   /** Per-step pitch offset in semitones (drum tracks). */
   pitch?: number;
+  /** Page transpose in semitones (instrument tracks). */
+  transpose?: number;
   gate?: number;
-  slide?: boolean;
 }
 
 interface Voice {
@@ -44,7 +45,7 @@ interface Clip {
 }
 
 const channels = new Map<string, TrackChannel>();
-const synths = new Map<string, { kind: string; synth: Tone.PolySynth | Tone.MonoSynth }>();
+const synths = new Map<string, InstrumentVoice>();
 const voices: Voice[] = [];
 const clips = new Map<string, Clip>();
 const activeUntil = new Map<string, number>();
@@ -159,7 +160,7 @@ function reconcile() {
     if (ids.has(id)) continue;
     ch.dispose();
     channels.delete(id);
-    synths.get(id)?.synth.dispose();
+    synths.get(id)?.dispose();
     synths.delete(id);
     lastTracks.delete(id);
     stopClip(id);
@@ -197,63 +198,34 @@ export function initEngine() {
   });
 }
 
-// ---------- instruments (basic synths until Phase 5b) ----------
+// ---------- instruments ----------
 
-function makeSynth(track: Track) {
-  if (track.category === "bass") {
-    return new Tone.MonoSynth({
-      oscillator: { type: "sawtooth" },
-      filter: { Q: 4, type: "lowpass", rolloff: -24 },
-      envelope: { attack: 0.005, decay: 0.25, sustain: 0.4, release: 0.15 },
-      filterEnvelope: {
-        attack: 0.005,
-        decay: 0.2,
-        sustain: 0.25,
-        release: 0.2,
-        baseFrequency: 120,
-        octaves: 3.2,
-      },
-      volume: -8,
-    });
+function instrument(track: Track): InstrumentVoice {
+  const key = instrumentKey(track);
+  let v = synths.get(track.id);
+  if (!v || v.key !== key) {
+    v?.dispose();
+    v = createInstrument(track, channel(track.id).input);
+    synths.set(track.id, v);
   }
-  return new Tone.PolySynth(Tone.Synth, {
-    oscillator: { type: "fatsawtooth", count: 3, spread: 22 } as Tone.OmniOscillatorOptions,
-    envelope: { attack: 0.05, decay: 0.4, sustain: 0.7, release: 0.6 },
-    volume: -16,
-  });
+  return v;
 }
 
 function updateSynth(track: Track) {
-  let s = synths.get(track.id);
-  const kind = track.category === "bass" ? "mono" : "poly";
-  if (!s || s.kind !== kind) {
-    s?.synth.dispose();
-    s = { kind, synth: makeSynth(track) };
-    s.synth.connect(channel(track.id).input);
-    synths.set(track.id, s);
-  }
+  const v = instrument(track);
+  v.update(track);
+  // instruments use the channel filter for cutoff/resonance
   const p = track.params;
-  const env = {
-    attack: toUnit.ms(1, 4000)(p["sound.attack"] ?? 0.05) / 1000,
-    decay: toUnit.ms(1, 4000)(p["sound.decay"] ?? 0.4) / 1000,
-    sustain: p["sound.sustain"] ?? 0.7,
-    release: toUnit.ms(1, 8000)(p["sound.release"] ?? 0.35) / 1000,
-  };
-  const detune = toUnit.semis(1)(p["sound.detune"] ?? 0.5) * 100;
-  if (s.synth instanceof Tone.MonoSynth) {
-    s.synth.set({ envelope: env, detune, portamento: 0 });
-    s.synth.filterEnvelope.baseFrequency = Math.max(30, toUnit.hz(p["sound.cutoff"] ?? 0.7) / 8);
-    s.synth.filter.Q.value = toUnit.q(p["sound.reso"] ?? 0.2);
-  } else {
-    s.synth.set({ envelope: env, detune });
-    channel(track.id).setFilter(
-      toUnit.hz(p["sound.cutoff"] ?? 0.7),
-      toUnit.q(p["sound.reso"] ?? 0.2),
-    );
-  }
+  channel(track.id).setFilter(
+    toUnit.hz(p["sound.cutoff"] ?? 0.7),
+    toUnit.q(p["sound.reso"] ?? 0.2),
+  );
 }
 
-const midiToHz = (m: number) => 440 * Math.pow(2, (m - 69) / 12);
+/** Loading state of a track's sampled instrument. */
+export function instrumentState(trackId: string) {
+  return synths.get(trackId)?.state() ?? "ready";
+}
 
 // ---------- triggering ----------
 
@@ -315,18 +287,17 @@ function playDrum(track: Track, velocity: number, time: number, o: TriggerOption
 }
 
 function playNotes(track: Track, velocity: number, time: number, o: TriggerOptions) {
-  const s = synths.get(track.id) ?? (updateSynth(track), synths.get(track.id)!);
-  const notes = o.notes ?? [48];
-  const dur = (o.lengthSteps ?? 1) * (o.stepDur ?? 0.125) * 0.95;
-  if (s.synth instanceof Tone.MonoSynth) {
-    const glide = toUnit.ms(1, 1000)(track.params["sound.glide"] ?? 0) / 1000;
-    s.synth.portamento = o.slide ? Math.max(0.06, glide) : glide > 0.002 ? glide : 0;
-    s.synth.triggerAttackRelease(midiToHz(notes[0]), dur, time, velocity);
-  } else {
-    s.synth.triggerAttackRelease(notes.map(midiToHz), dur, time, velocity);
-  }
+  const notes = o.notes?.length ? o.notes : [{ pitch: 48, length: 1, velocity }];
+  const step = o.stepDur ?? 0.125;
+  const shift = (track.transpose ?? 0) + (o.transpose ?? 0);
+  instrument(track).play(
+    shift ? notes.map((n) => ({ ...n, pitch: n.pitch + shift })) : notes,
+    time,
+    step,
+  );
+  const dur = Math.max(...notes.map((n) => n.length)) * step;
   const release = toUnit.ms(1, 8000)(track.params["sound.release"] ?? 0.35) / 1000;
-  activeUntil.set(track.id, Math.max(activeUntil.get(track.id) ?? 0, time + dur + release + 0.1));
+  activeUntil.set(track.id, Math.max(activeUntil.get(track.id) ?? 0, time + dur + release + 0.5));
 }
 
 /** Play a track's sound (a step, a pad hit, an audition). */
@@ -415,9 +386,7 @@ export function stopAll() {
   const t = audioNow();
   for (const v of voices) stopVoice(v, t);
   for (const id of [...clips.keys()]) stopClip(id, t);
-  for (const { synth } of synths.values())
-    if (synth instanceof Tone.PolySynth) synth.releaseAll(t);
-    else synth.triggerRelease(t);
+  for (const v of synths.values()) v.releaseAll(t);
 }
 
 // ---------- metering ----------

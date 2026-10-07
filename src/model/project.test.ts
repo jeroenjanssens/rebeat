@@ -1,7 +1,15 @@
 import { produce } from "immer";
 import { describe, expect, it } from "vitest";
 import { demoProject } from "../templates/nightDrive";
-import { notesLabel, noteName } from "./notes";
+import {
+  arpOrder,
+  chordInKey,
+  inKey,
+  keyUsesFlats,
+  notesLabel,
+  noteName,
+  snapToKey,
+} from "./notes";
 import {
   cloneSlot,
   convertTrack,
@@ -87,7 +95,9 @@ describe("convertTrack", () => {
     convertTrack(p, kick.id, "instrument");
     const lane = Object.values(p.patterns)[1].lanes[kick.id];
     expect(kick.kind).toBe("instrument");
-    expect(lane.kind === "steps" && lane.steps[0].notes).toEqual([60]);
+    expect(lane.kind === "steps" && lane.steps[0].notes).toEqual([
+      { pitch: 60, length: 1, velocity: 1 },
+    ]);
     convertTrack(p, kick.id, "drum");
     expect(lane.kind === "steps" && lane.steps[0].notes).toBeUndefined();
     expect(kick.params["sound.tune"]).toBe(0.5);
@@ -97,5 +107,28 @@ describe("convertTrack", () => {
     const p = demoProject();
     convertTrack(p, p.tracks[0].id, "audio");
     expect(Object.values(p.patterns)[0].lanes[p.tracks[0].id].kind).toBe("clip");
+  });
+});
+
+describe("keys and chords", () => {
+  it("knows which notes are in a key", () => {
+    expect(inKey(63, { root: 0, scale: "minor" })).toBe(true); // E♭
+    expect(inKey(64, { root: 0, scale: "minor" })).toBe(false); // E
+  });
+  it("uses flats or sharps following the key", () => {
+    expect(keyUsesFlats({ root: 0, scale: "minor" })).toBe(true);
+    expect(keyUsesFlats({ root: 4, scale: "major" })).toBe(false);
+    expect(keyUsesFlats({ root: 5, scale: "major" })).toBe(true);
+    expect(keyUsesFlats({ root: 2, scale: "dorian" })).toBe(false); // D dorian = C major
+    expect(keyUsesFlats({ root: 2, scale: "minor" })).toBe(true); // D minor = F major
+  });
+  it("builds diatonic chords", () => {
+    expect(chordInKey(60, { root: 0, scale: "minor" }, 3)).toEqual([60, 63, 67]);
+    expect(chordInKey(67, { root: 0, scale: "major" }, 4)).toEqual([67, 71, 74, 77]);
+    expect(snapToKey(64, { root: 0, scale: "minor" })).toBe(63);
+  });
+  it("orders arpeggios", () => {
+    expect(arpOrder([60, 64, 67], "updown", 1)).toEqual([60, 64, 67, 64]);
+    expect(arpOrder([60, 64], "up", 2)).toEqual([60, 64, 72, 76]);
   });
 });

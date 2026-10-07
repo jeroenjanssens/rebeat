@@ -173,8 +173,7 @@ export function doublePattern(pattern: Pattern) {
   if (n * 2 > MAX_STEPS) return;
   for (const lane of Object.values(pattern.lanes)) {
     if (lane.kind !== "steps" || lane.stepCountOverride) continue;
-    for (let i = 0; i < n; i++)
-      lane.steps[n + i] = { ...lane.steps[i], notes: lane.steps[i].notes?.slice() };
+    for (let i = 0; i < n; i++) lane.steps[n + i] = deepClone(lane.steps[i]);
   }
   pattern.stepCount = n * 2;
 }
@@ -270,15 +269,17 @@ export function convertTrack(project: Project, trackId: string, kind: TrackKind)
     if (lane.kind === "steps" && kind !== "audio") {
       for (const s of lane.steps) {
         if (kind === "instrument" && from === "drum" && s.on) {
-          s.notes = [60 + s.pitch];
-          s.length = 1;
+          s.notes = [{ pitch: 60 + s.pitch, length: 1, velocity: s.velocity }];
         }
         if (kind === "drum") {
           delete s.notes;
-          delete s.length;
-          delete s.slide;
         }
       }
     } else p.lanes[trackId] = emptyLane(kind);
   }
+}
+
+/** The key in effect on a page: its own override, or the project key. */
+export function pageKey(project: Project, pattern: Pattern) {
+  return pattern.keyOverride ?? project.key;
 }

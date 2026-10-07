@@ -15,6 +15,7 @@ import { InlineEdit } from "../../components/InlineEdit";
 import { dropdown, type MenuItem } from "../../components/Menu";
 import { STEP_COUNT_PRESETS, STEP_SIZES, type StepSize } from "../../model/types";
 import { useEditPattern, useStore, type Tool } from "../../state/store";
+import { KeyMenu } from "./KeyMenu";
 import type { SizeClass } from "./layout";
 
 function Dropdown({
@@ -116,7 +117,7 @@ export function HeaderBar({ sizeClass }: { sizeClass: SizeClass }) {
   const globalSwing = useStore((s) => s.project.swing);
   const swing = (
     <DragValue
-      label={pattern.swing === undefined ? "Swing" : "Page swing"}
+      label={pattern.swing === undefined ? "Swing" : "Swing·P"}
       value={Math.round((pattern.swing ?? globalSwing) * 100)}
       min={50}
       max={75}
@@ -161,6 +162,7 @@ export function HeaderBar({ sizeClass }: { sizeClass: SizeClass }) {
         <Dropdown label="Size" value={pattern.stepSize} items={sizeItems} title="Step size" />
       )}
       {!compact && swing}
+      {!compact && <KeyMenu compact={sizeClass !== "large"} />}
 
       <div className="flex-1" />
 

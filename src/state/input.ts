@@ -4,7 +4,8 @@
  */
 import { position } from "../engine/transport";
 import { audioContext } from "../engine/context";
-import { slotPattern } from "../model/project";
+import { chordInKey, snapToKey } from "../model/notes";
+import { pageKey, slotPattern } from "../model/project";
 import { STEP_SIZE_QUARTERS, type Step, type Track } from "../model/types";
 import { laneLen } from "./actions";
 import { useStore } from "./store";
@@ -26,16 +27,16 @@ function writeStep(trackId: string, index: number, fn: (s: Step) => void, key: s
   }, key);
 }
 
-function apply(step: Step, velocity: number, notes?: number[], nudge = 0) {
+function apply(step: Step, velocity: number, notes?: number[], nudge = 0, merge = false) {
   step.on = true;
   step.velocity = velocity;
   step.nudge = nudge;
   if (notes) {
-    // pressing several notes at once builds a chord
-    const merged =
-      step.notes && step.length === 1 ? [...new Set([...step.notes, ...notes])] : notes;
-    step.notes = merged.sort((a, b) => a - b);
-    step.length = 1;
+    // notes played together build a chord; a new hit replaces what was there
+    const kept = merge ? (step.notes ?? []).filter((n) => !notes.includes(n.pitch)) : [];
+    step.notes = [...kept, ...notes.map((pitch) => ({ pitch, length: 1, velocity }))].sort(
+      (a, b) => a.pitch - b.pitch,
+    );
   }
 }
 
@@ -83,7 +84,7 @@ export function padInput(track: Track, velocity: number, notes?: number[]) {
       now - chordWindow.at < 60 &&
       chordWindow.index >= 0;
     const index = sameChord ? chordWindow.index : cursor.index;
-    writeStep(track.id, index, (st) => apply(st, velocity, notes), `entry-${now}`);
+    writeStep(track.id, index, (st) => apply(st, velocity, notes, 0, !!sameChord), `entry-${now}`);
     chordWindow = { at: now, index, trackId: track.id };
     if (!sameChord) {
       const len = laneLen(track.id);
@@ -93,6 +94,15 @@ export function padInput(track: Track, velocity: number, notes?: number[]) {
       });
     }
   }
+}
+
+/** What a played note becomes: snapped to the key (scale lock) and/or a chord (chord mode). */
+export function playedNotes(midi: number): number[] {
+  const s = get();
+  const key = pageKey(s.project, slotPattern(s.project, s.editSlotId));
+  const root = s.scaleLock ? snapToKey(midi, key) : midi;
+  if (s.chordMode === "off") return [root];
+  return chordInKey(root, key, s.chordMode === "seventh" ? 4 : 3);
 }
 
 // ---------- keyboard step cursor ----------
@@ -131,10 +141,10 @@ export function cursorToggle() {
     (st) => {
       st.on = on;
       const track = s.project.tracks.find((t) => t.id === c.trackId);
-      if (on && track?.kind === "instrument" && !st.notes) {
-        st.notes = [track.category === "bass" ? 36 : 60];
-        st.length = 1;
-      }
+      if (on && track?.kind === "instrument" && !st.notes?.length)
+        st.notes = [
+          { pitch: track.category === "bass" ? 36 : 60, length: 1, velocity: st.velocity },
+        ];
     },
     `cursor-${performance.now()}`,
   );

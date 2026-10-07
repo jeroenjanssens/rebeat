@@ -32,10 +32,8 @@ function notes(pattern: Pattern, track: Track, list: [number, number[], number, 
   for (const [i, n, length, slide] of list) {
     const s = lane.steps[i];
     s.on = true;
-    s.notes = n;
-    s.length = length;
-    s.slide = slide;
     s.velocity = 0.75;
+    s.notes = n.map((pitch) => ({ pitch, length, velocity: 0.75, ...(slide ? { slide } : {}) }));
   }
 }
 

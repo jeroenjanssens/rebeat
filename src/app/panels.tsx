@@ -15,6 +15,7 @@ import { InspectorPanel } from "../panels/inspector/InspectorPanel";
 import { LibraryPanel } from "../panels/library/LibraryPanel";
 import { MasterScopePanel } from "../panels/master-scope/MasterScopePanel";
 import { MixerPanel } from "../panels/mixer/MixerPanel";
+import { PianoRollPanel } from "../panels/piano-roll/PianoRollPanel";
 
 export interface PanelProps {
   params: Record<string, unknown>;
@@ -84,7 +85,7 @@ export const PANELS: PanelDef[] = [
     id: "piano-roll",
     title: "Piano roll",
     icon: Piano,
-    component: placeholder("Piano roll", "Phase 5b"),
+    component: PianoRollPanel,
     minHeight: 160,
   },
   {

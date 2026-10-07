@@ -246,7 +246,10 @@ export function stepParams(kind: TrackKind, flats: boolean): StepParamDef[] {
       default: 0.8,
       format: (v) => `${Math.round(v * 127)}`,
       get: (s) => s.velocity,
-      set: (s, v) => (s.velocity = v),
+      set: (s, v) => {
+        s.velocity = v;
+        for (const n of s.notes ?? []) n.velocity = v;
+      },
     },
     {
       id: "probability",
@@ -284,12 +287,14 @@ export function stepParams(kind: TrackKind, flats: boolean): StepParamDef[] {
           default: 0.5,
           steps: 61,
           format: (v) => notesLabel([Math.round(24 + v * 60)], flats),
-          get: (s) => ((s.notes?.[0] ?? 48) - 24) / 60,
+          get: (s) => ((s.notes?.[0]?.pitch ?? 48) - 24) / 60,
           set: (s, v) => {
             const root = Math.round(24 + v * 60);
-            const old = s.notes ?? [root];
-            const shift = root - old[0];
-            s.notes = old.map((n) => n + shift);
+            const old = s.notes?.length
+              ? s.notes
+              : [{ pitch: root, length: 1, velocity: s.velocity }];
+            const shift = root - old[0].pitch;
+            s.notes = old.map((n) => ({ ...n, pitch: n.pitch + shift }));
           },
         }
       : {
@@ -309,8 +314,10 @@ export function stepParams(kind: TrackKind, flats: boolean): StepParamDef[] {
           default: 0,
           steps: 16,
           format: (v) => `${Math.round(v * 15) + 1} st`,
-          get: (s) => ((s.length ?? 1) - 1) / 15,
-          set: (s, v) => (s.length = Math.round(v * 15) + 1),
+          get: (s) => ((s.notes?.[0]?.length ?? 1) - 1) / 15,
+          set: (s, v) => {
+            for (const n of s.notes ?? []) n.length = Math.round(v * 15) + 1;
+          },
         }
       : {
           id: "gate",

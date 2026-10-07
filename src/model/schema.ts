@@ -8,7 +8,7 @@ import { EFFECT_PARAMS, MIX_PARAMS, SOUND_PARAMS, defaultParams } from "./params
 import { emptyLane, type Project } from "./project";
 import { MAX_STEPS, emptyStep, type Effect, type Lane, type Step } from "./types";
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export interface SerializedProject {
   format: "rebeat-project";
@@ -39,6 +39,25 @@ const migrations: Record<number, Migration> = {
       key: { root: 0, scale: "minor" },
       ...p,
     };
+  },
+  // 2 → 3: notes get their own length and velocity (they used to share the step's)
+  2: (p) => {
+    for (const pattern of Object.values((p.patterns as Record<string, Json>) ?? {}))
+      for (const lane of Object.values((pattern.lanes as Record<string, Json>) ?? {})) {
+        if (lane.kind !== "steps") continue;
+        for (const s of lane.steps as Json[]) {
+          if (Array.isArray(s.notes) && typeof s.notes[0] === "number")
+            s.notes = (s.notes as number[]).map((pitch) => ({
+              pitch,
+              length: (s.length as number) ?? 1,
+              velocity: (s.velocity as number) ?? 0.8,
+              ...(s.slide ? { slide: true } : {}),
+            }));
+          delete s.length;
+          delete s.slide;
+        }
+      }
+    return p;
   },
 };
 

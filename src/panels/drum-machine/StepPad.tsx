@@ -1,5 +1,5 @@
 import { memo, type CSSProperties } from "react";
-import { notesLabel } from "../../model/notes";
+import { notesLabel, stepPitches } from "../../model/notes";
 import type { Step } from "../../model/types";
 
 interface Props {
@@ -13,6 +13,8 @@ interface Props {
   velBar: boolean;
   instrument: boolean;
   cursor?: boolean;
+  /** Note names with flats (follows the key). */
+  flats?: boolean;
 }
 
 export const StepPad = memo(function StepPad({
@@ -26,6 +28,7 @@ export const StepPad = memo(function StepPad({
   velBar,
   instrument,
   cursor = false,
+  flats = true,
 }: Props) {
   const on = step.on && !beyond;
   const cls = [
@@ -66,10 +69,10 @@ export const StepPad = memo(function StepPad({
       )}
       {on && step.condition && <span className="cond">{step.condition}</span>}
       {on && step.locked && <span className="lock" />}
-      {on && instrument && step.notes && (
-        <span className="note">{notesLabel(step.notes, true)}</span>
+      {on && instrument && step.notes?.length && (
+        <span className="note">{notesLabel(stepPitches(step), flats)}</span>
       )}
-      {on && step.slide && <span className="slide">╱</span>}
+      {on && step.notes?.some((n) => n.slide) && <span className="slide">╱</span>}
       {on && velBar && !instrument && (
         <span className="velbar" style={{ width: `calc((100% - 6px) * ${step.velocity})` }} />
       )}

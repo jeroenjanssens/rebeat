@@ -2,12 +2,13 @@ import { useEffect, useRef, type CSSProperties } from "react";
 import { Scope } from "../../components/Scope";
 import * as engine from "../../engine/engine";
 import { onStep } from "../../engine/transport";
-import { KEY_ROOT, SCALE_MINOR, noteName } from "../../model/notes";
+import { keyName as keyLabel, keyUsesFlats, noteName, scaleSteps } from "../../model/notes";
+import { pageKey } from "../../model/project";
 import { STEP_COUNT_PRESETS, STEP_SIZE_QUARTERS, type Track } from "../../model/types";
 import { Keyboard } from "lucide-react";
 import { addKeyHook, keyName } from "../../app/commands";
 import { applyHeld, setStep } from "../../state/actions";
-import { padInput } from "../../state/input";
+import { padInput, playedNotes } from "../../state/input";
 import { useEditPattern, useSelectedTrack, useStore } from "../../state/store";
 import { geometry, type SizeClass } from "./layout";
 import { StepsArea } from "./StepsArea";
@@ -43,8 +44,12 @@ const PIANO_KEYS: Record<string, number> = {
 };
 
 /** Play a pad: sound, flash, and step entry / live recording. */
-function playPad(track: Track, velocity: number, notes?: number[], el?: Element | null) {
-  engine.trigger(track, velocity, { notes, lengthSteps: notes ? 2 : undefined, stepDur: 0.12 });
+function playPad(track: Track, velocity: number, played?: number[], el?: Element | null) {
+  const notes = played && played.length === 1 ? playedNotes(played[0]) : played;
+  engine.trigger(track, velocity, {
+    notes: notes?.map((pitch) => ({ pitch, length: 2, velocity })),
+    stepDur: 0.12,
+  });
   flash(el);
   padInput(track, velocity, notes);
 }
@@ -195,16 +200,22 @@ function DrumPads({ size }: { size: SizeClass }) {
 function NotePads({ track, size }: { track: Track; size: SizeClass }) {
   const { hit, stopRepeat } = usePadHit();
   const octave = useStore((s) => s.keyboardOctave);
+  const pattern = useEditPattern();
+  const key = useStore((s) => pageKey(s.project, pattern));
+  const { scaleLock, chordMode, setUi } = useStore();
+  const flats = keyUsesFlats(key);
   const padSize = size === "large" ? 64 : size === "compact" ? 36 : 50;
-  const base = (track.category === "bass" ? 36 : 48) + octave * 12;
+  const base = (track.category === "bass" ? 36 : 48) + octave * 12 + key.root;
+  const steps = scaleSteps(key);
+  const n = steps.length;
   const rows = 4;
   const cols = 8;
   const pads = [];
   for (let r = rows - 1; r >= 0; r--) {
     for (let c = 0; c < cols; c++) {
-      const degree = r * 3 + c;
-      const midi = base + KEY_ROOT + Math.floor(degree / 7) * 12 + SCALE_MINOR[degree % 7];
-      pads.push({ midi, root: degree % 7 === 0 });
+      const degree = r * (n >= 7 ? 3 : 2) + c;
+      const midi = base + Math.floor(degree / n) * 12 + steps[degree % n];
+      pads.push({ midi, root: degree % n === 0 });
     }
   }
   return (
@@ -226,13 +237,30 @@ function NotePads({ track, size }: { track: Track; size: SizeClass }) {
             onPointerUp={stopRepeat}
             onPointerLeave={stopRepeat}
           >
-            {noteName(p.midi, true)}
+            {noteName(p.midi, flats)}
           </button>
         ))}
       </div>
-      <div className="label">
-        C minor · in key · root highlighted · keys A–; play, Z/X octave ({octave >= 0 ? "+" : ""}
-        {octave})
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="label">
+          {keyLabel(key)} · keys A–; play, Z/X octave ({octave >= 0 ? "+" : ""}
+          {octave})
+        </span>
+        <button
+          className="tool-btn !h-5 border border-line !text-[10px]"
+          data-active={scaleLock}
+          onClick={() => setUi({ scaleLock: !scaleLock })}
+          title="Snap played notes to the key"
+        >
+          Scale lock
+        </button>
+        <div className="segmented" title="Chord mode: one note plays a chord in the key">
+          {(["off", "triad", "seventh"] as const).map((m) => (
+            <button key={m} data-active={chordMode === m} onClick={() => setUi({ chordMode: m })}>
+              {m === "off" ? "Notes" : m === "triad" ? "Triads" : "7ths"}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );
