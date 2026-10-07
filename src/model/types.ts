@@ -27,6 +27,8 @@ export interface StepLane {
   stepCountOverride?: number;
   /** The track's own step size on this page (polyrhythms); default = the page's. */
   stepSizeOverride?: StepSize;
+  /** The track's own swing (0.5..0.75); default = page/global swing. */
+  swingOverride?: number;
 }
 
 export interface ClipLane {

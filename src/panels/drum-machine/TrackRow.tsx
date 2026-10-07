@@ -252,6 +252,14 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
                 onClick: () => updateLane((l) => l.kind === "steps" && (l.stepSizeOverride = sz)),
               })),
             ),
+            chips(
+              "Track swing",
+              [undefined, 0.5, 0.54, 0.58, 0.62, 0.66].map((v) => ({
+                label: v === undefined ? "Page" : `${Math.round(v * 100)}%`,
+                active: lane.swingOverride === v,
+                onClick: () => updateLane((l) => l.kind === "steps" && (l.swingOverride = v)),
+              })),
+            ),
             { separator: true },
           ]
         : []),

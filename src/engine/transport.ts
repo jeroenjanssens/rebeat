@@ -236,7 +236,13 @@ function scheduleStep(time: number) {
     };
     if (!lane.stepSizeOverride || lane.stepSizeOverride === pattern.stepSize) {
       laneSteps.set(track.id, pageStep % len);
-      play(lane.steps[pageStep % len], time, dur);
+      let t = time;
+      if (lane.swingOverride !== undefined && pageStep % 2 === 1) {
+        // move the off-beat step from the page's swing to the track's own
+        const pageSwing = pattern.swing ?? project.swing;
+        t += qPage * secPerQ * 2 * (lane.swingOverride - pageSwing);
+      }
+      play(lane.steps[pageStep % len], t, dur);
       continue;
     }
     // a track with its own rate: play the lane steps that start within this page step
