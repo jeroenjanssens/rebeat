@@ -2,7 +2,7 @@
  * Warping audio clips to the song tempo with Signalsmith Stretch (WASM/AudioWorklet): one stretch
  * node per audio track, holding that track's sample.
  */
-import SignalsmithStretch, { type StretchNode } from "signalsmith-stretch";
+import type { StretchNode } from "signalsmith-stretch";
 import * as Tone from "tone";
 import { getBuffer } from "./samples";
 
@@ -33,6 +33,8 @@ export function warper(
   const entry = w;
   w.loading = (async () => {
     const ctx = Tone.getContext().rawContext as AudioContext;
+    // the WASM build loads on first use
+    const { default: SignalsmithStretch } = await import("signalsmith-stretch");
     const node = await SignalsmithStretch(ctx, {
       numberOfInputs: 0,
       numberOfOutputs: 1,

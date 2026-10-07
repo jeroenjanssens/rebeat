@@ -3,6 +3,7 @@ import * as Tone from "tone";
 import { useShell } from "../app/shell";
 import { useSettings } from "../state/settings";
 import { initEngine } from "./engine";
+import { startMidi } from "../audio-io/midi";
 import { renderKits } from "./kits";
 import { startLiveInput } from "./liveInput";
 import { startLooper } from "./looper";
@@ -48,8 +49,7 @@ export async function startAudio(): Promise<boolean> {
     initEngine();
     startLooper();
     startPerf();
-    if (useSettings.getState().midiEnabled)
-      void import("../audio-io/midi").then((m) => m.startMidi());
+    if (useSettings.getState().midiEnabled) void startMidi();
     startLiveInput();
     const { outputDeviceId } = useSettings.getState();
     if (outputDeviceId) await setOutputDevice(outputDeviceId);

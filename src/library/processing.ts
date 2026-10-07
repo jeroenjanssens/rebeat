@@ -2,7 +2,6 @@
  * Non-destructive sample settings (D19: stored on the library sample, so every track that uses it
  * hears them) and rendering them into the buffer the engine plays.
  */
-import SignalsmithStretch from "signalsmith-stretch";
 
 export type FadeCurve = "linear" | "exp" | "log" | "scurve";
 
@@ -196,6 +195,7 @@ export async function stretchOffline(
     outLen + Math.round(sampleRate * 0.1),
     sampleRate,
   );
+  const { default: SignalsmithStretch } = await import("signalsmith-stretch");
   const node = await SignalsmithStretch(ctx, {
     numberOfInputs: 0,
     numberOfOutputs: 1,

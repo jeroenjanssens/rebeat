@@ -1,0 +1,18 @@
+import { chromium } from "@playwright/test";
+const browser = await chromium.launch({ args: ["--autoplay-policy=no-user-gesture-required"] });
+const page = await browser.newPage();
+const errors = [];
+page.on("pageerror", (e) => errors.push("PAGEERR " + String(e.stack || e)));
+page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+await page.goto("http://localhost:4173");
+await page.getByTestId("audio-overlay").click();
+await page.waitForTimeout(1500);
+await page.keyboard.press("Space");
+await page.waitForTimeout(800);
+const sw = await page.evaluate(async () => (await navigator.serviceWorker.getRegistration())?.active?.state ?? "none");
+const manifest = await page.evaluate(() => document.querySelector('link[rel="manifest"]')?.getAttribute("href"));
+console.log("sw:", sw, "manifest:", manifest);
+await page.getByText("Piano roll", { exact: true }).click();
+await page.waitForTimeout(500);
+console.log(errors.join("\n") || "no errors");
+await browser.close();

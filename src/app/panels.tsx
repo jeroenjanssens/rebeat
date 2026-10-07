@@ -1,4 +1,4 @@
-import type { FC } from "react";
+import { lazy, type FC } from "react";
 import {
   AudioWaveform,
   Drum,
@@ -13,11 +13,23 @@ import {
 import { DrumMachine } from "../panels/drum-machine/DrumMachine";
 import { InspectorPanel } from "../panels/inspector/InspectorPanel";
 import { LibraryPanel } from "../panels/library/LibraryPanel";
-import { MasterScopePanel } from "../panels/master-scope/MasterScopePanel";
-import { MixerPanel } from "../panels/mixer/MixerPanel";
-import { PerformancePanel } from "../panels/performance/PerformancePanel";
-import { PianoRollPanel } from "../panels/piano-roll/PianoRollPanel";
-import { SampleEditorPanel } from "../panels/sample-editor/SampleEditorPanel";
+
+// secondary panels load when first shown
+const lazyPanel = (load: () => Promise<FC<PanelProps>>) =>
+  lazy(async () => ({ default: await load() }));
+const MasterScopePanel = lazyPanel(() =>
+  import("../panels/master-scope/MasterScopePanel").then((m) => m.MasterScopePanel),
+);
+const MixerPanel = lazyPanel(() => import("../panels/mixer/MixerPanel").then((m) => m.MixerPanel));
+const PerformancePanel = lazyPanel(() =>
+  import("../panels/performance/PerformancePanel").then((m) => m.PerformancePanel),
+);
+const PianoRollPanel = lazyPanel(() =>
+  import("../panels/piano-roll/PianoRollPanel").then((m) => m.PianoRollPanel),
+);
+const SampleEditorPanel = lazyPanel(() =>
+  import("../panels/sample-editor/SampleEditorPanel").then((m) => m.SampleEditorPanel),
+);
 
 export interface PanelProps {
   params: Record<string, unknown>;
@@ -28,7 +40,7 @@ export interface PanelDef {
   id: string;
   title: string;
   icon: LucideIcon;
-  component: FC<PanelProps>;
+  component: FC<PanelProps> | ReturnType<typeof lazy<FC<PanelProps>>>;
   minWidth?: number;
   minHeight?: number;
 }

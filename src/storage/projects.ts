@@ -1,4 +1,5 @@
 /** Projects in IndexedDB: list, open, save, autosave, duplicate, delete. */
+import { stop } from "../engine/transport";
 import { uid } from "../model/id";
 import type { Project } from "../model/project";
 import { deserializeProject, serializeProject } from "../model/schema";
@@ -37,7 +38,6 @@ export async function readProject(id: string): Promise<Project | null> {
 export async function openProject(id: string): Promise<boolean> {
   const project = await readProject(id);
   if (!project) return false;
-  const { stop } = await import("../engine/transport");
   stop();
   useStore.getState().loadProject(project, id);
   await db.meta.put({ key: LAST, value: id });

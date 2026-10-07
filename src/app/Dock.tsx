@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import {
   DockviewDefaultTab,
   DockviewReact,
@@ -29,7 +29,9 @@ const components = Object.fromEntries(
     def.id,
     (props: IDockviewPanelProps) => (
       <PanelFrame id={props.api.id}>
-        <def.component params={props.params ?? {}} />
+        <Suspense fallback={<div className="p-4 text-[12px] text-faint">Loading…</div>}>
+          <def.component params={props.params ?? {}} />
+        </Suspense>
       </PanelFrame>
     ),
   ]),

@@ -3,7 +3,7 @@
  * sample across the keyboard) and sampled instruments from smplr (loaded on demand).
  */
 import * as Tone from "tone";
-import { ElectricPiano, Soundfont, SplendidGrandPiano, type Smplr } from "smplr";
+import type { Smplr } from "smplr";
 import { toUnit } from "../model/params";
 import { noteName } from "../model/notes";
 import type { InstrumentSource, Note, Track } from "../model/types";
@@ -311,22 +311,33 @@ function smplrVoice(src: InstrumentSource, dest: Tone.Gain): InstrumentVoice {
   const ctx = Tone.getContext().rawContext as AudioContext;
   // smplr wants a native node; the channel input is a Tone.Gain around one
   const destination = dest.input as unknown as AudioNode;
-  let inst: Smplr;
-  if (src.preset === "piano") inst = SplendidGrandPiano(ctx, { destination, volume: 90 });
-  else if (src.preset.startsWith("epiano:"))
-    inst = ElectricPiano(ctx, { instrument: src.preset.slice(7), destination, volume: 90 });
-  else
-    inst = Soundfont(ctx, { instrument: src.preset.replace(/^sf:/, ""), destination, volume: 90 });
+  let inst: Smplr | null = null;
+  let disposed = false;
   let state: "ready" | "loading" | "error" = "loading";
-  inst.ready.then(
-    () => (state = "ready"),
-    () => (state = "error"),
-  );
+  // smplr (and its samples) load on first use
+  import("smplr")
+    .then(({ ElectricPiano, Soundfont, SplendidGrandPiano }) => {
+      if (disposed) return;
+      if (src.preset === "piano") inst = SplendidGrandPiano(ctx, { destination, volume: 90 });
+      else if (src.preset.startsWith("epiano:"))
+        inst = ElectricPiano(ctx, { instrument: src.preset.slice(7), destination, volume: 90 });
+      else
+        inst = Soundfont(ctx, {
+          instrument: src.preset.replace(/^sf:/, ""),
+          destination,
+          volume: 90,
+        });
+      return inst.ready;
+    })
+    .then(
+      () => (state = "ready"),
+      () => (state = "error"),
+    );
   return {
     key: `smplr:${src.preset}`,
     state: () => state,
     play(notes, time, step) {
-      if (state !== "ready") return;
+      if (state !== "ready" || !inst) return;
       for (const n of notes)
         inst.start({
           note: n.pitch,
@@ -335,9 +346,12 @@ function smplrVoice(src: InstrumentSource, dest: Tone.Gain): InstrumentVoice {
           duration: n.length * step * 0.95,
         });
     },
-    releaseAll: () => inst.stop(),
+    releaseAll: () => inst?.stop(),
     update: () => {},
-    dispose: () => inst.dispose(),
+    dispose: () => {
+      disposed = true;
+      inst?.dispose();
+    },
   };
 }
 

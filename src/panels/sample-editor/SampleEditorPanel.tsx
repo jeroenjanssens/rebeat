@@ -22,7 +22,13 @@ import {
   type Channels,
 } from "../../library/editorOps";
 import { stft } from "../../library/fft";
-import { applySettings, replaceInProject, saveVersion, useLibrary } from "../../library/library";
+import {
+  applySettings,
+  replaceInProject,
+  saveVersion,
+  updateSample,
+  useLibrary,
+} from "../../library/library";
 import { renderSettings, stretchOffline, type FadeCurve } from "../../library/processing";
 import { renderWithEffects } from "../../library/renderFx";
 import { makeEffect } from "../../model/effects";
@@ -975,11 +981,7 @@ function AnalyzeTab({ editor, sampleId }: { editor: Editor; sampleId: string }) 
       {result.bpm && (
         <button
           className="tool-btn border border-line !text-[10.5px]"
-          onClick={() =>
-            void import("../../library/library").then((m) =>
-              m.updateSample(sampleId, { bpm: result.bpm }),
-            )
-          }
+          onClick={() => updateSample(sampleId, { bpm: result.bpm })}
         >
           Store tempo
         </button>
