@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { produce, type Draft } from "immer";
-import { demoProject } from "../mock/demoProject";
+import { demoProject } from "../templates/nightDrive";
 import { slotPattern, type Project } from "../model/project";
 import type { Step } from "../model/types";
 

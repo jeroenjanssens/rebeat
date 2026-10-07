@@ -1,6 +1,6 @@
 import { produce } from "immer";
 import { describe, expect, it } from "vitest";
-import { demoProject } from "../mock/demoProject";
+import { demoProject } from "../templates/nightDrive";
 import { notesLabel, noteName } from "./notes";
 import {
   cloneSlot,

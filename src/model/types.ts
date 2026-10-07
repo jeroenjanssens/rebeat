@@ -41,7 +41,8 @@ export interface Track {
   kind: TrackKind;
   category: SoundCategory;
   color: string;
-  source: string; // sample file name or instrument preset
+  source: string; // sample or instrument preset name, for display
+  sampleId?: string;
   mute: boolean;
   solo: boolean;
   arm: boolean;

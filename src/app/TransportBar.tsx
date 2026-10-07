@@ -13,8 +13,8 @@ import {
 import { DragValue } from "../components/DragValue";
 import { LevelMeter } from "../components/LevelMeter";
 import { dropdown, type MenuItem } from "../components/Menu";
-import * as clock from "../mock/clock";
-import * as engine from "../mock/engine";
+import * as engine from "../engine/engine";
+import * as clock from "../engine/transport";
 import { TIME_SIGNATURES, createTapTempo } from "../model/tempo";
 import { STEP_SIZE_QUARTERS } from "../model/types";
 import { platform } from "../platform";
@@ -314,12 +314,7 @@ export function TransportBar() {
       <span className="hidden @[1300px]:flex">
         <CpuMeter />
       </span>
-      <LevelMeter
-        read={(now) => engine.masterLevel(now)}
-        width={64}
-        height={11}
-        title="Master level"
-      />
+      <LevelMeter read={() => engine.masterLevel()} width={64} height={11} title="Master level" />
       <AudioStatus />
       <div className="mx-1 h-5 w-px bg-line" />
       <button

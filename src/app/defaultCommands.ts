@@ -1,4 +1,4 @@
-import * as clock from "../mock/clock";
+import * as clock from "../engine/transport";
 import { platform } from "../platform";
 import { clearSelection, fnClick, fnPress, fnRelease } from "../state/actions";
 import { THEMES, useSettings } from "../state/settings";

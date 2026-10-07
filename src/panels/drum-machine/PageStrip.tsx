@@ -17,7 +17,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { Link2, Plus, Repeat } from "lucide-react";
 import { InlineEdit } from "../../components/InlineEdit";
 import { contextMenu, type MenuItem } from "../../components/Menu";
-import { position } from "../../mock/clock";
+import { position } from "../../engine/transport";
 import {
   cloneSlot,
   copySlot,
@@ -98,8 +98,8 @@ function PageThumb({
 
   useEffect(() => {
     if (!isPlay) return;
-    return onFrame((now) => {
-      if (progress.current) progress.current.style.transform = `scaleX(${position(now).progress})`;
+    return onFrame(() => {
+      if (progress.current) progress.current.style.transform = `scaleX(${position().progress})`;
     });
   }, [isPlay]);
 

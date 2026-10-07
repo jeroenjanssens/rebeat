@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from "lucide-react";
 import { Encoder } from "../../components/Encoder";
-import { fakePeaks } from "../../mock/peaks";
+import { samplePeaks } from "../../engine/samples";
 import {
   EFFECT_PARAMS,
   MIX_PARAMS,
@@ -12,6 +12,7 @@ import {
 import type { Track } from "../../model/types";
 import { token } from "../../render/theme";
 import { useCanvas } from "../../render/useCanvas";
+import { useSamplesVersion } from "../../components/useSamplesVersion";
 import { editSteps, selectedIndices } from "../../state/actions";
 import { stepKey, useEditPattern, useSelectedTrack, useStore, type Bank } from "../../state/store";
 import type { SizeClass } from "./layout";
@@ -127,6 +128,7 @@ function Display({ track, width }: { track: Track; width: number }) {
     (s) => Object.keys(s.selectedSteps).filter((k) => k.startsWith(`${track.id}:`)).length,
   );
   const index = useStore((s) => s.project.tracks.findIndex((t) => t.id === track.id));
+  const samples = useSamplesVersion();
   const { ref } = useCanvas(
     (ctx, { width: w, height: h }) => {
       ctx.clearRect(0, 0, w, h);
@@ -148,7 +150,7 @@ function Display({ track, width }: { track: Track; width: number }) {
         ctx.lineTo(w, h - 1);
         ctx.stroke();
       } else {
-        const peaks = fakePeaks(track.source, track.category);
+        const peaks = samplePeaks(track.sampleId);
         const mid = h / 2;
         for (let x = 0; x < w; x += 2) {
           const p = peaks[Math.floor((x / w) * (peaks.length - 1))];
@@ -158,7 +160,7 @@ function Display({ track, width }: { track: Track; width: number }) {
       ctx.fillStyle = token("text-faint");
       ctx.fillRect(0, h / 2, w, 0.5);
     },
-    [track.color, track.source, track.kind, track.params],
+    [track.color, track.sampleId, track.kind, track.params, samples],
   );
 
   return (

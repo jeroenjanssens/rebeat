@@ -39,19 +39,17 @@ function notes(pattern: Pattern, track: Track, list: [number, number[], number, 
 }
 
 export function demoProject(): Project {
-  const kick = makeTrack("drum", "kick", "Kick", "kick-909.wav", [
-    { name: "Compressor", params: {} },
-  ]);
-  const snare = makeTrack("drum", "snare", "Snare", "snare-909.wav", [
+  const kick = makeTrack("drum", "kick", "Kick", "909 Kick", [{ name: "Compressor", params: {} }]);
+  const snare = makeTrack("drum", "snare", "Snare", "909 Snare", [
     { name: "Distortion", params: {} },
   ]);
-  const clap = makeTrack("drum", "clap", "Clap", "clap-909.wav");
-  const hat = makeTrack("drum", "hat", "Cl Hat", "hh-closed-909.wav");
-  const ohat = makeTrack("drum", "hat", "Op Hat", "hh-open-909.wav");
+  const clap = makeTrack("drum", "clap", "Clap", "909 Clap");
+  const hat = makeTrack("drum", "hat", "Cl Hat", "909 Closed Hat");
+  const ohat = makeTrack("drum", "hat", "Op Hat", "909 Open Hat");
   ohat.color = TRACK_PALETTE[4];
   ohat.params["sound.choke"] = 1 / 8;
   hat.params["sound.choke"] = 1 / 8;
-  const perc = makeTrack("drum", "perc", "Rim", "rim-909.wav");
+  const perc = makeTrack("drum", "perc", "Rim", "909 Rim");
   const bass = makeTrack("instrument", "bass", "Bass", "Mono Bass · Acid", [
     { name: "Filter", params: {} },
     { name: "Distortion", params: {} },
@@ -60,10 +58,17 @@ export function demoProject(): Project {
     { name: "Delay", params: {} },
     { name: "Reverb", params: {} },
   ]);
-  const vox = makeTrack("audio", "vocal", "Vox", "vox-hook-92bpm.wav", [
+  const vox = makeTrack("audio", "vocal", "Vox", "Vox hook 112", [
     { name: "Compressor", params: {} },
     { name: "Delay", params: {} },
   ]);
+  kick.sampleId = "kit:909:kick";
+  snare.sampleId = "kit:909:snare";
+  clap.sampleId = "kit:909:clap";
+  hat.sampleId = "kit:909:chh";
+  ohat.sampleId = "kit:909:ohh";
+  perc.sampleId = "kit:909:rim";
+  vox.sampleId = "demo:vox-hook";
   vox.params["mix.sendA"] = 0.35;
   chords.params["mix.sendA"] = 0.5;
   chords.volume = 0.62;

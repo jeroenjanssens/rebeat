@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Minimize, Play, Square } from "lucide-react";
 import { DragValue } from "../components/DragValue";
-import * as clock from "../mock/clock";
+import * as clock from "../engine/transport";
 import { platform } from "../platform";
 import { useStore } from "../state/store";
 

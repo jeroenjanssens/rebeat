@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import * as engine from "../../mock/engine";
+import * as engine from "../../engine/engine";
 import type { Track } from "../../model/types";
 
 /**
@@ -13,7 +13,7 @@ export function ScratchStrip({ track, width }: { track: Track; width: number }) 
 
   const onDown = (e: React.PointerEvent) => {
     e.currentTarget.setPointerCapture(e.pointerId);
-    const pos = engine.clipPosition(track.id, performance.now()) ?? 0;
+    const pos = engine.clipPosition(track.id) ?? 0;
     drag.current = { x: e.clientX, pos, t: performance.now(), lastX: e.clientX };
     engine.scratch(track, pos, 0);
   };

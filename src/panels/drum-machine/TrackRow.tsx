@@ -6,7 +6,7 @@ import { contextMenu, useMenu, type MenuItem } from "../../components/Menu";
 import { InlineEdit } from "../../components/InlineEdit";
 import { MiniFader } from "../../components/MiniFader";
 import { Scope } from "../../components/Scope";
-import { onStep } from "../../mock/clock";
+import { onStep } from "../../engine/transport";
 import { TRACK_PALETTE } from "../../model/colors";
 import {
   clearLane,

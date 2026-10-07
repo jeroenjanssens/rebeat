@@ -12,8 +12,21 @@ export interface ParamDef {
 }
 
 const pct = (v: number) => `${Math.round(v * 100)}%`;
-const lin = (lo: number, hi: number) => (v: number) => lo + v * (hi - lo);
-const expo = (lo: number, hi: number) => (v: number) => lo * Math.pow(hi / lo, v);
+export const lin = (lo: number, hi: number) => (v: number) => lo + v * (hi - lo);
+export const expo = (lo: number, hi: number) => (v: number) => lo * Math.pow(hi / lo, v);
+
+/** Normalized encoder values (0..1) → real units, shared by the UI and the audio engine. */
+export const toUnit = {
+  semis: (range: number) => (v: number) => (v - 0.5) * 2 * range,
+  hz: expo(20, 20000),
+  /** Seconds; 1 = the full sample (no envelope cut). */
+  drumDecay: (v: number) => (v >= 0.995 ? Infinity : expo(10, 2000)(v) / 1000),
+  q: (v: number) => 0.3 + v * v * 18,
+  db: (lo: number, hi: number) => lin(lo, hi),
+  ms: (lo: number, hi: number) => (v: number) => expo(lo, hi)(v),
+  pan: (v: number) => (v - 0.5) * 2,
+  choke: (v: number) => Math.round(v * 8),
+};
 
 const hz = (v: number) => {
   const f = expo(20, 20000)(v);
@@ -44,7 +57,12 @@ export const VOLUME_FORMAT = (v: number) => {
 
 const SOUND_DRUM: ParamDef[] = [
   { id: "tune", label: "Tune", bipolar: true, default: 0.5, format: semis(24) },
-  { id: "decay", label: "Decay", default: 0.55, format: ms(10, 2000) },
+  {
+    id: "decay",
+    label: "Decay",
+    default: 1,
+    format: (v) => (v >= 0.995 ? "Full" : ms(10, 2000)(v)),
+  },
   { id: "start", label: "Start", default: 0, format: pct },
   { id: "cutoff", label: "Cutoff", default: 1, format: hz },
   { id: "reso", label: "Reso", default: 0.1, format: pct },

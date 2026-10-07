@@ -1,7 +1,7 @@
 import { useEffect, useRef, type CSSProperties } from "react";
 import { Scope } from "../../components/Scope";
-import * as engine from "../../mock/engine";
-import { onStep } from "../../mock/clock";
+import * as engine from "../../engine/engine";
+import { onStep } from "../../engine/transport";
 import { KEY_ROOT, SCALE_MINOR, noteName } from "../../model/notes";
 import { STEP_COUNT_PRESETS, STEP_SIZE_QUARTERS, type Track } from "../../model/types";
 import { applyHeld, setStep } from "../../state/actions";
@@ -34,10 +34,9 @@ function usePadHit() {
       : Math.min(1, Math.max(0.2, 1 - (e.clientY - r.top) / r.height + 0.25));
     const fire = () => {
       engine.trigger(track, velocity, {
-        now: performance.now(),
         notes,
         lengthSteps: notes ? 2 : undefined,
-        stepMs: 120,
+        stepDur: 0.12,
       });
       flash(el);
     };

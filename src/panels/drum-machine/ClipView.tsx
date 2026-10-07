@@ -1,10 +1,11 @@
 import { useEffect, useRef } from "react";
-import * as engine from "../../mock/engine";
-import { fakePeaks } from "../../mock/peaks";
+import * as engine from "../../engine/engine";
+import { samplePeaks } from "../../engine/samples";
 import type { ClipLane, Track } from "../../model/types";
 import { onFrame } from "../../render/raf";
 import { alpha, token } from "../../render/theme";
 import { useCanvas } from "../../render/useCanvas";
+import { useSamplesVersion } from "../../components/useSamplesVersion";
 
 interface Props {
   track: Track;
@@ -16,6 +17,7 @@ interface Props {
 /** An audio track's clip: the waveform across the page, with a moving playhead. */
 export function ClipView({ track, lane, width, height }: Props) {
   const head = useRef<HTMLDivElement>(null);
+  const samples = useSamplesVersion();
   const { ref } = useCanvas(
     (ctx, { width: w, height: h }) => {
       ctx.clearRect(0, 0, w, h);
@@ -25,7 +27,7 @@ export function ClipView({ track, lane, width, height }: Props) {
       ctx.fill();
       ctx.fillStyle = alpha(track.color, lane.active ? 0.14 : 0.05);
       ctx.fill();
-      const peaks = fakePeaks(track.source, track.category);
+      const peaks = samplePeaks(track.sampleId);
       ctx.fillStyle = lane.active ? track.color : token("text-faint");
       ctx.globalAlpha = lane.active ? 0.9 : 0.6;
       const mid = h / 2;
@@ -36,15 +38,15 @@ export function ClipView({ track, lane, width, height }: Props) {
       }
       ctx.globalAlpha = 1;
     },
-    [track.color, track.source, lane.active],
+    [track.color, track.sampleId, lane.active, samples],
   );
 
   useEffect(
     () =>
-      onFrame((now) => {
+      onFrame(() => {
         const el = head.current;
         if (!el) return;
-        const pos = engine.clipPosition(track.id, now);
+        const pos = engine.clipPosition(track.id);
         el.style.opacity = pos === null ? "0" : "1";
         if (pos !== null) el.style.transform = `translateX(${pos * width}px)`;
       }),
