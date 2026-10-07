@@ -21,7 +21,9 @@ test("applies non-destructive settings to the library sample", async ({ page }) 
   await editor.getByTestId("editor-apply").click();
   await expect(page.getByText("Applied", { exact: true })).toBeVisible();
   const settings = await page.evaluate(async () => {
-    const { db } = await import("/src/storage/db.ts");
+    // a path the browser resolves (the dev server serves sources), not the test runner
+    const path = "/src/storage/db.ts";
+    const { db } = await import(/* @vite-ignore */ path);
     const s = await db.samples.toArray();
     return s[0].settings as { reverse: boolean; normalize: boolean };
   });
