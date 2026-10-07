@@ -1,6 +1,8 @@
 /** Projects in IndexedDB: list, open, save, autosave, duplicate, delete. */
 import { stop } from "../engine/transport";
+import { toast } from "../components/Toast";
 import { uid } from "../model/id";
+import { exampleFor, isExampleId } from "../templates/examples";
 import type { Project } from "../model/project";
 import { deserializeProject, serializeProject } from "../model/schema";
 import { platform } from "../platform";
@@ -30,6 +32,9 @@ export async function saveProject(id: string, project: Project) {
 }
 
 export async function readProject(id: string): Promise<Project | null> {
+  // examples are generated, never stored: they can't be overwritten
+  const example = exampleFor(id);
+  if (example) return example.create();
   const rec = await db.projects.get(id);
   return rec ? deserializeProject(rec.data) : null;
 }
@@ -79,7 +84,7 @@ export async function deleteProject(id: string) {
 /** Save the current project now (Cmd+S, before closing, before switching). */
 export async function saveNow() {
   const s = useStore.getState();
-  if (!s.projectId) return;
+  if (!s.projectId || isExampleId(s.projectId)) return;
   useStore.setState({ saveStatus: "saving" });
   try {
     await saveProject(s.projectId, s.project);
@@ -93,15 +98,31 @@ export async function saveNow() {
 
 let timer = 0;
 
+/**
+ * The first change to an example makes it your own project: a copy with a new id and name. The
+ * edit (and its undo history) carries on in the copy; the example stays as it was.
+ */
+function forkExample() {
+  const s = useStore.getState();
+  const example = exampleFor(s.projectId);
+  if (!example) return;
+  const id = uid("prj");
+  const name = s.project.name === example.name ? `${example.name} (copy)` : s.project.name;
+  useStore.setState({ projectId: id, project: { ...s.project, name } });
+  void saveProject(id, useStore.getState().project).then(() =>
+    toast(`Saved your changes as “${name}”. The example stays as it was.`),
+  );
+}
+
 let starting: Promise<void> | null = null;
 
 /** Debounced autosave of every edit; on start, reopen the last project (crash recovery). */
-export function startProjects(fallback: () => Project) {
+export function startProjects(fallback: string) {
   starting ??= start(fallback);
   return starting;
 }
 
-async function start(fallback: () => Project) {
+async function start(fallback: string) {
   let recovered = false;
   try {
     const last = (await db.meta.get(LAST))?.value as string | undefined;
@@ -109,12 +130,22 @@ async function start(fallback: () => Project) {
   } catch (e) {
     console.error("Could not reopen the last project", e);
   }
-  if (!recovered) await createProject(fallback());
+  if (!recovered) await openProject(fallback);
 
   let last = useStore.getState().project;
+  let lastId = useStore.getState().projectId;
   useStore.subscribe((s) => {
     if (s.project === last) return;
+    const opened = s.projectId !== lastId;
     last = s.project;
+    lastId = s.projectId;
+    // opening a project isn't an edit
+    if (opened) return;
+    if (isExampleId(s.projectId)) {
+      forkExample();
+      last = useStore.getState().project;
+      lastId = useStore.getState().projectId;
+    }
     if (s.saveStatus !== "dirty") useStore.setState({ saveStatus: "dirty" });
     if (!useSettings.getState().autosave) return;
     clearTimeout(timer);

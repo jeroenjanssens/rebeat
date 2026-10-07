@@ -20,6 +20,7 @@ import { STEP_SIZE_QUARTERS } from "../model/types";
 import { platform } from "../platform";
 import { frameLoad, onFrame } from "../render/raf";
 import { useStore } from "../state/store";
+import { isExampleId } from "../templates/examples";
 import { LAYOUT_PRESETS, applyPreset, openPanel } from "./layouts";
 import { PANELS } from "./panels";
 import { dock, useShell } from "./shell";
@@ -174,6 +175,7 @@ export function TransportBar() {
   const playing = useStore((s) => s.playing);
   const project = useStore((s) => s.project);
   const playMode = useStore((s) => s.playMode);
+  const projectId = useStore((s) => s.projectId);
   const quantize = useStore((s) => s.quantize);
   const recording = useStore((s) => s.recording);
   const loopBars = useStore((s) => s.loopBars);
@@ -216,7 +218,17 @@ export function TransportBar() {
         data-testid="project-name"
       >
         <span className="truncate">{project.name}</span>
-        <SaveDot />
+        {isExampleId(projectId) ? (
+          <span
+            className="label rounded border border-line px-1 !text-[8.5px]"
+            title="An example: your first change makes a copy"
+            data-testid="example-badge"
+          >
+            Example
+          </span>
+        ) : (
+          <SaveDot />
+        )}
       </button>
       <div className="mx-1 h-5 w-px bg-line" />
 

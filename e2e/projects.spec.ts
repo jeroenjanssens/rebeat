@@ -26,8 +26,9 @@ test("creates a project from a template and switches back", async ({ page }) => 
   await expect(page.getByTestId("project-browser")).toBeHidden();
   await expect(page.getByTestId("project-name")).toContainText("808 starter");
   await page.keyboard.press("ControlOrMeta+O");
-  await expect(page.getByTestId("project-card")).toHaveCount(2);
-  await page.getByTestId("project-card").filter({ hasText: "Night Drive" }).locator("img").click();
+  // the example isn't a stored project; the new one is
+  await expect(page.getByTestId("project-card")).toHaveCount(1);
+  await page.getByTestId("example-card").filter({ hasText: "Night Drive" }).click();
   await expect(page.getByTestId("project-name")).toContainText("Night Drive");
 });
 
@@ -43,5 +44,35 @@ test("exports a .rebeat file and imports it again", async ({ page }) => {
   await (await chooser).setFiles(path);
   await expect(page.getByTestId("project-browser")).toBeHidden();
   await page.keyboard.press("ControlOrMeta+O");
-  await expect(page.getByTestId("project-card")).toHaveCount(2);
+  await expect(page.getByTestId("project-card")).toHaveCount(1);
+});
+
+test("examples are read-only: the first change makes a copy", async ({ page }) => {
+  await page.keyboard.press("ControlOrMeta+O");
+  await page.getByTestId("example-card").filter({ hasText: "Blue Monday" }).click();
+  await expect(page.getByTestId("project-name")).toContainText("Blue Monday");
+  await expect(page.getByTestId("example-badge")).toBeVisible();
+  const pad = page.locator('[data-panel="drum-machine"] [data-pad][data-i="1"]').first();
+  await expect(pad).not.toHaveClass(/\bon\b/);
+  await pad.click();
+  await expect(page.getByTestId("project-name")).toContainText("Blue Monday (copy)");
+  await expect(page.getByTestId("example-badge")).toHaveCount(0);
+  await expect(pad).toHaveClass(/\bon\b/);
+  // the copy is one of your projects; the example itself is unchanged
+  await page.keyboard.press("ControlOrMeta+O");
+  await expect(
+    page.getByTestId("project-card").filter({ hasText: "Blue Monday (copy)" }),
+  ).toHaveCount(1);
+  await page.getByTestId("example-card").filter({ hasText: "Blue Monday" }).click();
+  await expect(page.getByTestId("example-badge")).toBeVisible();
+  await expect(pad).not.toHaveClass(/\bon\b/);
+});
+
+test("undo after the first change keeps working in the copy", async ({ page }) => {
+  const pad = page.locator('[data-panel="drum-machine"] [data-pad][data-i="1"]').first();
+  await pad.click();
+  await expect(page.getByTestId("project-name")).toContainText("Night Drive (copy)");
+  await page.keyboard.press("ControlOrMeta+Z");
+  await expect(pad).not.toHaveClass(/\bon\b/);
+  await expect(page.getByTestId("example-badge")).toHaveCount(0);
 });

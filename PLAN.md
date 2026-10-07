@@ -9,7 +9,7 @@
 
 ### 0.1 Where we are
 
-- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D68), and the build order is in §7.
+- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D69), and the build order is in §7.
 - Every phase in §7 is built, tested (unit + Playwright e2e) and pushed. The mockup (Phase M) became the app: its components, model and store were kept and extended; `src/mock/` was replaced by the real engine.
 - The desktop app (Phase 10) runs and packages locally (unsigned); signing/notarization need certificates (see `.github/workflows/desktop.yml`).
 
@@ -52,7 +52,8 @@ src/
   components/            Encoder, Fader, VMeter, LevelMeter, Scope, PeaksCanvas, EffectEditor, Dialog, Menu,
                          Toast, DragValue, MiniFader, InlineEdit, portal, useScratch, useSamplesVersion
   render/                raf (shared loop + load), useCanvas, theme (tokens), thumbnail
-  templates/             Empty, 808 starter, Loop station, Night Drive (demo)
+  templates/             builder (pattern/chord helpers), templates (Empty, 808 starter, Loop station), examples
+                         (Night Drive + 5 classics; read-only, ids "example:…", forked on first edit in storage/projects)
 public/worklets/         recorder.js (PCM capture), scratch.js (scratch voice): plain JS for AudioWorklet scopes
 electron/                main.cts, preload.cts, build/ (entitlements, icon); compiled to electron/dist
 e2e/, e2e-desktop/       Playwright suites (web uses a synthetic mic via window.__REBEAT_TEST_MIC__)
@@ -146,6 +147,7 @@ These terms are used consistently throughout the plan and later in the code.
 ### 3.2 Projects
 
 - Home/project browser: new, open, recent, duplicate, rename, delete, templates ("Empty", "808 starter", "Loop station").
+- **Example songs** (D69): Night Drive plus five drum-machine classics (Blue Monday, Billie Jean, Planet Rock, Sweet Dreams, Around the World). Examples are read-only: the first change copies the example into your own project and carries on there.
 - **Autosave** to browser storage (debounced) and crash recovery.
 - **Export / import** a project as a single `.rebeat` file (a zip with `project.json` plus the audio it uses), so projects can be moved between machines.
 - On Chromium browsers, optionally "Save to folder" through the File System Access API.
@@ -630,6 +632,7 @@ Format: **Dn — Question.** Default ✅, alternatives.
 - **D66 — Held function buttons with a mouse.** A mouse has one pointer, so "hold MUTE + click a track" only works with multi-touch or keyboard holds (e.g. hold `M`). ✅ Keyboard holds + multi-touch; mouse users use the direct controls (M/S buttons per row, Select tool, context menus). Alt: double-click a function button to latch it as a mode until clicked again or Esc.
 - **D67 — TypeScript version.** ✅ TypeScript 6 for now, because typescript-eslint doesn't support TypeScript 7 yet; move to 7 when it does. Alt: TypeScript 7 for type-checking only, without type-aware linting.
 - **D68 — Page change transition.** None: switching pages is instant (decided after trying a horizontal slide, which was distracting). Alt: slide.
+- **D69 — Example songs.** Read-only and generated (never stored), so they can't be overwritten; the first edit makes a copy named "… (copy)" and the edit continues in it, undo included. They reproduce the grooves, tempos, keys and chord progressions; basslines and synth parts are written in the style of the originals, not copied note for note. Alt: editable examples.
 - **D35 — Build order.** ✅ The phases in §7, starting with the mockup (Phase M), each ending with something you can play with.
 
 ---

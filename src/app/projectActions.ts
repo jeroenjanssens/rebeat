@@ -11,6 +11,7 @@ import {
 } from "../storage/projects";
 import { exportRebeat, importRebeat, rebeatFileName } from "../storage/rebeatFile";
 import { TEMPLATES } from "../templates";
+import { isExampleId } from "../templates/examples";
 import { useShell } from "./shell";
 
 export async function newFromTemplate(templateId: string) {
@@ -88,6 +89,8 @@ export async function saveToFolder(pickNew = false) {
 }
 
 export async function save() {
+  if (isExampleId(useStore.getState().projectId))
+    return toast("Examples aren't saved: your first change makes your own copy");
   await saveNow();
   toast("Saved");
 }

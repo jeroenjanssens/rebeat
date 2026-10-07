@@ -5,6 +5,7 @@ import { cursorToggle, moveCursor, velocityDigit } from "../state/input";
 import { THEMES, useSettings } from "../state/settings";
 import { useStore } from "../state/store";
 import { TEMPLATES } from "../templates";
+import { EXAMPLES } from "../templates/examples";
 import type { Command } from "./commands";
 import * as projectActions from "./projectActions";
 import { toggleMaximize } from "./Dock";
@@ -115,6 +116,12 @@ export function defaultCommands(): Command[] {
       category: "Project",
       run: () => void projectActions.duplicate(store().projectId),
     },
+    ...EXAMPLES.map((e) => ({
+      id: `project.example.${e.id}`,
+      title: `Open example: ${e.name} (${e.artist})`,
+      category: "Project",
+      run: () => void projectActions.open(`example:${e.id}`),
+    })),
     ...TEMPLATES.map((t) => ({
       id: `project.new.${t.id}`,
       title: `New project: ${t.name}`,

@@ -7,6 +7,7 @@ import { useStore } from "../state/store";
 import type { ProjectRecord } from "../storage/db";
 import { deleteProject, listProjects, renameProject } from "../storage/projects";
 import { TEMPLATES } from "../templates";
+import { EXAMPLES, EXAMPLE_PREFIX } from "../templates/examples";
 import { createPortal } from "react-dom";
 import {
   duplicate,
@@ -110,8 +111,39 @@ export function ProjectBrowser() {
           ))}
         </div>
 
-        <div className="label mb-2">Recent</div>
+        <div className="label mb-2">Examples</div>
+        <p className="-mt-1 mb-2 text-[11px] text-faint">
+          Classic grooves to play with. Your changes go into a copy, so the examples stay as they
+          are.
+        </p>
+        <div className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+          {EXAMPLES.map((e) => {
+            const id = `${EXAMPLE_PREFIX}${e.id}`;
+            return (
+              <button
+                key={e.id}
+                className="flex flex-col gap-0.5 rounded-lg border bg-panel p-3 text-left hover:border-accent"
+                style={{ borderColor: id === currentId ? "var(--accent)" : "var(--border)" }}
+                onClick={() => open(id)}
+                data-testid="example-card"
+              >
+                <span className="truncate text-[12.5px] font-semibold">{e.name}</span>
+                <span className="truncate text-[10.5px] text-dim">{e.artist}</span>
+                <span className="text-[10px] text-faint">
+                  {e.year} · {Math.round(e.create().bpm)} BPM
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="label mb-2">Your projects</div>
         <div className="scroll-thin -mx-1 grid min-h-0 flex-1 auto-rows-min grid-cols-2 gap-3 overflow-auto px-1 pb-4 md:grid-cols-3 lg:grid-cols-4">
+          {projects.length === 0 && (
+            <div className="col-span-full py-4 text-[12px] text-faint">
+              No projects yet. Start one above, or change an example to make it yours.
+            </div>
+          )}
           {projects.map((p) => (
             <div
               key={p.id}

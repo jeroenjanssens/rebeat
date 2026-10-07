@@ -1,7 +1,6 @@
 import { defaultBuses, defaultMaster, defaultPerf } from "../model/effects";
 import { makePattern, makeTrack, type Project } from "../model/project";
 import type { StepLane, Track } from "../model/types";
-import { demoProject } from "./nightDrive";
 
 export interface Template {
   id: string;
@@ -121,11 +120,5 @@ export const TEMPLATES: Template[] = [
     name: "Loop station",
     description: "A beat and three audio tracks for live loops",
     create: loopStation,
-  },
-  {
-    id: "night-drive",
-    name: "Night Drive",
-    description: "The demo song: drums, bass, chords, vocal",
-    create: demoProject,
   },
 ];

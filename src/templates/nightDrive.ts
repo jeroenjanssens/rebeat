@@ -1,41 +1,8 @@
 import { TRACK_PALETTE } from "../model/colors";
 import { defaultBuses, defaultMaster, defaultPerf, makeEffect } from "../model/effects";
 import { makePattern, makeTrack, type Project } from "../model/project";
-import type { Pattern, StepLane, Track } from "../model/types";
-
-/**
- * Step strings: `.` off, `x` on, `X` accent, `o` soft, `p` 50% probability,
- * `r` ratchet ×3, `<`/`>` nudged early/late, `c` condition 1:2, `l` parameter lock.
- */
-function drum(pattern: Pattern, track: Track, code: string) {
-  const lane = pattern.lanes[track.id] as StepLane;
-  [...code.replace(/\s/g, "")].forEach((ch, i) => {
-    if (ch === ".") return;
-    const s = lane.steps[i];
-    s.on = true;
-    s.velocity = 0.8;
-    if (ch === "X") s.accent = true;
-    if (ch === "X") s.velocity = 1;
-    if (ch === "o") s.velocity = 0.42;
-    if (ch === "p") s.probability = 0.5;
-    if (ch === "r") s.ratchet = 3;
-    if (ch === "<") s.nudge = -0.2;
-    if (ch === ">") s.nudge = 0.2;
-    if (ch === "c") s.condition = "1:2";
-    if (ch === "l") s.locks = { "sound.tune": 0.6, "sound.decay": 0.5 };
-  });
-}
-
-/** Notes: [step, midi notes, length in steps, slide?] */
-function notes(pattern: Pattern, track: Track, list: [number, number[], number, boolean?][]) {
-  const lane = pattern.lanes[track.id] as StepLane;
-  for (const [i, n, length, slide] of list) {
-    const s = lane.steps[i];
-    s.on = true;
-    s.velocity = 0.75;
-    s.notes = n.map((pitch) => ({ pitch, length, velocity: 0.75, ...(slide ? { slide } : {}) }));
-  }
-}
+import type { StepLane } from "../model/types";
+import { drum, notes } from "./builder";
 
 export function demoProject(): Project {
   const kick = makeTrack("drum", "kick", "Kick", "909 Kick", [makeEffect("Compressor")]);
