@@ -56,7 +56,7 @@ function testMicStream(): MediaStream {
   return dest.stream;
 }
 
-const useTestMic = () =>
+const testMicEnabled = () =>
   typeof window !== "undefined" &&
   !!(window as { __REBEAT_TEST_MIC__?: boolean }).__REBEAT_TEST_MIC__;
 
@@ -126,7 +126,7 @@ export const webPlatform: Platform = {
 
   media: {
     getUserMedia: (c) =>
-      useTestMic() ? Promise.resolve(testMicStream()) : navigator.mediaDevices.getUserMedia(c),
+      testMicEnabled() ? Promise.resolve(testMicStream()) : navigator.mediaDevices.getUserMedia(c),
     devices: async () => (await navigator.mediaDevices?.enumerateDevices?.()) ?? [],
     onDevicesChange: (fn) => {
       navigator.mediaDevices?.addEventListener("devicechange", fn);
