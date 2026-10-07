@@ -2,13 +2,13 @@
  * Versioned project files. Every change to the saved shape bumps SCHEMA_VERSION and adds a
  * migration from the previous version, so old projects keep loading.
  */
-import { defaultBuses, defaultMaster } from "./effects";
+import { defaultBuses, defaultMaster, defaultPerf } from "./effects";
 import { uid } from "./id";
 import { EFFECT_PARAMS, MIX_PARAMS, SOUND_PARAMS, defaultParams } from "./params";
 import { emptyLane, type Project } from "./project";
 import { MAX_STEPS, emptyStep, type Effect, type Lane, type Step } from "./types";
 
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 export interface SerializedProject {
   format: "rebeat-project";
@@ -59,6 +59,8 @@ const migrations: Record<number, Migration> = {
       }
     return p;
   },
+  // 3 → 4: MIDI mappings and the performance setup (mute groups, crossfader)
+  3: (p) => ({ midiMappings: [], perf: defaultPerf(), ...p }),
 };
 
 export function serializeProject(project: Project): SerializedProject {
@@ -105,6 +107,10 @@ export function normalizeProject(p: Project): Project {
   p.buses ??= defaultBuses();
   p.master ??= defaultMaster();
   p.key ??= { root: 0, scale: "minor" };
+  p.midiMappings ??= [];
+  p.perf ??= defaultPerf();
+  p.perf.muteGroups ??= defaultPerf().muteGroups;
+  p.perf.crossfade ??= {};
   for (const b of p.buses) normalizeEffects(b.effects);
   normalizeEffects(p.master.effects);
   for (const pattern of Object.values(p.patterns)) {

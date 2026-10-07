@@ -6,6 +6,7 @@ import { initEngine } from "./engine";
 import { renderKits } from "./kits";
 import { startLiveInput } from "./liveInput";
 import { startLooper } from "./looper";
+import { startPerf } from "./perf";
 
 let created = false;
 
@@ -46,6 +47,9 @@ export async function startAudio(): Promise<boolean> {
     await renderKits();
     initEngine();
     startLooper();
+    startPerf();
+    if (useSettings.getState().midiEnabled)
+      void import("../audio-io/midi").then((m) => m.startMidi());
     startLiveInput();
     const { outputDeviceId } = useSettings.getState();
     if (outputDeviceId) await setOutputDevice(outputDeviceId);

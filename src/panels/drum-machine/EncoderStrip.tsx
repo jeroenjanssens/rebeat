@@ -28,6 +28,7 @@ interface Slot {
   def: ParamDef | null;
   value: number | null;
   onChange: (v: number) => void;
+  midiTarget?: string;
 }
 
 /** What the 8 encoders control for the selected track and bank. */
@@ -63,11 +64,13 @@ function useEncoderSlots(track: Track): { slots: Slot[]; note?: string } {
             def,
             value: track.volume,
             onChange: (v) => setTrack((t) => (t.volume = v), `enc-${track.id}-vol`),
+            midiTarget: `track:${track.id}:volume`,
           };
         return {
           def,
           value: track.params[key] ?? def.default,
           onChange: (v) => setTrack((t) => (t.params[key] = v), `enc-${track.id}-${key}`),
+          midiTarget: `track:${track.id}:${key}`,
         };
       }),
     };
@@ -86,6 +89,7 @@ function useEncoderSlots(track: Track): { slots: Slot[]; note?: string } {
         defs.map((def) => ({
           def,
           value: fx.params[def.id] ?? def.default,
+          midiTarget: fx.id ? `track:${track.id}:fx:${fx.id}:${def.id}` : undefined,
           onChange: (v) =>
             setTrack(
               (t) => (t.effects[fxIndex].params[def.id] = v),
@@ -248,6 +252,7 @@ export function EncoderStrip({ sizeClass }: { sizeClass: SizeClass }) {
               def={s.def}
               value={s.value}
               onChange={s.onChange}
+              midiTarget={s.midiTarget}
               color={track.color}
               size={knobSize}
             />

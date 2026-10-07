@@ -56,3 +56,13 @@ export function defaultMaster(): Master {
     ],
   };
 }
+
+export function defaultPerf() {
+  return {
+    muteGroups: Array.from({ length: 4 }, (_, i) => ({
+      name: `Group ${i + 1}`,
+      tracks: [] as string[],
+    })),
+    crossfade: {} as Record<string, "A" | "B">,
+  };
+}

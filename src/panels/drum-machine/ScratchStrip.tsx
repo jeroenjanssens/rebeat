@@ -1,36 +1,27 @@
 import { useRef, useState } from "react";
-import * as engine from "../../engine/engine";
+import { useScratch } from "../../components/useScratch";
 import type { Track } from "../../model/types";
 
 /**
  * Jog strip for scratching an audio track: grab the platter or the strip and drag to move the
- * playhead forwards/backwards; release to return to synced playback.
+ * record forwards/backwards; release to return to synced playback.
  */
 export function ScratchStrip({ track, width }: { track: Track; width: number }) {
-  const drag = useRef<{ x: number; pos: number; t: number; lastX: number } | null>(null);
   const [angle, setAngle] = useState(0);
   const [cut, setCut] = useState(false);
+  const x0 = useRef(0);
+  // 300 px of dragging per second = normal speed
+  const s = useScratch(track, 300);
 
-  const onDown = (e: React.PointerEvent) => {
+  const down = (e: React.PointerEvent) => {
     e.currentTarget.setPointerCapture(e.pointerId);
-    const pos = engine.clipPosition(track.id) ?? 0;
-    drag.current = { x: e.clientX, pos, t: performance.now(), lastX: e.clientX };
-    engine.scratch(track, pos, 0);
+    x0.current = e.clientX;
+    s.begin(e.clientX);
   };
-  const onMove = (e: React.PointerEvent) => {
-    const d = drag.current;
-    if (!d) return;
-    const now = performance.now();
-    const speed = (e.clientX - d.lastX) / Math.max(1, now - d.t);
-    d.t = now;
-    d.lastX = e.clientX;
-    const pos = (((d.pos + (e.clientX - d.x) / 600) % 1) + 1) % 1;
-    engine.scratch(track, pos, cut ? 0 : speed * 4);
-    setAngle((e.clientX - d.x) * 1.6);
-  };
-  const onUp = () => {
-    drag.current = null;
-    engine.scratch(track, null);
+  const move = (e: React.PointerEvent) => {
+    if (!s.active()) return;
+    s.move(e.clientX);
+    setAngle((e.clientX - x0.current) * 1.6);
   };
 
   return (
@@ -39,9 +30,10 @@ export function ScratchStrip({ track, width }: { track: Track; width: number }) 
         width={44}
         height={44}
         className="shrink-0 cursor-grab touch-none active:cursor-grabbing"
-        onPointerDown={onDown}
-        onPointerMove={onMove}
-        onPointerUp={onUp}
+        onPointerDown={down}
+        onPointerMove={move}
+        onPointerUp={s.end}
+        onPointerCancel={s.end}
       >
         <circle cx={22} cy={22} r={21} fill="var(--display)" stroke="var(--border-strong)" />
         <g transform={`rotate(${angle} 22 22)`}>
@@ -62,9 +54,16 @@ export function ScratchStrip({ track, width }: { track: Track; width: number }) 
       </svg>
       <div
         className="relative h-8 flex-1 cursor-ew-resize touch-none overflow-hidden rounded-md border border-line bg-display"
-        onPointerDown={onDown}
-        onPointerMove={onMove}
-        onPointerUp={onUp}
+        onPointerDown={down}
+        onPointerMove={move}
+        onPointerUp={s.end}
+        onPointerCancel={s.end}
+        onWheel={(e) => {
+          // the wheel nudges the record like a jog wheel
+          if (!s.active()) s.begin(0);
+          s.move(-e.deltaY * 2);
+          window.setTimeout(s.end, 120);
+        }}
         title="Drag to scratch · release to return to the beat"
       >
         <div
@@ -81,9 +80,9 @@ export function ScratchStrip({ track, width }: { track: Track; width: number }) 
       <button
         className="hw-btn"
         data-lit={cut}
-        onPointerDown={() => setCut(true)}
-        onPointerUp={() => setCut(false)}
-        onPointerLeave={() => setCut(false)}
+        onPointerDown={() => (setCut(true), s.cut(true))}
+        onPointerUp={() => (setCut(false), s.cut(false))}
+        onPointerLeave={() => cut && (setCut(false), s.cut(false))}
         title="Hold to cut the sound (transform/crab scratches)"
       >
         Cut

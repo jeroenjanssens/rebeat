@@ -1,4 +1,4 @@
-import { defaultBuses, defaultMaster } from "../model/effects";
+import { defaultBuses, defaultMaster, defaultPerf } from "../model/effects";
 import { makePattern, makeTrack, type Project } from "../model/project";
 import type { StepLane, Track } from "../model/types";
 import { demoProject } from "./nightDrive";
@@ -24,6 +24,8 @@ function base(name: string, bpm: number): Project {
     buses: defaultBuses(),
     master: defaultMaster(),
     key: { root: 0, scale: "minor" },
+    midiMappings: [],
+    perf: defaultPerf(),
   };
 }
 

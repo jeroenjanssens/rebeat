@@ -15,6 +15,7 @@ import { InspectorPanel } from "../panels/inspector/InspectorPanel";
 import { LibraryPanel } from "../panels/library/LibraryPanel";
 import { MasterScopePanel } from "../panels/master-scope/MasterScopePanel";
 import { MixerPanel } from "../panels/mixer/MixerPanel";
+import { PerformancePanel } from "../panels/performance/PerformancePanel";
 import { PianoRollPanel } from "../panels/piano-roll/PianoRollPanel";
 import { SampleEditorPanel } from "../panels/sample-editor/SampleEditorPanel";
 
@@ -30,19 +31,6 @@ export interface PanelDef {
   component: FC<PanelProps>;
   minWidth?: number;
   minHeight?: number;
-}
-
-function placeholder(title: string, phase: string): FC<PanelProps> {
-  return function Placeholder() {
-    return (
-      <div className="flex h-full items-center justify-center p-6 text-center">
-        <div>
-          <div className="label mb-1 !text-ink">{title}</div>
-          <div className="text-[12px] text-faint">Arrives in {phase}.</div>
-        </div>
-      </div>
-    );
-  };
 }
 
 export const PANELS: PanelDef[] = [
@@ -93,7 +81,7 @@ export const PANELS: PanelDef[] = [
     id: "performance",
     title: "Performance",
     icon: Gauge,
-    component: placeholder("Performance", "Phase 8"),
+    component: PerformancePanel,
     minWidth: 320,
   },
   {

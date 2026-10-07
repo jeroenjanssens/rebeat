@@ -35,6 +35,29 @@ export interface Project {
   master: Master;
   /** Project key, for note names, in-scale highlighting and scale lock. */
   key: { root: number; scale: string };
+  /** MIDI learn: controllers mapped to parameters. */
+  midiMappings: MidiMapping[];
+  /** Performance: mute groups (track ids) and crossfader sides. */
+  perf: PerfSetup;
+}
+
+export interface MidiMapping {
+  id: string;
+  /** "cc" for controllers, "note" for buttons/pads. */
+  type: "cc" | "note";
+  channel: number; // 0..15
+  number: number; // CC or note number
+  /** Device name it was learned from ("" = any). */
+  device: string;
+  /** e.g. "track:<id>:sound.cutoff", "track:<id>:volume", "master:volume", "command:transport.toggle" */
+  target: string;
+  label: string;
+}
+
+export interface PerfSetup {
+  muteGroups: { name: string; tracks: string[] }[];
+  /** Track id → crossfader side. */
+  crossfade: Record<string, "A" | "B">;
 }
 
 /** structuredClone that also works on immer drafts. */

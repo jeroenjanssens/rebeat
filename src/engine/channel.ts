@@ -57,7 +57,10 @@ export class TrackChannel {
   private widener = new Tone.StereoWidener(0.5);
   private panner = new Tone.Panner(0);
   private fader = new Tone.Gain(1);
+  /** Crossfader gain (performance). */
+  private xfade = new Tone.Gain(1);
   readonly mute = new Tone.Gain(1);
+  private sendBoost = { a: 0, b: 0 };
   /** Post-fader output: master bus and sends connect here. */
   readonly output = new Tone.Gain(1);
   readonly analyser: AnalyserNode;
@@ -72,7 +75,15 @@ export class TrackChannel {
     this.analyser.fftSize = 1024;
     this.analyser.smoothingTimeConstant = 0;
     this.input.chain(this.filter, this.drive, this.preFx);
-    this.postFx.chain(this.eq, this.widener, this.panner, this.fader, this.mute, this.output);
+    this.postFx.chain(
+      this.eq,
+      this.widener,
+      this.panner,
+      this.fader,
+      this.xfade,
+      this.mute,
+      this.output,
+    );
     this.fx = new FxChain(this.preFx, this.postFx);
     this.output.connect(destination);
     this.output.connect(this.sendA);
@@ -113,8 +124,25 @@ export class TrackChannel {
     this.set("pan", p["mix.pan"] ?? 0.5, (v) => this.panner.pan.rampTo(toUnit.pan(v), 0.02, now));
     this.set("volume", track.volume, (v) => this.fader.gain.rampTo(faderGain(v), 0.02, now));
     this.set("audible", audible ? 1 : 0, (v) => this.mute.gain.rampTo(v, FADE, now));
-    this.set("sendA", p["mix.sendA"] ?? 0, (v) => this.sendA.gain.rampTo(v, 0.02, now));
-    this.set("sendB", p["mix.sendB"] ?? 0, (v) => this.sendB.gain.rampTo(v, 0.02, now));
+    this.set("sendA", p["mix.sendA"] ?? 0, () => this.applySends());
+    this.set("sendB", p["mix.sendB"] ?? 0, () => this.applySends());
+  }
+
+  private applySends() {
+    const a = Math.max(this.last.sendA ?? 0, this.sendBoost.a);
+    const b = Math.max(this.last.sendB ?? 0, this.sendBoost.b);
+    this.sendA.gain.rampTo(a, 0.02);
+    this.sendB.gain.rampTo(b, 0.02);
+  }
+
+  /** Reverb/delay throws push the sends up while held. */
+  setSendBoost(a: number, b: number) {
+    this.sendBoost = { a, b };
+    this.applySends();
+  }
+
+  setXfade(g: number) {
+    this.xfade.gain.rampTo(g, 0.03);
   }
 
   /** Set the instrument filter (synths use the channel filter too). */
@@ -135,6 +163,7 @@ export class TrackChannel {
       this.widener,
       this.panner,
       this.fader,
+      this.xfade,
       this.mute,
       this.output,
       this.sendA,

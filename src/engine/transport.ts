@@ -45,6 +45,12 @@ let tick = 0;
 let slotId = "";
 let repeatCount = 0;
 let countInUntil = 0;
+/** Beat repeat: loop this many steps (from where it was switched on). */
+let repeat: { length: number; start: number | null } | null = null;
+
+export function setBeatRepeat(steps: number | null) {
+  repeat = steps ? { length: steps, start: null } : null;
+}
 let firstStepTime = 0;
 const cycles = new Map<string, number>();
 /** Recently scheduled steps, for mapping audio time → position. */
@@ -231,6 +237,11 @@ function scheduleStep(time: number) {
   let pattern = project.patterns[slot.patternId];
 
   pageStep += 1;
+  if (repeat) {
+    repeat.start ??= Math.max(0, Math.floor((pageStep - 1) / repeat.length) * repeat.length);
+    if (pageStep >= repeat.start + repeat.length || pageStep >= pattern.stepCount)
+      pageStep = repeat.start;
+  }
   const atEnd = pageStep >= pattern.stepCount;
   const next = pageStep > 0 ? nextSlot(atEnd, pattern) : null;
   if (next === END) {

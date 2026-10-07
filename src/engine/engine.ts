@@ -37,6 +37,7 @@ interface Voice {
 
 interface Clip {
   sources: AudioBufferSourceNode[];
+  gains: GainNode[];
   warp: StretchNode | null;
   start: number;
   /** Seconds of buffer per second of playback. */
@@ -155,6 +156,10 @@ export function onChannel(fn: (trackId: string, ch: TrackChannel) => void) {
 
 export function getChannel(trackId: string) {
   return channels.get(trackId);
+}
+
+export function forEachChannel(fn: (ch: TrackChannel, trackId: string) => void) {
+  for (const [id, ch] of channels) fn(ch, id);
 }
 
 const lastTracks = new Map<string, { track: Track; audible: boolean; bpm: number }>();
@@ -349,6 +354,7 @@ export function startClip(track: Track, time: number, pageDur: number, oneshot: 
 
   let warp: StretchNode | null = null;
   const sources: AudioBufferSourceNode[] = [];
+  const gains: GainNode[] = [];
   if (Math.abs(ratio - 1) > 0.002 || Math.abs(pitch) > 0.01) {
     warp = warper(track.id, track.sampleId, dest);
     if (warp) {
@@ -383,14 +389,18 @@ export function startClip(track: Track, time: number, pageDur: number, oneshot: 
     src.stop(end + 0.005);
     src.onended = () => env.disconnect();
     sources.push(src);
+    gains.push(env);
   };
   play(buffer, gain, true);
   for (const l of track.layers ?? []) {
     const lb = getBuffer(l.sampleId);
     if (lb && !l.mute) play(lb, gain * l.gain, false);
   }
+  // a clip that restarts while scratching stays silent until the platter is let go
+  if (scratchState.has(track.id)) for (const g of gains) g.gain.value = 0;
   clips.set(track.id, {
     sources,
+    gains,
     warp,
     start: t - (offset - startOffset) / ratio,
     rate: ratio,
@@ -432,10 +442,96 @@ export function clipPosition(trackId: string): number | null {
   return (c.offset + into * c.rate) / c.bufferDuration;
 }
 
-/** Scratching (a simple version; the AudioWorklet scratch voice arrives in Phase 8). */
+// ---------- scratching ----------
+
+interface Scratch {
+  node: AudioWorkletNode;
+  pos: number;
+  duration: number;
+  sampleId: string;
+}
+
+const scratches = new Map<string, Scratch>();
+let scratchModule: Promise<void> | null = null;
+
+/** Grab the platter: the scratch voice takes over from the clip at its current position. */
+export async function scratchBegin(track: Track) {
+  const buffer = getBuffer(track.sampleId);
+  if (!buffer || !track.sampleId) return;
+  const ctx = raw();
+  scratchModule ??= ctx.audioWorklet.addModule(`${import.meta.env.BASE_URL}worklets/scratch.js`);
+  await scratchModule;
+  let s = scratches.get(track.id);
+  if (!s || s.sampleId !== track.sampleId) {
+    s?.node.disconnect();
+    const node = new AudioWorkletNode(ctx, "rebeat-scratch", {
+      numberOfInputs: 0,
+      numberOfOutputs: 1,
+      outputChannelCount: [2],
+    });
+    node.port.postMessage({
+      buffer: Array.from({ length: buffer.numberOfChannels }, (_, c) =>
+        buffer.getChannelData(c).slice(),
+      ),
+      bufferRate: buffer.sampleRate,
+    });
+    Tone.connect(node, channel(track.id).input);
+    const entry: Scratch = { node, pos: 0, duration: buffer.duration, sampleId: track.sampleId };
+    node.port.onmessage = (e) => (entry.pos = e.data.pos);
+    s = entry;
+    scratches.set(track.id, s);
+  }
+  const pos = (clipPosition(track.id) ?? 0) * buffer.duration;
+  s.pos = pos;
+  s.node.port.postMessage({ pos, rate: 0, gain: 1 });
+  setClipGain(track.id, 0);
+  clips.get(track.id)?.warp?.schedule({ output: audioNow(), active: false });
+  scratchState.set(track.id, { pos: pos / buffer.duration, speed: 0 });
+}
+
+/** Move the platter: `rate` 1 = normal speed forwards, negative = backwards. */
+export function scratchMove(trackId: string, rate: number) {
+  const s = scratches.get(trackId);
+  if (!s) return;
+  s.node.port.postMessage({ rate });
+  scratchState.set(trackId, { pos: s.pos / s.duration, speed: rate });
+}
+
+/** The cut button: silence while held (transform and crab scratches). */
+export function scratchCut(trackId: string, cut: boolean) {
+  scratches.get(trackId)?.node.port.postMessage({ gain: cut ? 0 : 1 });
+}
+
+/** Let go: back to synced playback (catching the beat), or carry on from the new position. */
+export function scratchEnd(track: Track, keepPosition = false) {
+  const s = scratches.get(track.id);
+  if (!s) return;
+  s.node.port.postMessage({ rate: 0, gain: 0 });
+  scratchState.delete(track.id);
+  if (keepPosition && clips.has(track.id)) {
+    const c = clips.get(track.id)!;
+    // shift the clip so it continues from where the record was left
+    c.start = audioNow() - (s.pos - c.offset) / c.rate;
+  }
+  setClipGain(track.id, 1);
+  const c = clips.get(track.id);
+  if (c?.warp) {
+    const t = audioNow();
+    const into = (t - c.start) % c.loopLength;
+    c.warp.schedule({ output: t, active: true, input: c.offset + into * c.rate, rate: c.rate });
+  }
+}
+
+function setClipGain(trackId: string, g: number) {
+  const c = clips.get(trackId);
+  if (!c) return;
+  for (const env of c.gains) env.gain.setTargetAtTime(g, audioNow(), 0.005);
+}
+
+/** Old name kept for the jog strip: position-less scratching uses scratchMove. */
 export function scratch(track: Track, pos: number | null, speed = 0) {
-  if (pos === null) scratchState.delete(track.id);
-  else scratchState.set(track.id, { pos, speed });
+  if (pos === null) scratchEnd(track);
+  else scratchMove(track.id, speed);
 }
 
 export function stopAll() {

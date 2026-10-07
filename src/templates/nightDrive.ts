@@ -1,5 +1,5 @@
 import { TRACK_PALETTE } from "../model/colors";
-import { defaultBuses, defaultMaster, makeEffect } from "../model/effects";
+import { defaultBuses, defaultMaster, defaultPerf, makeEffect } from "../model/effects";
 import { makePattern, makeTrack, type Project } from "../model/project";
 import type { Pattern, StepLane, Track } from "../model/types";
 
@@ -80,6 +80,8 @@ export function demoProject(): Project {
     buses: defaultBuses(),
     master: defaultMaster(),
     key: { root: 0, scale: "minor" },
+    midiMappings: [],
+    perf: defaultPerf(),
     tracks: [kick, snare, clap, hat, ohat, perc, bass, chords, vox],
     patterns: {},
     slots: [],

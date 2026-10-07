@@ -3,6 +3,7 @@ import { Dialog } from "../components/Dialog";
 import { platform } from "../platform";
 import { ACCENTS, THEMES, useSettings, type Settings } from "../state/settings";
 import { CalibrationDialog } from "./CalibrationDialog";
+import { MidiSettings } from "./MidiSettings";
 import { useShell } from "./shell";
 
 type Tab = "appearance" | "audio" | "midi" | "project" | "storage";
@@ -323,22 +324,7 @@ export function SettingsDialog() {
                 </Row>
               </>
             )}
-            {tab === "midi" && (
-              <Row
-                label="MIDI"
-                hint={
-                  platform.midi.supported
-                    ? "Inputs are listed once MIDI is enabled"
-                    : "Web MIDI is not supported in this browser"
-                }
-              >
-                <span className="text-[12px] text-dim">
-                  {platform.midi.supported
-                    ? "Configured in the MIDI section (Phase 8)."
-                    : "Unavailable"}
-                </span>
-              </Row>
-            )}
+            {tab === "midi" && <MidiSettings />}
             {tab === "project" && (
               <>
                 <Row label="Autosave" hint="Saves to this browser while you work">

@@ -46,6 +46,8 @@ export interface Settings {
   pageSwitch: PageSwitch;
   countInBars: number;
   midiInputs: Record<string, boolean>;
+  /** Start Web MIDI with the audio (the user enabled it once). */
+  midiEnabled: boolean;
   previewVolume: number;
   /** When nothing plays yet, the first loop recording sets the tempo (loop-pedal style). */
   freeFirstLoop: boolean;
@@ -69,6 +71,7 @@ export const DEFAULT_SETTINGS: Settings = {
   pageSwitch: "page",
   countInBars: 1,
   midiInputs: {},
+  midiEnabled: false,
   previewVolume: 0.8,
   freeFirstLoop: false,
   onboarded: false,
