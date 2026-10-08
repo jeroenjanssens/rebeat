@@ -37,6 +37,7 @@ test("shape a synth, save it to the library and use it on another track", async 
   await page.locator(".menu").getByRole("button", { name: "Edit synth…" }).click();
   const editor = page.getByTestId("synth-editor");
   await expect(editor).toBeVisible();
+  await editor.getByTestId("synth-view").getByRole("button", { name: "Advanced" }).click();
 
   // the first edit copies the factory synth onto the track
   await editor.locator('[data-hint="synth.osc.retrigger"]').first().click();

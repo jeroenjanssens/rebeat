@@ -261,7 +261,33 @@ describe("synth core", () => {
         },
       ],
     });
-    expect(applyMacros(p).filters[0].cutoff).toBe(300);
+    // frequencies move in octaves: a quarter of the way from 100 to 900 Hz
+    expect(applyMacros(p).filters[0].cutoff).toBeCloseTo(100 * Math.pow(9, 0.25), 6);
+  });
+
+  it("locks the macros for a step, then lets go (unless locked again since)", () => {
+    const p = makePatch({
+      osc: [{ shape: 0 }],
+      filters: [{ cutoff: 1000 }],
+      envs: [{ sustain: 1 }],
+      macros: [
+        { name: "Level", value: 1, targets: [{ path: "output.volume", min: -40, max: -12 }] },
+      ],
+    });
+    const core = new SynthCore(SR, p);
+    core.noteOn(1, 69, 1, 0);
+    core.lockMacros(1, [0], SR * 0.2);
+    core.lockMacros(1, null, SR * 0.4);
+    core.lockMacros(2, [0], SR * 0.6);
+    // lock 1's end comes after lock 2 began: it mustn't end lock 2
+    core.lockMacros(1, null, SR * 0.7);
+    const l = new Float32Array(SR);
+    const r = new Float32Array(SR);
+    core.process(l, r, 0, SR);
+    const level = (t: number) => rms(l.subarray(Math.round(t * SR), Math.round((t + 0.05) * SR)));
+    expect(level(0.25)).toBeLessThan(level(0.1) / 10);
+    expect(level(0.5) / level(0.1)).toBeCloseTo(1, 1);
+    expect(level(0.8)).toBeLessThan(level(0.1) / 10);
   });
 
   it("renders well faster than real time", () => {

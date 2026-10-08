@@ -10,15 +10,14 @@
 import {
   MOD_DESTS,
   MOD_SOURCES,
+  applyMacros,
+  withMacroValues,
   noteLengthQuarters,
   type Env,
   type ModDest,
   type ModSource,
   type SynthPatch,
 } from "../../model/synth";
-
-/** Patches are plain JSON. (structuredClone doesn't exist in AudioWorklets, where this runs.) */
-const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x)) as T;
 
 export const CONTROL = 16;
 const MAX_UNISON = 8;
@@ -314,7 +313,9 @@ class Voice {
 type Event =
   | { at: number; kind: "on"; id: number; note: number; velocity: number }
   | { at: number; kind: "off"; id: number }
-  | { at: number; kind: "releaseAll" };
+  | { at: number; kind: "releaseAll" }
+  /** A parameter lock on the macros (values), or its end (null: back unless locked again since). */
+  | { at: number; kind: "macros"; id: number; values: number[] | null };
 
 /** Values that MIDI and the UI send: mod wheel, aftertouch, pitch bend, macros. */
 export interface Controls {
@@ -328,6 +329,9 @@ export interface Controls {
 export class SynthCore {
   readonly sr: number;
   private patch!: SynthPatch;
+  /** The patch as sent, before macros; and a step's macro lock on top. */
+  private base!: SynthPatch;
+  private lock: { id: number; values: number[] } | null = null;
   private voices: Voice[] = Array.from({ length: 16 }, () => new Voice());
   private globalLfos = [new LfoState(), new LfoState(), new LfoState()];
   private events: Event[] = [];
@@ -347,7 +351,13 @@ export class SynthCore {
 
   /** A new patch (or macro values). Macros move their targets before anything else. */
   setPatch(patch: SynthPatch) {
-    this.patch = applyMacros(patch);
+    this.base = patch;
+    this.patch = applyMacros(this.lock ? withMacroValues(patch, this.lock.values) : patch);
+  }
+
+  /** Lock the macros at `values` from `at` (samples); `values` null ends lock `id`. */
+  lockMacros(id: number, values: number[] | null, at: number) {
+    this.queue({ at, kind: "macros", id, values });
   }
 
   setTempo(bpm: number) {
@@ -406,6 +416,12 @@ export class SynthCore {
   // ---------- notes ----------
 
   private handle(e: Event) {
+    if (e.kind === "macros") {
+      if (e.values) this.lock = { id: e.id, values: e.values };
+      else if (this.lock?.id === e.id) this.lock = null;
+      else return;
+      return this.setPatch(this.base);
+    }
     const mode = this.patch.voice.mode;
     if (e.kind === "releaseAll") {
       this.held = [];
@@ -781,17 +797,4 @@ export class SynthCore {
   }
 }
 
-/** The patch with each macro's targets set from its value (min → max as the macro turns). */
-export function applyMacros(patch: SynthPatch): SynthPatch {
-  if (!patch.macros.some((m) => m.targets.length)) return patch;
-  const p = clone(patch);
-  for (const m of p.macros)
-    for (const t of m.targets) {
-      const keys = t.path.split(".");
-      const last = keys.pop()!;
-      let obj = p as unknown as Record<string, unknown>;
-      for (const k of keys) obj = obj[k] as Record<string, unknown>;
-      if (typeof obj?.[last] === "number") obj[last] = t.min + (t.max - t.min) * m.value;
-    }
-  return p;
-}
+export { applyMacros };

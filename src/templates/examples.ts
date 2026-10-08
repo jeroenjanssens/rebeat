@@ -8,6 +8,7 @@ import type { Project } from "../model/project";
 import { chord, drum, drumTrack, emptyProject, note, notes, page, synthTrack } from "./builder";
 import { demoProject } from "./nightDrive";
 import { SHOWCASE } from "./showcase";
+import { convertSynthKnobs } from "../library/synthTrack";
 
 export interface Example {
   id: string;
@@ -119,6 +120,7 @@ function billieJean(): Project {
   shaker.volume = 0.55;
   const bass = synthTrack("Bass", "acid", "Mono · Acid Bass", "bass");
   bass.params["sound.cutoff"] = 0.45;
+  convertSynthKnobs(bass);
   const stabs = synthTrack("Synth", "keys", "Poly · Keys", "keys", [makeEffect("Chorus")]);
   stabs.params["mix.sendA"] = 0.3;
   p.tracks = [kick, snare, chh, shaker, bass, stabs];

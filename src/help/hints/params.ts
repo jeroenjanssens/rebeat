@@ -63,6 +63,12 @@ const hints: Hints = {
 
   // ─── Sound params (instrument, additional / different meanings) ───────────
 
+  "param.sound.macro": {
+    title: "Macro",
+    text: "On synth tracks the SOUND knobs are the synth's 8 macros: each moves a few of its settings at once (Brightness, Bite, Attack…). Name them and choose what they move in the synth editor (Advanced → Macros). Lock them per step and map them to MIDI like any knob.",
+    keys: "Drag or scroll · Shift = fine · Double-click = reset · Right-click: MIDI learn",
+    guide: "instruments-macros",
+  },
   "param.sound.attack": {
     title: "Attack",
     text: "How long the sound takes to ramp up to full volume after a note starts. Short = snappy; long = slow fade-in.",

@@ -13,6 +13,10 @@ interface Props {
   size?: number;
   /** Id for MIDI learn, e.g. "track:<id>:sound.cutoff". */
   midiTarget?: string;
+  /** What the learned mapping is called (default: the knob's label). */
+  learnLabel?: string;
+  /** Room for the label (default: a little wider than the knob). */
+  width?: number;
   /** Explain-mode hint id (help/hints). */
   hint?: string;
   /** How far modulation moves it (knob units 0..1), drawn as an inner ring. */
@@ -51,6 +55,8 @@ export function Encoder({
   color = "var(--accent)",
   size = 40,
   midiTarget,
+  learnLabel,
+  width,
   hint,
   modRange,
   live,
@@ -118,7 +124,7 @@ export function Encoder({
       data-hint={hint}
       ref={ref}
       className="flex flex-col items-center gap-0.5"
-      style={{ opacity: disabled ? 0.4 : 1, width: size + 18 }}
+      style={{ opacity: disabled ? 0.4 : 1, width: width ?? size + 18 }}
       title={`${def.label}: drag or scroll · Shift = fine · double-click = reset`}
     >
       <div className="label truncate max-w-full">{def.label}</div>
@@ -147,7 +153,7 @@ export function Encoder({
             {
               label: "MIDI learn",
               disabled: !midiTarget,
-              onSelect: () => midiTarget && startMidiLearn(midiTarget, def.label),
+              onSelect: () => midiTarget && startMidiLearn(midiTarget, learnLabel ?? def.label),
             },
           ])
         }

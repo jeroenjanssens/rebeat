@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { openApp } from "./helpers";
+import { midiKeyboard, openApp } from "./helpers";
 
 type W = {
   __midi: (d: number[]) => void;
@@ -20,27 +20,6 @@ type W = {
     commands: () => { id: string; run(): void }[];
   };
 };
-
-/** A fake MIDI keyboard. */
-async function midiKeyboard(page: Page) {
-  await page.addInitScript(() => {
-    const input = {
-      id: "kb",
-      name: "Test Keys",
-      onmidimessage: null as null | ((e: { data: Uint8Array }) => void),
-    };
-    const access = { inputs: new Map([["kb", input]]), outputs: new Map(), onstatechange: null };
-    Object.defineProperty(navigator, "requestMIDIAccess", { value: async () => access });
-    Object.assign(window, {
-      __midi: (d: number[]) => input.onmidimessage?.({ data: new Uint8Array(d) }),
-    });
-  });
-  await openApp(page);
-  await page.getByTestId("open-settings").click();
-  await page.getByRole("button", { name: "MIDI", exact: true }).click();
-  await page.getByRole("button", { name: "Enable MIDI" }).click();
-  await page.keyboard.press("Escape");
-}
 
 const selectBass = (page: Page) =>
   page.evaluate(() => {
@@ -105,11 +84,12 @@ test("the editor's wheels and knob rings show modulation", async ({ page }) => {
       .run(),
   );
   const editor = page.getByTestId("synth-editor");
-  // a matrix slot: LFO 1 → filter 1 cutoff
+  await editor.getByTestId("synth-view").getByRole("button", { name: "Advanced" }).click();
+  // a matrix slot: LFO 1 → filter 1 cutoff (the last one: the first may be Movement's)
   const matrix = editor.getByTestId("mod-matrix");
-  await matrix.locator('[data-hint="synth.matrix.source"]').first().selectOption("lfo1");
-  await matrix.locator('[data-hint="synth.matrix.dest"]').first().selectOption("filter1.cutoff");
-  await matrix.getByLabel("Slot 1 amount").fill("0.5");
+  await matrix.locator('[data-hint="synth.matrix.source"]').last().selectOption("lfo1");
+  await matrix.locator('[data-hint="synth.matrix.dest"]').last().selectOption("filter1.cutoff");
+  await matrix.getByLabel("Slot 8 amount").fill("0.5");
   const cutoff = editor.locator('[data-hint="synth.filters.cutoff"]').first();
   await expect(cutoff.locator("[data-mod-ring]")).toHaveCount(1);
   // while a note plays, the live dot shows where the cutoff is now

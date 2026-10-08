@@ -5,7 +5,8 @@
 import * as Tone from "tone";
 import type { Smplr } from "smplr";
 import { FACTORY_SYNTHS, factorySynth } from "../library/synths";
-import { sanitizePatch, upgradePatch, withKnobs, type SynthPatch } from "../model/synth";
+import { defaultInstrument, effectivePatch, patchOf } from "../library/synthTrack";
+import { sanitizePatch } from "../model/synth";
 import { workletSynth, type WorkletSynth } from "./synth/node";
 import { markBusy, markDownloaded } from "../library/downloads";
 import { CATALOG } from "../library/instruments";
@@ -18,12 +19,7 @@ import { db } from "../storage/db";
 /** The factory synths, for pickers (D80). */
 export const SYNTH_PRESETS = FACTORY_SYNTHS;
 
-/** The patch a synth source plays: its own, or its factory synth's. */
-export function patchOf(src: InstrumentSource): SynthPatch {
-  // patches saved before version 2 are upgraded as they're read
-  if (src.patch) return upgradePatch(src.patch);
-  return factorySynth(src.preset)?.patch ?? FACTORY_SYNTHS[0].patch;
-}
+export { defaultInstrument, patchOf };
 
 /** Sampled instruments from the catalog (D78), for pickers. */
 export const SAMPLED_INSTRUMENTS = CATALOG.filter((c) => c.source.source === "smplr").map((c) => ({
@@ -32,10 +28,6 @@ export const SAMPLED_INSTRUMENTS = CATALOG.filter((c) => c.source.source === "sm
   family: c.family,
   group: c.group,
 }));
-
-export function defaultInstrument(track: Track): InstrumentSource {
-  return { source: "synth", preset: track.category === "bass" ? "acid" : "warm-pad" };
-}
 
 export function instrumentName(src: InstrumentSource): string {
   if (src.name) return src.name;
@@ -72,9 +64,9 @@ function envelope(track: Track) {
   };
 }
 
-/** A synth playing its patch (D83), with the track's moved SOUND knobs on top. */
+/** A synth playing its patch (D83), with the macros at the track's SOUND knobs. */
 function synthVoice(track: Track, src: InstrumentSource, dest: Tone.Gain): InstrumentVoice {
-  const effective = (t: Track) => sanitizePatch(withKnobs(patchOf(t.instrument ?? src), t.params));
+  const effective = (t: Track) => sanitizePatch(effectivePatch(t, patchOf(t.instrument ?? src)));
   const synth = workletSynth(dest);
   synth.setPatch(effective(track), 120);
   return {

@@ -74,6 +74,7 @@ test("clicking the synth editor's wave plays a note", async ({ page }) => {
       .find((c) => c.id === "panel.synth-editor")!
       .run(),
   );
+  await page.getByTestId("synth-view").getByRole("button", { name: "Advanced" }).click();
   await page.getByTestId("synth-wave").click();
   expect(await peak(page)).toBeGreaterThan(0.02);
 });

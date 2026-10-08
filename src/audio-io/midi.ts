@@ -13,6 +13,8 @@ import { padInput, playedNotes } from "../state/input";
 import { useSettings } from "../state/settings";
 import { useStore } from "../state/store";
 import { setPerfControl } from "../engine/perf";
+import { setSynthParam } from "../library/synthTrack";
+import { fromKnob, paramOf } from "../model/patchParams";
 
 export interface MidiPort {
   id: string;
@@ -271,6 +273,11 @@ export function applyTarget(target: string, v: number, continuous: boolean) {
         const [, fxId, param] = key.split(":");
         const fx = t.effects.find((f) => f.id === fxId);
         if (fx) fx.params[param] = v;
+      } else if (key.startsWith("synth:")) {
+        // a synth editor knob: the controller turns the knob (0..1 along its curve)
+        const path = key.slice(6);
+        const d = paramOf(path);
+        if (d) setSynthParam(t, path, fromKnob(d, v));
       } else t.params[key] = v;
     }
   }, `midi-${target}`);

@@ -7,6 +7,7 @@ import { SOUND_PARAMS, defaultParams } from "../model/params";
 import type { CatalogInstrument } from "../library/instruments";
 import type { InstrumentSource, SoundCategory, Track } from "../model/types";
 import { defaultInstrument, instrumentName } from "../engine/instruments";
+import { convertSynthKnobs, resetMacros } from "../library/synthTrack";
 import { useStore } from "./store";
 
 function info(id: string) {
@@ -81,6 +82,8 @@ export function setInstrument(trackId: string, next: InstrumentSource) {
     if (!t) return;
     t.instrument = next;
     t.source = soundLabel({ ...t, instrument: next } as Track);
+    // a new synth's macros start where it rests them
+    resetMacros(t);
   });
 }
 
@@ -116,6 +119,8 @@ function applyEntry(t: Track, c: CatalogInstrument) {
   for (const [k, v] of Object.entries(defaultParams(SOUND_PARAMS.instrument)))
     t.params[`sound.${k}`] = v;
   Object.assign(t.params, c.params ?? {});
+  // instruments saved before the SOUND knobs became a synth's macros
+  convertSynthKnobs(t);
   if (c.effects) t.effects = structuredClone(c.effects);
 }
 

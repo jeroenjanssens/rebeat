@@ -1,0 +1,138 @@
+/**
+ * Synth tracks (§0.6e E): the patch a track plays, its macros as the SOUND knobs, editing the
+ * track's copy of the patch, and the one-time conversion of the old SOUND knobs (D85).
+ */
+import { factorySynth, FACTORY_SYNTHS } from "./synths";
+import { paramOf } from "../model/patchParams";
+import type { ParamDef } from "../model/params";
+import {
+  SOUND_KNOB_DEFAULTS,
+  movedKnobs,
+  setThroughMacros,
+  upgradePatch,
+  withKnobs,
+  withMacroValues,
+  type SynthPatch,
+} from "../model/synth";
+import type { InstrumentSource, Track } from "../model/types";
+
+/** Patches are plain JSON; this also copies out of immer drafts. */
+const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x)) as T;
+
+export function defaultInstrument(track: Track): InstrumentSource {
+  return { source: "synth", preset: track.category === "bass" ? "acid" : "warm-pad" };
+}
+
+/** The patch a synth source plays: its own, or its factory synth's. */
+export function patchOf(src: InstrumentSource): SynthPatch {
+  // patches saved before version 2 are upgraded as they're read
+  if (src.patch) return upgradePatch(src.patch);
+  return factorySynth(src.preset)?.patch ?? FACTORY_SYNTHS[0].patch;
+}
+
+export const isSynthTrack = (t: Track) =>
+  t.kind === "instrument" && (t.instrument ?? defaultInstrument(t)).source === "synth";
+
+export const trackPatch = (t: Track) => patchOf(t.instrument ?? defaultInstrument(t));
+
+export const macroKey = (i: number) => `sound.macro${i + 1}`;
+
+/** Where the track's macros are: its SOUND knobs, else where the patch rests them. */
+export const macroValues = (t: Track, patch = trackPatch(t)) =>
+  patch.macros.map((m, i) => t.params[macroKey(i)] ?? m.value);
+
+/** What the track plays: its patch with the macros at its SOUND knobs. */
+export const effectivePatch = (t: Track, patch = trackPatch(t)) =>
+  withMacroValues(patch, macroValues(t, patch));
+
+/** The SOUND knobs of a track: a synth's 8 macros, or the kind's own knobs. */
+export function soundDefs(t: Track, kindDefs: ParamDef[]): ParamDef[] {
+  if (!isSynthTrack(t)) return kindDefs;
+  return trackPatch(t).macros.map((m, i) => ({
+    id: `macro${i + 1}`,
+    label: m.name || `Macro ${i + 1}`,
+    default: m.value,
+    format: (v: number) => `${Math.round(v * 100)}%`,
+  }));
+}
+
+/**
+ * Change a synth track's patch (in a store recipe). The first edit copies the factory synth onto
+ * the track; an older (version 1) patch is upgraded.
+ */
+export function editPatch(t: Track, fn: (p: SynthPatch) => void) {
+  const src = t.instrument ?? defaultInstrument(t);
+  if (src.source !== "synth") return;
+  if (!t.instrument) t.instrument = { ...src };
+  if (t.instrument.patch?.version !== 2) t.instrument.patch = clone(patchOf(src));
+  fn(t.instrument.patch as SynthPatch);
+}
+
+/** Set one patch value; macros that move it keep their place (setThroughMacros). */
+export function setSynthParam(t: Track, path: string, v: unknown) {
+  editPatch(t, (p) => {
+    const d = paramOf(path);
+    if (d && typeof v === "number") setThroughMacros(p, path, v, d.min, d.max, macroValues(t, p));
+    else setValue(p, path, v);
+  });
+}
+
+function setValue(p: SynthPatch, path: string, v: unknown) {
+  const keys = path.split(".");
+  const last = keys.pop()!;
+  const obj = keys.reduce<Record<string, unknown>>(
+    (o, k) => o[k] as Record<string, unknown>,
+    p as unknown as Record<string, unknown>,
+  );
+  obj[last] = v;
+}
+
+/** A new sound on the track: its macros start where the new patch rests them. */
+export function resetMacros(t: Track) {
+  for (const k of Object.keys(t.params)) if (/^sound\.macro\d$/.test(k)) delete t.params[k];
+}
+
+const hz = (v: number) => 20 * Math.pow(1000, v);
+const qOf = (v: number) => 0.3 + v * v * 18;
+
+/**
+ * The one-time conversion (D85): a synth track's moved SOUND knobs (envelope, glide, detune and
+ * the filter on top) become edits of its patch, so it sounds the same now that the SOUND knobs
+ * are the macros. Step locks on the old knobs, which synths never played, are dropped by the
+ * caller. Returns whether anything changed.
+ */
+export function convertSynthKnobs(t: Track): boolean {
+  if (!isSynthTrack(t)) return false;
+  const p = t.params;
+  const knobs = movedKnobs(p);
+  const cutoff = (p["sound.cutoff"] ?? 1) < 0.995;
+  if (!knobs.length && !cutoff) return false;
+  editPatch(t, (patch) => {
+    const next = withKnobs(patch, p);
+    Object.assign(patch, next);
+    if (cutoff && !patch.filters[1].on) {
+      // the channel filter on top (12 dB low-pass) becomes filter 2; its Q is in dB
+      const q = Math.max(0.5, Math.pow(10, qOf(p["sound.reso"] ?? 0.2) / 20));
+      patch.filters[1] = {
+        on: true,
+        model: "svf",
+        type: "lp",
+        cutoff: Math.min(20000, hz(p["sound.cutoff"] ?? 1)),
+        reso: Math.min(0.95, Math.max(0, (2 - 1 / q) / 1.96)),
+        drive: 0,
+        keytrack: 0,
+        env: 0,
+        velocity: 0,
+      };
+      patch.routing = "serial";
+      p["sound.cutoff"] = 1;
+      p["sound.reso"] = 0.2;
+    }
+  });
+  for (const k of knobs) p[k] = SOUND_KNOB_DEFAULTS[k];
+  return true;
+}
+
+/** The explain-mode hint of a SOUND knob (a synth's macros share one). */
+export const soundHint = (id: string) =>
+  id.startsWith("macro") ? "param.sound.macro" : `param.sound.${id}`;

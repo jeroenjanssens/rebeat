@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { SynthCore } from "../engine/synth/core";
 import { FACTORY_SYNTHS } from "./synths";
 
@@ -7,6 +7,11 @@ const SR = 44100;
 /** Loudness of a factory synth playing a short phrase in its range (dB RMS, dB peak). */
 export function level(id: string) {
   const s = FACTORY_SYNTHS.find((x) => x.id === id)!;
+  // the same free-running phases and drift every run
+  let seed = 7;
+  const random = vi
+    .spyOn(Math, "random")
+    .mockImplementation(() => (seed = (seed * 16807) % 2147483647) / 2147483647);
   const core = new SynthCore(SR, s.patch);
   const root = s.group === "Bass" ? 36 : 60;
   const mono = s.patch.voice.mode !== "poly";
@@ -39,6 +44,7 @@ export function level(id: string) {
     peak = Math.max(peak, Math.abs(l[i]), Math.abs(r[i]));
     sum += l[i] * l[i] + r[i] * r[i];
   }
+  random.mockRestore();
   const db = (v: number) => 20 * Math.log10(Math.max(v, 1e-9));
   return {
     rms: db(Math.sqrt(sum / (2 * SR * 1.6))),

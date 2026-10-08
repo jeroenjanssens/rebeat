@@ -41,6 +41,8 @@ describe("explain-mode hints", () => {
     const kinds = Object.keys(SOUND_PARAMS) as TrackKind[];
     const ids = [
       ...kinds.flatMap((k) => SOUND_PARAMS[k].map((d) => `param.sound.${d.id}`)),
+      // a synth track's macros (soundHint)
+      "param.sound.macro",
       ...MIX_PARAMS.map((d) => `param.mix.${d.id}`),
       ...kinds.flatMap((k) => stepParams(k, true).map((d) => `param.step.${d.id}`)),
       ...Object.entries(EFFECT_PARAMS).flatMap(([fx, defs]) => [

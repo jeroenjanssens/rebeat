@@ -44,12 +44,12 @@ The dark **display** shows the selected track: its number, name and type, the wa
 
 The tabs above the encoders choose what the eight encoders control:
 
-| Bank      | Drum tracks                                                           | Instrument tracks                                            | Audio tracks                                              |
-| --------- | --------------------------------------------------------------------- | ------------------------------------------------------------ | --------------------------------------------------------- |
-| **Sound** | Tune, Decay, Start, Cutoff, Reso, Drive, Choke, Gain                  | Attack, Decay, Sustain, Release, Cutoff, Reso, Glide, Detune | Gain, Start, Pitch, Warp, Cutoff, Reso, Fade in, Fade out |
-| **Step**  | Velocity, Prob, Nudge, Ratchet, Pitch, Gate, Cond, Accent             | Velocity, Prob, Nudge, Ratchet, Note, Length, Cond, Accent   | –                                                         |
-| **FX**    | The parameters of the track's effects; ◀ ▶ steps through the effects. |                                                              |                                                           |
-| **Mix**   | Level, Pan, Reverb (send A), Delay (send B), Width, Low, Mid, High    |                                                              |                                                           |
+| Bank      | Drum tracks                                                           | Instrument tracks                                                                                                                                    | Audio tracks                                              |
+| --------- | --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| **Sound** | Tune, Decay, Start, Cutoff, Reso, Drive, Choke, Gain                  | Synths: their 8 [macros](#instruments-macros) (Brightness, Bite…). Sampled instruments: Attack, Decay, Sustain, Release, Cutoff, Reso, Glide, Detune | Gain, Start, Pitch, Warp, Cutoff, Reso, Fade in, Fade out |
+| **Step**  | Velocity, Prob, Nudge, Ratchet, Pitch, Gate, Cond, Accent             | Velocity, Prob, Nudge, Ratchet, Note, Length, Cond, Accent                                                                                           | –                                                         |
+| **FX**    | The parameters of the track's effects; ◀ ▶ steps through the effects. |                                                                                                                                                      |                                                           |
+| **Mix**   | Level, Pan, Reverb (send A), Delay (send B), Width, Low, Mid, High    |                                                                                                                                                      |                                                           |
 
 Using an encoder:
 

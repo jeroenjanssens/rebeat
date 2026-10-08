@@ -45,7 +45,7 @@ export const FACTORY_SYNTHS: FactorySynth[] = [
     filter: { cutoff: 600, reso: 1.5, env: 3.5 },
     filterEnv: { attack: 0.001, decay: 0.18, sustain: 0, release: 0.2 },
     amp: { attack: 0.002, decay: 0.25, sustain: 0, release: 0.2 },
-    volume: -7,
+    volume: -8.5,
   }),
   synth("init", "Poly · Init", "Keys", { volume: -14 }),
   synth(

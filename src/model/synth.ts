@@ -159,12 +159,20 @@ export interface ModSlot {
   via: ModSource | null;
 }
 
+export interface MacroTarget {
+  /** A patch parameter: "filters.0.cutoff" */
+  path: string;
+  /** Its value with the macro at 0 and at 1. */
+  min: number;
+  max: number;
+}
+
 export interface Macro {
   name: string;
-  /** 0..1 */
+  /** 0..1: where the macro rests (a track's SOUND knob turns it from there). */
   value: number;
-  /** Up to 4 targets: a patch parameter (path) moved from `min` to `max` as the macro turns. */
-  targets: { path: string; min: number; max: number }[];
+  /** Up to 4 targets, each moved from `min` to `max` as the macro turns. */
+  targets: MacroTarget[];
 }
 
 export interface SynthPatch {
@@ -298,7 +306,171 @@ export const DEFAULT_MACROS: Macro[] = [
   "Drive",
 ].map((name) => ({ name, value: 0.5, targets: [] }));
 
-export const INIT_PATCH: SynthPatch = {
+// ---------- macros ----------
+
+/** Frequencies and times move evenly in octaves as a macro turns (200 → 3200 Hz passes 800). */
+const GEOMETRIC = /(cutoff|rate|attack|decay|release)$/;
+const geometric = (t: MacroTarget) => GEOMETRIC.test(t.path) && t.min > 0 && t.max > 0;
+
+/** A target's value with its macro at `v`. */
+export function macroAt(t: MacroTarget, v: number): number {
+  return geometric(t) ? t.min * Math.pow(t.max / t.min, v) : t.min + (t.max - t.min) * v;
+}
+
+const numberAt = (p: SynthPatch, path: string) =>
+  path.split(".").reduce<unknown>((o, k) => (o as Record<string, unknown>)?.[k], p);
+
+function setNumber(p: SynthPatch, path: string, v: number) {
+  const keys = path.split(".");
+  const last = keys.pop()!;
+  let obj = p as unknown as Record<string, unknown>;
+  for (const k of keys) obj = obj?.[k] as Record<string, unknown>;
+  if (typeof obj?.[last] === "number") obj[last] = v;
+}
+
+/** The patch with each macro's targets set from its value. */
+export function applyMacros(patch: SynthPatch): SynthPatch {
+  if (!patch.macros.some((m) => m.targets.length)) return patch;
+  const p = clone(patch);
+  for (const m of p.macros) for (const t of m.targets) setNumber(p, t.path, macroAt(t, m.value));
+  return p;
+}
+
+/** The patch with the macros at these values (a track's SOUND knobs; undefined keeps the patch's). */
+export function withMacroValues(patch: SynthPatch, values: (number | undefined)[]): SynthPatch {
+  if (!values.some((v, i) => v !== undefined && v !== patch.macros[i]?.value)) return patch;
+  const p = clone(patch);
+  values.forEach((v, i) => v !== undefined && p.macros[i] && (p.macros[i].value = v));
+  return p;
+}
+
+/** Values ↔ the space a macro moves in (octaves for frequencies and times). */
+const space = (geo: boolean) =>
+  geo ? { to: Math.log, from: Math.exp } : { to: (x: number) => x, from: (x: number) => x };
+
+/**
+ * Set a parameter that macros may move: each target on it shifts its range so that the macro,
+ * where it is now, gives `v` (within lo..hi). Otherwise the macro would overrule the edit.
+ */
+export function setThroughMacros(
+  p: SynthPatch,
+  path: string,
+  v: number,
+  lo: number,
+  hi: number,
+  values: (number | undefined)[] = [],
+) {
+  setNumber(p, path, v);
+  p.macros.forEach((m, i) => {
+    const at = values[i] ?? m.value;
+    for (const t of m.targets) {
+      if (t.path !== path) continue;
+      const geo = geometric(t) && v > 0 && lo > 0;
+      const s = space(geo);
+      const [V, LO, HI] = [s.to(v), s.to(lo), s.to(hi)];
+      const delta = V - s.to(macroAt(t, at));
+      let a = s.to(t.min) + delta;
+      let b = s.to(t.max) + delta;
+      if (a < LO) {
+        a = LO;
+        if (at > 0) b = LO + (V - LO) / at;
+      }
+      if (b > HI) {
+        b = HI;
+        if (at < 1) a = (V - HI * at) / (1 - at);
+      }
+      t.min = s.from(Math.min(HI, Math.max(LO, a)));
+      t.max = s.from(Math.min(HI, Math.max(LO, b)));
+    }
+  });
+}
+
+type RangeSpec = [path: string, lo: number, hi: number, span: number, at?: number];
+
+/**
+ * Default macros that suit a patch: each one's range is placed around the patch's own values, so
+ * the macros at rest leave the sound as it is. `span` is a ratio for frequencies and times.
+ */
+export function autoMacros(p: SynthPatch): { macros: Macro[]; movement: ModSlot | null } {
+  const macro = (name: string, specs: RangeSpec[], fallback = 0.5): Macro => {
+    let at: number | null = null;
+    const targets: MacroTarget[] = [];
+    for (const [path, lo, hi, span, prefer = 0.5] of specs) {
+      const c = numberAt(p, path);
+      if (typeof c !== "number") continue;
+      const geo = GEOMETRIC.test(path) && c > 0 && lo > 0;
+      const s = space(geo);
+      const [C, LO, HI] = [s.to(c), s.to(lo), s.to(hi)];
+      let S = Math.min(geo ? Math.log(span) : span, HI - LO);
+      let min: number;
+      if (at === null) {
+        // the first target: a range of `span`, slid inside lo..hi, decides where the macro rests
+        min = Math.min(HI - S, Math.max(LO, C - prefer * S));
+        at = S > 0 ? (C - min) / S : 0;
+      } else {
+        // the others rest at the same place: their range shrinks to fit
+        if (at > 0) S = Math.min(S, (C - LO) / at);
+        if (at < 1) S = Math.min(S, (HI - C) / (1 - at));
+        min = C - at * S;
+      }
+      // a target already at its limit, with the macro resting there too, can't move
+      if (S > 1e-9) targets.push({ path, min: s.from(min), max: s.from(min + S) });
+    }
+    return { name, value: at ?? fallback, targets };
+  };
+  const filters = p.filters.flatMap((f, i) => (f.on ? [i] : []));
+  const oscs = p.osc.flatMap((o, i) => (o.on && o.level > 0 ? [i] : [])).slice(0, 2);
+  const macros = [
+    macro(
+      "Brightness",
+      filters.map((i): RangeSpec => [`filters.${i}.cutoff`, 20, 20000, 64]),
+    ),
+    macro(
+      "Bite",
+      p.filters[0].on
+        ? [
+            ["filters.0.reso", 0, 1, 0.9, 0.3],
+            ["filters.0.env", -6, 6, 6],
+          ]
+        : [],
+    ),
+    macro(
+      "Character",
+      oscs.map((i): RangeSpec => [`osc.${i}.shape`, 0, 3, 3]),
+    ),
+    macro("Thickness", [
+      ["sub.level", 0, 1, 1, 0.3],
+      ...(p.osc[0].unison > 1 ? [["osc.0.detune", 0, 100, 80] as RangeSpec] : []),
+      ...(p.osc[1].on ? [["osc.1.fine", -100, 100, 30] as RangeSpec] : []),
+    ]),
+    macro("Attack", [
+      ["envs.0.attack", 0.0005, 10, 1000, 0.3],
+      ["envs.1.attack", 0.0005, 10, 1000],
+    ]),
+    macro("Release", [
+      ["envs.0.release", 0.001, 15, 1000, 0.4],
+      ["envs.1.release", 0.001, 15, 1000],
+    ]),
+    // the mod matrix does the moving: LFO 2, scaled by this macro
+    macro("Movement", [], 0),
+    macro("Drive", [["output.drive", 0, 1, 1, p.output.drive]]),
+  ];
+  const movement: ModSlot = p.filters[0].on
+    ? { source: "lfo2", dest: "filter1.cutoff", amount: 0.2, via: "macro7" }
+    : { source: "lfo2", dest: "pitch", amount: 0.25 / 24, via: "macro7" };
+  return { macros, movement };
+}
+
+/** Give a patch its default macros (and the Movement slot, if the matrix has room). */
+function withAutoMacros(p: SynthPatch, keep: (Macro | undefined)[] = []): SynthPatch {
+  const auto = autoMacros(p);
+  p.macros = auto.macros.map((m, i) => keep[i] ?? m);
+  const free = p.matrix.findIndex((s) => !s.source && !s.dest);
+  if (!keep[6] && auto.movement && free >= 0) p.matrix[free] = auto.movement;
+  return p;
+}
+
+const INIT_BASE: SynthPatch = {
   version: 2,
   osc: [osc(), osc({ on: false, level: 0 }), osc({ on: false, level: 0 })],
   sub: { level: 0, octave: -1, shape: "sine" },
@@ -324,6 +496,8 @@ export const INIT_PATCH: SynthPatch = {
   output: { drive: 0, volume: -12, pan: 0, spread: 0.3 },
 };
 
+export const INIT_PATCH: SynthPatch = withAutoMacros(clone(INIT_BASE));
+
 /** Deep partial, for writing patches compactly. */
 export type PatchSpec = {
   version?: 2;
@@ -342,20 +516,25 @@ export type PatchSpec = {
   output?: Partial<SynthPatch["output"]>;
 };
 
-/** A full patch from a partial one. Oscillators given in the spec are on unless they say not. */
+/**
+ * A full patch from a partial one. Oscillators given in the spec are on unless they say not;
+ * macros the spec doesn't give are the defaults for the resulting sound (autoMacros).
+ */
 export function makePatch(spec: PatchSpec = {}): SynthPatch {
-  const p = clone(INIT_PATCH);
+  const p = clone(INIT_BASE);
   spec.osc?.forEach((o, i) => o && (p.osc[i] = osc({ on: true, ...o })));
   spec.filters?.forEach((f, i) => f && (p.filters[i] = filter({ on: true, ...f })));
   spec.envs?.forEach((e, i) => e && Object.assign(p.envs[i], e));
   spec.lfos?.forEach((l, i) => l && Object.assign(p.lfos[i], l));
   spec.matrix?.forEach((m, i) => (p.matrix[i] = { ...emptySlot(), ...m }));
-  spec.macros?.forEach((m, i) => (p.macros[i] = { value: 0.5, targets: [], ...m }));
   for (const k of ["sub", "noise", "fm", "voice", "output"] as const)
     if (spec[k]) Object.assign(p[k], spec[k]);
   if (spec.ring !== undefined) p.ring = spec.ring;
   if (spec.routing) p.routing = spec.routing;
-  return p;
+  return withAutoMacros(
+    p,
+    (spec.macros ?? []).map((m) => m && { value: 0.5, targets: [], ...m }),
+  );
 }
 
 const clamp = (v: number, lo: number, hi: number) =>
@@ -561,7 +740,7 @@ export function upgradePatch(p: unknown): SynthPatch {
 }
 
 /** The instrument SOUND knobs at rest: a patch keeps its own values until you move them. */
-const KNOB_DEFAULTS: Record<string, number> = {
+export const SOUND_KNOB_DEFAULTS: Record<string, number> = {
   "sound.attack": 0.05,
   "sound.decay": 0.4,
   "sound.sustain": 0.7,
@@ -571,9 +750,16 @@ const KNOB_DEFAULTS: Record<string, number> = {
 };
 
 const moved = (params: Record<string, number>, key: string) =>
-  params[key] !== undefined && Math.abs(params[key] - KNOB_DEFAULTS[key]) > 1e-6;
+  params[key] !== undefined && Math.abs(params[key] - SOUND_KNOB_DEFAULTS[key]) > 1e-6;
 
-/** A patch with the track's moved SOUND knobs applied (envelope, glide, detune). */
+/** The SOUND knobs moved from rest (they shape a synth's patch: withKnobs). */
+export const movedKnobs = (params: Record<string, number>) =>
+  Object.keys(SOUND_KNOB_DEFAULTS).filter((k) => moved(params, k));
+
+/**
+ * A patch with the track's moved SOUND knobs applied (envelope, glide, detune): how synth tracks
+ * played before their SOUND knobs became the macros (the conversion, D85, uses it).
+ */
 export function withKnobs(patch: SynthPatch, params: Record<string, number>): SynthPatch {
   const p = clone(patch);
   const ms = (lo: number, hi: number, v: number) => (lo * Math.pow(hi / lo, v)) / 1000;

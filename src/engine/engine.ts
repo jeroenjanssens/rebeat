@@ -14,6 +14,7 @@ import { getBuffer, sampleInfo } from "./samples";
 import { warper } from "./stretch";
 import type { StretchNode } from "signalsmith-stretch";
 import { createInstrument, instrumentKey, type InstrumentVoice } from "./instruments";
+import { macroValues } from "../library/synthTrack";
 
 export interface TriggerOptions {
   /** Audio time; default = now. */
@@ -355,11 +356,14 @@ function playNotes(track: Track, velocity: number, time: number, o: TriggerOptio
   const notes = o.notes?.length ? o.notes : [{ pitch: 48, length: 1, velocity }];
   const step = o.stepDur ?? 0.125;
   const shift = (track.transpose ?? 0) + (o.transpose ?? 0);
-  instrument(track).play(
-    shift ? notes.map((n) => ({ ...n, pitch: n.pitch + shift })) : notes,
-    time,
-    step,
-  );
+  const voice = instrument(track);
+  // parameter locks on a synth's macros hold for the step's notes
+  const locked = o.locks && Object.keys(o.locks).filter((k) => k.startsWith("sound.macro"));
+  if (voice.synth && locked?.length) {
+    const values = macroValues({ ...track, params: { ...track.params, ...o.locks } });
+    voice.synth.lockMacros(values, time, time + Math.max(...notes.map((n) => n.length)) * step);
+  }
+  voice.play(shift ? notes.map((n) => ({ ...n, pitch: n.pitch + shift })) : notes, time, step);
   const dur = Math.max(...notes.map((n) => n.length)) * step;
   const release = toUnit.ms(1, 8000)(track.params["sound.release"] ?? 0.35) / 1000;
   S.activeUntil.set(

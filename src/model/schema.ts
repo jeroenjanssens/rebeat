@@ -6,9 +6,10 @@ import { defaultBuses, defaultMaster, defaultPerf } from "./effects";
 import { uid } from "./id";
 import { EFFECT_PARAMS, MIX_PARAMS, SOUND_PARAMS, defaultParams } from "./params";
 import { emptyLane, type Project } from "./project";
-import { MAX_STEPS, emptyStep, type Effect, type Lane, type Step } from "./types";
+import { MAX_STEPS, emptyStep, type Effect, type Lane, type Step, type Track } from "./types";
+import { convertSynthKnobs, isSynthTrack } from "../library/synthTrack";
 
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 export interface SerializedProject {
   format: "rebeat-project";
@@ -63,6 +64,26 @@ const migrations: Record<number, Migration> = {
   3: (p) => ({ midiMappings: [], perf: defaultPerf(), ...p }),
   // 4 → 5: the play mode is saved with the project (it used to start as "loop")
   4: (p) => ({ playMode: "song", ...p }),
+  // 5 → 6: a synth track's SOUND knobs are its macros; moved ones become patch edits (D85)
+  5: (p) => {
+    const synths = new Set<string>();
+    for (const t of (p.tracks as Track[]) ?? []) {
+      if (!t.params || !isSynthTrack(t)) continue;
+      synths.add(t.id);
+      convertSynthKnobs(t);
+    }
+    // step locks on the old knobs (synths never played them)
+    for (const pattern of Object.values((p.patterns as Record<string, Json>) ?? {}))
+      for (const [id, lane] of Object.entries((pattern.lanes as Record<string, Json>) ?? {})) {
+        if (!synths.has(id) || lane.kind !== "steps") continue;
+        for (const s of lane.steps as Step[]) {
+          if (!s.locks) continue;
+          for (const k of Object.keys(s.locks)) if (k.startsWith("sound.")) delete s.locks[k];
+          if (!Object.keys(s.locks).length) delete s.locks;
+        }
+      }
+    return p;
+  },
 };
 
 export function serializeProject(project: Project): SerializedProject {

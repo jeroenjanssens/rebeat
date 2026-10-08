@@ -93,6 +93,9 @@ test("every hint on screen has an entry and a real command", async ({ page }) =>
   await run("panel.synth-editor");
   await page.getByTestId("synth-editor").waitFor();
   expect(await problems(page)).toEqual(none);
+  // its Advanced view
+  await page.getByTestId("synth-view").getByRole("button", { name: "Advanced" }).click();
+  expect(await problems(page)).toEqual(none);
   // the pad view
   await run("dm.view");
   await page.waitForTimeout(200);

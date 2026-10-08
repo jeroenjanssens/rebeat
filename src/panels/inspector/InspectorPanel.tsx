@@ -11,6 +11,7 @@ import { getBuffer, samplePeaks } from "../../engine/samples";
 import { droppedSamples, isSampleDrag } from "../../library/drop";
 import { isBuiltIn, sampleName, useLibrary } from "../../library/library";
 import { MIX_PARAMS, SOUND_PARAMS, type ParamDef } from "../../model/params";
+import { soundDefs, soundHint } from "../../library/synthTrack";
 import type { Track } from "../../model/types";
 import { useSelectedTrack, useStore } from "../../state/store";
 import { replaceSound } from "../../state/trackActions";
@@ -70,7 +71,7 @@ function EncoderGrid({
               }, `insp-${track.id}-${key}`)
             }
             midiTarget={isVolume ? `track:${track.id}:volume` : `track:${track.id}:${key}`}
-            hint={`param.${prefix}.${def.id}`}
+            hint={prefix === "sound" ? soundHint(def.id) : `param.${prefix}.${def.id}`}
           />
         );
       })}
@@ -196,7 +197,11 @@ export function InspectorPanel() {
         <SampleSection track={track} />
       )}
       <Section title="Sound">
-        <EncoderGrid track={track} defs={SOUND_PARAMS[track.kind]} prefix="sound" />
+        <EncoderGrid
+          track={track}
+          defs={soundDefs(track, SOUND_PARAMS[track.kind])}
+          prefix="sound"
+        />
       </Section>
       <Section title="Mix">
         <EncoderGrid track={track} defs={MIX_PARAMS} prefix="mix" />

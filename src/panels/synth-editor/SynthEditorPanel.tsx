@@ -5,15 +5,28 @@ import { Keyboard } from "../../components/Keyboard";
 import { toast } from "../../components/Toast";
 import * as engine from "../../engine/engine";
 import { SYNTH_PRESETS, defaultInstrument, patchOf } from "../../engine/instruments";
+import { Scope } from "../../components/Scope";
+import {
+  editPatch,
+  macroKey,
+  macroValues,
+  setSynthParam,
+  soundHint,
+} from "../../library/synthTrack";
+import { useSettings } from "../../state/settings";
 import { factorySynth } from "../../library/synths";
 import { saveInstrument } from "../../library/userInstruments";
 import {
   INIT_PATCH,
+  applyMacros,
+  setThroughMacros,
+  withMacroValues,
   MOD_DESTS,
   MOD_SOURCES,
   NOTE_LENGTHS,
   type Env,
   type LfoShape,
+  type MacroTarget,
   type ModDest,
   type ModSource,
   type SynthPatch,
@@ -29,10 +42,11 @@ import {
   knobDef,
   modRanges,
   modulated,
-  setPath,
+  paramName,
+  paramOf,
   toKnob,
   type PatchParam,
-} from "./patchParams";
+} from "../../model/patchParams";
 
 const SOURCE_LABEL: Record<ModSource, string> = {
   lfo1: "LFO 1",
@@ -94,6 +108,10 @@ function Editor({ track }: { track: Track }) {
   const commit = useStore((s) => s.commit);
   const src = track.instrument ?? defaultInstrument(track);
   const patch = patchOf(src);
+  // what you hear: the macros where the track's SOUND knobs have them
+  const values = macroValues(track, patch);
+  const shown = applyMacros(withMacroValues(patch, values));
+  const view = useSettings((s) => s.synthView);
   const factory = factorySynth(src.preset);
   const defaults = factory?.patch ?? INIT_PATCH;
   const edited = !!src.patch;
@@ -102,22 +120,18 @@ function Editor({ track }: { track: Track }) {
   // the keyboard's lowest C: two octaves around the track's range
   const [low, setLow] = useState(track.category === "bass" ? 24 : 48);
 
-  /**
-   * Change the patch. The first edit copies the factory synth onto the track; an older (version 1)
-   * patch is upgraded. The copy is made from the store's state, outside the draft.
-   */
-  const edit = (fn: (p: SynthPatch) => void, key?: string) => {
-    const fresh = structuredClone(patchOf(src));
+  /** Change the patch: the first edit copies the factory synth onto the track (editPatch). */
+  const onTrack = (fn: (t: Track) => void, key?: string) =>
     commit((pr) => {
       const t = pr.tracks.find((x) => x.id === track.id);
-      if (!t) return;
-      t.instrument ??= { ...src };
-      if (t.instrument.patch?.version !== 2) t.instrument.patch = fresh;
-      fn(t.instrument.patch as SynthPatch);
+      if (t) fn(t);
     }, key);
-  };
+  const edit = (fn: (p: SynthPatch) => void, key?: string) => onTrack((t) => editPatch(t, fn), key);
+  // values that macros move keep the macros' place (setThroughMacros)
   const set = (path: string, v: unknown) =>
-    edit((p) => setPath(p, path, v), `syn-${track.id}-${path}`);
+    onTrack((t) => setSynthParam(t, path, v), `syn-${track.id}-${path}`);
+  const setMacro = (i: number, v: number) =>
+    onTrack((t) => void (t.params[macroKey(i)] = v), `syn-${track.id}-macro${i}`);
 
   // modulation: the range the matrix can move each knob, and where it is now (live)
   const synth = engine.trackSynth(track);
@@ -125,10 +139,10 @@ function Editor({ track }: { track: Track }) {
     synth?.monitor(true);
     return () => synth?.monitor(false);
   }, [synth]);
-  const ranges = modRanges(patch);
+  const ranges = modRanges(shown);
   const DESTS = Object.keys(MOD_DESTS) as ModDest[];
   const knob = (d: PatchParam) => {
-    const value = getPath(patch, d.path);
+    const value = getPath(shown, d.path);
     const r = ranges.get(d.path);
     const octaves = r ? KNOB_OF_DEST[r.dest]?.octaves : false;
     const toK = (v: number) => toKnob(d, Math.min(d.max, Math.max(d.min, v)));
@@ -141,6 +155,8 @@ function Editor({ track }: { track: Track }) {
         color={track.color}
         size={34}
         hint={hintFor(d.path)}
+        midiTarget={`track:${track.id}:synth:${d.path}`}
+        learnLabel={`${track.name} · ${paramName(d.path)}`}
         modRange={
           r
             ? [toK(modulated(value, r.lo, octaves)), toK(modulated(value, r.hi, octaves))]
@@ -192,7 +208,7 @@ function Editor({ track }: { track: Track }) {
   );
 
   const oscBox = (i: 0 | 1 | 2) => {
-    const o = patch.osc[i];
+    const o = shown.osc[i];
     return (
       <Box
         key={`o${i}`}
@@ -219,7 +235,7 @@ function Editor({ track }: { track: Track }) {
   };
 
   const filterBox = (i: 0 | 1) => {
-    const f = patch.filters[i];
+    const f = shown.filters[i];
     return (
       <Box
         key={`f${i}`}
@@ -267,13 +283,17 @@ function Editor({ track }: { track: Track }) {
   };
 
   const envBox = (i: 0 | 1 | 2, title: string) => {
-    const e = patch.envs[i];
+    const e = shown.envs[i];
     return (
       <Box key={`e${i}`} title={title}>
         <EnvelopeView
           env={e}
           color={track.color}
-          onChange={(next, key) => edit((p) => void Object.assign(p.envs[i], next), key)}
+          onChange={(next, key) =>
+            onTrack((t) => {
+              for (const [k, v] of Object.entries(next)) setSynthParam(t, `envs.${i}.${k}`, v);
+            }, key)
+          }
           hint="synth.env.view"
         />
         <div className="flex flex-wrap gap-1.5">
@@ -285,7 +305,7 @@ function Editor({ track }: { track: Track }) {
   };
 
   const lfoBox = (i: 0 | 1 | 2) => {
-    const l = patch.lfos[i];
+    const l = shown.lfos[i];
     return (
       <Box key={`l${i}`} title={`LFO ${i + 1}`}>
         <div className="flex flex-wrap gap-1.5">
@@ -372,6 +392,22 @@ function Editor({ track }: { track: Track }) {
         </select>
         {edited && !src.from && <span className="text-[10.5px] text-lit">edited</span>}
         <span className="flex-1" />
+        <div className="segmented" data-hint="synth.view" data-testid="synth-view">
+          {(
+            [
+              ["basic", "Basic"],
+              ["advanced", "Advanced"],
+            ] as const
+          ).map(([v, label]) => (
+            <button
+              key={v}
+              data-active={view === v}
+              onClick={() => useSettings.getState().set({ synthView: v })}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         {edited && !src.from && factory && (
           <button
             className="tool-btn"
@@ -413,101 +449,123 @@ function Editor({ track }: { track: Track }) {
           </form>
         )}
       </div>
-      <SignalFlow patch={patch} color={track.color} onPlay={() => engine.playOnce(track)} />
+      {view === "basic" ? (
+        <Basic
+          track={track}
+          patch={shown}
+          values={values}
+          setMacro={setMacro}
+          set={set}
+          glide={knob(paramOf("voice.glide")!)}
+        />
+      ) : (
+        <>
+          <SignalFlow patch={shown} color={track.color} onPlay={() => engine.playOnce(track)} />
 
-      <div className="scroll-thin grid min-h-0 flex-1 auto-rows-min grid-cols-[repeat(auto-fill,minmax(270px,1fr))] gap-2 overflow-auto p-2">
-        {oscBox(0)}
-        {oscBox(1)}
-        {oscBox(2)}
-        <Box title="Sub · noise · ring · FM">
-          <div className="flex flex-wrap gap-1.5">
-            {choice(
-              patch.sub.octave,
-              [
-                [-1, "Sub −1"],
-                [-2, "−2"],
-              ],
-              (v) => set("sub.octave", v),
-              "synth.sub.octave",
-            )}
-            {choice(
-              patch.sub.shape,
-              [
-                ["sine", "Sine"],
-                ["square", "Square"],
-              ],
-              (v) => set("sub.shape", v),
-              "synth.sub.shape",
-            )}
-            {choice(
-              patch.noise.color,
-              [
-                ["white", "White"],
-                ["pink", "Pink"],
-              ],
-              (v) => set("noise.color", v),
-              "synth.noise.color",
-            )}
-            {choice(
-              patch.fm.route,
-              [
-                ["2>1", "FM 2→1"],
-                ["3>1", "3→1"],
-                ["3>2", "3→2"],
-                ["1>1", "1→1"],
-              ],
-              (v) => set("fm.route", v),
-              "synth.fm.route",
-            )}
+          <div className="scroll-thin grid min-h-0 flex-1 auto-rows-min grid-cols-[repeat(auto-fill,minmax(270px,1fr))] gap-2 overflow-auto p-2">
+            {oscBox(0)}
+            {oscBox(1)}
+            {oscBox(2)}
+            <Box title="Sub · noise · ring · FM">
+              <div className="flex flex-wrap gap-1.5">
+                {choice(
+                  patch.sub.octave,
+                  [
+                    [-1, "Sub −1"],
+                    [-2, "−2"],
+                  ],
+                  (v) => set("sub.octave", v),
+                  "synth.sub.octave",
+                )}
+                {choice(
+                  patch.sub.shape,
+                  [
+                    ["sine", "Sine"],
+                    ["square", "Square"],
+                  ],
+                  (v) => set("sub.shape", v),
+                  "synth.sub.shape",
+                )}
+                {choice(
+                  patch.noise.color,
+                  [
+                    ["white", "White"],
+                    ["pink", "Pink"],
+                  ],
+                  (v) => set("noise.color", v),
+                  "synth.noise.color",
+                )}
+                {choice(
+                  patch.fm.route,
+                  [
+                    ["2>1", "FM 2→1"],
+                    ["3>1", "3→1"],
+                    ["3>2", "3→2"],
+                    ["1>1", "1→1"],
+                  ],
+                  (v) => set("fm.route", v),
+                  "synth.fm.route",
+                )}
+              </div>
+              {knobs("extra")}
+            </Box>
+            {filterBox(0)}
+            {filterBox(1)}
+            {envBox(0, "Amp envelope")}
+            {envBox(1, "Filter envelope")}
+            {envBox(2, "Mod envelope")}
+            {lfoBox(0)}
+            {lfoBox(1)}
+            {lfoBox(2)}
+            <Box title="Mod matrix" wide>
+              <Matrix patch={patch} onChange={(fn) => edit(fn)} color={track.color} />
+            </Box>
+            <Box title="Voice">
+              <div className="flex flex-wrap gap-1.5">
+                {choice(
+                  patch.voice.mode,
+                  [
+                    ["poly", "Poly"],
+                    ["mono", "Mono"],
+                    ["legato", "Legato"],
+                  ],
+                  (v) => set("voice.mode", v),
+                  "synth.voice.mode",
+                )}
+                {choice(
+                  patch.voice.glideMode,
+                  [
+                    ["always", "Glide always"],
+                    ["legato", "Overlapping"],
+                  ],
+                  (v) => set("voice.glideMode", v),
+                  "synth.voice.glideMode",
+                )}
+                {choice(
+                  patch.voice.steal,
+                  [
+                    ["oldest", "Steal oldest"],
+                    ["quietest", "Quietest"],
+                  ],
+                  (v) => set("voice.steal", v),
+                  "synth.voice.steal",
+                )}
+              </div>
+              {knobs("voice")}
+            </Box>
+            <Box title="Output">{knobs("output")}</Box>
+            <Box title="Macros" wide>
+              <Macros
+                track={track}
+                patch={patch}
+                values={values}
+                setMacro={setMacro}
+                onChange={(fn, key) => edit(fn, key)}
+              />
+            </Box>
           </div>
-          {knobs("extra")}
-        </Box>
-        {filterBox(0)}
-        {filterBox(1)}
-        {envBox(0, "Amp envelope")}
-        {envBox(1, "Filter envelope")}
-        {envBox(2, "Mod envelope")}
-        {lfoBox(0)}
-        {lfoBox(1)}
-        {lfoBox(2)}
-        <Box title="Mod matrix" wide>
-          <Matrix patch={patch} onChange={(fn) => edit(fn)} color={track.color} />
-        </Box>
-        <Box title="Voice">
-          <div className="flex flex-wrap gap-1.5">
-            {choice(
-              patch.voice.mode,
-              [
-                ["poly", "Poly"],
-                ["mono", "Mono"],
-                ["legato", "Legato"],
-              ],
-              (v) => set("voice.mode", v),
-              "synth.voice.mode",
-            )}
-            {choice(
-              patch.voice.glideMode,
-              [
-                ["always", "Glide always"],
-                ["legato", "Overlapping"],
-              ],
-              (v) => set("voice.glideMode", v),
-              "synth.voice.glideMode",
-            )}
-            {choice(
-              patch.voice.steal,
-              [
-                ["oldest", "Steal oldest"],
-                ["quietest", "Quietest"],
-              ],
-              (v) => set("voice.steal", v),
-              "synth.voice.steal",
-            )}
-          </div>
-          {knobs("voice")}
-        </Box>
-        <Box title="Output">{knobs("output")}</Box>
-      </div>
+        </>
+      )}
       <div className="flex h-[74px] shrink-0 gap-2 border-t border-line px-2 py-1.5">
         <Wheels track={track} />
         <div className="min-w-0 flex-1">
@@ -598,6 +656,227 @@ function Wheels({ track }: { track: Track }) {
         "mod-wheel",
       )}
     </div>
+  );
+}
+
+/**
+ * The Basic view: the 8 macros (the track's SOUND knobs), Poly/Mono with glide, and a scope of
+ * what the synth plays. Everything else is in Advanced.
+ */
+function Basic({
+  track,
+  patch,
+  values,
+  setMacro,
+  set,
+  glide,
+}: {
+  track: Track;
+  patch: SynthPatch;
+  values: number[];
+  setMacro: (i: number, v: number) => void;
+  set: (path: string, v: unknown) => void;
+  glide: React.ReactNode;
+}) {
+  const mono = patch.voice.mode !== "poly";
+  return (
+    <div
+      className="scroll-thin flex min-h-0 flex-1 flex-col gap-3 overflow-auto p-3"
+      data-testid="synth-basic"
+    >
+      <div
+        className="grid grid-cols-[repeat(auto-fill,minmax(96px,1fr))] justify-items-center gap-y-3"
+        data-testid="synth-macros"
+      >
+        {patch.macros.map((m, i) => (
+          <Encoder
+            key={i}
+            def={{
+              id: `macro${i + 1}`,
+              label: m.name || `Macro ${i + 1}`,
+              default: patch.macros[i].value,
+              format: (v) => `${Math.round(v * 100)}%`,
+            }}
+            value={values[i]}
+            onChange={(v) => setMacro(i, v)}
+            color={track.color}
+            size={48}
+            width={96}
+            hint={soundHint(`macro${i + 1}`)}
+            midiTarget={`track:${track.id}:${macroKey(i)}`}
+            learnLabel={`${track.name} · ${m.name}`}
+          />
+        ))}
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="segmented" data-hint="synth.voice.mode">
+          <button data-active={!mono} onClick={() => set("voice.mode", "poly")}>
+            Poly
+          </button>
+          <button data-active={mono} onClick={() => !mono && set("voice.mode", "mono")}>
+            Mono
+          </button>
+        </div>
+        {glide}
+      </div>
+      <div className="min-h-[80px] max-h-[220px] flex-1" data-hint="synth.scope">
+        <Scope trackId={track.id} color={track.color} meter={false} className="h-full w-full" />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The macros: each one's name and where it is (the track's SOUND knob), and up to 4 targets, each
+ * moved from its min to its max as the macro turns.
+ */
+function Macros({
+  track,
+  patch,
+  values,
+  setMacro,
+  onChange,
+}: {
+  track: Track;
+  patch: SynthPatch;
+  values: number[];
+  setMacro: (i: number, v: number) => void;
+  onChange: (fn: (p: SynthPatch) => void, key?: string) => void;
+}) {
+  return (
+    <div
+      className="grid grid-cols-[repeat(auto-fill,minmax(230px,1fr))] gap-2"
+      data-testid="macro-editor"
+    >
+      {patch.macros.map((m, i) => (
+        <div
+          key={i}
+          className="flex flex-col gap-1 rounded border border-line p-1.5"
+          data-macro={i}
+        >
+          <div className="flex items-center gap-1.5">
+            <Encoder
+              def={{
+                id: `macro${i + 1}`,
+                label: "",
+                default: m.value,
+                format: (v) => `${Math.round(v * 100)}%`,
+              }}
+              value={values[i]}
+              onChange={(v) => setMacro(i, v)}
+              color={track.color}
+              size={28}
+              hint={soundHint(`macro${i + 1}`)}
+              midiTarget={`track:${track.id}:${macroKey(i)}`}
+              learnLabel={`${track.name} · ${m.name}`}
+            />
+            <input
+              className="input !h-6 min-w-0 flex-1"
+              value={m.name}
+              onChange={(e) =>
+                onChange((p) => void (p.macros[i].name = e.target.value), `macro-name-${i}`)
+              }
+              aria-label={`Macro ${i + 1} name`}
+              data-hint="synth.macro.name"
+            />
+          </div>
+          {m.targets.map((t, j) => {
+            const d = paramOf(t.path);
+            if (!d) return null;
+            const bound = (end: "min" | "max") => (
+              <Encoder
+                def={{ ...knobDef(d, d[end]), label: end === "min" ? "At 0" : "At 1" }}
+                value={toKnob(d, t[end])}
+                onChange={(k) =>
+                  onChange((p) => {
+                    p.macros[i].targets[j][end] = fromKnob(d, k);
+                  }, `macro-${i}-${j}-${end}`)
+                }
+                color={track.color}
+                size={26}
+                hint={`synth.macro.${end}`}
+              />
+            );
+            return (
+              <div key={j} className="flex items-center gap-1" data-target={j}>
+                <TargetSelect
+                  value={t.path}
+                  onPick={(path) =>
+                    onChange((p) => {
+                      p.macros[i].targets[j] = newTarget(p, i, path, values);
+                    })
+                  }
+                />
+                {bound("min")}
+                {bound("max")}
+                <button
+                  className="tool-btn !h-5 !px-1 text-faint"
+                  title="Remove this target"
+                  data-hint="synth.macro.remove"
+                  onClick={() => onChange((p) => void p.macros[i].targets.splice(j, 1))}
+                >
+                  ×
+                </button>
+              </div>
+            );
+          })}
+          {m.targets.length < 4 && (
+            <TargetSelect
+              value=""
+              placeholder="+ Target"
+              onPick={(path) =>
+                onChange((p) => void p.macros[i].targets.push(newTarget(p, i, path, values)))
+              }
+            />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * A new target for macro `i`: the knob's whole range, shifted (and squeezed where it must be) so
+ * the macro, where it is, gives the value you hear now: adding it doesn't change the sound.
+ */
+function newTarget(p: SynthPatch, i: number, path: string, values: number[]): MacroTarget {
+  const d = paramOf(path)!;
+  const at = values[i] ?? p.macros[i].value;
+  const v = getPath(applyMacros(withMacroValues(p, values)), path);
+  // a copy (p may be a draft) with just this target
+  const probe = JSON.parse(JSON.stringify(p)) as SynthPatch;
+  probe.macros = [{ name: "", value: at, targets: [{ path, min: d.min, max: d.max }] }];
+  setThroughMacros(probe, path, v, d.min, d.max, [at]);
+  return probe.macros[0].targets[0];
+}
+
+function TargetSelect({
+  value,
+  onPick,
+  placeholder,
+}: {
+  value: string;
+  onPick: (path: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <select
+      className={`input !h-6 min-w-0 ${placeholder ? "self-start" : "flex-1"}`}
+      value={value}
+      onChange={(e) => e.target.value && onPick(e.target.value)}
+      data-hint={placeholder ? "synth.macro.add" : "synth.macro.target"}
+    >
+      {placeholder && <option value="">{placeholder}</option>}
+      {SECTIONS.map((s) => (
+        <optgroup key={s.id} label={s.title}>
+          {s.params.map((d) => (
+            <option key={d.path} value={d.path}>
+              {paramName(d.path)}
+            </option>
+          ))}
+        </optgroup>
+      ))}
+    </select>
   );
 }
 

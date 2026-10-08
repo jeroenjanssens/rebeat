@@ -18,7 +18,13 @@ A new instrument track plays a built-in synth: **Mono · Acid Bass** for bass tr
 
 The **synth editor** shapes the synth of the selected instrument track. Open it with **Edit synth…** in the Inspector, or right-click the track's name → **Edit synth…**.
 
-The blocks follow the path the sound takes, shown at the top: the oscillators (with sub and noise) are mixed, then filtered, then shaped by the amp, then driven to the output. That order is fixed, as on a classic analog synth: the oscillators play side by side, and the envelopes and the LFO don't carry sound, they steer the filter, the amp or the pitch. (The order of the track's **effects** can be changed in the Inspector.)
+It has two views (switch at the top right; it remembers the one you used last):
+
+- **Basic**: the synth's 8 **macros**, **Poly** / **Mono** with **Glide**, a scope of what it plays, and the keyboard. Enough to make a factory synth your own.
+- **Advanced**: everything, in the blocks below.
+
+In Advanced, the blocks follow
+the path the sound takes, shown at the top: the oscillators (with sub and noise) are mixed, then filtered, then shaped by the amp, then driven to the output. That order is fixed, as on a classic analog synth: the oscillators play side by side, and the envelopes and the LFO don't carry sound, they steer the filter, the amp or the pitch. (The order of the track's **effects** can be changed in the Inspector.)
 
 | Section                     | What it does                                                                                                                                                                                                                                                                                                                                                            |
 | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -38,7 +44,17 @@ Play it on the **keyboard** at the bottom (the keys show their notes, with the o
 
 Knobs that the mod matrix moves show an inner **ring**: how far the modulation can take them. While a note plays, a **dot** on the ring shows where the modulation has them right now.
 
+Right-click any knob → **MIDI learn** to turn it from a controller.
+
 Editing a factory synth edits a copy on the track; the factory synth itself never changes (the revert button brings it back). **Save to library** stores the synth with the track's SOUND knobs and effects under **Your instruments** in the library; drop it on any track, in any project. Right-click any instrument track → **Save sound** does the same for samplers and sampled instruments.
+
+### Macros
+
+A **macro** is one knob that moves several settings at once: **Brightness** opens the filters, **Bite** adds resonance and filter envelope, **Attack** and **Release** lengthen the envelopes, **Movement** brings in an LFO, and so on. Every synth has 8, and on a synth track they are its eight **SOUND knobs**: in the drum machine's encoders, the Inspector, the editor's Basic view and on a controller. Lock them per step (select steps, then turn a SOUND knob) to change the sound from note to note, or map them to MIDI.
+
+Every synth starts with macros that suit it, resting where they leave its sound as it is. In **Advanced → Macros**, rename them and choose what they move: up to 4 **targets** each, with the value at 0 (**At 0**) and at 1 (**At 1**). Frequencies and times move evenly in octaves. A new target starts around the value you hear now, so adding it doesn't change the sound; and when you turn a knob that a macro moves, the macro's range follows, so the knob still works. The track keeps where its macros are; **Save to library** saves that too.
+
+Projects from before the macros keep their sound: moved SOUND knobs on synth tracks (envelope, glide, detune and the filter) were turned into edits of the track's synth when the project was first opened.
 
 ## Entering notes
 

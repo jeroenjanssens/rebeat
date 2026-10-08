@@ -24,3 +24,24 @@ export async function waitForProject(page: Page) {
     return !!r?.store.getState().projectId;
   });
 }
+
+/** A fake MIDI keyboard. */
+export async function midiKeyboard(page: Page) {
+  await page.addInitScript(() => {
+    const input = {
+      id: "kb",
+      name: "Test Keys",
+      onmidimessage: null as null | ((e: { data: Uint8Array }) => void),
+    };
+    const access = { inputs: new Map([["kb", input]]), outputs: new Map(), onstatechange: null };
+    Object.defineProperty(navigator, "requestMIDIAccess", { value: async () => access });
+    Object.assign(window, {
+      __midi: (d: number[]) => input.onmidimessage?.({ data: new Uint8Array(d) }),
+    });
+  });
+  await openApp(page);
+  await page.getByTestId("open-settings").click();
+  await page.getByRole("button", { name: "MIDI", exact: true }).click();
+  await page.getByRole("button", { name: "Enable MIDI" }).click();
+  await page.keyboard.press("Escape");
+}

@@ -19,6 +19,8 @@ import { useSamplesVersion } from "../../components/useSamplesVersion";
 import { editSteps, selectedIndices } from "../../state/actions";
 import { stepKey, useEditPattern, useSelectedTrack, useStore, type Bank } from "../../state/store";
 import type { SizeClass } from "./layout";
+import { effectivePatch, isSynthTrack, soundDefs, soundHint } from "../../library/synthTrack";
+import { applyMacros } from "../../model/synth";
 
 const BANKS: { id: Bank; label: string }[] = [
   { id: "sound", label: "Sound" },
@@ -71,13 +73,13 @@ function useEncoderSlots(track: Track): { slots: Slot[]; note?: string; locking?
     return {
       note: `Locks on ${lockIndices.length} step${lockIndices.length > 1 ? "s" : ""} (Alt+click a knob to clear it)`,
       locking: true,
-      slots: SOUND_PARAMS[track.kind].map((def) => {
+      slots: soundDefs(track, SOUND_PARAMS[track.kind]).map((def) => {
         const key = `sound.${def.id}`;
         return {
           def,
           value: first.locks?.[key] ?? track.params[key] ?? def.default,
           locked: first.locks?.[key] !== undefined,
-          hint: `param.sound.${def.id}`,
+          hint: soundHint(def.id),
           onChange: (v: number) =>
             editSteps(
               lockIndices.map((i) => stepKey(track.id, i)),
@@ -100,7 +102,7 @@ function useEncoderSlots(track: Track): { slots: Slot[]; note?: string; locking?
   }
 
   if (bank === "sound" || bank === "mix") {
-    const defs = bank === "sound" ? SOUND_PARAMS[track.kind] : MIX_PARAMS;
+    const defs = bank === "sound" ? soundDefs(track, SOUND_PARAMS[track.kind]) : MIX_PARAMS;
     return {
       slots: defs.map((def) => {
         const key = `${bank}.${def.id}`;
@@ -115,7 +117,7 @@ function useEncoderSlots(track: Track): { slots: Slot[]; note?: string; locking?
         return {
           def,
           value: track.params[key] ?? def.default,
-          hint: `param.${bank}.${def.id}`,
+          hint: bank === "sound" ? soundHint(def.id) : `param.${bank}.${def.id}`,
           onChange: (v) => setTrack((t) => (t.params[key] = v), `enc-${track.id}-${key}`),
           midiTarget: `track:${track.id}:${key}`,
         };
@@ -189,11 +191,15 @@ function Display({ track, width }: { track: Track; width: number }) {
       ctx.strokeStyle = track.color;
       ctx.fillStyle = track.color;
       if (track.kind === "instrument") {
-        // envelope shape from the sound parameters
-        const a = track.params["sound.attack"] ?? 0.05;
-        const d = track.params["sound.decay"] ?? 0.4;
-        const s = track.params["sound.sustain"] ?? 0.7;
-        const r = track.params["sound.release"] ?? 0.35;
+        // envelope shape from the sound parameters (a synth's: its amp envelope)
+        const env = isSynthTrack(track) ? applyMacros(effectivePatch(track)).envs[0] : null;
+        const knob = (s: number) => Math.log(s * 1000) / Math.log(4000);
+        const a = env ? knob(env.attack) : (track.params["sound.attack"] ?? 0.05);
+        const d = env ? knob(env.decay) : (track.params["sound.decay"] ?? 0.4);
+        const s = env ? env.sustain : (track.params["sound.sustain"] ?? 0.7);
+        const r = env
+          ? Math.log(env.release * 1000) / Math.log(8000)
+          : (track.params["sound.release"] ?? 0.35);
         const seg = w / 4;
         ctx.lineWidth = 1.5;
         ctx.beginPath();
@@ -214,7 +220,7 @@ function Display({ track, width }: { track: Track; width: number }) {
       ctx.fillStyle = token("text-faint");
       ctx.fillRect(0, h / 2, w, 0.5);
     },
-    [track.color, track.sampleId, track.kind, track.params, samples],
+    [track.color, track.sampleId, track.kind, track.params, track.instrument, samples],
   );
 
   return (

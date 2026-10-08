@@ -2,8 +2,8 @@
  * The synth editor's knobs (D81, D83), one table: where the value lives in a patch, its range and
  * curve, how it reads, and what it does (also the explain-mode text).
  */
-import type { ParamDef } from "../../model/params";
-import { MOD_DESTS, type ModDest, type SynthPatch } from "../../model/synth";
+import type { ParamDef } from "./params";
+import { MOD_DESTS, type ModDest, type SynthPatch } from "./synth";
 
 export interface PatchParam {
   /** "osc.0.level", "filters.1.cutoff", "voice.glide" */
@@ -309,13 +309,14 @@ const lfo = (i: number): PatchParam[] => {
   ];
 };
 
-export const SECTIONS: { id: string; title: string; params: PatchParam[] }[] = [
-  { id: "osc0", title: "Oscillator 1", params: osc(0) },
-  { id: "osc1", title: "Oscillator 2", params: osc(1) },
-  { id: "osc2", title: "Oscillator 3", params: osc(2) },
+export const SECTIONS: { id: string; title: string; short: string; params: PatchParam[] }[] = [
+  { id: "osc0", title: "Oscillator 1", short: "Osc 1", params: osc(0) },
+  { id: "osc1", title: "Oscillator 2", short: "Osc 2", params: osc(1) },
+  { id: "osc2", title: "Oscillator 3", short: "Osc 3", params: osc(2) },
   {
     id: "extra",
     title: "Sub · noise · ring · FM",
+    short: "",
     params: [
       {
         path: "sub.level",
@@ -352,17 +353,18 @@ export const SECTIONS: { id: string; title: string; params: PatchParam[] }[] = [
       },
     ],
   },
-  { id: "filter0", title: "Filter 1", params: filter(0) },
-  { id: "filter1", title: "Filter 2", params: filter(1) },
-  { id: "env0", title: "Amp envelope", params: env(0) },
-  { id: "env1", title: "Filter envelope", params: env(1) },
-  { id: "env2", title: "Mod envelope", params: env(2) },
-  { id: "lfo0", title: "LFO 1", params: lfo(0) },
-  { id: "lfo1", title: "LFO 2", params: lfo(1) },
-  { id: "lfo2", title: "LFO 3", params: lfo(2) },
+  { id: "filter0", title: "Filter 1", short: "Filter 1", params: filter(0) },
+  { id: "filter1", title: "Filter 2", short: "Filter 2", params: filter(1) },
+  { id: "env0", title: "Amp envelope", short: "Amp env", params: env(0) },
+  { id: "env1", title: "Filter envelope", short: "Filter env", params: env(1) },
+  { id: "env2", title: "Mod envelope", short: "Mod env", params: env(2) },
+  { id: "lfo0", title: "LFO 1", short: "LFO 1", params: lfo(0) },
+  { id: "lfo1", title: "LFO 2", short: "LFO 2", params: lfo(1) },
+  { id: "lfo2", title: "LFO 3", short: "LFO 3", params: lfo(2) },
   {
     id: "voice",
     title: "Voice",
+    short: "Voice",
     params: [
       {
         path: "voice.voices",
@@ -414,6 +416,7 @@ export const SECTIONS: { id: string; title: string; params: PatchParam[] }[] = [
   {
     id: "output",
     title: "Output",
+    short: "Output",
     params: [
       {
         path: "output.drive",
@@ -453,6 +456,17 @@ export const SECTIONS: { id: string; title: string; params: PatchParam[] }[] = [
 ];
 
 export const ALL_PARAMS = SECTIONS.flatMap((s) => s.params);
+
+const BY_PATH = new Map(ALL_PARAMS.map((d) => [d.path, d]));
+/** The knob of a patch path ("filters.0.cutoff"). */
+export const paramOf = (path: string) => BY_PATH.get(path);
+
+/** "Filter 1 · Cutoff": a knob's name with its section (short), for pickers and MIDI learn. */
+export const paramName = (path: string) => {
+  const s = SECTIONS.find((x) => x.params.some((d) => d.path === path));
+  if (!s) return path;
+  return s.short ? `${s.short} · ${paramOf(path)!.label}` : paramOf(path)!.label;
+};
 
 export function getPath(p: SynthPatch, path: string): number {
   return path
@@ -543,7 +557,10 @@ export function modRanges(p: SynthPatch): Map<string, { lo: number; hi: number; 
     if (!s.source || !s.dest || s.amount === 0) continue;
     const knob = KNOB_OF_DEST[s.dest];
     if (!knob) continue;
-    const a = s.amount * MOD_DESTS[s.dest].range;
+    // a macro as "via" scales the slot by where the macro is
+    const via = s.via?.startsWith("macro") ? (p.macros[Number(s.via.slice(5)) - 1]?.value ?? 0) : 1;
+    const a = s.amount * MOD_DESTS[s.dest].range * via;
+    if (a === 0) continue;
     const unipolar =
       UNIPOLAR.has(s.source) ||
       s.source.startsWith("macro") ||

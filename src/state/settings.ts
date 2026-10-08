@@ -58,6 +58,8 @@ export interface Settings {
   sampleSources: string[];
   /** Favorite instruments (catalog ids), D78. */
   instrumentFavorites: string[];
+  /** The synth editor's view: Basic (the macros) first, then the one you used last. */
+  synthView: "basic" | "advanced";
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -84,6 +86,7 @@ export const DEFAULT_SETTINGS: Settings = {
   explain: false,
   sampleSources: [],
   instrumentFavorites: [],
+  synthView: "basic",
 };
 
 interface SettingsState extends Settings {

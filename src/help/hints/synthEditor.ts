@@ -1,4 +1,4 @@
-import { ALL_PARAMS } from "../../panels/synth-editor/patchParams";
+import { ALL_PARAMS } from "../../model/patchParams";
 import type { Hints } from "./types";
 
 const guide = "instruments-the-synth-editor";
@@ -13,7 +13,7 @@ const knobs: Hints = Object.fromEntries(
     {
       title: d.label,
       text: d.help,
-      keys: "Drag or scroll · Shift = fine · Double-click: the factory value",
+      keys: "Drag or scroll · Shift = fine · Double-click: the factory value · Right-click: MIDI learn",
       guide,
     },
   ]),
@@ -150,6 +150,29 @@ const hints: Hints = {
     "Voice stealing",
     "When all voices are busy, a new note takes the oldest one or the quietest one.",
   ),
+  "synth.view": hint(
+    "Basic or Advanced",
+    "Basic shows the 8 macros: a few knobs that each move several settings, so you shape the sound quickly. Advanced shows everything: oscillators, filters, envelopes, LFOs, the mod matrix and what the macros do. The editor remembers which one you used last.",
+  ),
+  "synth.scope": hint(
+    "Scope",
+    "The synth's output as you play it, on the keyboard below or in the song.",
+  ),
+  "synth.macro.name": hint(
+    "Macro name",
+    "What the macro is called: the name on the track's SOUND knob, in the drum machine and the Inspector.",
+  ),
+  "synth.macro.target": hint("Macro target", "A setting the macro moves. Pick another one here."),
+  "synth.macro.add": hint(
+    "Add a target",
+    "Let the macro move another setting (up to 4). Its range starts around the value you hear now, so adding it doesn't change the sound.",
+  ),
+  "synth.macro.min": hint("Macro at 0", "The target's value with the macro all the way down."),
+  "synth.macro.max": hint(
+    "Macro at 1",
+    "The target's value with the macro all the way up. Set it below “At 0” to move the other way.",
+  ),
+  "synth.macro.remove": hint("Remove target", "The macro stops moving this setting."),
 };
 
 export default hints;

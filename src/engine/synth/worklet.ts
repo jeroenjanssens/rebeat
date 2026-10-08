@@ -12,7 +12,8 @@ export type SynthMessage =
   | { type: "off"; id: number; at: number }
   | { type: "releaseAll"; at: number }
   | { type: "control"; name: keyof Controls; value: number }
-  | { type: "monitor"; on: boolean };
+  | { type: "monitor"; on: boolean }
+  | { type: "macros"; id: number; values: number[] | null; at: number };
 
 /** What the worklet sends back: the newest voice's modulation, about 30 times a second. */
 export type SynthReport = { type: "mod"; values: number[] | null };
@@ -43,6 +44,8 @@ class SynthProcessor extends AudioWorkletProcessor {
       case "control":
         this.core.controls[m.name] = m.value;
         return;
+      case "macros":
+        return this.core.lockMacros(m.id, m.values, frame(m.at));
       case "monitor":
         this.monitor = m.on;
     }

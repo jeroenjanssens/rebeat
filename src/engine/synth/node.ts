@@ -27,6 +27,8 @@ export interface WorkletSynth {
   releaseAll(time: number): void;
   setPatch(patch: SynthPatch, bpm: number): void;
   control(name: keyof Controls, value: number): void;
+  /** A step's macro lock: the macros at `values` from `time` until `end`. */
+  lockMacros(values: number[], time: number, end: number): void;
   /** Ask for (or stop) modulation reports, and read the latest. */
   monitor(on: boolean): void;
   modulation(): number[] | null;
@@ -82,6 +84,11 @@ export function workletSynth(dest: Tone.Gain | { input: AudioNode }): WorkletSyn
     control(name, value) {
       controls[name] = value;
       send({ type: "control", name, value });
+    },
+    lockMacros(values, time, end) {
+      const id = next++;
+      send({ type: "macros", id, values, at: time });
+      send({ type: "macros", id, values: null, at: end });
     },
     monitor(on) {
       if (!on) mod = null;
