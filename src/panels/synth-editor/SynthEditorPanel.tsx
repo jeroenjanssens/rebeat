@@ -1,5 +1,19 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, ChevronRight, RotateCcw, Save } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  ClipboardPaste,
+  Copy,
+  Dices,
+  MoreHorizontal,
+  RotateCcw,
+  Save,
+} from "lucide-react";
+import { create } from "zustand";
+import { dropdown } from "../../components/Menu";
+import { RANDOM_GROUPS, randomizePatch } from "../../model/randomize";
+import { SYNTH_EXT, exportSynth, importSynth } from "../../library/rbsynth";
+import { platform } from "../../platform";
 import { Encoder } from "../../components/Encoder";
 import { Keyboard } from "../../components/Keyboard";
 import { toast } from "../../components/Toast";
@@ -9,6 +23,7 @@ import { Scope } from "../../components/Scope";
 import {
   editPatch,
   macroKey,
+  resetMacros,
   macroValues,
   setSynthParam,
   soundHint,
@@ -33,7 +48,18 @@ import {
 } from "../../model/synth";
 import type { Track } from "../../model/types";
 import { useSelectedTrack, useStore } from "../../state/store";
-import { setInstrument, soundLabel } from "../../state/trackActions";
+import { playInstrumentOn, setInstrument, soundLabel } from "../../state/trackActions";
+
+type ClipKind = "osc" | "filter" | "env" | "lfo";
+/** A copied block (oscillator, filter, envelope, LFO), to paste on another of its kind. */
+const useClip = create<{
+  clip: { kind: ClipKind; from: string; data: Record<string, unknown> } | null;
+}>(() => ({ clip: null }));
+
+/** A/B compare: per track, which side is playing and the other side's patch (this session). */
+const useAB = create<{ ab: Record<string, { side: "A" | "B"; other: SynthPatch }> }>(() => ({
+  ab: {},
+}));
 import {
   KNOB_OF_DEST,
   SECTIONS,
@@ -131,6 +157,70 @@ function Editor({ track }: { track: Track }) {
   // values that macros move keep the macros' place (setThroughMacros)
   const set = (path: string, v: unknown) =>
     onTrack((t) => setSynthParam(t, path, v), `syn-${track.id}-${path}`);
+  /** Paste a copied block's settings at `prefix` ("osc.1"); macros keep their place. */
+  const paste =
+    (prefix: string, skip: string[] = []) =>
+    (data: Record<string, unknown>) =>
+      onTrack((t) => {
+        for (const [k, v] of Object.entries(data))
+          if (!skip.includes(k)) setSynthParam(t, `${prefix}.${k}`, v);
+      }, `paste-${prefix}-${performance.now()}`);
+
+  // A/B: the other side waits here; B starts as a copy of A
+  const ab = useAB((s) => s.ab[track.id]);
+  const side = ab?.side ?? "A";
+  const pickSide = (to: "A" | "B") => {
+    if (to === side) return;
+    const current = JSON.parse(JSON.stringify(patch)) as SynthPatch;
+    const next = JSON.parse(JSON.stringify(ab?.other ?? patch)) as SynthPatch;
+    onTrack((t) => editPatch(t, (p) => Object.assign(p, next)));
+    useAB.setState((s) => ({ ab: { ...s.ab, [track.id]: { side: to, other: current } } }));
+  };
+  const name = src.name ?? factory?.name ?? "Synth";
+  const more = (el: HTMLElement) =>
+    dropdown(el, [
+      {
+        label: "Init patch",
+        onSelect: () =>
+          onTrack((t) => {
+            editPatch(t, (p) => Object.assign(p, JSON.parse(JSON.stringify(INIT_PATCH))));
+            resetMacros(t);
+          }),
+      },
+      {
+        render: (close) => (
+          <RandomizeMenu
+            onRandomize={(amount, locked) => {
+              onTrack((t) =>
+                editPatch(t, (p) =>
+                  Object.assign(p, randomizePatch(p, amount, locked, macroValues(t, p))),
+                ),
+              );
+              close();
+            }}
+          />
+        ),
+      },
+      { separator: true },
+      {
+        label: `Export ${SYNTH_EXT}…`,
+        onSelect: () => void exportSynth(track, name),
+      },
+      {
+        label: `Import ${SYNTH_EXT}…`,
+        onSelect: async () => {
+          const [f] = await platform.files.open({ accept: [SYNTH_EXT] });
+          if (!f) return;
+          try {
+            const entry = await importSynth(f);
+            playInstrumentOn(track.id, entry);
+            toast(`Imported “${entry.name}” into Your instruments`);
+          } catch (e) {
+            toast(`Couldn't read ${f.name}: ${e instanceof Error ? e.message : e}`, "error");
+          }
+        },
+      },
+    ]);
   const setMacro = (i: number, v: number) =>
     onTrack((t) => void (t.params[macroKey(i)] = v), `syn-${track.id}-macro${i}`);
 
@@ -217,6 +307,7 @@ function Editor({ track }: { track: Track }) {
         on={o.on}
         onToggle={(v) => set(`osc.${i}.on`, v)}
         hint="synth.osc.on"
+        clip={{ kind: "osc", data: o, paste: paste(`osc.${i}`, i === 0 ? ["sync"] : []) }}
       >
         <div className="flex flex-wrap gap-1.5">
           {toggle(
@@ -244,6 +335,7 @@ function Editor({ track }: { track: Track }) {
         on={f.on}
         onToggle={(v) => set(`filters.${i}.on`, v)}
         hint="synth.filter.on"
+        clip={{ kind: "filter", data: f, paste: paste(`filters.${i}`) }}
       >
         <div className="flex flex-wrap gap-1.5">
           {choice(
@@ -286,7 +378,7 @@ function Editor({ track }: { track: Track }) {
   const envBox = (i: 0 | 1 | 2, title: string) => {
     const e = shown.envs[i];
     return (
-      <Box key={`e${i}`} title={title}>
+      <Box key={`e${i}`} title={title} clip={{ kind: "env", data: e, paste: paste(`envs.${i}`) }}>
         <EnvelopeView
           env={e}
           color={track.color}
@@ -308,7 +400,11 @@ function Editor({ track }: { track: Track }) {
   const lfoBox = (i: 0 | 1 | 2) => {
     const l = shown.lfos[i];
     return (
-      <Box key={`l${i}`} title={`LFO ${i + 1}`}>
+      <Box
+        key={`l${i}`}
+        title={`LFO ${i + 1}`}
+        clip={{ kind: "lfo", data: l, paste: paste(`lfos.${i}`) }}
+      >
         <div className="flex flex-wrap gap-1.5">
           <select
             className="input !h-6"
@@ -394,6 +490,22 @@ function Editor({ track }: { track: Track }) {
         </select>
         {edited && !src.from && <span className="text-[10.5px] text-lit">edited</span>}
         <span className="flex-1" />
+        <div className="segmented" data-hint="synth.ab" data-testid="synth-ab">
+          {(["A", "B"] as const).map((s) => (
+            <button key={s} data-active={side === s} onClick={() => pickSide(s)}>
+              {s}
+            </button>
+          ))}
+        </div>
+        <button
+          className="tool-btn"
+          title="Init, randomize, export, import"
+          data-hint="synth.more"
+          data-testid="synth-more"
+          onClick={(e) => more(e.currentTarget)}
+        >
+          <MoreHorizontal size={14} />
+        </button>
         <div className="segmented" data-hint="synth.view" data-testid="synth-view">
           {(
             [
@@ -690,6 +802,60 @@ function Wheels({ track }: { track: Track }) {
         "synth.wheel.mod",
         "mod-wheel",
       )}
+    </div>
+  );
+}
+
+/** Randomize: how far, and which sections stay as they are (remembered). */
+function RandomizeMenu({
+  onRandomize,
+}: {
+  onRandomize: (amount: number, locked: string[]) => void;
+}) {
+  const { amount, locked } = useSettings((s) => s.synthRandom);
+  const set = (next: Partial<{ amount: number; locked: string[] }>) =>
+    useSettings.getState().set({ synthRandom: { amount, locked, ...next } });
+  return (
+    <div className="flex w-[220px] flex-col gap-2 px-2 py-1.5" data-testid="randomize">
+      <div className="flex items-center gap-2 text-[11px]" data-hint="synth.random.amount">
+        <span className="text-dim">Amount</span>
+        <input
+          type="range"
+          min={0.05}
+          max={1}
+          step={0.05}
+          value={amount}
+          onChange={(e) => set({ amount: Number(e.target.value) })}
+          className="flex-1"
+          aria-label="Randomize amount"
+        />
+        <span className="num w-8 text-right">{Math.round(amount * 100)}%</span>
+      </div>
+      <div className="flex flex-wrap gap-1" data-hint="synth.random.lock">
+        {RANDOM_GROUPS.map((g) => {
+          const on = !locked.includes(g.id);
+          return (
+            <button
+              key={g.id}
+              className="tool-btn !h-6 border border-line !text-[10.5px]"
+              data-active={on}
+              aria-pressed={on}
+              onClick={() =>
+                set({ locked: on ? [...locked, g.id] : locked.filter((x) => x !== g.id) })
+              }
+            >
+              {g.label}
+            </button>
+          );
+        })}
+      </div>
+      <button
+        className="hw-btn !min-h-[26px]"
+        onClick={() => onRandomize(amount, locked)}
+        data-hint="synth.random.go"
+      >
+        <Dices size={13} /> Randomize
+      </button>
     </div>
   );
 }
@@ -1043,6 +1209,7 @@ function Box({
   onToggle,
   hint,
   wide,
+  clip,
 }: {
   title: string;
   children: React.ReactNode;
@@ -1050,8 +1217,11 @@ function Box({
   onToggle?: (v: boolean) => void;
   hint?: string;
   wide?: boolean;
+  /** Copy this block's settings, or paste another block's of the same kind. */
+  clip?: { kind: ClipKind; data: object; paste: (data: Record<string, unknown>) => void };
 }) {
   const [open, setOpen] = useState(true);
+  const copied = useClip((s) => s.clip);
   return (
     <section
       className={`flex flex-col gap-2 rounded-md border border-line bg-surface/50 p-2 ${wide ? "col-span-full" : ""}`}
@@ -1068,6 +1238,37 @@ function Box({
           {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
         </button>
         <span className="label flex-1">{title}</span>
+        {clip && (
+          <>
+            <button
+              className="tool-btn !h-5 !px-1 text-faint"
+              title={`Copy ${title}`}
+              data-hint="synth.copy"
+              onClick={() => {
+                useClip.setState({
+                  clip: {
+                    kind: clip.kind,
+                    from: title,
+                    data: JSON.parse(JSON.stringify(clip.data)),
+                  },
+                });
+                toast(`Copied ${title}`);
+              }}
+            >
+              <Copy size={11} />
+            </button>
+            {copied?.kind === clip.kind && copied.from !== title && (
+              <button
+                className="tool-btn !h-5 !px-1 text-faint"
+                title={`Paste ${copied.from} here`}
+                data-hint="synth.paste"
+                onClick={() => clip.paste(copied.data)}
+              >
+                <ClipboardPaste size={11} />
+              </button>
+            )}
+          </>
+        )}
         {onToggle && (
           <button
             className="tool-btn !h-5 border border-line !px-1.5 !text-[10px]"

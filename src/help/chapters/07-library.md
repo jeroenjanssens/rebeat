@@ -56,6 +56,7 @@ The library also holds everything an **instrument track** can play, under **Inst
 - **Pianos & keys**, **General MIDI** (all 128 GM sounds), **Mallets**, **Orchestral** (the Versilian Community Sample Library) and **Double bass**: sampled instruments. They download the first time you play one (a small cloud shows the ones that haven't been yet) and are kept after that. Right-click → **Make available offline** downloads one right away. The line at the top shows where the samples come from and their license.
 - **Your instruments**: synths and sounds you save, and instruments you bring:
   - **SoundFonts**: import a `.sf2` file like a sample (the import button, or drop it on the library). Each instrument inside it becomes one of your instruments.
+  - **Synth files**: a `.rbsynth` file (exported from the [synth editor](#instruments-the-synth-editor)) imports the same way, as one of your instruments, with its macros and effects.
   - **Multi-sample instruments**: right-click a sample → **Make instrument from "folder"** turns the samples of its folder into one instrument, each at the note in its file name ("Piano C4.wav"); without notes in the names, they're laid out a semitone apart from C3. Every note plays from the nearest sample.
   - **Pitched sounds in a strudel.json** (a sound that maps notes to files) show as instruments in Online kits: **Add instrument** downloads them as a multi-sample instrument.
 

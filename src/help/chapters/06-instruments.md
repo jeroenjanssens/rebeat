@@ -45,6 +45,13 @@ Knobs that the mod matrix moves show an inner **ring**: how far the modulation c
 
 Right-click any knob → **MIDI learn** to turn it from a controller.
 
+To try things out:
+
+- **A / B** (top right) keeps two versions of the sound: B starts as a copy of A; switch to B, change things, and flip between them to compare. The track plays the side you leave it on.
+- **⋯ → Init patch** starts from a plain saw; **⋯ → Randomize** moves every knob a random distance (**Amount**), in the sections you leave on (the output level and tuning never change). Undo takes it back.
+- The **copy** button on an oscillator, filter, envelope or LFO copies its settings; **paste** appears on the others of its kind.
+- **⋯ → Export .rbsynth…** saves the synth (with its macros and effects) as a file to share; **⋯ → Import .rbsynth…** adds one to Your instruments and puts it on the track. Dropping a `.rbsynth` file on the library imports it too.
+
 Editing a factory synth edits a copy on the track; the factory synth itself never changes (the revert button brings it back). **Save to library** stores the synth with the track's SOUND knobs and effects under **Your instruments** in the library; drop it on any track, in any project. Right-click any instrument track → **Save sound** does the same for samplers and sampled instruments.
 
 ### Macros

@@ -62,6 +62,8 @@ export interface Settings {
   synthView: "basic" | "advanced";
   /** The synth editor's folded sections (Advanced). */
   synthFolded: string[];
+  /** Randomize: how far, and the sections it leaves alone. */
+  synthRandom: { amount: number; locked: string[] };
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -90,6 +92,7 @@ export const DEFAULT_SETTINGS: Settings = {
   instrumentFavorites: [],
   synthView: "basic",
   synthFolded: [],
+  synthRandom: { amount: 0.3, locked: [] },
 };
 
 interface SettingsState extends Settings {

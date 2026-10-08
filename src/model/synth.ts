@@ -86,7 +86,16 @@ export function envCurve(x: number, c: number) {
   return (Math.exp(k * x) - 1) / (Math.exp(k) - 1);
 }
 
-export type LfoShape = "sine" | "triangle" | "rampUp" | "rampDown" | "square" | "sh" | "smooth";
+export const LFO_SHAPES = [
+  "sine",
+  "triangle",
+  "rampUp",
+  "rampDown",
+  "square",
+  "sh",
+  "smooth",
+] as const;
+export type LfoShape = (typeof LFO_SHAPES)[number];
 
 export interface Lfo {
   shape: LfoShape;

@@ -185,6 +185,31 @@ const hints: Hints = {
     "The target's value with the macro all the way up. Set it below “At 0” to move the other way.",
   ),
   "synth.macro.remove": hint("Remove target", "The macro stops moving this setting."),
+  "synth.ab": hint(
+    "A/B compare",
+    "Two versions of the sound to switch between while you shape it. B starts as a copy of A: switch to B, change things, then flip back and forth to hear which you like. The track keeps the side you leave it on.",
+  ),
+  "synth.more": hint(
+    "More",
+    "Init patch (a plain saw to start from scratch), Randomize (with how far and which sections), and export or import the synth as a .rbsynth file to share it.",
+  ),
+  "synth.copy": hint(
+    "Copy",
+    "Copy this block's settings, to paste them on another oscillator, filter, envelope or LFO.",
+  ),
+  "synth.paste": hint("Paste", "Give this block the settings you copied from another one."),
+  "synth.random.amount": hint(
+    "Randomize amount",
+    "How far each knob may move from where it is: a little for variations, all the way for a new sound.",
+  ),
+  "synth.random.lock": hint(
+    "Sections to randomize",
+    "Turn a section off to keep it as it is. The output level and tuning never change.",
+  ),
+  "synth.random.go": hint(
+    "Randomize",
+    "Throw the dice. Undo (Ctrl/Cmd+Z) if you don't like it, or use A/B to keep the old sound at hand.",
+  ),
 };
 
 export default hints;
