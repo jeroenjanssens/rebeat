@@ -61,12 +61,12 @@ test("Basic shows the macros, which are the synth track's SOUND knobs", async ({
   });
   // the drum machine's SOUND bank: the macros
   await dm(page).getByRole("button", { name: "Sound", exact: true }).click();
-  await expect(dm(page).getByText("Brightness", { exact: true })).toBeVisible();
+  await expect(dm(page).getByText("Cutoff", { exact: true })).toBeVisible();
   await expect(dm(page).getByText("Attack", { exact: true })).toBeVisible();
   const editor = await openEditor(page);
   const macros = editor.getByTestId("synth-macros");
   await expect(macros.locator("svg")).toHaveCount(8);
-  await expect(macros.getByText("Brightness")).toBeVisible();
+  await expect(macros.getByText("Cutoff")).toBeVisible();
   await expect(macros.getByText("Movement")).toBeVisible();
   expect((await bass(page)).params["sound.macro1"]).toBeUndefined();
   // where the factory synth rests it
@@ -76,7 +76,7 @@ test("Basic shows the macros, which are the synth track's SOUND knobs", async ({
         window as never as { __rebeat: { synths: { id: string; patch: Patch }[] } }
       ).__rebeat.synths.find((s) => s.id === "acid")!.patch.macros[0].value,
   );
-  await macros.getByText("Brightness").locator("..").locator("svg").hover();
+  await macros.getByText("Cutoff").locator("..").locator("svg").hover();
   await page.mouse.wheel(0, -200);
   await expect
     .poll(async () => (await bass(page)).params["sound.macro1"])
@@ -111,7 +111,7 @@ test("macro locks on steps reach the synth as the song plays", async ({ page }) 
   await expect.poll(() => on(index)).toBe(true);
   await pad.click({ modifiers: ["Alt"] });
   await dm(page).getByRole("button", { name: "Sound", exact: true }).click();
-  await dm(page).getByText("Brightness", { exact: true }).locator("..").locator("svg").hover();
+  await dm(page).getByText("Cutoff", { exact: true }).locator("..").locator("svg").hover();
   await page.mouse.wheel(0, 300);
   const lock = await page.evaluate((i) => {
     const s = (window as never as W).__rebeat.store.getState();

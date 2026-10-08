@@ -455,7 +455,10 @@ export function autoMacros(p: SynthPatch): { macros: Macro[]; movement: ModSlot 
     ),
     macro(
       "Character",
-      oscs.map((i): RangeSpec => [`osc.${i}.shape`, 0, 3, 3]),
+      // the oscillators' shapes, or (nothing but noise) how much noise
+      oscs.length
+        ? oscs.map((i): RangeSpec => [`osc.${i}.shape`, 0, 3, 3])
+        : [["noise.level", 0, 1, 1]],
     ),
     macro("Thickness", [
       ["sub.level", 0, 1, 1, 0.3],
@@ -530,7 +533,8 @@ export type PatchSpec = {
   envs?: [Partial<Env>?, Partial<Env>?, Partial<Env>?];
   lfos?: [Partial<Lfo>?, Partial<Lfo>?, Partial<Lfo>?];
   matrix?: Partial<ModSlot>[];
-  macros?: (Partial<Macro> & { name: string })[];
+  /** By index; undefined keeps the default (autoMacros). */
+  macros?: ((Partial<Macro> & { name: string }) | undefined)[];
   voice?: Partial<SynthPatch["voice"]>;
   output?: Partial<SynthPatch["output"]>;
 };
