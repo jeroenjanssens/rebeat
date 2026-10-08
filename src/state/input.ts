@@ -6,7 +6,7 @@ import { position } from "../engine/transport";
 import { audioContext } from "../engine/context";
 import { chordInKey, snapToKey } from "../model/notes";
 import { pageKey, slotPattern } from "../model/project";
-import { STEP_SIZE_QUARTERS, type Step, type Track } from "../model/types";
+import { STEP_SIZE_QUARTERS, setStepVelocity, type Step, type Track } from "../model/types";
 import { laneLen } from "./actions";
 import { useStore } from "./store";
 
@@ -161,7 +161,7 @@ export function velocityDigit(d: number) {
       for (const k of keys) {
         const [t, i] = k.split(":");
         const lane = pattern.lanes[t];
-        if (lane?.kind === "steps") lane.steps[Number(i)].velocity = v;
+        if (lane?.kind === "steps") setStepVelocity(lane.steps[Number(i)], v);
       }
     }, "vel-digit");
     return;
@@ -173,7 +173,7 @@ export function velocityDigit(d: number) {
       c.index,
       (st) => {
         st.on = true;
-        st.velocity = v;
+        setStepVelocity(st, v);
       },
       "vel-digit",
     );

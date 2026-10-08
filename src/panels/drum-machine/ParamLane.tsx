@@ -1,5 +1,13 @@
 import { useRef } from "react";
-import { emptyStep, type Step, type StepLane, type Track } from "../../model/types";
+import type { Draft } from "immer";
+import {
+  emptyStep,
+  setStepVelocity,
+  stepVelocity,
+  type Step,
+  type StepLane,
+  type Track,
+} from "../../model/types";
 import { editSteps } from "../../state/actions";
 import { stepKey } from "../../state/store";
 import type { Geometry } from "./layout";
@@ -10,7 +18,14 @@ const LABEL: Record<Field, string> = { velocity: "Velocity", probability: "Prob"
 
 const DEFAULTS = emptyStep();
 
-const read = (s: Step, f: Field) => (f === "nudge" ? s.nudge + 0.5 : s[f]);
+const read = (s: Step, f: Field) =>
+  f === "nudge" ? s.nudge + 0.5 : f === "velocity" ? stepVelocity(s) : s[f];
+
+/** Set a lane's value (on instrument tracks, velocity is the notes'). */
+function write(s: Draft<Step>, f: Field, v: number) {
+  if (f === "velocity") setStepVelocity(s, v);
+  else s[f] = v;
+}
 
 /** A lane of bars under the selected track for editing one step parameter by drawing. */
 export function ParamLane({
@@ -43,7 +58,7 @@ export function ParamLane({
       [stepKey(track.id, i)],
       (s) => {
         if (field === "nudge") s.nudge = Math.round((v - 0.5) * 20) / 20;
-        else s[field] = field === "probability" ? Math.round(v * 20) / 20 : v;
+        else write(s, field, field === "probability" ? Math.round(v * 20) / 20 : v);
       },
       drawing.current!,
     );
@@ -86,7 +101,7 @@ export function ParamLane({
             : [Number(el!.dataset.laneI)];
           editSteps(
             indices.map((i) => stepKey(track.id, i)),
-            (s) => void (s[field] = DEFAULTS[field]),
+            (s) => write(s, field, DEFAULTS[field]),
             lastKey.current,
           );
         }}

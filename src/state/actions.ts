@@ -13,7 +13,7 @@ import {
   slotPattern,
   type Project,
 } from "../model/project";
-import { emptyStep, type Step, type StepLane } from "../model/types";
+import { emptyStep, setStepVelocity, type Step, type StepLane } from "../model/types";
 import { stepKey, useStore, type FnKey } from "./store";
 
 const get = () => useStore.getState();
@@ -63,7 +63,7 @@ export function setStep(trackId: string, index: number, on: boolean, key = "pain
     if (s.on === on) return;
     s.on = on;
     if (on && accent) {
-      s.velocity = 1;
+      setStepVelocity(s, 1);
       s.accent = true;
     }
   }, key);

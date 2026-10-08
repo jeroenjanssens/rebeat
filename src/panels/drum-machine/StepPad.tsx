@@ -1,6 +1,6 @@
 import { memo, type CSSProperties } from "react";
 import { notesLabel, stepPitches } from "../../model/notes";
-import type { Step } from "../../model/types";
+import { stepVelocity, type Step } from "../../model/types";
 
 interface Props {
   trackId: string;
@@ -51,7 +51,7 @@ export const StepPad = memo(function StepPad({
       data-hint="dm.step.pad"
       data-track={trackId}
       data-i={index}
-      style={{ "--c": color, "--v": step.accent ? 1 : step.velocity } as CSSProperties}
+      style={{ "--c": color, "--v": step.accent ? 1 : stepVelocity(step) } as CSSProperties}
     >
       {(on || (tie && !on)) && (
         <span className="fill" style={{ height: on ? `${step.probability * 100}%` : "100%" }} />
@@ -77,7 +77,7 @@ export const StepPad = memo(function StepPad({
       )}
       {on && step.notes?.some((n) => n.slide) && <span className="slide">╱</span>}
       {on && velBar && !instrument && (
-        <span className="velbar" style={{ width: `calc((100% - 6px) * ${step.velocity})` }} />
+        <span className="velbar" style={{ width: `calc((100% - 6px) * ${stepVelocity(step)})` }} />
       )}
     </div>
   );

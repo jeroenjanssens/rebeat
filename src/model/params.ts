@@ -15,7 +15,7 @@
  * When passing a hint in the step encoder bank:
  *   hint={`param.step.${def.id}`}
  */
-import type { Step, TrackKind } from "./types";
+import { setStepVelocity, stepVelocity, type Step, type TrackKind } from "./types";
 import { notesLabel } from "./notes";
 
 /** An encoder parameter. Values are stored normalized (0..1). */
@@ -262,11 +262,8 @@ export function stepParams(kind: TrackKind, flats: boolean): StepParamDef[] {
       label: "Velocity",
       default: 0.8,
       format: (v) => `${Math.round(v * 127)}`,
-      get: (s) => s.velocity,
-      set: (s, v) => {
-        s.velocity = v;
-        for (const n of s.notes ?? []) n.velocity = v;
-      },
+      get: stepVelocity,
+      set: setStepVelocity,
     },
     {
       id: "probability",

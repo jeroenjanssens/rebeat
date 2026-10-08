@@ -69,3 +69,51 @@ test("chord mode enters a chord from one key in the pad view", async ({ page }) 
   const step = steps.find((x, i) => i > 0 && x.notes?.length === 3);
   expect(step?.notes?.map((n) => n.pitch)).toEqual([48, 51, 55]);
 });
+
+test("the velocity lane sets the notes' velocities on an instrument track", async ({ page }) => {
+  type S = {
+    project: {
+      tracks: { id: string; kind: string }[];
+      slots: { id: string; patternId: string }[];
+      patterns: Record<
+        string,
+        { lanes: Record<string, { steps: { on: boolean; notes?: { velocity: number }[] }[] }> }
+      >;
+    };
+    editSlotId: string;
+    setUi(p: object): void;
+  };
+  await page.evaluate(() => {
+    const s = (
+      window as never as { __rebeat: { store: { getState(): S } } }
+    ).__rebeat.store.getState();
+    const bass = s.project.tracks.find((t) => t.kind === "instrument")!;
+    s.setUi({
+      selectedTrackId: bass.id,
+      lanes: { velocity: true },
+      editSlotId: s.project.slots[1].id,
+    });
+  });
+  const bars = page.locator(
+    '[data-panel="drum-machine"] [data-hint="dm.param-lane.bars"] [data-lane-i]',
+  );
+  await bars.last().scrollIntoViewIfNeeded();
+  const first = (await bars.first().boundingBox())!;
+  const last = (await bars.last().boundingBox())!;
+  await page.mouse.move(first.x + 2, first.y + first.height - 4);
+  await page.mouse.down();
+  await page.mouse.move(last.x + 4, last.y + last.height - 4, { steps: 30 });
+  await page.mouse.up();
+  const top = await page.evaluate(() => {
+    const s = (
+      window as never as { __rebeat: { store: { getState(): S } } }
+    ).__rebeat.store.getState();
+    const bass = s.project.tracks.find((t) => t.kind === "instrument")!;
+    const slot = s.project.slots.find((x) => x.id === s.editSlotId)!;
+    return s.project.patterns[slot.patternId].lanes[bass.id].steps
+      .filter((x) => x.on && x.notes?.length)
+      .map((x) => Math.max(...x.notes!.map((n) => n.velocity)));
+  });
+  expect(top.length).toBeGreaterThan(2);
+  for (const v of top) expect(v).toBeLessThan(0.3);
+});

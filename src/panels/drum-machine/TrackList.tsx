@@ -10,7 +10,12 @@ import {
 import { SortableContext, arrayMove, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { restrictToVerticalAxis } from "./dndModifiers";
 import { addTrack, makeTrack } from "../../model/project";
-import type { SoundCategory, TrackKind } from "../../model/types";
+import {
+  setStepVelocity,
+  stepVelocity,
+  type SoundCategory,
+  type TrackKind,
+} from "../../model/types";
 import { contextMenu } from "../../components/Menu";
 import { applyHeld, editSteps, setStep, toggleSelected } from "../../state/actions";
 import { stepMenu } from "./stepMenu";
@@ -163,7 +168,7 @@ export function TrackList({ geo }: { geo: Geometry }) {
     const key = `g-${performance.now()}`;
     if (e.shiftKey && tool === "draw") {
       if (!step.on) setStep(trackId, index, true, key);
-      begin(e, { kind: "velocity", trackId, index, y: e.clientY, v: step.velocity, key });
+      begin(e, { kind: "velocity", trackId, index, y: e.clientY, v: stepVelocity(step), key });
       return;
     }
     const on = tool === "erase" ? false : !step.on;
@@ -185,7 +190,7 @@ export function TrackList({ geo }: { geo: Geometry }) {
       if (hit.index < lengthOf(hit.trackId)) setStep(hit.trackId, hit.index, false, g.key);
     } else if (g.kind === "velocity") {
       const v = Math.min(1, Math.max(0.02, g.v + (g.y - e.clientY) / 90));
-      editSteps([stepKey(g.trackId, g.index)], (s) => (s.velocity = v), g.key);
+      editSteps([stepKey(g.trackId, g.index)], (s) => setStepVelocity(s, v), g.key);
     } else {
       const w = e.clientX - g.x;
       const h = e.clientY - g.y;

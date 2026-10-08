@@ -139,6 +139,21 @@ export const STEP_SIZE_QUARTERS: Record<StepSize, number> = {
   "1/32": 1 / 8,
 };
 
+/**
+ * A step's velocity (D75). Notes carry their own velocity, so on note steps (instrument tracks)
+ * it's the loudest note's; on drum steps it's the step's.
+ */
+export function stepVelocity(s: Step): number {
+  return s.notes?.length ? Math.max(...s.notes.map((n) => n.velocity)) : s.velocity;
+}
+
+/** Set a step's velocity; the notes follow, keeping a chord's balance (the loudest gets `v`). */
+export function setStepVelocity(s: Step, v: number) {
+  const top = stepVelocity(s);
+  s.velocity = v;
+  for (const n of s.notes ?? []) n.velocity = top > 0 ? Math.min(1, (n.velocity * v) / top) : v;
+}
+
 export function emptyStep(): Step {
   return {
     on: false,
