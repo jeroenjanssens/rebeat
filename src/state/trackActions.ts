@@ -3,7 +3,8 @@ import { guessCategory } from "../library/analysis";
 import { loadSample, sampleName, useLibrary } from "../library/library";
 import { KIT_SOUNDS } from "../engine/kits";
 import { addTrack, makeTrack } from "../model/project";
-import type { SoundCategory } from "../model/types";
+import type { InstrumentSource, SoundCategory, Track } from "../model/types";
+import { defaultInstrument, instrumentName } from "../engine/instruments";
 import { useStore } from "./store";
 
 function info(id: string) {
@@ -62,14 +63,34 @@ export function addSampleTracks(ids: string[], index?: number, categories?: Soun
   return created;
 }
 
+/** What a track plays, for labels: its sample, or its instrument's name. */
+export function soundLabel(track: Track): string {
+  if (track.kind !== "instrument")
+    return track.source || (track.sampleId ? sampleName(track.sampleId) : "");
+  const src = track.instrument ?? defaultInstrument(track);
+  return src.source === "sampler" ? `Sampler · ${sampleName(src.sampleId)}` : instrumentName(src);
+}
+
+/** Give an instrument track another sound source (synth preset, sampled instrument, sampler). */
+export function setInstrument(trackId: string, next: InstrumentSource) {
+  if (next.sampleId) void loadSample(next.sampleId);
+  useStore.getState().commit((p) => {
+    const t = p.tracks.find((x) => x.id === trackId);
+    if (!t) return;
+    t.instrument = next;
+    t.source = soundLabel({ ...t, instrument: next } as Track);
+  });
+}
+
 export function replaceSound(trackId: string, sampleId: string) {
   void loadSample(sampleId);
   useStore.getState().commit((p) => {
     const t = p.tracks.find((x) => x.id === trackId);
     if (!t) return;
     if (t.kind === "instrument") {
-      // dropping a sample on an instrument track makes it a keyboard sampler
-      t.instrument = { source: "sampler", preset: "sampler", sampleId, rootNote: 60 };
+      // a sample on an instrument track makes it a keyboard sampler (keeping its root note)
+      const root = t.instrument?.source === "sampler" ? (t.instrument.rootNote ?? 60) : 60;
+      t.instrument = { source: "sampler", preset: "sampler", sampleId, rootNote: root };
       t.source = `Sampler · ${sampleName(sampleId)}`;
       return;
     }

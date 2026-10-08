@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { soundLabel } from "../../state/trackActions";
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from "lucide-react";
 import { Encoder } from "../../components/Encoder";
 import { samplePeaks } from "../../engine/samples";
@@ -236,7 +237,7 @@ function Display({ track, width }: { track: Track; width: number }) {
           </div>
         )}
       </div>
-      <div className="num truncate text-[10px] text-white/50">{track.source}</div>
+      <div className="num truncate text-[10px] text-white/50">{soundLabel(track)}</div>
     </div>
   );
 }

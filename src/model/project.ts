@@ -306,7 +306,7 @@ export function convertTrack(
       track.instrument = { source: "sampler", preset: "sampler", sampleId, rootNote: 60 };
       track.source = `Sampler · ${nameOf(sampleId)}`;
       if (tune) track.transpose = tune;
-    } else track.source = "Poly · Init";
+    } else track.source = ""; // the default synth (labels come from soundLabel)
   } else if (from === "instrument") {
     const sampler = track.instrument?.source === "sampler" ? track.instrument.sampleId : undefined;
     // a sampler hands its sample over; a synth goes back to the sample the track had before

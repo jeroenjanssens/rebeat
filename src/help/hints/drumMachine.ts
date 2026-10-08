@@ -454,6 +454,11 @@ const hints: Hints = {
     text: "Trim, tune, loop or slice this track's sample in the sample editor.",
     guide: "sample-editor",
   },
+  "dm.sound.kind": {
+    title: "Kind of sound",
+    text: "Instrument tracks can play a built-in synth, one of your samples across the keyboard (Sampler), or a sampled instrument such as a grand piano or strings (streamed the first time you use it).",
+    guide: "instruments-sound-sources",
+  },
   "dm.sound.search": {
     title: "Find a sound",
     text: "Type to filter your library samples and the built-in sounds. Enter picks the first match.",
@@ -461,7 +466,7 @@ const hints: Hints = {
   },
   "dm.sound.list": {
     title: "Replace the sound",
-    text: "Click a sound to play it on this track instead. The track keeps its steps, effects and settings; undo brings the old sound back.",
+    text: "Click a sound to play it on this track instead: a sample, or on instrument tracks a synth preset or sampled instrument. The track keeps its steps, effects and settings; undo brings the old sound back.",
     guide: "drum-machine-tracks",
   },
 };

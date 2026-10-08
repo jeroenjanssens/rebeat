@@ -1,17 +1,13 @@
 import { useEffect, useState } from "react";
 import { DragValue } from "../../components/DragValue";
 import { instrumentState } from "../../engine/engine";
-import {
-  SAMPLED_INSTRUMENTS,
-  SYNTH_PRESETS,
-  defaultInstrument,
-  instrumentName,
-} from "../../engine/instruments";
+import { SAMPLED_INSTRUMENTS, SYNTH_PRESETS, defaultInstrument } from "../../engine/instruments";
 import { droppedSamples } from "../../library/drop";
 import { loadSample, sampleName } from "../../library/library";
 import { noteName } from "../../model/notes";
 import type { Arpeggiator, InstrumentSource, StepSize, Track } from "../../model/types";
 import { useStore } from "../../state/store";
+import { setInstrument } from "../../state/trackActions";
 import { Section } from "./InspectorPanel";
 
 const ARP_RATES: StepSize[] = ["1/4", "1/8", "1/8T", "1/16", "1/16T", "1/32"];
@@ -39,12 +35,7 @@ export function InstrumentSection({ track }: { track: Track }) {
       const t = p.tracks.find((x) => x.id === track.id);
       if (t) fn(t);
     }, key);
-  const setSource = (next: InstrumentSource) =>
-    update((t) => {
-      t.instrument = next;
-      t.source =
-        next.source === "sampler" ? `Sampler · ${sampleName(next.sampleId)}` : instrumentName(next);
-    });
+  const setSource = (next: InstrumentSource) => setInstrument(track.id, next);
   const setArp = (patch: Partial<Arpeggiator>) =>
     update((t) => void (t.arp = { ...(t.arp ?? DEFAULT_ARP), ...patch }));
 

@@ -1,42 +1,78 @@
 import { useMemo, useState } from "react";
 import { AudioWaveform, Library, Search } from "lucide-react";
 import { focusPanel, openSampleEditor } from "../../app/openers";
+import { SAMPLED_INSTRUMENTS, SYNTH_PRESETS, defaultInstrument } from "../../engine/instruments";
 import { KITS, KIT_SOUNDS, kitSounds } from "../../engine/kits";
-import { isBuiltIn, sampleName, useLibrary } from "../../library/library";
-import type { Track } from "../../model/types";
-import { replaceSound } from "../../state/trackActions";
+import { isBuiltIn, useLibrary } from "../../library/library";
+import type { InstrumentSource, Track } from "../../model/types";
+import { replaceSound, setInstrument, soundLabel } from "../../state/trackActions";
 
 interface Sound {
+  /** A sample id, or "synth:<preset>" / "smplr:<instrument>". */
   id: string;
   name: string;
   group: string;
 }
 
-/** The sound of a track in its menu: what it plays now, and a searchable list to replace it. */
+type Kind = InstrumentSource["source"];
+const KINDS: [Kind, string][] = [
+  ["synth", "Synth"],
+  ["sampler", "Sampler"],
+  ["smplr", "Instrument"],
+];
+
+/**
+ * The sound of a track in its menu: what it plays now, and a searchable list to replace it.
+ * Instrument tracks choose a synth preset, a sample (keyboard sampler) or a sampled instrument.
+ */
 export function SoundPicker({ track, close }: { track: Track; close: () => void }) {
   const samples = useLibrary((s) => s.samples);
   const [query, setQuery] = useState("");
-  const current = track.kind === "instrument" ? track.instrument?.sampleId : track.sampleId;
+  const inst = track.kind === "instrument" ? (track.instrument ?? defaultInstrument(track)) : null;
+  const [kind, setKind] = useState<Kind>(inst?.source ?? "sampler");
+  // the sample it plays (for the library and editor buttons)
+  const sample = inst ? (inst.source === "sampler" ? inst.sampleId : undefined) : track.sampleId;
+  const current = !inst
+    ? track.sampleId
+    : inst.source === "sampler"
+      ? inst.sampleId
+      : `${inst.source}:${inst.preset}`;
 
   const sounds = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const match = (s: Sound) => !q || `${s.name} ${s.group}`.toLowerCase().includes(q);
+    if (inst && kind === "synth")
+      return SYNTH_PRESETS.map((p) => ({
+        id: `synth:${p.id}`,
+        name: p.name,
+        group: "Synths",
+      })).filter(match);
+    if (inst && kind === "smplr")
+      return SAMPLED_INSTRUMENTS.map((p) => ({
+        id: `smplr:${p.id}`,
+        name: p.name,
+        group: "Sampled instruments (streamed the first time)",
+      })).filter(match);
     const own: Sound[] = [...samples]
       .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
       .map((s) => ({ id: s.id, name: s.name, group: "Library" }));
-    // audio tracks play loops; drum tracks the kits
+    // audio tracks play loops; drum tracks and samplers the kits
     const builtIn: Sound[] =
       track.kind === "audio"
         ? KIT_SOUNDS.filter((k) => k.bpm).map((k) => ({ id: k.id, name: k.name, group: "Loops" }))
         : KITS.flatMap((kit) =>
             kitSounds(kit).map((k) => ({ id: k.id, name: k.name, group: `${kit} kit` })),
           );
-    const q = query.trim().toLowerCase();
-    return [...own, ...builtIn].filter(
-      (s) => !q || `${s.name} ${s.group}`.toLowerCase().includes(q),
-    );
-  }, [samples, track.kind, query]);
+    return [...own, ...builtIn].filter(match);
+  }, [samples, track.kind, query, kind, inst]);
 
   const pick = (id: string) => {
-    if (id !== current) replaceSound(track.id, id);
+    if (id !== current) {
+      const [prefix, preset] = id.split(/:(.*)/);
+      if (inst && (prefix === "synth" || prefix === "smplr"))
+        setInstrument(track.id, { source: prefix, preset });
+      else replaceSound(track.id, id);
+    }
     close();
   };
 
@@ -45,16 +81,16 @@ export function SoundPicker({ track, close }: { track: Track; close: () => void 
       <div className="label">Sound</div>
       <div className="flex items-center gap-1">
         <span className="min-w-0 flex-1 truncate text-[12px]" data-testid="current-sound">
-          {current ? sampleName(current) : "None"}
+          {soundLabel(track) || "None"}
         </span>
-        {current && !isBuiltIn(current) && (
+        {sample && !isBuiltIn(sample) && (
           <>
             <button
               className="tool-btn !h-6 !w-6 !p-0"
               title="Show in library"
               data-hint="dm.sound.show"
               onClick={() => {
-                useLibrary.getState().set({ selectedId: current });
+                useLibrary.getState().set({ selectedId: sample });
                 focusPanel("library");
                 close();
               }}
@@ -66,7 +102,7 @@ export function SoundPicker({ track, close }: { track: Track; close: () => void 
               title="Open in sample editor"
               data-hint="dm.sound.edit"
               onClick={() => {
-                openSampleEditor(current);
+                openSampleEditor(sample);
                 close();
               }}
             >
@@ -75,12 +111,21 @@ export function SoundPicker({ track, close }: { track: Track; close: () => void 
           </>
         )}
       </div>
+      {inst && (
+        <div className="segmented self-start" data-hint="dm.sound.kind" data-testid="sound-kind">
+          {KINDS.map(([k, label]) => (
+            <button key={k} data-active={kind === k} onClick={() => setKind(k)}>
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
       <label className="field" data-hint="dm.sound.search">
         <Search size={12} className="text-dim" />
         <input
           autoFocus
           className="min-w-0 flex-1 bg-transparent text-[12px] outline-none placeholder:text-faint"
-          placeholder="Replace with…"
+          placeholder={inst && kind !== "sampler" ? "Find…" : "Replace with…"}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => {

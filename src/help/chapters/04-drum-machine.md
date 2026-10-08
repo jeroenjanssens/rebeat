@@ -82,7 +82,7 @@ Each row is a **track**. Tracks exist on every page; the pages only hold their s
 | Pads              | The steps (see below).                                                                      |
 | Scope and meter   | What the track sounds like right now. Click to enlarge, with a spectrum view.               |
 
-**Right-click the track's name** for more: Duplicate, Delete, Open in piano roll (instrument tracks), Color, **Sound** (the sample the track plays now, with buttons to show it in the library or open it in the sample editor, and a searchable list of your library samples and the built-in sounds to replace it), Copy steps, Paste steps, Clear steps, Shift left, Shift right, Reverse, Randomize, Euclidean…, and these per-page options:
+**Right-click the track's name** for more: Duplicate, Delete, Open in piano roll (instrument tracks), Color, **Sound** (what the track plays now, with buttons to show its sample in the library or open it in the sample editor, and a searchable list to replace it: your library samples and the built-in sounds; on instrument tracks also the synth presets and sampled instruments), Copy steps, Paste steps, Clear steps, Shift left, Shift right, Reverse, Randomize, Euclidean…, and these per-page options:
 
 - **Track length on this page**: let the track loop over fewer steps than the page (for example 3 or 5 against 16, for polyrhythms).
 - **Track rate on this page**: give the track its own step size.

@@ -187,10 +187,7 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
           </div>
         ),
       },
-      // drum and audio tracks, and keyboard samplers, play a sample you can replace here
-      ...(track.kind !== "instrument" || track.instrument?.source === "sampler"
-        ? [{ render: (close: () => void) => <SoundPicker track={track} close={close} /> }]
-        : []),
+      { render: (close: () => void) => <SoundPicker track={track} close={close} /> },
       { separator: true },
       {
         label: "Copy steps",

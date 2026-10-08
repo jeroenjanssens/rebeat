@@ -160,3 +160,35 @@ test("the piano roll's note menu acts on all selected notes", async ({ page }) =
   await menu.getByRole("button", { name: `Delete ${count} notes` }).click();
   await expect(notes).toHaveCount(0);
 });
+
+test("the track menu shows and changes an instrument track's sound", async ({ page }) => {
+  const name = page
+    .locator("[data-track-row]", { hasText: "BASS" })
+    .locator('[data-hint="dm.track.name"]');
+  const picker = page.getByTestId("sound-picker");
+  const bass = async () => (await getState(page)).project.tracks.find((t) => t.name === "Bass")!;
+  await name.click({ button: "right" });
+  // the default synth, named after what it really plays
+  await expect(picker.getByTestId("current-sound")).toHaveText("Mono · Acid Bass");
+  await expect(
+    picker.getByTestId("sound-kind").getByRole("button", { name: "Synth" }),
+  ).toHaveAttribute("data-active", "true");
+  await picker.locator("[data-sound]", { hasText: "Mono · Sub Bass" }).click();
+  expect((await bass()).instrument).toEqual({ source: "synth", preset: "sub" });
+
+  await name.click({ button: "right" });
+  await expect(picker.getByTestId("current-sound")).toHaveText("Mono · Sub Bass");
+  await picker.getByTestId("sound-kind").getByRole("button", { name: "Sampler" }).click();
+  await picker.getByTestId("sound-search").fill("909 kick");
+  await picker.locator("[data-sound]").first().click();
+  expect((await bass()).instrument).toMatchObject({ source: "sampler", sampleId: "kit:909:kick" });
+
+  await name.click({ button: "right" });
+  await expect(picker.getByTestId("current-sound")).toHaveText("Sampler · 909 Kick");
+  await picker.getByTestId("sound-kind").getByRole("button", { name: "Instrument" }).click();
+  await picker.locator("[data-sound]", { hasText: "Grand piano" }).click();
+  expect((await bass()).instrument).toEqual({ source: "smplr", preset: "piano" });
+  await expect(
+    page.locator('[data-panel="drum-machine"]').getByText("Grand piano").first(),
+  ).toBeVisible();
+});

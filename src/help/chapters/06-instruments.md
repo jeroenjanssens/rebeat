@@ -4,7 +4,7 @@
 
 ## Sound sources
 
-Choose the sound in the [Inspector](panel:inspector) under **Instrument**:
+A new instrument track plays a built-in synth: **Mono · Acid Bass** for bass tracks, **Poly · Warm Pad** otherwise. The drum machine's display shows what a track plays. Choose another sound by **right-clicking the track's name** (under **Sound**: Synth, Sampler or Instrument, with a searchable list), or in the [Inspector](panel:inspector) under **Instrument**, which also has the sampler's root note:
 
 | Source         | What it is                                                                                                                                                                                                       |
 | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
