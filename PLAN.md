@@ -171,6 +171,55 @@ full checks (prettier, tsc, eslint, vitest, e2e).
   (unit tests); the online-kit model becomes a list of sources with tidal built in. e2e with a
   mocked network.
 
+### 0.6d Instruments in the library (agreed 2026-10-08)
+
+One browser for everything you can play (D78): instruments and synths become library items next
+to samples, synths become data (patches) you can shape in a synth editor and save, and the
+library grows with more sampled instruments and your own. Steps, one commit (or a few) each, all
+with tests, explain-mode hints, guide updates and the full checks:
+
+1. **Split the library panel** (no behavior change): sidebar/locations, the item list, and a
+   `useLibraryItems` hook for filtering and sorting, so instrument items don't add branches
+   everywhere.
+2. **Synth patches as data (D79).** `SynthPatch` (engine/synth.ts): voice (poly/mono, voices,
+   glide, legato), two oscillators (sine/triangle/saw/square/pulse with width, octave, detune,
+   level, unison voices + spread), sub, noise, optional FM (ratio, index, decay), filter
+   (LP/HP/BP, cutoff, resonance, drive, key tracking, envelope amount), amp and filter ADSR, one
+   LFO (rate free or synced, shape, target pitch/filter/amp/pan, depth), volume. One pooled voice
+   implementation renders every patch, live and offline. The ten presets become patches with the
+   same ids, so projects keep their sound. The track's eight SOUND knobs still override a
+   patch's envelope/filter/glide/detune once moved.
+3. **Factory synths (D80).** About 30 patches in the style of well-known songs and synths
+   (TB-303 acid, Moroder sequence bass, Reese, Hoover, supersaw, Juno pad, OB brass stab, CS-80
+   brass, Jarre lead, sync lead, chiptune, DX e-piano and bells, organ, wobble, 808 sub…),
+   grouped Bass / Leads / Pads / Keys / Plucks & stabs / FX, each with a one-line "in the style
+   of" note. e2e renders every patch offline (non-silent, no NaN).
+4. **Instrument catalog + more sampled instruments.** `library/instruments.ts`: one list for the
+   library, the track menu and the Inspector: the factory synths, the grand piano, 4 electric
+   pianos, 128 General MIDI soundfonts, 14 mallets, 3 double basses, the VCSL instruments
+   (loaded from smplr's catalog), and your instruments; each collection with its source and
+   license (Mellotron left out: unclear license). New sources in `InstrumentSource` for the new
+   smplr families.
+5. **Instruments in the library.** Sidebar group Instruments (Synths, Pianos & keys, Mallets,
+   Orchestral, General MIDI, Double bass, Your instruments); a type filter (All / Samples /
+   Instruments); preview plays a short phrase in the instrument's range; with an instrument
+   selected the computer keyboard plays it; drag onto an instrument track (replace), the empty
+   area (new instrument track) or a drum track (converted to an instrument track); favorites
+   (settings); Used in project lists instruments; streamed instruments show whether they're
+   downloaded and offer "Make available offline" (smplr's CacheStorage).
+6. **Icons everywhere.** One-shot sample / loop / instrument / synth icons, the same in the
+   library, on tracks (drum, audio, instrument by its source) and in the sound picker.
+7. **Synth editor (D81).** A panel like the sample editor for the selected track's synth: all
+   patch controls, waveform and envelope pictures (envelopes draggable), play from the keyboard.
+   Editing a factory synth edits a copy on the track (`instrument.patch`); built-ins never
+   change. **Save to library** stores patch + SOUND knobs + effects as one of Your instruments;
+   dropping one on a track applies all of it (replacing the track's effects, undoable).
+8. **Your own instruments.** .sf2 SoundFonts (import like samples; smplr's Soundfont2 with the
+   `soundfont2` parser), multi-sample instruments (pitched strudel.json entries in link sources;
+   "Make instrument" from a library folder, notes from file names), and "Save sound to library"
+   for any instrument track (sampler included). .rebeat files carry what they need.
+9. **Exports include sampled instruments** where smplr can load them offline (from the cache).
+
 ### 0.7 Known limitations and later work
 
 - Offline renders (export, resampling) leave out smplr instruments (they stream samples) and repitch instead of time-stretching warped clips.
