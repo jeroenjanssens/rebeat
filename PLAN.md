@@ -727,6 +727,7 @@ Format: **Dn — Question.** Default ✅, alternatives.
 - **D73 — Play mode in the project.** `Project.playMode` (schema v5; older projects open in Song, the new default). `setPlayMode` saves it without an undo step and keeps it through undo/redo of other edits; switching it in an example doesn't make a copy. Alt: UI state (reset to the default on every start).
 - **D75 — Velocity of note steps.** Notes carry their own velocity, so `stepVelocity`/`setStepVelocity` (model/types) treat a note step's velocity as its loudest note's and scale the notes to keep a chord's balance. Every editor (lane, STEP encoder, Shift+drag, digits, accent) goes through them. Alt: multiply step × note velocity.
 - **D76 — Converting keeps the sample.** Drum/audio → instrument makes a keyboard sampler of the track's sample (root C4; the drum Tune becomes transpose) so existing hits sound the same; sampler → drum hands the sample back; synth → drum returns to the sample the track had. Alt: root note from pitch analysis.
+- **D77 — Audio export formats.** WAV via our own encoder; MP3 and OGG Vorbis via `wasm-media-encoders` (MIT; its LAME build is LGPL), imported lazily with its .wasm files as separate assets (precached by the service worker). Samples export as heard (rendered settings) or as the stored file; the song Export dialog shares the format picker. Alt: Opus/WebM via MediaRecorder, no dependency.
 - **D35 — Build order.** ✅ The phases in §7, starting with the mockup (Phase M), each ending with something you can play with.
 
 ---

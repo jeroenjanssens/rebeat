@@ -58,6 +58,7 @@
     "vite-plugin-pwa": "^2.0.0",
     "vitest": "^5.0.3",
     "wait-on": "^9.5.1",
+    "wasm-media-encoders": "0.7.0",
     "wavesurfer.js": "^8.0.1",
     "workbox-window": "^7.4.1",
     "zustand": "^5.0.15"

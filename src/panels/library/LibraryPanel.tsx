@@ -39,6 +39,7 @@ import {
   type SampleSort,
   type SortBy,
 } from "../../library/sort";
+import { useShell } from "../../app/shell";
 import { OnlineKits } from "./OnlineKits";
 import { RecorderStrip } from "./RecorderStrip";
 
@@ -248,6 +249,7 @@ export function LibraryPanel() {
         disabled: item.builtIn,
         onSelect: () => openSampleEditor(item.id),
       },
+      { label: "Export…", onSelect: () => useShell.getState().set({ sampleExport: item.id }) },
       { separator: true },
       ...(item.builtIn
         ? []

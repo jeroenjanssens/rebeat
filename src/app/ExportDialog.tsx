@@ -4,7 +4,15 @@ import { Dialog } from "../components/Dialog";
 import { toast } from "../components/Toast";
 import { renderProject, timeline } from "../engine/render";
 import { saveRecording } from "../library/library";
-import { audioBufferChannels, encodeWav } from "../library/wav";
+import { FormatPicker } from "../components/FormatPicker";
+import {
+  DEFAULT_FORMAT,
+  FORMAT_INFO,
+  encodeAudio,
+  fileName,
+  type AudioFormat,
+} from "../library/encode";
+import { audioBufferChannels } from "../library/wav";
 import { exportMidi } from "../model/midiFile";
 import { platform } from "../platform";
 import { useStore } from "../state/store";
@@ -12,7 +20,6 @@ import { addSampleTracks } from "../state/trackActions";
 import { useShell } from "./shell";
 
 type Range = "song" | "page";
-type Bits = 16 | 24 | 32;
 
 const safe = (s: string) => s.replace(/[\\/:*?"<>|]+/g, "-").trim() || "export";
 
@@ -23,7 +30,7 @@ export function ExportDialog() {
   const project = useStore((s) => s.project);
   const editSlotId = useStore((s) => s.editSlotId);
   const [range, setRange] = useState<Range>("song");
-  const [bits, setBits] = useState<Bits>(24);
+  const [format, setFormat] = useState<AudioFormat>(DEFAULT_FORMAT);
   const [stems, setStems] = useState(false);
   const [track, setTrack] = useState("");
   const [busy, setBusy] = useState("");
@@ -50,13 +57,12 @@ export function ExportDialog() {
       const opts = { range, slotId: editSlotId };
       if (!stems) {
         const buf = await renderProject(project, { ...opts, soloTrackId: track || undefined });
+        setBusy("Encoding…");
         await platform.files.save(
-          `${name}.wav`,
-          new Blob([encodeWav(audioBufferChannels(buf), buf.sampleRate, bits)], {
-            type: "audio/wav",
-          }),
+          fileName(name, format),
+          await encodeAudio(audioBufferChannels(buf), buf.sampleRate, format),
         );
-        toast(`Exported ${name}.wav`);
+        toast(`Exported ${fileName(name, format)}`);
         return;
       }
       const files: Record<string, Uint8Array> = {};
@@ -64,9 +70,9 @@ export function ExportDialog() {
       for (const [i, t] of tracks.entries()) {
         setBusy(`Rendering stems ${i + 1}/${tracks.length}…`);
         const buf = await renderProject(project, { ...opts, soloTrackId: t.id });
-        files[`${String(i + 1).padStart(2, "0")} ${safe(t.name)}.wav`] = new Uint8Array(
-          encodeWav(audioBufferChannels(buf), buf.sampleRate, bits),
-        );
+        const blob = await encodeAudio(audioBufferChannels(buf), buf.sampleRate, format);
+        files[fileName(`${String(i + 1).padStart(2, "0")} ${safe(t.name)}`, format)] =
+          new Uint8Array(await blob.arrayBuffer());
       }
       const zip = zipSync(
         Object.fromEntries(Object.entries(files).map(([k, v]) => [k, [v, { level: 0 }]])),
@@ -146,14 +152,8 @@ export function ExportDialog() {
           </select>
         </label>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="label w-16">WAV</span>
-          <div className="segmented" data-hint="app.export.bits">
-            {([16, 24, 32] as Bits[]).map((b) => (
-              <button key={b} data-active={bits === b} onClick={() => setBits(b)}>
-                {b === 32 ? "32 float" : `${b}-bit`}
-              </button>
-            ))}
-          </div>
+          <span className="label w-16">Format</span>
+          <FormatPicker value={format} onChange={setFormat} />
           <label className="flex items-center gap-1.5 text-dim" data-hint="app.export.stems">
             <input type="checkbox" checked={stems} onChange={(e) => setStems(e.target.checked)} />{" "}
             Stems (one file per track)
@@ -167,7 +167,7 @@ export function ExportDialog() {
             data-testid="export-wav"
             data-hint="app.export.wav"
           >
-            {stems ? "Export stems" : "Export WAV"}
+            {stems ? "Export stems" : `Export ${FORMAT_INFO[format.kind].label}`}
           </button>
           <button
             className="hw-btn"

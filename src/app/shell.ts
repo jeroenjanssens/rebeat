@@ -10,6 +10,8 @@ interface ShellState {
   shortcutsOpen: boolean;
   homeOpen: boolean;
   exportOpen: boolean;
+  /** The sample shown in the sample export dialog. */
+  sampleExport: string | null;
   /** Panel id shown in panel full screen, or "app" for app full screen. */
   fullscreen: string | null;
   maximized: boolean;
@@ -24,6 +26,7 @@ export const useShell = create<ShellState>()((set) => ({
   shortcutsOpen: false,
   homeOpen: false,
   exportOpen: false,
+  sampleExport: null,
   fullscreen: null,
   maximized: false,
   audio: "suspended",

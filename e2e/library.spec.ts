@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { readFileSync } from "node:fs";
 import { clickLoop, fixtureFiles, oneShot, wav } from "./fixtures";
 import { openApp } from "./helpers";
 
@@ -179,4 +180,18 @@ test("the track menu shows the current sound and replaces it with a library samp
   await page.keyboard.press("Escape");
   await page.keyboard.press("ControlOrMeta+z");
   await expect.poll(source).toBe("909 Kick");
+});
+
+test("exports a library sample's original file from the sample editor", async ({ page }) => {
+  const data = wav(oneShot());
+  await importSamples(page, fixtureFiles({ "Big Kick.wav": data }));
+  await page.getByTestId("library-list").locator("[data-sample]").first().dblclick();
+  await page.getByTestId("editor-export").click();
+  const dialog = page.getByTestId("sample-export");
+  await dialog.getByRole("button", { name: "Original file" }).click();
+  const download = page.waitForEvent("download");
+  await dialog.getByTestId("sample-export-run").click();
+  const file = await download;
+  expect(file.suggestedFilename()).toBe("Big Kick.wav");
+  expect(readFileSync(await file.path()).equals(data)).toBe(true);
 });

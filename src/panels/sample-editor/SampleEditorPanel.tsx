@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Play, Redo2, Repeat, Square, Undo2 } from "lucide-react";
+import { Download, Play, Redo2, Repeat, Square, Undo2 } from "lucide-react";
+import { useShell } from "../../app/shell";
 import { openSampleEditor } from "../../app/openers";
 import { DragValue } from "../../components/DragValue";
 import { EffectEditor } from "../../components/EffectEditor";
@@ -320,6 +321,19 @@ function SampleEditor({ sampleId }: { sampleId: string }) {
           data-hint="editor.redo"
         >
           <Redo2 size={13} />
+        </button>
+        <button
+          className="tool-btn"
+          onClick={() => useShell.getState().set({ sampleExport: sampleId })}
+          title={
+            editor.dirty
+              ? "Export as WAV, MP3 or OGG (Apply first to include your changes)"
+              : "Export as WAV, MP3 or OGG"
+          }
+          data-hint="editor.export"
+          data-testid="editor-export"
+        >
+          <Download size={13} />
         </button>
         <button
           className="tool-btn border border-line"

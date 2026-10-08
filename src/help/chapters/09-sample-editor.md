@@ -11,6 +11,7 @@ Double-click a sample in the library (or use the pencil button in the Inspector)
 | Loop button            | Loop the playback.                                                                                                                                |
 | **Wave / Spectrogram** | Show the waveform or the frequencies over time.                                                                                                   |
 | Undo / Redo            | The editor's own history (also Ctrl/Cmd+Z and Shift+Ctrl/Cmd+Z while the editor has focus).                                                       |
+| Download button        | Export the sample as WAV, MP3 or OGG (see [the library](#library-using-samples)). Apply first to include changes you're still making.             |
 | **Save as new**        | Render everything into a new sample and leave this one unchanged.                                                                                 |
 | **Apply**              | Store your changes on this sample. Every track that uses it, in every project, gets the new sound; the button says how many tracks that are here. |
 

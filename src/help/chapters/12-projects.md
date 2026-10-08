@@ -24,9 +24,9 @@ The [project browser](command:project.home) ({{key:project.home}}, or click the 
 | ---------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | **Song / Current page**            | What to render.                                                                                                |
 | **Source**                         | The full mix, or a single track.                                                                               |
-| **WAV**                            | 16-bit, 24-bit or 32-bit float.                                                                                |
-| **Stems**                          | One WAV per track, in a zip.                                                                                   |
-| **Export WAV**                     | Render and save. Rendering is faster than real time.                                                           |
+| **Format**                         | WAV (16-bit, 24-bit or 32-bit float), MP3 (128, 192 or 320 kbit/s) or OGG (small, good or best quality).       |
+| **Stems**                          | One file per track, in a zip.                                                                                  |
+| **Export WAV / MP3 / OGG**         | Render and save. Rendering is faster than real time.                                                           |
 | **Export MIDI**                    | The notes and drum hits as a MIDI file, with a track per instrument (drums on channel 10, General MIDI notes). |
 | **Resample to library / to track** | Render into a new sample (in Recordings), or straight into a new audio track.                                  |
 

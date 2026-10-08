@@ -26,8 +26,9 @@ A dot next to a sample means it's used in the open project. Selecting a track sh
 ## Using samples
 
 - **Drag** a sample onto a track to replace its sound, or onto the drop zone under the tracks for a new track. Loops become audio tracks; one-shots drum tracks.
-- **Right-click** a sample for: Audition, Add as new track, Use on (the selected track), Open in sample editor, Add to favorites, Rename, Tags, Folder, which tracks use it, and Delete.
+- **Right-click** a sample for: Audition, Add as new track, Use on (the selected track), Open in sample editor, **Export…**, Add to favorites, Rename, Tags, Folder, which tracks use it, and Delete.
 - **Double-click** a sample to open it in the [sample editor](#sample-editor).
+- **Export…** saves a sample as a file: as heard (with the sample editor's settings) in WAV, MP3 or OGG, or the original file as it was imported.
 - Drag a sample onto a folder on the left to move it there.
 
 ## Kits

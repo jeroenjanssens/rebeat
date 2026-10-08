@@ -203,10 +203,35 @@ const hints: Hints = {
     text: "Export the full mix (master output) or isolate a single track. Choosing a track exports only that track's audio.",
     guide: "projects-exporting-audio-and-midi",
   },
-  "app.export.bits": {
-    title: "Bit depth",
-    text: "The bit depth of the exported WAV file. 24-bit is the standard for production; 32-bit float preserves headroom for further processing.",
+  "app.export.format": {
+    title: "File format",
+    text: "WAV is uncompressed, for further work in other software. MP3 and OGG are compressed, small files for sharing.",
     guide: "projects-exporting-audio-and-midi",
+  },
+  "app.export.quality.wav": {
+    title: "Bit depth",
+    text: "24-bit is the standard for production; 32-bit float keeps headroom for further processing; 16-bit is CD quality.",
+    guide: "projects-exporting-audio-and-midi",
+  },
+  "app.export.quality.mp3": {
+    title: "MP3 bit rate",
+    text: "Higher sounds better and makes bigger files. 320 kbit/s is the best MP3 can do; 128 is fine for sketches.",
+    guide: "projects-exporting-audio-and-midi",
+  },
+  "app.export.quality.ogg": {
+    title: "OGG quality",
+    text: "Higher sounds better and makes bigger files. Good is about 192 kbit/s.",
+    guide: "projects-exporting-audio-and-midi",
+  },
+  "app.sampleexport.source": {
+    title: "Which audio",
+    text: "As heard: with the sample editor's settings (trim, fades, tuning…), in the format you choose. Original file: the stored file itself, unchanged.",
+    guide: "library-using-samples",
+  },
+  "app.sampleexport.run": {
+    title: "Export",
+    text: "Save the sample as a file on your computer.",
+    guide: "library-using-samples",
   },
   "app.export.stems": {
     title: "Stems",
@@ -214,8 +239,8 @@ const hints: Hints = {
     guide: "projects-exporting-audio-and-midi",
   },
   "app.export.wav": {
-    title: "Export WAV",
-    text: "Renders the project and saves it as a WAV file. Rendering runs offline, faster than real time.",
+    title: "Export audio",
+    text: "Renders the project and saves it in the chosen format (WAV, MP3 or OGG). Rendering runs offline, faster than real time.",
     command: "project.exportAudio",
     guide: "projects-exporting-audio-and-midi",
   },

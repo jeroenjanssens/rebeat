@@ -30,6 +30,11 @@ const hints: Hints = {
     keys: "Shift+Ctrl/Cmd+Z",
     guide: "sample-editor-the-toolbar",
   },
+  "editor.export": {
+    title: "Export",
+    text: "Save this sample as a WAV, MP3 or OGG file. It exports the sample as stored: Apply first to include changes you're still making.",
+    guide: "sample-editor-the-toolbar",
+  },
   "editor.saveAsNew": {
     title: "Save as new",
     text: "Renders all settings and edits into a new sample in the library, leaving the original unchanged.",
