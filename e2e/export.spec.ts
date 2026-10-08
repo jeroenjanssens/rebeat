@@ -92,43 +92,46 @@ test.describe("exporting a sample", () => {
   });
 });
 
-test("the synth showcase song renders loud and clean", async ({ page }) => {
-  test.setTimeout(120_000);
-  await page.keyboard.press("ControlOrMeta+O");
-  await page.getByTestId("example-card").filter({ hasText: "Neon Horizon" }).click();
-  await expect(page.getByTestId("project-name")).toContainText("Neon Horizon");
-  // the chorus: every synth plays
-  await page.evaluate(() => {
-    const s = (
-      window as never as {
-        __rebeat: {
-          store: {
-            getState(): {
-              project: {
-                slots: { id: string; patternId: string }[];
-                patterns: Record<string, { name: string }>;
+for (const [song, busiest] of [
+  ["Neon Horizon", "Chorus A"],
+  ["Hyperdrive", "Chorus A"],
+  ["Liquid Ladder", "Peak A"],
+] as const)
+  test(`the synth song ${song} renders loud and clean`, async ({ page }) => {
+    test.setTimeout(120_000);
+    await page.keyboard.press("ControlOrMeta+O");
+    await page.getByTestId("example-card").filter({ hasText: song }).click();
+    await expect(page.getByTestId("project-name")).toContainText(song);
+    // the busiest page: every synth plays
+    await page.evaluate((name) => {
+      const s = (
+        window as never as {
+          __rebeat: {
+            store: {
+              getState(): {
+                project: {
+                  slots: { id: string; patternId: string }[];
+                  patterns: Record<string, { name: string }>;
+                };
+                setUi(p: object): void;
               };
-              setUi(p: object): void;
             };
           };
-        };
-      }
-    ).__rebeat.store.getState();
-    const chorus = s.project.slots.find(
-      (x) => s.project.patterns[x.patternId].name === "Chorus A",
-    )!;
-    s.setUi({ editSlotId: chorus.id });
+        }
+      ).__rebeat.store.getState();
+      const slot = s.project.slots.find((x) => s.project.patterns[x.patternId].name === name)!;
+      s.setUi({ editSlotId: slot.id });
+    }, busiest);
+    await page.keyboard.press("ControlOrMeta+E");
+    await page.getByRole("button", { name: "Current page" }).click();
+    const download = page.waitForEvent("download");
+    await page.getByTestId("export-wav").click();
+    const bytes = readFileSync(await (await download).path());
+    let peak = 0;
+    for (let i = 44; i < bytes.length - 3; i += 3)
+      peak = Math.max(peak, Math.abs(bytes.readIntLE(i, 3)));
+    const full = 2 ** 23;
+    console.log(song, "peak dBFS", (20 * Math.log10(peak / full)).toFixed(1));
+    expect(peak / full).toBeGreaterThan(0.2);
+    expect(peak / full).toBeLessThan(1);
   });
-  await page.keyboard.press("ControlOrMeta+E");
-  await page.getByRole("button", { name: "Current page" }).click();
-  const download = page.waitForEvent("download");
-  await page.getByTestId("export-wav").click();
-  const bytes = readFileSync(await (await download).path());
-  let peak = 0;
-  for (let i = 44; i < bytes.length - 3; i += 3)
-    peak = Math.max(peak, Math.abs(bytes.readIntLE(i, 3)));
-  const full = 2 ** 23;
-  console.log("NEON peak dBFS", (20 * Math.log10(peak / full)).toFixed(1));
-  expect(peak / full).toBeGreaterThan(0.2);
-  expect(peak / full).toBeLessThan(1);
-});

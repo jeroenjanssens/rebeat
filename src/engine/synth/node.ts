@@ -47,6 +47,7 @@ export function workletSynth(dest: Tone.Gain | { input: AudioNode }): WorkletSyn
   let pending: SynthMessage[] = [];
   let next = 1;
   let mod: number[] | null = null;
+  let last: { id: number; end: number } | null = null;
   const controls: Controls = { modwheel: 0, aftertouch: 0, pitchbend: 0 };
   const send = (m: SynthMessage) => (node ? node.port.postMessage(m) : pending.push(m));
   void loadSynthWorklet(ctx).then(() => {
@@ -67,8 +68,12 @@ export function workletSynth(dest: Tone.Gain | { input: AudioNode }): WorkletSyn
     play(notes, time, stepDur) {
       for (const n of notes) {
         const id = next++;
-        send({ type: "on", id, note: n.pitch, velocity: n.velocity, at: time });
-        send({ type: "off", id, at: time + n.length * stepDur * 0.95 });
+        // a slide carries on from the note before (a monophonic line: the latest one)
+        const from = n.slide && last && last.end > time - stepDur ? last.id : undefined;
+        send({ type: "on", id, note: n.pitch, velocity: n.velocity, at: time, from });
+        const end = time + n.length * stepDur * 0.95;
+        send({ type: "off", id, at: end });
+        last = { id, end };
       }
     },
     hold(pitch, velocity, time) {

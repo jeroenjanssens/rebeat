@@ -90,7 +90,7 @@ Key implementation patterns:
 
 ### 0.6 Next steps
 
-0. The complete synth in §0.6e (A–H ✅; next: I).
+0. The complete synth in §0.6e ✅ (A–I).
 
 
 1. Try the app with real hardware: a microphone and audio interface (calibration, monitoring), a MIDI keyboard/controller (learn), and a Launchpad or Push (the Push color palette is approximate).
@@ -227,7 +227,7 @@ with tests, explain-mode hints, guide updates and the full checks:
 
 ### 0.6e The complete synth (agreed 2026-10-08)
 
-Progress: A ✅ · B ✅ · C ✅ · D ✅ · E ✅ · F ✅ · G ✅ · H ✅ · I.
+Progress: A ✅ · B ✅ · C ✅ · D ✅ · E ✅ · F ✅ · G ✅ · H ✅ · I ✅.
 
 Make the synth feature complete for experienced players while keeping it approachable: one editor
 with a **Basic** view (8 macros) and an **Advanced** view (everything), on a new AudioWorklet
@@ -874,6 +874,7 @@ Format: **Dn — Question.** Default ✅, alternatives.
 - **D86 — The Advanced editor.** Six foldable sections in signal order (`data-group`: osc, filters, envs, lfos, matrix (with the macros), voice); folds are a user setting (`synthFolded`), the view too (`synthView`). The flow bar carries the track's live Scope (wave and spectrum). Pictures live in `synth-editor/pictures.tsx`: envelopes on a log time scale (5 ms..10 s) drawn with the engine's `envCurve` (moved to `model/synth.ts`), with draggable attack, decay/sustain and release points and curve handles (hold has no handle: at 0 it would cover the attack point); LFOs over about two seconds (1–8 cycles) with phase, delay and polarity, the random shapes from a fixed sequence. Alt: auto-zooming envelope pictures; drawing LFO shapes by hand.
 - **D87 — Synth workflow.** A/B is per track and per session (not saved): the other side's patch waits in a small store; B starts as a copy of A and switching is an undoable patch change. Randomize (`model/randomize.ts`) moves each knob of the unlocked groups (oscillators, filters, envelopes, LFOs, matrix amounts) by up to `amount` of its knob range from what you hear, through `setThroughMacros`; level, voices, bend and tune never change; amount ≥ 0.5 may also change LFO shapes; amount and locks are user settings. Init = `INIT_PATCH` with the macros reset. Block copy/paste (oscillator, filter, envelope, LFO) pastes value by value via `setSynthParam`. `.rbsynth` = JSON `{format: "rebeat-synth", version: 1, name, patch, macros (values), effects}` (`library/synthFile.ts`, upgraded on read); importing (editor menu, library import or drop) adds it to Your instruments, the editor also puts it on the track. Alt: A/B saved with the project; a patch browser with tags; sharing via URL.
 - **D88 — Factory synths in version 2.** `library/synths.ts` is written in version 2 specs (generated once from the upgraded version 1 patches and checked to rebuild them within rounding; `synthV1.ts` now only reads old projects). House style in `voiced()`: no drift, global LFOs, glide always, no note spread, unless a synth says so. Voiced again: the Numan Lead's oscillator 2 is hard-synced and swept by the mod envelope (macro Sync), the Juno Strings' pulse is width-modulated by LFO 2 (macro PWM), the 808 Boom (mod envelope, macro Punch) and the Laser Zap (filter envelope, macro Zap) have pitch envelopes, the Moog bass and other analog sounds drift, pads spread; the Acid Bass has its own macros (Cutoff, Resonance, Env mod, Decay), the Wobble Bass a Wobble depth. Macros that scale a matrix slot use the "via" pattern (the macro as via, targets empty). Character falls back to the noise level when no oscillator plays. Levels rechecked (median about −21 dB RMS; the levels test now seeds the random phases). Alt: keep version 1 specs with a tweak layer.
+- **D89 — The advanced synth songs, and slides.** *Hyperdrive* and *Liquid Ladder* (`templates/synthSongs.ts`) use factory synths where one shows the feature (Numan lead, Juno strings, supersaw, laser) and patches of their own on the init preset (`patchTrack`: ring bells, synth toms, the 303, a drift pad, and Liquid Ladder's drums); macro locks via step `locks` (`sound.macroN`). Tests: only synths, every synth renders cleanly at its notes (SynthCore), each song uses its features (unit), and the busiest page renders loud without clipping (e2e export, with Neon Horizon). Writing them showed that version 2 had lost 303 slides: a note with `slide` now carries on from the note before (`slideTo`: its note-off is dropped, the voice glides — the patch's glide or 60 ms — without a new attack; if the note-off came first, the voice is held again from where it is). Alt: slides only in mono mode; songs on sampled drums.
 - **D35 — Build order.** ✅ The phases in §7, starting with the mockup (Phase M), each ending with something you can play with.
 
 ---

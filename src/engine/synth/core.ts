@@ -272,9 +272,10 @@ class Voice {
   order = 0;
   /** Event id of the note it plays (for note-off). */
   id = -1;
-  /** Glide: current and target pitch in semitones. */
+  /** Glide: current and target pitch in semitones; a slide's own glide time (0: the patch's). */
   pitch = 60;
   target = 60;
+  slide = 0;
   random = 0;
   /** Seconds since the note started (LFO fade-in). */
   age = 0;
@@ -308,7 +309,8 @@ class Voice {
 }
 
 type Event =
-  | { at: number; kind: "on"; id: number; note: number; velocity: number }
+  /** `from`: a 303-style slide from that note (held on, gliding, without a new attack). */
+  | { at: number; kind: "on"; id: number; note: number; velocity: number; from?: number }
   | { at: number; kind: "off"; id: number }
   | { at: number; kind: "releaseAll" }
   /** A parameter lock on the macros (values), or its end (null: back unless locked again since). */
@@ -364,6 +366,15 @@ export class SynthCore {
   /** Schedule a note; `at` and `end` are in samples. */
   noteOn(id: number, note: number, velocity: number, at: number) {
     this.queue({ at, kind: "on", id, note, velocity });
+  }
+
+  /**
+   * A slide (303-style): note `from` keeps sounding (its note-off is dropped) and glides into
+   * this one without a new attack.
+   */
+  slideTo(from: number, id: number, note: number, velocity: number, at: number) {
+    this.events = this.events.filter((e) => !(e.kind === "off" && e.id === from));
+    this.queue({ at, kind: "on", id, note, velocity, from });
   }
   noteOff(id: number, at: number) {
     this.queue({ at, kind: "off", id });
@@ -445,6 +456,24 @@ export class SynthCore {
       return;
     }
     const velocity = this.curveVelocity(e.velocity);
+    if (e.from !== undefined) {
+      const v = this.voices.find((x) => x.active && x.id === e.from);
+      if (v) {
+        // the patch's glide, or a short 303-like one
+        v.slide = Math.max(this.patch.voice.glide, 0.06);
+        v.target = e.note;
+        v.id = e.id;
+        v.note = e.note;
+        v.velocity = velocity;
+        this.lastPitch = e.note;
+        this.held = this.held.map((h) =>
+          h.id === e.from ? { id: e.id, note: e.note, velocity } : h,
+        );
+        // already let go (the note-off came first): hold it again, from where it is
+        if (!v.gate) this.start(v, e.note, velocity, false);
+        return;
+      }
+    }
     if (mode !== "poly") {
       const v = this.voices[0];
       const overlapping = this.held.length > 0 && v.active && v.gate;
@@ -595,10 +624,13 @@ export class SynthCore {
 
     // glide toward the target note
     if (v.pitch !== v.target) {
-      const g = Math.max(0.001, p.voice.glide);
+      const g = Math.max(0.001, v.slide || p.voice.glide);
       const k = 1 - Math.exp(-blockSec / (g / 4));
       v.pitch += (v.target - v.pitch) * k;
-      if (Math.abs(v.target - v.pitch) < 0.001) v.pitch = v.target;
+      if (Math.abs(v.target - v.pitch) < 0.001) {
+        v.pitch = v.target;
+        v.slide = 0;
+      }
     }
     const base =
       v.pitch + mod("pitch") + this.controls.pitchbend * p.voice.bend + p.voice.tune / 100;

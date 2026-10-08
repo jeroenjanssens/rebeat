@@ -8,6 +8,7 @@ import type { Project } from "../model/project";
 import { chord, drum, drumTrack, emptyProject, note, notes, page, synthTrack } from "./builder";
 import { demoProject } from "./nightDrive";
 import { SHOWCASE } from "./showcase";
+import { SYNTH_SONGS } from "./synthSongs";
 import { convertSynthKnobs } from "../library/synthTrack";
 
 export interface Example {
@@ -367,6 +368,20 @@ export const EXAMPLES: Example[] = [
     artist: "Rebeat demo · sampled instruments",
     year: 2026,
     create: SHOWCASE.lateNightCafe,
+  },
+  {
+    id: "hyperdrive",
+    name: "Hyperdrive",
+    artist: "Rebeat demo · the advanced synth",
+    year: 2026,
+    create: SYNTH_SONGS.hyperdrive,
+  },
+  {
+    id: "liquid-ladder",
+    name: "Liquid Ladder",
+    artist: "Rebeat demo · the advanced synth",
+    year: 2026,
+    create: SYNTH_SONGS.liquidLadder,
   },
   {
     id: "around-the-world",

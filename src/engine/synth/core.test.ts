@@ -265,6 +265,37 @@ describe("synth core", () => {
     expect(applyMacros(p).filters[0].cutoff).toBeCloseTo(100 * Math.pow(9, 0.25), 6);
   });
 
+  it("slides into a note without a new attack, even after the note before let go", () => {
+    for (const offBefore of [false, true]) {
+      const core = new SynthCore(
+        SR,
+        makePatch({
+          osc: [{ shape: 0, drift: 0 }],
+          filters: [{ on: false }],
+          envs: [{ attack: 0.002, decay: 0.05, sustain: 0.5, release: 0.05 }],
+          voice: { mode: "mono" },
+        }),
+      );
+      core.noteOn(1, 57, 0.8, 0);
+      // the next step's note-off has gone through already, or not yet
+      if (offBefore) core.noteOff(1, Math.round(0.19 * SR));
+      else core.noteOff(1, Math.round(0.4 * SR));
+      core.slideTo(1, 2, 69, 0.8, Math.round(0.2 * SR));
+      core.noteOff(2, Math.round(0.6 * SR));
+      const n = Math.round(0.7 * SR);
+      const l = new Float32Array(n);
+      const r = new Float32Array(n);
+      for (let f = 0; f < n; f += 128)
+        core.process(l.subarray(f, f + 128), r.subarray(f, f + 128), f);
+      // it glides up an octave and keeps sounding (the first note-off was dropped)
+      expect(freq(slice(l, 0.1, 0.18))).toBeCloseTo(220, 0);
+      expect(freq(slice(l, 0.4, 0.55))).toBeCloseTo(440, 0);
+      // no new attack: the level only rises back to the sustain, never to the peak
+      const level = rms(slice(l, 0.1, 0.18));
+      expect(rms(slice(l, 0.2, 0.25)), `off before: ${offBefore}`).toBeLessThan(level * 1.3);
+    }
+  });
+
   it("locks the macros for a step, then lets go (unless locked again since)", () => {
     const p = makePatch({
       osc: [{ shape: 0 }],
