@@ -17,7 +17,7 @@ import { openSampleEditor } from "../../app/openers";
 import { contextMenu, dropdown, type MenuItem } from "../../components/Menu";
 import { PeaksCanvas } from "../../components/PeaksCanvas";
 import { toast } from "../../components/Toast";
-import { KITS, kitSounds } from "../../engine/kits";
+import { KITS, KIT_SOUNDS, kitSounds, type KitSound } from "../../engine/kits";
 import { samplePeaks } from "../../engine/samples";
 import { audition, setPreviewVolume, stopAudition } from "../../library/audition";
 import {
@@ -86,6 +86,20 @@ function useWidth(ref: React.RefObject<HTMLElement | null>) {
   return w;
 }
 
+function kitItem(k: KitSound): Item {
+  return {
+    id: k.id,
+    name: k.name,
+    duration: k.length,
+    peaks: samplePeaks(k.id, 96),
+    favorite: false,
+    folder: `Kits/${k.kit ?? "Demo"}`,
+    tags: k.category ? [k.category] : [],
+    builtIn: true,
+    createdAt: 0,
+  };
+}
+
 export function LibraryPanel() {
   const root = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -135,20 +149,14 @@ export function LibraryPanel() {
     [project.tracks],
   );
 
+  const synthTracks = project.tracks.filter(
+    (t) => t.kind === "instrument" && !t.instrument?.sampleId,
+  ).length;
+
   const items: Item[] = useMemo(() => {
     let list: Item[];
     if (loc.kind === "kit") {
-      list = kitSounds(loc.kit).map((k) => ({
-        id: k.id,
-        name: k.name,
-        duration: k.length,
-        peaks: samplePeaks(k.id, 96),
-        favorite: false,
-        folder: `Kits/${k.kit}`,
-        tags: [k.category],
-        builtIn: true,
-        createdAt: 0,
-      }));
+      list = kitSounds(loc.kit).map(kitItem);
     } else {
       list = samples
         .filter((s) => {
@@ -158,7 +166,7 @@ export function LibraryPanel() {
             return s.folder === loc.path || s.folder.startsWith(`${loc.path}/`);
           return true;
         })
-        .map((s) => ({
+        .map((s): Item => ({
           id: s.id,
           name: s.name,
           duration: s.duration,
@@ -170,6 +178,11 @@ export function LibraryPanel() {
           builtIn: false,
           createdAt: s.createdAt,
         }));
+      // most tracks play built-in kit sounds, which aren't in the library's own list
+      if (loc.kind === "used")
+        list.push(
+          ...KIT_SOUNDS.filter((k) => usedIds.has(k.id)).map((k) => kitItem(k as KitSound)),
+        );
     }
     const q = query.trim().toLowerCase();
     if (q)
@@ -580,6 +593,17 @@ export function LibraryPanel() {
                 className={`scroll-thin min-h-0 flex-1 overflow-auto p-1.5 outline-none ${view === "tiles" ? "grid auto-rows-min grid-cols-[repeat(auto-fill,minmax(170px,1fr))] gap-1.5" : "flex flex-col"}`}
                 data-testid="library-list"
               >
+                {loc.kind === "used" && synthTracks > 0 && (
+                  <div
+                    className="col-span-full px-2 py-1.5 text-[11px] text-faint"
+                    data-testid="used-synths"
+                  >
+                    {synthTracks === 1
+                      ? "1 instrument track plays"
+                      : `${synthTracks} instrument tracks play`}{" "}
+                    a synth or built-in instrument, not a sample.
+                  </div>
+                )}
                 {items.length === 0 && (
                   <div className="col-span-full px-4 py-8 text-center text-[12px] text-faint">
                     {samples.length === 0 && loc.kind === "all"

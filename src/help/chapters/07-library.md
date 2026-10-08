@@ -15,7 +15,7 @@ Importing the same file twice doesn't make a duplicate. Loops get their **tempo*
 - **Search** looks in names, folders and tags.
 - **Filter**: loops (with a tempo) or one-shots, short / medium / long, and tags.
 - **Sort**: newest first, name or duration.
-- The list on the left (or the menu at the top in a narrow library): **All samples**, **Favorites**, **Used in project**, **Recordings**, your folders, the built-in **909** and **808 kits**, and **Online kits**.
+- The list on the left (or the menu at the top in a narrow library): **All samples**, **Favorites**, **Used in project**, **Recordings**, your folders, the built-in **909** and **808 kits**, and **Online kits**. **Used in project** shows every sample the tracks play, built-in kit sounds included.
 
 A dot next to a sample means it's used in the open project. Selecting a track shows its sample in the library.
 

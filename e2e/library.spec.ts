@@ -77,3 +77,15 @@ test("the library lists one sample per row, also when it's wider", async ({ page
   );
   expect(new Set(lefts).size).toBe(1);
 });
+
+test("used in project lists the built-in sounds the tracks play", async ({ page }) => {
+  await page.getByTestId("library").getByRole("button", { name: "All samples" }).click();
+  await page.locator(".menu").getByRole("button", { name: "Used in project" }).click();
+  const items = page.getByTestId("library-list").locator("[data-sample]");
+  // Night Drive: kick, snare, clap, two hats, rim and the vox hook
+  await expect(items.filter({ hasText: "Kick" })).toHaveCount(1);
+  expect(await items.count()).toBeGreaterThanOrEqual(6);
+  await expect(items.filter({ hasText: "Vox hook" })).toHaveCount(1);
+  // the bass and chords are synths
+  await expect(page.getByTestId("used-synths")).toContainText("2 instrument tracks");
+});
