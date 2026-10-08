@@ -45,14 +45,15 @@ src/
                          Launchpad/Push profiles, runtime)
   library/               library (import, dedupe, decode, versions, settings), analysis (BPM, onsets, key, LUFS),
                          processing (non-destructive sample settings), editorOps, renderFx, fft, wav, audition,
-                         onlineKits (tidal-drum-machines)
+                         onlineKits (tidal-drum-machines index, sound search) + onlineImport (download cache,
+                         import), drop (samples from drags: library, online, files), sort
   storage/               db (Dexie), projects (autosave, crash recovery), rebeatFile (.rebeat zip)
   panels/                drum-machine/, library/, inspector/, mixer/, master-scope/, piano-roll/, sample-editor/,
                          performance/, guide/
   help/                  the user guide: chapters/*.md (one per topic) and guide.ts (marked renderer; {#id}
                          anchors, {{key:command}} and {{shortcuts}} placeholders, panel:/command:/# links);
                          hints/ (explain-mode texts per area, keyed by data-hint ids; params.ts = param.*, fx.*)
-  components/            Encoder, Fader, VMeter, LevelMeter, Scope, PeaksCanvas, EffectEditor, Dialog, Menu,
+  components/            glide (smooth resets), Encoder, Fader, VMeter, LevelMeter, Scope, PeaksCanvas, EffectEditor, Dialog, Menu,
                          Toast, DragValue, MiniFader, InlineEdit, portal, useScratch, useSamplesVersion
   render/                raf (shared loop + load), useCanvas, theme (tokens), thumbnail
   templates/             builder (pattern/chord helpers), templates (Empty, 808 starter, Loop station), examples
@@ -85,13 +86,12 @@ Key implementation patterns:
 
 ### 0.6 Next steps
 
-0. The polish batch in §0.6b.
 
 1. Try the app with real hardware: a microphone and audio interface (calibration, monitoring), a MIDI keyboard/controller (learn), and a Launchpad or Push (the Push color palette is approximate).
 2. Desktop releases: add signing certificates and notarization secrets, then tag `v0.1.0` to produce draft releases.
 3. Decide D6 (license) before making the repository public.
 
-### 0.6b Current work: polish batch (agreed 2026-10-08)
+### 0.6b Polish batch (agreed and done 2026-10-08) ✅
 
 Order: 4, 5, 10, 1, 2, 9, 3, then 6–8. One commit per item; each adds explain-mode hints for new
 controls, updates the guide chapters it touches, and passes `/tmp/verify.sh`-style full checks
