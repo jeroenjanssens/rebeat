@@ -110,7 +110,8 @@ export function LibraryPanel() {
   const locRef = useRef<HTMLButtonElement>(null);
   const select = (id: string | null) => useLibrary.getState().set({ selectedId: id });
 
-  const view = width < 360 ? "list" : width < 640 ? "columns" : "tiles";
+  // one sample per row; tiles only when the panel is really wide
+  const view = width < 640 ? "list" : "tiles";
   const sidebar = width >= 520;
 
   const folders = useMemo(() => {
@@ -291,11 +292,7 @@ export function LibraryPanel() {
     if ((e.target as HTMLElement).closest("input")) return;
     const i = items.findIndex((x) => x.id === selectedId);
     const cols =
-      view === "tiles"
-        ? Math.max(1, Math.floor((listRef.current?.clientWidth ?? 600) / 180))
-        : view === "columns"
-          ? 2
-          : 1;
+      view === "tiles" ? Math.max(1, Math.floor((listRef.current?.clientWidth ?? 600) / 180)) : 1;
     const move = (d: number) => {
       const next = items[Math.min(items.length - 1, Math.max(0, i < 0 ? 0 : i + d))];
       if (!next) return;
@@ -580,7 +577,7 @@ export function LibraryPanel() {
                 ref={listRef}
                 tabIndex={0}
                 onKeyDown={onKeyDown}
-                className={`scroll-thin min-h-0 flex-1 overflow-auto p-1.5 outline-none ${view === "tiles" ? "grid auto-rows-min grid-cols-[repeat(auto-fill,minmax(170px,1fr))] gap-1.5" : view === "columns" ? "grid auto-rows-min grid-cols-2 gap-x-1.5" : "flex flex-col"}`}
+                className={`scroll-thin min-h-0 flex-1 overflow-auto p-1.5 outline-none ${view === "tiles" ? "grid auto-rows-min grid-cols-[repeat(auto-fill,minmax(170px,1fr))] gap-1.5" : "flex flex-col"}`}
                 data-testid="library-list"
               >
                 {items.length === 0 && (

@@ -56,3 +56,24 @@ test("filters by search and shows built-in kits", async ({ page }) => {
   await page.locator(".menu").getByRole("button", { name: "909 kit" }).click();
   await expect(page.getByTestId("library-list").locator("[data-sample]")).toHaveCount(8);
 });
+
+test("the library lists one sample per row, also when it's wider", async ({ page }) => {
+  await page.getByTestId("library").getByRole("button", { name: "All samples" }).click();
+  await page.locator(".menu").getByRole("button", { name: "909 kit" }).click();
+  const items = page.getByTestId("library-list").locator("[data-sample]");
+  await expect(items).toHaveCount(8);
+  // the width that used to show two columns
+  await page.evaluate(() => {
+    const w = window as never as {
+      __rebeat: { dock: { api: { getPanel(id: string): { api: { setSize(s: object): void } } } } };
+    };
+    w.__rebeat.dock.api.getPanel("library").api.setSize({ width: 520 });
+  });
+  await expect
+    .poll(() => page.getByTestId("library-list").evaluate((el) => el.clientWidth))
+    .toBeGreaterThan(400);
+  const lefts = await items.evaluateAll((els) =>
+    els.map((e) => Math.round(e.getBoundingClientRect().left)),
+  );
+  expect(new Set(lefts).size).toBe(1);
+});
