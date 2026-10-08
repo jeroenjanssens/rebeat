@@ -2,7 +2,9 @@
 import { guessCategory } from "../library/analysis";
 import { loadSample, sampleName, useLibrary } from "../library/library";
 import { KIT_SOUNDS } from "../engine/kits";
-import { addTrack, makeTrack } from "../model/project";
+import { addTrack, convertTrack, makeTrack } from "../model/project";
+import { SOUND_PARAMS, defaultParams } from "../model/params";
+import type { CatalogInstrument } from "../library/instruments";
 import type { InstrumentSource, SoundCategory, Track } from "../model/types";
 import { defaultInstrument, instrumentName } from "../engine/instruments";
 import { useStore } from "./store";
@@ -101,3 +103,36 @@ export function replaceSound(trackId: string, sampleId: string) {
 
 export const SAMPLE_MIME = "application/x-rebeat-sample";
 export const KIT_MIME = "application/x-rebeat-kit";
+
+/** Dragging an instrument from the library: its catalog id (D78). */
+export const INSTRUMENT_MIME = "application/x-rebeat-instrument";
+
+/** The track settings that come with a library instrument: its source, SOUND knobs, effects. */
+function applyEntry(t: Track, c: CatalogInstrument) {
+  t.instrument = structuredClone(c.source);
+  t.source = c.name;
+  // what you heard in the library: the SOUND knobs at rest (the filter open) or the saved ones
+  for (const k of Object.keys(t.params)) if (k.startsWith("sound.")) delete t.params[k];
+  for (const [k, v] of Object.entries(defaultParams(SOUND_PARAMS.instrument)))
+    t.params[`sound.${k}`] = v;
+  Object.assign(t.params, c.params ?? {});
+  if (c.effects) t.effects = structuredClone(c.effects);
+}
+
+/** Play a library instrument on a track; drum and audio tracks become instrument tracks. */
+export function playInstrumentOn(trackId: string, c: CatalogInstrument) {
+  useStore.getState().commit((p) => {
+    const t = p.tracks.find((x) => x.id === trackId);
+    if (!t) return;
+    if (t.kind !== "instrument") convertTrack(p, trackId, "instrument", sampleName);
+    applyEntry(t, c);
+  });
+}
+
+/** A new instrument track playing a library instrument. */
+export function addInstrumentTrack(c: CatalogInstrument, index?: number) {
+  const track = makeTrack("instrument", c.low ? "bass" : "keys", c.name, c.name);
+  applyEntry(track, c);
+  useStore.getState().commit((p) => addTrack(p, track, index));
+  useStore.getState().setUi({ selectedTrackId: track.id });
+}

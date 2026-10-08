@@ -20,8 +20,8 @@ import { contextMenu } from "../../components/Menu";
 import { applyHeld, editSteps, setStep, toggleSelected } from "../../state/actions";
 import { stepMenu } from "./stepMenu";
 import { stepKey, useStore } from "../../state/store";
-import { KIT_MIME, addSampleTracks } from "../../state/trackActions";
-import { droppedSamples } from "../../library/drop";
+import { KIT_MIME, addInstrumentTrack, addSampleTracks } from "../../state/trackActions";
+import { droppedInstrument, droppedSamples } from "../../library/drop";
 import type { Geometry } from "./layout";
 import { ParamLane } from "./ParamLane";
 import { TrackRow } from "./TrackRow";
@@ -264,6 +264,8 @@ export function TrackList({ geo }: { geo: Geometry }) {
       );
       return;
     }
+    const instrument = droppedInstrument(e.dataTransfer);
+    if (instrument) return void addInstrumentTrack(instrument);
     const { ids, categories } = await droppedSamples(e.dataTransfer);
     if (ids.length) addSampleTracks(ids, undefined, categories);
   };

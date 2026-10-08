@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { droppedSamples, isSampleDrag } from "../../library/drop";
+import { droppedInstrument, droppedSamples, isSampleDrag } from "../../library/drop";
 import { sampleName } from "../../library/library";
-import { addSampleTracks, replaceSound } from "../../state/trackActions";
+import {
+  addInstrumentTrack,
+  addSampleTracks,
+  playInstrumentOn,
+  replaceSound,
+} from "../../state/trackActions";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { AudioLines, Disc3, GripVertical, Music2, Power } from "lucide-react";
@@ -335,6 +340,12 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
         e.stopPropagation();
         setDropMode(null);
         const insert = e.altKey;
+        const instrument = droppedInstrument(e.dataTransfer);
+        if (instrument) {
+          if (insert) addInstrumentTrack(instrument, index + 1);
+          else playInstrumentOn(track.id, instrument);
+          return;
+        }
         const { ids, categories } = await droppedSamples(e.dataTransfer);
         if (!ids.length) return;
         if (insert) addSampleTracks(ids, index + 1, categories);

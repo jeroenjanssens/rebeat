@@ -1,5 +1,18 @@
 import { useRef } from "react";
-import { ChevronDown, Disc3, Folder, Globe, Heart, Mic, Music, Star } from "lucide-react";
+import {
+  ChevronDown,
+  Disc3,
+  Folder,
+  Globe,
+  Heart,
+  Mic,
+  Music,
+  Piano,
+  Star,
+  User,
+  Waves,
+} from "lucide-react";
+import { FAMILIES } from "../../library/instruments";
 import { dropdown } from "../../components/Menu";
 import { KITS } from "../../engine/kits";
 import { updateSample } from "../../library/library";
@@ -26,7 +39,9 @@ export function locLabel(l: Location) {
           ? l.path
           : l.kind === "kit"
             ? `${l.kit} kit`
-            : "Online kits";
+            : l.kind === "instruments"
+              ? l.family
+              : "Online kits";
 }
 
 function entries(folders: string[]): Entry[] {
@@ -51,6 +66,12 @@ function entries(folders: string[]): Entry[] {
     ...own.map((e, i) => (i === 0 ? { ...e, group: "Folders" } : e)),
     ...kits.map((e, i) => (i === 0 ? { ...e, group: "Kits" } : e)),
     { loc: { kind: "online" }, icon: Globe, label: "Online kits" },
+    ...FAMILIES.map((family, i): Entry => ({
+      loc: { kind: "instruments", family },
+      icon: family === "Synths" ? Waves : family === "Your instruments" ? User : Piano,
+      label: family,
+      group: i === 0 ? "Instruments" : undefined,
+    })),
   ];
 }
 

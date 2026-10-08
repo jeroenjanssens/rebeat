@@ -56,6 +56,8 @@ export interface Settings {
   explain: boolean;
   /** Sample sources you added by link (strudel.json, GitHub repositories), D74. */
   sampleSources: string[];
+  /** Favorite instruments (catalog ids), D78. */
+  instrumentFavorites: string[];
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -81,6 +83,7 @@ export const DEFAULT_SETTINGS: Settings = {
   onboarded: false,
   explain: false,
   sampleSources: [],
+  instrumentFavorites: [],
 };
 
 interface SettingsState extends Settings {

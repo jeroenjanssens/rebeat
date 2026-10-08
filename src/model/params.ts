@@ -99,7 +99,8 @@ const SOUND_INSTRUMENT: ParamDef[] = [
   { id: "decay", label: "Decay", default: 0.4, format: ms(1, 4000) },
   { id: "sustain", label: "Sustain", default: 0.7, format: pct },
   { id: "release", label: "Release", default: 0.35, format: ms(1, 8000) },
-  { id: "cutoff", label: "Cutoff", default: 0.7, format: hz },
+  // open: synths and sampled instruments have their own tone; this is a filter on top
+  { id: "cutoff", label: "Cutoff", default: 1, format: hz },
   { id: "reso", label: "Reso", default: 0.2, format: pct },
   { id: "glide", label: "Glide", default: 0, format: ms(1, 1000) },
   { id: "detune", label: "Detune", bipolar: true, default: 0.5, format: semis(1) },

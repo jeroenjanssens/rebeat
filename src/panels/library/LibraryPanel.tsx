@@ -1,13 +1,21 @@
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { Fragment, useEffect, useRef, useState, type CSSProperties } from "react";
 import { FolderInput, Link2, Upload, Volume2 } from "lucide-react";
 import { toast } from "../../components/Toast";
 import { kitSounds } from "../../engine/kits";
-import { audition, setPreviewVolume, stopAudition } from "../../library/audition";
+import {
+  audition,
+  previewInstrument,
+  previewNote,
+  setPreviewVolume,
+  stopAudition,
+  stopPreview,
+} from "../../library/audition";
+import { COLLECTIONS, type Collection, type Family } from "../../library/instruments";
 import { filesFromDrop, importFiles, useLibrary } from "../../library/library";
 import { platform } from "../../platform";
 import { useSettings } from "../../state/settings";
-import { useSelectedTrack, useStore } from "../../state/store";
-import { KIT_MIME, addSampleTracks } from "../../state/trackActions";
+import { useSelectedTrack } from "../../state/store";
+import { KIT_MIME, addInstrumentTrack, addSampleTracks } from "../../state/trackActions";
 import { FilterBar } from "./Filters";
 import { ImportLink } from "./ImportLink";
 import { ItemRow } from "./ItemRow";
@@ -40,6 +48,66 @@ function useWidth(ref: React.RefObject<HTMLElement | null>) {
   return w;
 }
 
+/** The computer keyboard as a piano: the A row plays white keys, the row above the black ones. */
+const KEY_NOTES: Record<string, number> = {
+  KeyA: 0,
+  KeyW: 1,
+  KeyS: 2,
+  KeyE: 3,
+  KeyD: 4,
+  KeyF: 5,
+  KeyT: 6,
+  KeyG: 7,
+  KeyY: 8,
+  KeyH: 9,
+  KeyU: 10,
+  KeyJ: 11,
+  KeyK: 12,
+  KeyO: 13,
+  KeyL: 14,
+};
+
+/** Where an instrument family comes from, and its license. */
+function FamilyHeader({ items, family }: { items: Item[]; family: Family }) {
+  const collections: Collection[] = [
+    ...new Map(
+      items.map((i) => [i.instrument!.collection.name, i.instrument!.collection]),
+    ).values(),
+  ];
+  const streamed = items.some((i) => i.instrument?.streamed);
+  return (
+    <div
+      className="shrink-0 border-b border-line px-2.5 py-1.5 text-[10.5px] leading-snug text-faint"
+      data-testid="family-header"
+    >
+      {family === "Your instruments" && !items.length
+        ? "Synths and sounds you save to the library appear here."
+        : (collections.length ? collections : [COLLECTIONS.factory as Collection]).map((c, i) => (
+            <span key={c.name}>
+              {i > 0 && " · "}
+              {c.url ? (
+                <a className="underline" href={c.url} target="_blank" rel="noopener noreferrer">
+                  {c.name}
+                </a>
+              ) : (
+                c.name
+              )}{" "}
+              ({c.license})
+            </span>
+          ))}
+      {streamed && (
+        <div>
+          Downloaded the first time you play one, then kept. Click to hear, type A–L to play it,
+          drag it onto a track.
+        </div>
+      )}
+      {!streamed && items.length > 0 && (
+        <div>Click to hear, type A–L to play it, drag it onto a track.</div>
+      )}
+    </div>
+  );
+}
+
 /** The sound browser: locations, the list of sounds, importing and previewing. */
 export function LibraryPanel() {
   const root = useRef<HTMLDivElement>(null);
@@ -48,7 +116,6 @@ export function LibraryPanel() {
   const samples = useLibrary((s) => s.samples);
   const selectedId = useLibrary((s) => s.selectedId);
   const importing = useLibrary((s) => s.importing);
-  const project = useStore((s) => s.project);
   const track = useSelectedTrack();
   const previewVolume = useSettings((s) => s.previewVolume);
   const [loc, setLoc] = useState<Location>({ kind: "all" });
@@ -71,9 +138,6 @@ export function LibraryPanel() {
   const { folders, tags } = useFoldersAndTags();
   const usedIds = useUsedIds();
   const items = useLibraryItems(loc, filters);
-  const synthTracks = project.tracks.filter(
-    (t) => t.kind === "instrument" && !t.instrument?.sampleId,
-  ).length;
 
   // selecting a track shows its sample in the library
   useEffect(() => {
@@ -89,7 +153,14 @@ export function LibraryPanel() {
     );
   }, [track?.sampleId, samples]);
 
-  const play = (item: Item) => audition(item.id, { sync, bpm: item.bpm });
+  const play = (item: Item) =>
+    item.instrument
+      ? void previewInstrument(item.instrument)
+      : audition(item.id, { sync, bpm: item.bpm });
+  const addTrack = (item: Item) =>
+    item.instrument ? addInstrumentTrack(item.instrument) : addSampleTracks([item.id]);
+  // playing the selected instrument from the computer keyboard
+  const octave = useRef(0);
 
   const doImport = async (files: File[], folder = loc.kind === "folder" ? loc.path : "") => {
     if (!files.length) return;
@@ -106,6 +177,22 @@ export function LibraryPanel() {
   const onKeyDown = (e: React.KeyboardEvent) => {
     if ((e.target as HTMLElement).closest("input")) return;
     const i = items.findIndex((x) => x.id === selectedId);
+    const inst = items[i]?.instrument;
+    if (inst && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      if (e.code === "KeyZ" || e.code === "KeyX") {
+        octave.current = Math.max(-2, Math.min(2, octave.current + (e.code === "KeyX" ? 1 : -1)));
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+      const semi = KEY_NOTES[e.code];
+      if (semi !== undefined) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!e.repeat) previewNote(inst, (inst.low ? 36 : 60) + 12 * octave.current + semi);
+        return;
+      }
+    }
     const cols =
       view === "tiles" ? Math.max(1, Math.floor((listRef.current?.clientWidth ?? 600) / 180)) : 1;
     const move = (d: number) => {
@@ -122,9 +209,12 @@ export function LibraryPanel() {
       ArrowUp: () => move(-cols),
       ArrowRight: cols > 1 ? () => move(1) : undefined,
       ArrowLeft: cols > 1 ? () => move(-1) : undefined,
-      Enter: i >= 0 ? () => addSampleTracks([items[i].id]) : undefined,
+      Enter: i >= 0 ? () => addTrack(items[i]) : undefined,
       " ": i >= 0 ? () => play(items[i]) : undefined,
-      Escape: stopAudition,
+      Escape: () => {
+        stopAudition();
+        stopPreview();
+      },
     };
     const action = actions[e.key];
     if (!action) return;
@@ -251,6 +341,7 @@ export function LibraryPanel() {
                 </div>
               )}
               {loc.kind === "folder" && loc.path === "Recordings" && <RecorderStrip />}
+              {loc.kind === "instruments" && <FamilyHeader items={items} family={loc.family} />}
               <div
                 ref={listRef}
                 tabIndex={0}
@@ -258,17 +349,6 @@ export function LibraryPanel() {
                 className={`scroll-thin min-h-0 flex-1 overflow-auto p-1.5 outline-none ${view === "tiles" ? "grid auto-rows-min grid-cols-[repeat(auto-fill,minmax(170px,1fr))] gap-1.5" : "flex flex-col"}`}
                 data-testid="library-list"
               >
-                {loc.kind === "used" && synthTracks > 0 && (
-                  <div
-                    className="col-span-full px-2 py-1.5 text-[11px] text-faint"
-                    data-testid="used-synths"
-                  >
-                    {synthTracks === 1
-                      ? "1 instrument track plays"
-                      : `${synthTracks} instrument tracks play`}{" "}
-                    a synth or built-in instrument, not a sample.
-                  </div>
-                )}
                 {items.length === 0 && (
                   <div className="col-span-full px-4 py-8 text-center text-[12px] text-faint">
                     {samples.length === 0 && loc.kind === "all"
@@ -276,19 +356,26 @@ export function LibraryPanel() {
                       : "Nothing here."}
                   </div>
                 )}
-                {items.map((item) => (
-                  <ItemRow
-                    key={item.id}
-                    item={item}
-                    active={item.id === selectedId}
-                    used={usedIds.has(item.id)}
-                    tiles={view === "tiles"}
-                    renaming={renaming === item.id}
-                    track={track}
-                    onSelect={() => select(item.id)}
-                    onPlay={() => play(item)}
-                    setRenaming={(on) => setRenaming(on ? item.id : null)}
-                  />
+                {items.map((item, i) => (
+                  <Fragment key={item.id}>
+                    {loc.kind === "instruments" &&
+                      item.instrument!.group !== items[i - 1]?.instrument?.group && (
+                        <div className="label col-span-full px-1.5 pb-0.5 pt-2 !text-[9.5px] text-faint">
+                          {item.instrument!.group}
+                        </div>
+                      )}
+                    <ItemRow
+                      item={item}
+                      active={item.id === selectedId}
+                      used={usedIds.has(item.id)}
+                      tiles={view === "tiles"}
+                      renaming={renaming === item.id}
+                      track={track}
+                      onSelect={() => select(item.id)}
+                      onPlay={() => play(item)}
+                      setRenaming={(on) => setRenaming(on ? item.id : null)}
+                    />
+                  </Fragment>
                 ))}
               </div>
             </>

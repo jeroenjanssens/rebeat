@@ -144,18 +144,22 @@ const smplr = (
 });
 
 /** Built-in and streamed instruments (your own are added by the library). */
+const SYNTH_GROUPS = ["Bass", "Leads", "Pads", "Keys", "Plucks & stabs", "FX"];
+
 export const CATALOG: CatalogInstrument[] = [
-  ...FACTORY_SYNTHS.map((s): CatalogInstrument => ({
-    id: `synth:${s.id}`,
-    name: s.name,
-    family: "Synths",
-    group: s.group,
-    note: s.note && `In the style of ${s.note}`,
-    source: { source: "synth", preset: s.id },
-    streamed: false,
-    collection: COLLECTIONS.factory,
-    low: s.group === "Bass",
-  })),
+  ...[...FACTORY_SYNTHS]
+    .sort((a, b) => SYNTH_GROUPS.indexOf(a.group) - SYNTH_GROUPS.indexOf(b.group))
+    .map((s): CatalogInstrument => ({
+      id: `synth:${s.id}`,
+      name: s.name,
+      family: "Synths",
+      group: s.group,
+      note: s.note && `In the style of ${s.note}`,
+      source: { source: "synth", preset: s.id },
+      streamed: false,
+      collection: COLLECTIONS.factory,
+      low: s.group === "Bass",
+    })),
   smplr("piano", "Grand Piano", "Pianos & keys", "Acoustic", COLLECTIONS.splendid),
   smplr("epiano:CP80", "Electric Grand (CP80)", "Pianos & keys", "Electric", COLLECTIONS.epianos),
   smplr("epiano:PianetT", "Pianet T", "Pianos & keys", "Electric", COLLECTIONS.epianos),

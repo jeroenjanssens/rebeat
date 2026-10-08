@@ -109,6 +109,12 @@ const hints: Hints = {
     text: "Takes the source out of Online kits. Sounds you already added to your library stay there.",
     guide: "library-kits",
   },
+  "library.instrument": {
+    title: "Instrument",
+    text: "A synth or sampled instrument. Click to hear a short phrase; with it selected, the A–L keys play it like a piano (Z and X change the octave). Drag it onto a track to play it there: drum and audio tracks become instrument tracks.",
+    keys: "Enter: new track · Right-click: favorites, offline, source and license",
+    guide: "library",
+  },
   "library.online.search": {
     title: "Search drum machines and sounds",
     text: "Type a machine (808, Linn) or a sound (hat, snare, cowbell), or both. Matching kits come first, then every matching sound across all kits, so you can compare, say, hi-hats from different machines.",

@@ -87,8 +87,13 @@ test("used in project lists the built-in sounds the tracks play", async ({ page 
   await expect(items.filter({ hasText: "Kick" })).toHaveCount(1);
   expect(await items.count()).toBeGreaterThanOrEqual(6);
   await expect(items.filter({ hasText: "Vox hook" })).toHaveCount(1);
-  // the bass and chords are synths
-  await expect(page.getByTestId("used-synths")).toContainText("2 instrument tracks");
+  // the bass and chords play synths: they're listed too
+  await expect(
+    page.getByTestId("library-list").locator('[data-instrument="synth:acid"]'),
+  ).toHaveCount(1);
+  await expect(
+    page.getByTestId("library-list").locator('[data-instrument="synth:warm-pad"]'),
+  ).toHaveCount(1);
 });
 
 test("sorts by name and duration in both directions, also in a kit", async ({ page }) => {

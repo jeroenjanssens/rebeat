@@ -1,6 +1,12 @@
-/** What the library list shows (D78): library samples and built-in kit sounds, normalized. */
+/**
+ * What the library list shows (D78): library samples, built-in kit sounds and instruments,
+ * normalized to one kind of item.
+ */
 import { useMemo } from "react";
+import { defaultInstrument } from "../../engine/instruments";
 import { KIT_SOUNDS, kitSounds, type KitSound } from "../../engine/kits";
+import { CATALOG, catalogId, type CatalogInstrument, type Family } from "../../library/instruments";
+import { useSettings } from "../../state/settings";
 import { samplePeaks } from "../../engine/samples";
 import { useLibrary } from "../../library/library";
 import { sortSamples } from "../../library/sort";
@@ -12,12 +18,14 @@ export type Location =
   | { kind: "used" }
   | { kind: "folder"; path: string }
   | { kind: "kit"; kit: string }
-  | { kind: "online" };
+  | { kind: "online" }
+  | { kind: "instruments"; family: Family };
 
-export type TypeFilter = "all" | "loops" | "oneshots";
+export type TypeFilter = "all" | "loops" | "oneshots" | "instruments";
 export type Length = "any" | "short" | "medium" | "long";
 
 export interface Item {
+  kind: "sample" | "instrument";
   id: string;
   name: string;
   duration: number;
@@ -28,6 +36,8 @@ export interface Item {
   tags: string[];
   builtIn: boolean;
   createdAt: number;
+  /** Instruments: the catalog entry. */
+  instrument?: CatalogInstrument;
 }
 
 export interface Filters {
@@ -41,6 +51,7 @@ export const sameLoc = (a: Location, b: Location) => JSON.stringify(a) === JSON.
 
 function kitItem(k: KitSound): Item {
   return {
+    kind: "sample",
     id: k.id,
     name: k.name,
     duration: k.length,
@@ -53,7 +64,21 @@ function kitItem(k: KitSound): Item {
   };
 }
 
-/** The samples the project's tracks play (library and built-in). */
+const instrumentItem = (c: CatalogInstrument, favorites: string[]): Item => ({
+  kind: "instrument",
+  id: c.id,
+  name: c.name,
+  duration: 0,
+  peaks: [],
+  favorite: favorites.includes(c.id),
+  folder: `${c.family}/${c.group}`,
+  tags: [c.family, c.group],
+  builtIn: true,
+  createdAt: 0,
+  instrument: c,
+});
+
+/** What the project's tracks play: samples (library and built-in) and instruments. */
 export function useUsedIds() {
   const tracks = useStore((s) => s.project.tracks);
   return useMemo(
@@ -63,6 +88,7 @@ export function useUsedIds() {
           t.sampleId,
           t.instrument?.sampleId,
           ...(t.layers ?? []).map((l) => l.sampleId),
+          t.kind === "instrument" ? catalogId(t.instrument ?? defaultInstrument(t)) : null,
         ]),
       ),
     [tracks],
@@ -73,8 +99,20 @@ export function useUsedIds() {
 export function useLibraryItems(loc: Location, f: Filters): Item[] {
   const samples = useLibrary((s) => s.samples);
   const sort = useLibrary((s) => s.sort);
+  const favorites = useSettings((s) => s.instrumentFavorites);
   const usedIds = useUsedIds();
   return useMemo(() => {
+    const q = f.query.trim().toLowerCase();
+    const matches = (i: Item) =>
+      !q || `${i.name} ${i.folder} ${i.tags.join(" ")}`.toLowerCase().includes(q);
+    // instruments keep the catalog's order (grouped); samples follow the sort
+    const instruments = (keep: (c: CatalogInstrument) => boolean) =>
+      CATALOG.filter(keep)
+        .map((c) => instrumentItem(c, favorites))
+        .filter(matches);
+    if (loc.kind === "instruments") return instruments((c) => c.family === loc.family);
+    const samplesOnly = f.type === "loops" || f.type === "oneshots" || f.length !== "any";
+    if (loc.kind === "all" && f.type === "instruments") return instruments(() => true);
     let list: Item[];
     if (loc.kind === "kit") {
       list = kitSounds(loc.kit).map(kitItem);
@@ -88,6 +126,7 @@ export function useLibraryItems(loc: Location, f: Filters): Item[] {
           return true;
         })
         .map((s): Item => ({
+          kind: "sample",
           id: s.id,
           name: s.name,
           duration: s.duration,
@@ -105,19 +144,22 @@ export function useLibraryItems(loc: Location, f: Filters): Item[] {
           ...KIT_SOUNDS.filter((k) => usedIds.has(k.id)).map((k) => kitItem(k as KitSound)),
         );
     }
-    const q = f.query.trim().toLowerCase();
-    if (q)
-      list = list.filter((i) =>
-        `${i.name} ${i.folder} ${i.tags.join(" ")}`.toLowerCase().includes(q),
-      );
+    list = list.filter(matches);
     if (f.type === "loops") list = list.filter((i) => i.bpm);
     if (f.type === "oneshots") list = list.filter((i) => !i.bpm);
     if (f.tag) list = list.filter((i) => i.tags.includes(f.tag!));
     if (f.length === "short") list = list.filter((i) => i.duration < 1);
     if (f.length === "medium") list = list.filter((i) => i.duration >= 1 && i.duration <= 5);
     if (f.length === "long") list = list.filter((i) => i.duration > 5);
-    return sortSamples(list, sort);
-  }, [loc, samples, f.query, f.type, f.tag, f.length, sort, usedIds]);
+    const sorted = sortSamples(list, sort);
+    if (samplesOnly || f.tag || f.type === "instruments") return sorted;
+    // instruments that belong here: favorites, used ones, or search results across everything
+    if (loc.kind === "favorites")
+      return [...sorted, ...instruments((c) => favorites.includes(c.id))];
+    if (loc.kind === "used") return [...sorted, ...instruments((c) => usedIds.has(c.id))];
+    if (loc.kind === "all" && q) return [...sorted, ...instruments(() => true)];
+    return sorted;
+  }, [loc, samples, f.query, f.type, f.tag, f.length, sort, usedIds, favorites]);
 }
 
 /** Folders of the library (with their parents) and tags, for the sidebar and filter. */

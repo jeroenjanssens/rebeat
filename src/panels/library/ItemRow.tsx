@@ -1,4 +1,10 @@
-import { Heart } from "lucide-react";
+import { Cloud, Heart, Loader2 } from "lucide-react";
+import { SoundIcon } from "../../components/soundIcons";
+import { toast } from "../../components/Toast";
+import { prefetchInstrument } from "../../engine/instruments";
+import { useDownloads } from "../../library/downloads";
+import type { CatalogInstrument } from "../../library/instruments";
+import { useSettings } from "../../state/settings";
 import { openSampleEditor } from "../../app/openers";
 import { useShell } from "../../app/shell";
 import { contextMenu, type MenuItem } from "../../components/Menu";
@@ -6,7 +12,14 @@ import { PeaksCanvas } from "../../components/PeaksCanvas";
 import { deleteSample, updateSample, usageOf } from "../../library/library";
 import type { Track } from "../../model/types";
 import { useStore } from "../../state/store";
-import { SAMPLE_MIME, addSampleTracks, replaceSound } from "../../state/trackActions";
+import {
+  INSTRUMENT_MIME,
+  SAMPLE_MIME,
+  addInstrumentTrack,
+  addSampleTracks,
+  playInstrumentOn,
+  replaceSound,
+} from "../../state/trackActions";
 import type { Item } from "./items";
 
 function fmtDur(s: number) {
@@ -91,6 +104,145 @@ function sampleMenu(
   ];
 }
 
+export const toggleInstrumentFavorite = (id: string) => {
+  const favs = useSettings.getState().instrumentFavorites;
+  useSettings
+    .getState()
+    .set({ instrumentFavorites: favs.includes(id) ? favs.filter((f) => f !== id) : [...favs, id] });
+};
+
+export const makeOffline = (c: CatalogInstrument) =>
+  prefetchInstrument(c.source.preset).then(
+    () => toast(`${c.name} is available offline`),
+    () => toast(`Couldn't download ${c.name}`, "error"),
+  );
+
+/** The right-click menu of an instrument. */
+function instrumentMenu(
+  item: Item,
+  c: CatalogInstrument,
+  track: Track | undefined,
+  play: () => void,
+  downloaded: boolean,
+): MenuItem[] {
+  return [
+    { label: "Preview", onSelect: play },
+    { label: "Add as new track", shortcut: "↩", onSelect: () => addInstrumentTrack(c) },
+    {
+      label: track ? `Use on ${track.name}` : "Use on selected track",
+      disabled: !track,
+      onSelect: () => track && playInstrumentOn(track.id, c),
+    },
+    { separator: true },
+    {
+      label: item.favorite ? "Remove from favorites" : "Add to favorites",
+      onSelect: () => toggleInstrumentFavorite(item.id),
+    },
+    ...(c.streamed
+      ? [
+          {
+            label: downloaded ? "Available offline" : "Make available offline",
+            disabled: downloaded,
+            onSelect: () => void makeOffline(c),
+          },
+        ]
+      : []),
+    { separator: true },
+    {
+      label: `${c.collection.name} · ${c.collection.license}`,
+      disabled: !c.collection.url,
+      onSelect: () => c.collection.url && window.open(c.collection.url, "_blank", "noopener"),
+    },
+  ];
+}
+
+/** One instrument in the library list. */
+function InstrumentRow({
+  item,
+  c,
+  active,
+  used,
+  tiles,
+  track,
+  onSelect,
+  onPlay,
+}: {
+  item: Item;
+  c: CatalogInstrument;
+  active: boolean;
+  used: boolean;
+  tiles: boolean;
+  track: Track | undefined;
+  onSelect: () => void;
+  onPlay: () => void;
+}) {
+  const downloaded = useDownloads((s) => s.done.includes(c.source.preset));
+  const busy = useDownloads((s) => s.busy.includes(c.source.preset));
+  const kind = c.source.source === "synth" ? "synth" : "instrument";
+  return (
+    <div
+      data-sample={item.id}
+      data-instrument={item.id}
+      data-hint="library.instrument"
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData(INSTRUMENT_MIME, item.id);
+        e.dataTransfer.setData("text/plain", item.name);
+        e.dataTransfer.effectAllowed = "copy";
+      }}
+      onClick={() => {
+        onSelect();
+        onPlay();
+      }}
+      onContextMenu={(e) => {
+        onSelect();
+        contextMenu(e, instrumentMenu(item, c, track, onPlay, downloaded));
+      }}
+      title={c.note}
+      className={`group flex cursor-pointer gap-2 rounded-md px-1.5 ${tiles ? "flex-col border border-line p-2" : "h-9 items-center"}`}
+      style={{
+        background: active ? "color-mix(in oklab, var(--accent) 16%, transparent)" : undefined,
+      }}
+    >
+      <span
+        className={`flex shrink-0 items-center justify-center rounded bg-surface ${tiles ? "h-10 w-full" : "h-6 w-12"} ${active ? "text-accent" : "text-dim"}`}
+      >
+        <SoundIcon kind={kind} size={14} />
+      </span>
+      <div className="flex min-w-0 flex-1 items-center gap-1.5">
+        <span className="min-w-0 flex-1 truncate text-[11.5px]">{item.name}</span>
+        {used && (
+          <span
+            className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent"
+            title="Used in this project"
+          />
+        )}
+        {busy ? (
+          <Loader2 size={11} className="shrink-0 animate-spin text-dim" />
+        ) : (
+          c.streamed &&
+          !downloaded && (
+            <span className="shrink-0 text-faint" title="Downloads the first time you play it">
+              <Cloud size={11} />
+            </span>
+          )
+        )}
+        <button
+          className={`shrink-0 ${item.favorite ? "text-lit" : "text-faint opacity-0 group-hover:opacity-100"}`}
+          title="Favorite"
+          data-hint="library.sample.favorite"
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleInstrumentFavorite(item.id);
+          }}
+        >
+          <Heart size={11} fill={item.favorite ? "currentColor" : "none"} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /** One sample in the library list (a row, or a tile in a wide library). */
 export function ItemRow({
   item,
@@ -113,6 +265,19 @@ export function ItemRow({
   onPlay: () => void;
   setRenaming: (on: boolean) => void;
 }) {
+  if (item.instrument)
+    return (
+      <InstrumentRow
+        item={item}
+        c={item.instrument}
+        active={active}
+        used={used}
+        tiles={tiles}
+        track={track}
+        onSelect={onSelect}
+        onPlay={onPlay}
+      />
+    );
   return (
     <div
       data-sample={item.id}
@@ -165,10 +330,13 @@ export function ItemRow({
           />
         ) : (
           <span
-            className="min-w-0 flex-1 truncate text-[11.5px]"
+            className="flex min-w-0 flex-1 items-center gap-1 text-[11.5px]"
             title={item.folder ? `${item.folder}/${item.name}` : item.name}
           >
-            {item.name}
+            <span className="text-faint">
+              <SoundIcon kind={item.bpm ? "loop" : "oneshot"} size={11} />
+            </span>
+            <span className="truncate">{item.name}</span>
           </span>
         )}
         {used && (

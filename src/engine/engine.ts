@@ -274,10 +274,7 @@ function updateSynth(track: Track, bpm: number) {
   v.update(track, bpm);
   // instruments use the channel filter for cutoff/resonance
   const p = track.params;
-  channel(track.id).setFilter(
-    toUnit.hz(p["sound.cutoff"] ?? 0.7),
-    toUnit.q(p["sound.reso"] ?? 0.2),
-  );
+  channel(track.id).setFilter(toUnit.hz(p["sound.cutoff"] ?? 1), toUnit.q(p["sound.reso"] ?? 0.2));
 }
 
 /** Loading state of a track's sampled instrument. */

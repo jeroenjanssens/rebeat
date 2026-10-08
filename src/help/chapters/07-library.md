@@ -48,6 +48,21 @@ The search box finds machines _and_ sounds: type "hat", "808 snare" or "cowbell"
 
 Check the sounds' licensing before you publish music made with them.
 
+## Instruments
+
+The library also holds everything an **instrument track** can play, under **Instruments** in the list on the left:
+
+- **Synths**: 37 built-in synths in the style of well-known songs and synths, grouped Bass, Leads, Pads, Keys, Plucks & stabs and FX. Hover over one to see what it's in the style of.
+- **Pianos & keys**, **General MIDI** (all 128 GM sounds), **Mallets**, **Orchestral** (the Versilian Community Sample Library) and **Double bass**: sampled instruments. They download the first time you play one (a small cloud shows the ones that haven't been yet) and are kept after that. Right-click → **Make available offline** downloads one right away. The line at the top shows where the samples come from and their license.
+- **Your instruments**: synths and sounds you save.
+
+Working with instruments:
+
+- **Click** one to hear a short phrase. While it's selected, the keys **A** to **L** play it like a piano (**W E T Y U O** are the black keys); **Z** and **X** move an octave down or up.
+- **Drag** it onto an instrument track to play it there, onto a drum or audio track to turn that track into an instrument track, or below the tracks for a new one. **Enter** adds it as a new track too.
+- The heart adds it to **Favorites**; **Used in project** lists the instruments your tracks play.
+- Searching in **All samples** finds instruments as well; the filter's **Instruments** type shows only them.
+
 ## Recording into the library
 
 Open **Recordings** to record from your microphone: pick the input device, watch the input level, turn on monitoring (use headphones) if you want to hear yourself, and press **Record** / stop. **Trim silence** removes silence at both ends. The recording is saved as a new sample. Your browser asks for microphone access the first time.
