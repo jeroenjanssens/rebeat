@@ -36,8 +36,8 @@ src/
   state/                 store (project + undo + UI), settings (persisted), actions (steps, function buttons),
                          input (pads, step entry, live recording, cursor), trackActions, effectActions, clipActions
   engine/                context (native AudioContext + Tone), engine (scoped graph: channels, voices, clips,
-                         metering, scratch), channel (strips, buses), effects (factory + chains), instruments (synth
-                         presets, sampler, smplr), transport (lookahead scheduler, playPageStep), ticker (worker),
+                         metering, scratch), channel (strips, buses), effects (factory + chains), instruments (voices:
+                         synth patches, sampler with zones, smplr, SoundFonts), synth (the patch voice), transport (lookahead scheduler, playPageStep), ticker (worker),
                          kits (offline-synthesized 808/909 + vox), samples (buffers, peaks), metronome, looper,
                          liveInput (monitoring), recorder (PCM worklet), stretch (Signalsmith warp), perf (DJ filter,
                          tape stop, beat repeat, throws, crossfader, mute groups), render (offline export)
@@ -47,14 +47,17 @@ src/
                          processing (non-destructive sample settings), editorOps, renderFx, fft, wav, audition,
                          onlineKits (tidal-drum-machines index, sound search) + onlineImport (download cache,
                          import, links) + sources (link and strudel.json parsing), encode (WAV/MP3/OGG),
-                         drop (samples from drags: library, online, files), sort
-  storage/               db (Dexie), projects (autosave, crash recovery), rebeatFile (.rebeat zip)
+                         drop (samples from drags: library, online, files), sort, synths (factory patches),
+                         instruments (the catalog) + instrumentNames, userInstruments (Your instruments,
+                         SoundFonts, multi-samples), downloads (which streamed instruments are cached)
+  model/synth            SynthPatch (data), makePatch, sanitizePatch, withKnobs
+  storage/               db (Dexie; v3 adds instruments), projects (autosave, crash recovery), rebeatFile (.rebeat zip)
   panels/                drum-machine/, library/, inspector/, mixer/, master-scope/, piano-roll/, sample-editor/,
-                         performance/, guide/
+                         performance/, guide/, synth-editor/ (patchParams: the knob table)
   help/                  the user guide: chapters/*.md (one per topic) and guide.ts (marked renderer; {#id}
                          anchors, {{key:command}} and {{shortcuts}} placeholders, panel:/command:/# links);
                          hints/ (explain-mode texts per area, keyed by data-hint ids; params.ts = param.*, fx.*)
-  components/            glide (smooth resets), Encoder, Fader, VMeter, LevelMeter, Scope, PeaksCanvas, EffectEditor, Dialog, Menu,
+  components/            glide (smooth resets), soundIcons, FormatPicker, Encoder, Fader, VMeter, LevelMeter, Scope, PeaksCanvas, EffectEditor, Dialog, Menu,
                          Toast, DragValue, MiniFader, InlineEdit, portal, useScratch, useSamplesVersion
   render/                raf (shared loop + load), useCanvas, theme (tokens), thumbnail
   templates/             builder (pattern/chord helpers), templates (Empty, 808 starter, Loop station), examples
@@ -171,7 +174,7 @@ full checks (prettier, tsc, eslint, vitest, e2e).
   (unit tests); the online-kit model becomes a list of sources with tidal built in. e2e with a
   mocked network.
 
-### 0.6d Instruments in the library (agreed 2026-10-08)
+### 0.6d Instruments in the library (agreed and done 2026-10-08) ✅
 
 One browser for everything you can play (D78): instruments and synths become library items next
 to samples, synths become data (patches) you can shape in a synth editor and save, and the
@@ -222,7 +225,7 @@ with tests, explain-mode hints, guide updates and the full checks:
 
 ### 0.7 Known limitations and later work
 
-- Offline renders (export, resampling) leave out smplr instruments (they stream samples) and repitch instead of time-stretching warped clips.
+- Offline renders (export, resampling) repitch instead of time-stretching warped clips. Sampled instruments are included (rendering waits for their samples), but the first render of one that was never downloaded needs the network.
 - Changing the latency mode applies after a reload (the AudioContext is created once).
 - MIDI clock in/out, track groups/folding, and more conditional trigs are "later" items from the plan (D27, §3.3).
 - Hold-step editing uses step selection (Alt+click, Select tool) for parameter locks rather than physically holding a pad.

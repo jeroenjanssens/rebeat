@@ -199,8 +199,8 @@ export function ExportDialog() {
         </div>
         {busy && <div className="text-accent">{busy}</div>}
         <p className="text-[10.5px] leading-snug text-faint">
-          Rendering runs offline, faster than real time. Sampled (smplr) instruments are left out of
-          offline renders; resample them live with the looper.
+          Rendering runs offline, faster than real time. Sampled instruments that haven't been
+          downloaded yet are downloaded first.
         </p>
       </div>
     </Dialog>

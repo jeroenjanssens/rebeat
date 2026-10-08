@@ -30,7 +30,7 @@ The [project browser](command:project.home) ({{key:project.home}}, or click the 
 | **Export MIDI**                    | The notes and drum hits as a MIDI file, with a track per instrument (drums on channel 10, General MIDI notes). |
 | **Resample to library / to track** | Render into a new sample (in Recordings), or straight into a new audio track.                                  |
 
-Sampled instruments (piano, strings…) are left out of rendered exports. Record them live with an audio track if you need them in a bounce.
+Sampled instruments (piano, strings…) are included: one that hasn't been downloaded yet is downloaded before rendering (so the first export needs an internet connection; **Make available offline** in the library downloads it ahead of time).
 
 ## Undo
 

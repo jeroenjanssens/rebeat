@@ -112,3 +112,22 @@ test("a pitched entry in a strudel.json becomes an instrument", async ({ page })
   const items = await yours(page);
   await expect(items.filter({ hasText: "keys piano" })).toHaveCount(1);
 });
+
+test("exports include sampled instruments", async ({ page }) => {
+  test.setTimeout(120_000);
+  await importFiles(page, fixtureFiles({ "Test.sf2": soundfont() }));
+  const items = page.getByTestId("library-list").locator("[data-instrument]");
+  await items.first().dragTo(page.locator("[data-track-row]", { hasText: "BASS" }));
+  await expect.poll(async () => (await track(page, "Bass")).instrument?.source).toBe("sf2");
+  await page.keyboard.press("ControlOrMeta+E");
+  await page.locator('[data-hint="app.export.source"]').selectOption({ label: "Track: Bass" });
+  const download = page.waitForEvent("download");
+  await page.getByTestId("export-wav").click();
+  const bytes = readFileSync(await (await download).path());
+  expect(bytes.subarray(0, 4).toString()).toBe("RIFF");
+  // 24-bit: the soloed SoundFont bass is in the render
+  let peak = 0;
+  for (let i = 44; i < bytes.length - 3; i += 3)
+    peak = Math.max(peak, Math.abs(bytes.readIntLE(i, 3)));
+  expect(peak).toBeGreaterThan(100000);
+});

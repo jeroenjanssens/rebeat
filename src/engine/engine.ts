@@ -108,7 +108,16 @@ export function scopeReady(scope: EngineScope) {
     ...[...scope.channels.values()].map((c) => c.ready()),
     ...[...scope.buses.values()].map((b) => b.ready()),
     scope.master?.fx.ready(),
+    // sampled instruments load their samples (from the browser's cache after the first time)
+    ...[...scope.synths.values()].map((v) => untilLoaded(v)),
   ]);
+}
+
+/** Wait (up to 30 s) until an instrument has its samples, or failed to get them. */
+async function untilLoaded(v: InstrumentVoice) {
+  const end = performance.now() + 30_000;
+  while (v.state() === "loading" && performance.now() < end)
+    await new Promise((r) => setTimeout(r, 100));
 }
 
 /** Run engine code against another scope (e.g. inside Tone.Offline). */
