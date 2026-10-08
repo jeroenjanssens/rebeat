@@ -368,6 +368,25 @@ function playNotes(track: Track, velocity: number, time: number, o: TriggerOptio
   );
 }
 
+/** Start a note on an instrument track that sounds until released (on-screen and MIDI keys). */
+export function holdNote(track: Track, pitch: number, velocity: number): () => void {
+  if (track.kind !== "instrument") return () => {};
+  const shift = track.transpose ?? 0;
+  const v = instrument(track);
+  const t = audioNow();
+  S.activeUntil.set(track.id, Infinity);
+  const release =
+    v.hold?.(pitch + shift, velocity, t) ??
+    // instruments without held notes: a long note
+    (v.play([{ pitch: pitch + shift, length: 8, velocity }], t, 0.125), () => {});
+  return () => {
+    const end = audioNow();
+    release(end);
+    const tail = toUnit.ms(1, 8000)(track.params["sound.release"] ?? 0.35) / 1000;
+    S.activeUntil.set(track.id, end + Math.max(tail, 2) + 0.5);
+  };
+}
+
 /** Play a track's sound (a step, a pad hit, an audition). */
 export function trigger(track: Track, velocity: number, o: TriggerOptions = {}) {
   const time = Math.max(audioNow(), o.time ?? audioNow());

@@ -105,6 +105,8 @@ function adsrOff(p: AudioParam, e: Adsr, t: number, base = 0) {
 
 export interface PatchSynth {
   play(notes: Note[], time: number, stepDur: number): void;
+  /** Start a note that sounds until the returned function releases it (keyboards). */
+  hold(pitch: number, velocity: number, time: number): (end: number) => void;
   releaseAll(time: number): void;
   /** A new patch (or the same one with the track's knobs applied); `bpm` for synced LFOs. */
   setPatch(patch: SynthPatch, bpm: number): void;
@@ -367,6 +369,20 @@ export function patchSynth(dest: Tone.Gain, initial: SynthPatch, bpm = 120): Pat
         return;
       }
       for (const n of notes) voice(n.pitch, n.velocity, time)(time + n.length * stepDur * 0.95);
+    },
+    hold(pitch, velocity, time) {
+      if (!patch.mono) return voice(pitch, velocity, time);
+      const m = (mono ??= buildMono());
+      // a held note: sustain for an hour unless released
+      monoPlay(m, { pitch, velocity, length: 1 }, time, 3600);
+      return (end) => {
+        // only the latest note releases the voice (legato playing keeps it going)
+        if (m.hz !== midiToHz(pitch) || mono !== m) return;
+        adsrOff(m.vca.gain, patch.amp, end);
+        if (patch.filter.env !== 0)
+          for (const f of m.filters) adsrOff(f.frequency, patch.filterEnv, end, m.base);
+        m.until = end;
+      };
     },
     releaseAll(time) {
       if (mono) adsrOff(mono.vca.gain, patch.amp, time);

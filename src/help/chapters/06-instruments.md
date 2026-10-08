@@ -18,6 +18,8 @@ A new instrument track plays a built-in synth: **Mono · Acid Bass** for bass tr
 
 The **synth editor** shapes the synth of the selected instrument track. Open it with **Edit synth…** in the Inspector, or right-click the track's name → **Edit synth…**.
 
+The blocks follow the path the sound takes, shown at the top: the oscillators (with sub and noise) are mixed, then filtered, then shaped by the amp, then driven to the output. That order is fixed, as on a classic analog synth: the oscillators play side by side, and the envelopes and the LFO don't carry sound, they steer the filter, the amp or the pitch. (The order of the track's **effects** can be changed in the Inspector.)
+
 | Section              | What it does                                                                                                                         |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | **Start from**       | Load a factory synth as the starting point.                                                                                          |
@@ -28,7 +30,7 @@ The **synth editor** shapes the synth of the selected instrument track. Open it 
 | **Envelopes**        | The filter's and the amplifier's attack, decay, sustain and release. Drag the points in the pictures or turn the knobs.              |
 | **LFO**              | A slow wobble on the pitch, filter, volume or pan; free or synced to the tempo.                                                      |
 
-Click in the editor and type **A**–**L** to play it (**Z** / **X** change the octave); the changes apply right away.
+Play it on the **keyboard** at the bottom: hold a key and the note sounds until you let go, so you hear the sustain and the release (click higher on a key to play softer; drag across keys for a glissando). The computer keys **A**–**L** play it too while the editor has focus (**Z** / **X** or the + / − buttons change the octave). Changes apply right away, also to a note you're holding.
 
 Editing a factory synth edits a copy on the track; the factory synth itself never changes (the revert button brings it back). **Save to library** stores the synth with the track's SOUND knobs and effects under **Your instruments** in the library; drop it on any track, in any project. Right-click any instrument track → **Save sound** does the same for samplers and sampled instruments.
 

@@ -51,6 +51,8 @@ export interface InstrumentVoice {
   play(notes: Note[], time: number, stepDur: number): void;
   releaseAll(time: number): void;
   update(track: Track, bpm?: number): void;
+  /** Start a held note; the returned function releases it (keyboards, MIDI). */
+  hold?(pitch: number, velocity: number, time: number): (end: number) => void;
   dispose(): void;
   /** For sampled instruments: whether the samples are loaded. */
   state: () => "ready" | "loading" | "error";
@@ -75,6 +77,7 @@ function synthVoice(track: Track, src: InstrumentSource, dest: Tone.Gain): Instr
     key: "synth",
     state: () => "ready",
     play: (notes, time, step) => synth.play(notes, time, step),
+    hold: (pitch, velocity, time) => synth.hold(pitch, velocity, time),
     releaseAll: (time) => synth.releaseAll(time),
     update: (t, bpm = 120) => synth.setPatch(effective(t), bpm),
     dispose: () => synth.dispose(),
@@ -113,6 +116,13 @@ function samplerVoice(src: InstrumentSource, dest: Tone.InputNode): InstrumentVo
       if (!sampler) return;
       for (const n of notes)
         sampler.triggerAttackRelease(midiToHz(n.pitch), n.length * step * 0.95, time, n.velocity);
+    },
+    hold(pitch, velocity, time) {
+      make();
+      const s = sampler;
+      if (!s) return () => {};
+      s.triggerAttack(midiToHz(pitch), time, velocity);
+      return (end) => s.triggerRelease(midiToHz(pitch), end);
     },
     releaseAll(time) {
       sampler?.releaseAll(time);
@@ -170,6 +180,11 @@ function sf2Voice(src: InstrumentSource, dest: Tone.Gain): InstrumentVoice {
           time,
           duration: n.length * step * 0.95,
         });
+    },
+    hold(pitch, velocity, time) {
+      if (state !== "ready" || !inst) return () => {};
+      const stop = inst.start({ note: pitch, velocity: Math.round(velocity * 127), time });
+      return (end) => stop(end);
     },
     releaseAll: () => inst?.stop(),
     update: () => {},
@@ -235,6 +250,11 @@ function smplrVoice(src: InstrumentSource, dest: Tone.Gain): InstrumentVoice {
           time,
           duration: n.length * step * 0.95,
         });
+    },
+    hold(pitch, velocity, time) {
+      if (state !== "ready" || !inst) return () => {};
+      const stop = inst.start({ note: pitch, velocity: Math.round(velocity * 127), time });
+      return (end) => stop(end);
     },
     releaseAll: () => inst?.stop(),
     update: () => {},

@@ -18,6 +18,17 @@ const knobs: Hints = Object.fromEntries(
 
 const hints: Hints = {
   ...knobs,
+  "synth.keyboard": {
+    title: "Keyboard",
+    text: "Play the synth: hold a key and the note sounds until you let go, so you hear its sustain and release. Click higher on a key to play softer. The computer keys A–L play it too (Z and X change the octave).",
+    keys: "Drag across keys: glissando · + / −: octave",
+    guide,
+  },
+  "synth.flow": {
+    title: "Signal flow",
+    text: "The path the sound takes: the oscillators (with sub and noise) are mixed, filtered, shaped by the amp, then driven to the output. The envelopes steer the filter and the amp; the LFO moves its target. The blocks below follow this order.",
+    guide,
+  },
   "synth.start": {
     title: "Start from",
     text: "Load a factory synth onto this track as the starting point. Your edits apply to the track only; the factory synth stays as it is.",

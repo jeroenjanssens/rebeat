@@ -5,7 +5,7 @@
 import { create } from "zustand";
 import { runCommand } from "../app/commands";
 import { toast } from "../components/Toast";
-import { trigger } from "../engine/engine";
+import { holdNote, trigger } from "../engine/engine";
 import { uid } from "../model/id";
 import type { MidiMapping } from "../model/project";
 import { platform } from "../platform";
@@ -184,6 +184,15 @@ function handle(e: MIDIMessageEvent, device: string) {
     return;
   }
   if (m.type === "noteon") playNote(m.number, m.value / 127);
+  else if (m.type === "noteoff") releaseNote(m.number);
+}
+
+/** Notes held on a MIDI keyboard: they sound until the key goes up. */
+const held = new Map<number, (() => void)[]>();
+
+function releaseNote(note: number) {
+  for (const release of held.get(note) ?? []) release();
+  held.delete(note);
 }
 
 /** Notes play the selected instrument track; on drum tracks 36… = pads 1… (MPC/Push layout). */
@@ -192,10 +201,11 @@ function playNote(note: number, velocity: number) {
   const selected = s.project.tracks.find((t) => t.id === s.selectedTrackId);
   if (selected?.kind === "instrument") {
     const notes = playedNotes(note);
-    trigger(selected, velocity, {
-      notes: notes.map((pitch) => ({ pitch, length: 2, velocity })),
-      stepDur: 0.15,
-    });
+    releaseNote(note);
+    held.set(
+      note,
+      notes.map((pitch) => holdNote(selected, pitch, velocity)),
+    );
     padInput(selected, velocity, notes);
     return;
   }

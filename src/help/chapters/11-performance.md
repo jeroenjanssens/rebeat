@@ -20,7 +20,7 @@ The [Performance](panel:performance) panel puts everything for playing live in o
 Rebeat works with MIDI keyboards, pads and controllers (in Chrome and Edge).
 
 - Turn it on in **Settings → MIDI → Enable MIDI**, and choose which inputs to use.
-- **Notes** play the selected instrument track. On drum tracks, notes from 36 (C1) upwards play pads 1, 2, 3…, as on most pad controllers. They record like pad hits.
+- **Notes** play the selected instrument track, sounding for as long as you hold the key. On drum tracks, notes from 36 (C1) upwards play pads 1, 2, 3…, as on most pad controllers. They record like pad hits.
 
 ### MIDI learn {#midi}
 

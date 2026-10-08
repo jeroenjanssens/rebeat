@@ -174,14 +174,6 @@ export const SECTIONS: { id: string; title: string; params: PatchParam[] }[] = [
         format: pct,
         help: "How much the cutoff follows the note: higher notes get brighter.",
       },
-      {
-        path: "drive",
-        label: "Drive",
-        min: 0,
-        max: 1,
-        format: pct,
-        help: "Saturation after the filter: warmth at first, then grit.",
-      },
     ],
   },
   {
@@ -291,7 +283,7 @@ export const SECTIONS: { id: string; title: string; params: PatchParam[] }[] = [
   },
   {
     id: "voice",
-    title: "Voice",
+    title: "Voice · output",
     params: [
       {
         path: "glide",
@@ -308,6 +300,14 @@ export const SECTIONS: { id: string; title: string; params: PatchParam[] }[] = [
         max: 1,
         format: pct,
         help: "How much harder hits sound louder.",
+      },
+      {
+        path: "drive",
+        label: "Drive",
+        min: 0,
+        max: 1,
+        format: pct,
+        help: "Saturation at the output, after the amp: warmth at first, then grit.",
       },
       {
         path: "volume",

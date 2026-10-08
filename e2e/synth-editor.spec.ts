@@ -129,3 +129,37 @@ test("any instrument track's sound can be saved from its menu", async ({ page })
   await expect(page.getByText("Saved “Night Pad” to Your instruments").first()).toBeVisible();
   expect((await track(page, "Chords")).instrument?.from).toMatch(/^user:/);
 });
+
+test("the editor's keyboard holds notes until you let go", async ({ page }) => {
+  await row(page, "CHORDS").locator('[data-hint="dm.track.name"]').click({ button: "right" });
+  await page.locator(".menu").getByRole("button", { name: "Edit synth…" }).click();
+  const level = () =>
+    page.evaluate(() =>
+      Math.max(
+        ...(
+          window as never as { __rebeat: { engine: { masterLevel(): number[] } } }
+        ).__rebeat.engine.masterLevel(),
+      ),
+    );
+  const key = page.getByTestId("keyboard").locator('[data-key="60"]');
+  const b = (await key.boundingBox())!;
+  await page.mouse.move(b.x + b.width / 2, b.y + b.height - 8);
+  await page.mouse.down();
+  await expect(key).toHaveAttribute("style", /var\(--accent\)/);
+  // a pad keeps sounding while the key is held
+  await page.waitForTimeout(1500);
+  await expect.poll(level, { timeout: 3000 }).toBeGreaterThan(0.01);
+  await page.mouse.up();
+  await expect(key).not.toHaveAttribute("style", /var\(--accent\)/);
+  // and fades out after its release
+  await expect.poll(level, { timeout: 8000 }).toBeLessThan(0.005);
+
+  // the computer keys play it too, anywhere in the editor
+  await page.getByTestId("synth-editor").click({ position: { x: 5, y: 5 } });
+  await page.keyboard.down("a");
+  await expect(page.getByTestId("keyboard").locator('[data-key="60"]')).toHaveAttribute(
+    "style",
+    /var\(--accent\)/,
+  );
+  await page.keyboard.up("a");
+});

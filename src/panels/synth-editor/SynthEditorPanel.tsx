@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { RotateCcw, Save } from "lucide-react";
 import { Encoder } from "../../components/Encoder";
+import { Keyboard } from "../../components/Keyboard";
 import { toast } from "../../components/Toast";
 import * as engine from "../../engine/engine";
 import { SYNTH_PRESETS, defaultInstrument, patchOf } from "../../engine/instruments";
@@ -27,25 +28,6 @@ const WAVES: [Wave, string][] = [
   ["square", "Square"],
   ["pulse", "Pulse"],
 ];
-
-/** The computer keyboard as a piano (as in the library). */
-const KEY_NOTES: Record<string, number> = {
-  KeyA: 0,
-  KeyW: 1,
-  KeyS: 2,
-  KeyE: 3,
-  KeyD: 4,
-  KeyF: 5,
-  KeyT: 6,
-  KeyG: 7,
-  KeyY: 8,
-  KeyH: 9,
-  KeyU: 10,
-  KeyJ: 11,
-  KeyK: 12,
-  KeyO: 13,
-  KeyL: 14,
-};
 
 /** Shape the selected track's synth (D81): edits a copy on the track; built-ins never change. */
 export function SynthEditorPanel() {
@@ -75,7 +57,9 @@ function Editor({ track }: { track: Track }) {
   const factory = factorySynth(src.preset);
   const edited = !!src.patch;
   const [saving, setSaving] = useState<string | null>(null);
-  const octave = useRef(0);
+  const root = useRef<HTMLDivElement>(null);
+  // the keyboard's lowest C: two octaves around the track's range
+  const [low, setLow] = useState(track.category === "bass" ? 24 : 48);
 
   /** Change the patch: the first edit copies the factory synth onto the track. */
   const edit = (fn: (p: SynthPatch) => void, key?: string) =>
@@ -132,25 +116,6 @@ function Editor({ track }: { track: Track }) {
     );
   };
 
-  const onKeyDown = (e: React.KeyboardEvent) => {
-    if ((e.target as HTMLElement).closest("input, select")) return;
-    if (e.metaKey || e.ctrlKey || e.altKey) return;
-    if (e.code === "KeyZ" || e.code === "KeyX") {
-      octave.current = Math.max(-3, Math.min(3, octave.current + (e.code === "KeyX" ? 1 : -1)));
-    } else if (KEY_NOTES[e.code] !== undefined) {
-      if (!e.repeat) {
-        const pitch =
-          (track.category === "bass" ? 36 : 60) + 12 * octave.current + KEY_NOTES[e.code];
-        engine.trigger(track, 0.8, {
-          notes: [{ pitch, length: 4, velocity: 0.8 }],
-          stepDur: 0.125,
-        });
-      }
-    } else return;
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
   const save = async (name: string) => {
     const entry = await saveInstrument(
       useStore.getState().project.tracks.find((t) => t.id === track.id)!,
@@ -164,9 +129,9 @@ function Editor({ track }: { track: Track }) {
 
   return (
     <div
+      ref={root}
       className="flex h-full min-h-0 flex-col outline-none"
       tabIndex={0}
-      onKeyDown={onKeyDown}
       data-testid="synth-editor"
     >
       <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-line px-3 py-1.5">
@@ -235,22 +200,8 @@ function Editor({ track }: { track: Track }) {
         )}
       </div>
 
+      <SignalFlow patch={patch} color={track.color} />
       <div className="scroll-thin grid min-h-0 flex-1 auto-rows-min grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-2 overflow-auto p-2">
-        <Box title="Sound">
-          <WavePreview patch={patch} color={track.color} />
-          <div className="flex flex-wrap items-center gap-2">
-            {choice(
-              patch.mono ? "mono" : "poly",
-              [
-                ["poly", "Poly"],
-                ["mono", "Mono"],
-              ],
-              (v) => edit((p) => void (p.mono = v === "mono")),
-              "synth.mono",
-            )}
-          </div>
-          <div className="flex flex-wrap gap-1">{knobs("voice")}</div>
-        </Box>
         {oscBox(1)}
         {oscBox(2)}
         <Box title="Sub · noise · FM">
@@ -298,6 +249,20 @@ function Editor({ track }: { track: Track }) {
           />
           <div className="flex flex-wrap gap-1">{knobs("amp")}</div>
         </Box>
+        <Box title="Voice · output">
+          <div className="flex flex-wrap items-center gap-2">
+            {choice(
+              patch.mono ? "mono" : "poly",
+              [
+                ["poly", "Poly"],
+                ["mono", "Mono"],
+              ],
+              (v) => edit((p) => void (p.mono = v === "mono")),
+              "synth.mono",
+            )}
+          </div>
+          <div className="flex flex-wrap gap-1">{knobs("voice")}</div>
+        </Box>
         <Box title="LFO">
           <div className="flex flex-wrap gap-2">
             {choice(
@@ -343,9 +308,13 @@ function Editor({ track }: { track: Track }) {
           </div>
         </Box>
       </div>
-      <div className="shrink-0 border-t border-line px-3 py-1 text-[10.5px] text-faint">
-        Click here and type A–L to play (Z / X: octave). Changes apply as you play; the track's
-        effects shape the sound further.
+      <div className="h-[74px] shrink-0 border-t border-line px-2 py-1.5">
+        <Keyboard
+          low={low}
+          scope={root}
+          onOctave={(d) => setLow((l) => Math.max(12, Math.min(84, l + 12 * d)))}
+          play={(pitch, velocity) => engine.holdNote(track, pitch, velocity)}
+        />
       </div>
     </div>
   );
@@ -469,5 +438,44 @@ function EnvelopeView({
       {handle("d", d, s)}
       {handle("r", r, H - 4)}
     </svg>
+  );
+}
+
+/** The path the sound takes, left to right; the envelopes and the LFO steer it. */
+function SignalFlow({ patch, color }: { patch: SynthPatch; color: string }) {
+  const sources = [
+    "Osc 1",
+    patch.osc2.level > 0 && "Osc 2",
+    patch.sub > 0 && "Sub",
+    patch.noise > 0 && "Noise",
+  ].filter(Boolean);
+  const step = (label: string, sub?: string) => (
+    <span className="flex flex-col items-center rounded border border-line bg-surface px-2 py-0.5">
+      <span className="text-[11px] text-ink">{label}</span>
+      {sub && <span className="text-[9.5px] text-faint">{sub}</span>}
+    </span>
+  );
+  const arrow = <span className="text-faint">→</span>;
+  return (
+    <div
+      className="flex shrink-0 flex-wrap items-center gap-1.5 border-b border-line px-3 py-1.5"
+      data-hint="synth.flow"
+    >
+      <div className="w-[140px]">
+        <WavePreview patch={patch} color={color} />
+      </div>
+      {step(sources.join(" + "), patch.fm.index > 0 ? "with FM" : undefined)}
+      {arrow}
+      {step("Filter", "filter envelope")}
+      {arrow}
+      {step("Amp", "amp envelope")}
+      {arrow}
+      {step(patch.drive > 0.01 ? "Drive · out" : "Out")}
+      {patch.lfo.depth > 0 && (
+        <span className="text-[10.5px] text-faint">
+          · LFO → {patch.lfo.target === "amp" ? "volume" : patch.lfo.target}
+        </span>
+      )}
+    </div>
   );
 }
