@@ -90,6 +90,8 @@ Key implementation patterns:
 
 ### 0.6 Next steps
 
+0. The complete synth in §0.6e.
+
 
 1. Try the app with real hardware: a microphone and audio interface (calibration, monitoring), a MIDI keyboard/controller (learn), and a Launchpad or Push (the Push color palette is approximate).
 2. Desktop releases: add signing certificates and notarization secrets, then tag `v0.1.0` to produce draft releases.
@@ -222,6 +224,84 @@ with tests, explain-mode hints, guide updates and the full checks:
    "Make instrument" from a library folder, notes from file names), and "Save sound to library"
    for any instrument track (sampler included). .rebeat files carry what they need.
 9. **Exports include sampled instruments** where smplr can load them offline (from the cache).
+
+### 0.6e The complete synth (agreed 2026-10-08)
+
+Make the synth feature complete for experienced players while keeping it approachable: one editor
+with a **Basic** view (8 macros) and an **Advanced** view (everything), on a new AudioWorklet
+engine. Plus two quick wins and two showcase songs. Order: A, B, C, D, E, F, G, H, I. Every step
+has tests, explain-mode hints, guide updates and PLAN decisions; one or more commits each.
+
+- **A. Quick wins.**
+  - A1. *Click any wave to play it once*: the drum machine's display, the Inspector's sample (and
+    sampler) box, audio track clips and the synth editor's wave picture. It plays as the track
+    plays it (knobs, effects, mix): a hit on drum tracks, a note at the track's root on instrument
+    tracks (C2 bass, C4 otherwise), an audio clip once from its start at the song tempo (a second
+    click stops it). A playhead runs across sample and clip waves. Not the sample editor (click
+    = playhead) or live scopes (click = enlarge). e2e per place.
+  - A2. *Piano labels*: white keys show their note letter, every C its octave (C3, C4) in bold;
+    black keys unlabeled; the computer-key shortcut moves to the key's tooltip.
+- **B. AudioWorklet synth engine (D83).** The DSP in TypeScript (`engine/synth/`), a pure core
+  separate from the AudioWorkletProcessor wrapper, bundled by Vite and loaded into live and
+  offline contexts. Band-limited (polyBLEP) oscillators, a self-oscillating ladder filter (ZDF)
+  and a state-variable filter, voice allocation and stealing, per-sample modulation. Patches
+  get a `version` and are upgraded on read (projects and saved instruments keep working); the
+  37 factory synths are converted and rebalanced. Unit tests (envelope timing, sync and PWM
+  waveforms, ladder self-oscillation pitch, stealing, glide), a performance check (16 voices
+  with unison render well faster than real time), offline renders of every factory synth.
+- **C. Patch v2: the full synth.**
+  - Oscillators: 3, plus sub (sine/square, −1/−2 oct) and noise (white/pink). Each: continuous
+    shape morph (sine → triangle → saw → square → pulse), pulse width, octave, semitone, fine,
+    level, pan, unison (up to 8, detune, stereo width), phase (free or retriggered, start),
+    analog drift, hard sync to oscillator 1, ring mod, FM routing (2→1, 3→1, 3→2, self).
+  - Filters: 2, in series or parallel. Ladder (24 dB LP, self-oscillating) or SVF (LP/HP/BP/notch,
+    12 dB); drive before the filter, key tracking, envelope and velocity amounts.
+  - Envelopes: 3 (amp, filter, mod), AHDSR with curves, velocity amount, legato/retrigger, loop.
+  - LFOs: 3; sine, triangle, ramp up/down, square, sample & hold, smooth random; free or synced
+    (dotted/triplet too); phase, fade-in delay, per-voice or global, unipolar/bipolar.
+  - Voice: up to 16 voices; mono, legato, glide (always / legato only, time); stealing; velocity
+    curve; pitch-bend range; tuning. Output: drive, volume, pan, stereo spread (more FX: the
+    track's chain).
+- **D. Modulation and playing.** A mod matrix of 8 slots (source → destination × amount, with an
+  optional "via" scaler). Sources: LFOs, envelopes, velocity, note, mod wheel, aftertouch, pitch
+  bend, random per note, macros. Destinations: every continuous patch parameter. Pitch bend, mod
+  wheel and aftertouch from MIDI; on-screen pitch and mod wheels beside the editor's keyboard.
+  Knob rings show modulation ranges, moving live while notes play.
+- **E. Macros, the Basic view and the track knobs.** 8 macros per patch, each with up to 4 targets
+  and their ranges; factory synths ship good ones (default set: Brightness, Bite, Character,
+  Thickness, Attack, Release, Movement, Drive). Basic: the 8 macros, preset menu, Poly/Mono +
+  Glide, scope, keyboard and an Advanced switch (remembered per user, Basic first). On synth
+  tracks the eight SOUND knobs are the macros: MIDI-learnable and p-lockable; moved SOUND knobs in
+  existing projects are converted into patch edits once, so they sound the same. Samplers and
+  sampled instruments keep today's knobs. MIDI learn on every synth editor knob.
+- **F. The Advanced editor.** Sections in signal order (Oscillators, Filters, Envelopes, LFOs,
+  Matrix, Voice · output), each foldable, under the flow diagram; a live scope and spectrum of the
+  synth's output; draggable envelopes (with curves) and LFO pictures.
+- **G. Workflow.** A/B compare, randomize (amount, locks per section), init patch, copy/paste a
+  section, export/import `.rbsynth` files (patch + macros + effects; dropping one on the library
+  imports it).
+- **H. Factory synths, voiced again.** The 37 use the new features (real sync for the Numan lead,
+  PWM for the Juno strings, a pitch envelope for the 808 and the laser, drift for the Moog bass)
+  and get their own macros; the loudness balance is checked again.
+- **I. Two songs that show off the advanced synth** (original, pages of at most 32 steps via
+  `splitLongPages`, all synths, so they render offline without the network):
+  - *Hyperdrive* (electro / synthwave-techno, 124 BPM): a hard-sync lead swept by the mod
+    envelope, PWM string pad, ring-mod bells, a wide stereo-unison supersaw on the chorus, pitch
+    envelope zaps and synth toms, and macro parameter locks on the steps (Brightness opening up
+    over the build).
+  - *Liquid Ladder* (acid / IDM, 132 BPM): a self-oscillating ladder bassline with accents and
+    slides, a sample & hold LFO on a second filter, a drifting analog pad on looping envelopes,
+    an 808-style kick and percussion made with synths (pitch envelopes), mod-matrix movement
+    tied to velocity, and Bite / Movement macro locks per step.
+  Tests: valid projects, every synth renders, the mix is audible and doesn't clip, and each song
+  actually uses the features it demonstrates (sync, PWM, ladder, matrix slots, macro locks).
+
+Decisions (agreed defaults): AudioWorklet engine (alt: native nodes with approximations); 3 osc /
+2 filters / 3 envelopes / 3 LFOs / 8 matrix slots / 8 macros; 16 voices and 8 unison per
+oscillator; p-locks on macros; SOUND knobs = macros on synth tracks with a one-time conversion;
+Basic first, then the last used view; factory synths voiced again in place; patch versions
+upgraded on read; clicking a wave plays it as heard; note letters with octaves on Cs;
+`.rbsynth` preset files.
 
 ### 0.7 Known limitations and later work
 
