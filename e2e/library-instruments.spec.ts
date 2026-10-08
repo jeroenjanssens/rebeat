@@ -95,3 +95,20 @@ test("the keyboard plays the selected instrument without moving the step cursor"
   expect(tool).toBe("draw");
   expect(errors).toEqual([]);
 });
+
+test("every track shows an icon for what it plays", async ({ page }) => {
+  const kind = (name: string) =>
+    page
+      .locator("[data-track-row]", { hasText: name })
+      .getByTestId("track-sound-kind")
+      .locator("[data-sound-kind]")
+      .getAttribute("data-sound-kind");
+  expect(await kind("KICK")).toBe("oneshot");
+  expect(await kind("BASS")).toBe("synth");
+  expect(await kind("VOX")).toBe("loop");
+  await go(page, "Pianos & keys");
+  await list(page)
+    .locator('[data-instrument="smplr:piano"]')
+    .dragTo(page.locator("[data-track-row]", { hasText: "BASS" }));
+  await expect.poll(() => kind("BASS")).toBe("instrument");
+});

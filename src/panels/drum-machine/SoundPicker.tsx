@@ -3,6 +3,7 @@ import { AudioWaveform, Library, Search } from "lucide-react";
 import { focusPanel, openSampleEditor } from "../../app/openers";
 import { SAMPLED_INSTRUMENTS, SYNTH_PRESETS, defaultInstrument } from "../../engine/instruments";
 import { KITS, KIT_SOUNDS, kitSounds } from "../../engine/kits";
+import { SoundIcon, type SoundKind } from "../../components/soundIcons";
 import { isBuiltIn, useLibrary } from "../../library/library";
 import type { InstrumentSource, Track } from "../../model/types";
 import { replaceSound, setInstrument, soundLabel } from "../../state/trackActions";
@@ -12,6 +13,7 @@ interface Sound {
   id: string;
   name: string;
   group: string;
+  kind: SoundKind;
 }
 
 type Kind = InstrumentSource["source"];
@@ -46,22 +48,39 @@ export function SoundPicker({ track, close }: { track: Track; close: () => void 
         id: `synth:${p.id}`,
         name: p.name,
         group: p.group,
+        kind: "synth" as const,
       })).filter(match);
     if (inst && kind === "smplr")
       return SAMPLED_INSTRUMENTS.map((p) => ({
         id: `smplr:${p.id}`,
         name: p.name,
         group: p.family === p.group ? p.family : `${p.family} · ${p.group}`,
+        kind: "instrument" as const,
       })).filter(match);
     const own: Sound[] = [...samples]
       .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
-      .map((s) => ({ id: s.id, name: s.name, group: "Library" }));
+      .map((s): Sound => ({
+        id: s.id,
+        name: s.name,
+        group: "Library",
+        kind: s.bpm ? "loop" : "oneshot",
+      }));
     // audio tracks play loops; drum tracks and samplers the kits
     const builtIn: Sound[] =
       track.kind === "audio"
-        ? KIT_SOUNDS.filter((k) => k.bpm).map((k) => ({ id: k.id, name: k.name, group: "Loops" }))
+        ? KIT_SOUNDS.filter((k) => k.bpm).map((k): Sound => ({
+            id: k.id,
+            name: k.name,
+            group: "Loops",
+            kind: "loop",
+          }))
         : KITS.flatMap((kit) =>
-            kitSounds(kit).map((k) => ({ id: k.id, name: k.name, group: `${kit} kit` })),
+            kitSounds(kit).map((k): Sound => ({
+              id: k.id,
+              name: k.name,
+              group: `${kit} kit`,
+              kind: "oneshot",
+            })),
           );
     return [...own, ...builtIn].filter(match);
   }, [samples, track.kind, query, kind, inst]);
@@ -141,12 +160,15 @@ export function SoundPicker({ track, close }: { track: Track; close: () => void 
               <div className="label mt-1 px-1 !text-[9.5px] text-faint">{s.group}</div>
             )}
             <button
-              className="block w-full truncate rounded px-1.5 py-[3px] text-left text-[12px] hover:bg-surface data-[active=true]:text-accent"
+              className="flex w-full items-center gap-1.5 rounded px-1.5 py-[3px] text-left text-[12px] hover:bg-surface data-[active=true]:text-accent"
               data-active={s.id === current}
               data-sound={s.id}
               onClick={() => pick(s.id)}
             >
-              {s.name}
+              <span className="text-faint">
+                <SoundIcon kind={s.kind} size={11} />
+              </span>
+              <span className="truncate">{s.name}</span>
             </button>
           </div>
         ))}

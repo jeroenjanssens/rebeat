@@ -9,7 +9,8 @@ import {
 } from "../../state/trackActions";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { AudioLines, Disc3, GripVertical, Music2, Power } from "lucide-react";
+import { Disc3, GripVertical, Power } from "lucide-react";
+import { SoundIcon, trackSoundKind } from "../../components/soundIcons";
 import { contextMenu, useMenu, type MenuItem } from "../../components/Menu";
 import { InlineEdit } from "../../components/InlineEdit";
 import { MiniFader } from "../../components/MiniFader";
@@ -305,12 +306,8 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
     opacity: isDragging ? 0.85 : 1,
   };
 
-  const typeIcon =
-    track.kind === "instrument" ? (
-      <Music2 size={12} />
-    ) : track.kind === "audio" ? (
-      <AudioLines size={12} />
-    ) : null;
+  // every track shows what it plays: one-shots, a loop, a synth or an instrument
+  const typeIcon = <SoundIcon kind={trackSoundKind(track)} size={12} />;
 
   return (
     <div
@@ -392,7 +389,9 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
                 className="block w-full text-[11.5px] font-semibold uppercase tracking-wide"
               />
             </span>
-            {typeIcon && <span className="shrink-0 text-dim">{typeIcon}</span>}
+            <span className="shrink-0 text-dim" data-testid="track-sound-kind">
+              {typeIcon}
+            </span>
           </div>
           <TrackButton
             label="M"

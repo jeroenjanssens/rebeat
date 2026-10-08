@@ -69,18 +69,18 @@ A **parameter lock** gives one step its own sound. Select one or more steps, cho
 
 Each row is a **track**. Tracks exist on every page; the pages only hold their steps.
 
-| Part of a row     | What it does                                                                                |
-| ----------------- | ------------------------------------------------------------------------------------------- |
-| Colored bar       | Drag to reorder tracks. Click the row to select the track.                                  |
-| Number and name   | Double-click the name to rename.                                                            |
-| ♪ / waveform icon | An instrument track / an audio track (drum tracks have no icon).                            |
-| **M**             | Mute.                                                                                       |
-| **S**             | Solo: only soloed tracks play.                                                              |
-| **●**             | Arm for recording (audio and instrument tracks).                                            |
-| Small fader       | Volume. Drag; double-click for 0 dB.                                                        |
-| **FX**            | The number of effects on the track. Click to edit them in the [Inspector](panel:inspector). |
-| Pads              | The steps (see below).                                                                      |
-| Scope and meter   | What the track sounds like right now. Click to enlarge, with a spectrum view.               |
+| Part of a row   | What it does                                                                                                                                                                                                                |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Colored bar     | Drag to reorder tracks. Click the row to select the track.                                                                                                                                                                  |
+| Number and name | Double-click the name to rename.                                                                                                                                                                                            |
+| Icon            | What the track plays: a waveform burst for one-shot samples (drum tracks), audio lines for a loop (audio tracks), a sine wave for a synth, a keyboard for a sampled instrument or sampler. The library uses the same icons. |
+| **M**           | Mute.                                                                                                                                                                                                                       |
+| **S**           | Solo: only soloed tracks play.                                                                                                                                                                                              |
+| **●**           | Arm for recording (audio and instrument tracks).                                                                                                                                                                            |
+| Small fader     | Volume. Drag; double-click for 0 dB.                                                                                                                                                                                        |
+| **FX**          | The number of effects on the track. Click to edit them in the [Inspector](panel:inspector).                                                                                                                                 |
+| Pads            | The steps (see below).                                                                                                                                                                                                      |
+| Scope and meter | What the track sounds like right now. Click to enlarge, with a spectrum view.                                                                                                                                               |
 
 **Right-click the track's name** for more: Duplicate, Delete, Open in piano roll (instrument tracks), Color, **Sound** (what the track plays now, with buttons to show its sample in the library or open it in the sample editor, and a searchable list to replace it: your library samples and the built-in sounds; on instrument tracks also the synth presets and sampled instruments), Copy steps, Paste steps, Clear steps, Shift left, Shift right, Reverse, Randomize, Euclidean…, and these per-page options:
 
