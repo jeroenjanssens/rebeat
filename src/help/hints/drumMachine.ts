@@ -442,6 +442,28 @@ const hints: Hints = {
     text: "Hold to silence the audio while you scratch, then release to bring it back. Use this for transform and crab scratch styles.",
     guide: "loop-station-scratching",
   },
+
+  // ─────────────────────────────────── Track menu: sound ─────────────────────────────
+  "dm.sound.show": {
+    title: "Show in library",
+    text: "Select this track's sample in the library, to see its details or find similar sounds.",
+    guide: "drum-machine-tracks",
+  },
+  "dm.sound.edit": {
+    title: "Open in sample editor",
+    text: "Trim, tune, loop or slice this track's sample in the sample editor.",
+    guide: "sample-editor",
+  },
+  "dm.sound.search": {
+    title: "Find a sound",
+    text: "Type to filter your library samples and the built-in sounds. Enter picks the first match.",
+    guide: "drum-machine-tracks",
+  },
+  "dm.sound.list": {
+    title: "Replace the sound",
+    text: "Click a sound to play it on this track instead. The track keeps its steps, effects and settings; undo brings the old sound back.",
+    guide: "drum-machine-tracks",
+  },
 };
 
 export default hints;

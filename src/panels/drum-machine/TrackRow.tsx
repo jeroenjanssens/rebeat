@@ -11,7 +11,6 @@ import { Scope } from "../../components/Scope";
 import { onStep } from "../../engine/transport";
 import { TRACK_PALETTE } from "../../model/colors";
 import { focusPanel } from "../../app/openers";
-import { KITS, KIT_SOUNDS, kitSounds } from "../../engine/kits";
 import { toUnit } from "../../model/params";
 import { keyUsesFlats } from "../../model/notes";
 import {
@@ -30,6 +29,7 @@ import { useStore } from "../../state/store";
 import { ClipView } from "./ClipView";
 import type { Geometry } from "./layout";
 import { ScratchStrip } from "./ScratchStrip";
+import { SoundPicker } from "./SoundPicker";
 import { StepsArea } from "./StepsArea";
 
 interface Props {
@@ -93,43 +93,6 @@ function chips(
       </div>
     ),
   };
-}
-
-/** Replace the track's sound with a built-in kit sound (the library adds your own in Phase 3). */
-function SamplePicker({
-  current,
-  audio,
-  onPick,
-}: {
-  current?: string;
-  audio: boolean;
-  onPick: (id: string, name: string) => void;
-}) {
-  const groups = audio
-    ? [{ label: "Loops", sounds: KIT_SOUNDS.filter((k) => k.bpm) }]
-    : KITS.map((kit) => ({ label: `${kit} kit`, sounds: kitSounds(kit) }));
-  return (
-    <div className="max-w-[300px] px-2 py-1.5">
-      <div className="label mb-1.5">Replace sound</div>
-      {groups.map((g) => (
-        <div key={g.label} className="mb-1.5">
-          <div className="mb-1 text-[10px] text-faint">{g.label}</div>
-          <div className="flex flex-wrap gap-1">
-            {g.sounds.map((k) => (
-              <button
-                key={k.id}
-                className="tool-btn border border-line !h-6 !text-[10.5px]"
-                data-active={current === k.id}
-                onClick={() => onPick(k.id, k.name)}
-              >
-                {k.name.replace(/^\d+ /, "")}
-              </button>
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
 }
 
 export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSelected }: Props) {
@@ -223,24 +186,9 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
           </div>
         ),
       },
-      ...(track.kind !== "instrument"
-        ? [
-            {
-              render: (close: () => void) => (
-                <SamplePicker
-                  current={track.sampleId}
-                  audio={track.kind === "audio"}
-                  onPick={(id, name) => {
-                    update((t) => {
-                      t.sampleId = id;
-                      t.source = name;
-                    });
-                    close();
-                  }}
-                />
-              ),
-            },
-          ]
+      // drum and audio tracks, and keyboard samplers, play a sample you can replace here
+      ...(track.kind !== "instrument" || track.instrument?.source === "sampler"
+        ? [{ render: (close: () => void) => <SoundPicker track={track} close={close} /> }]
         : []),
       { separator: true },
       {

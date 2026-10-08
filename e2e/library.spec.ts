@@ -138,3 +138,45 @@ test("sorts by name and duration in both directions, also in a kit", async ({ pa
     ),
   ).toEqual(sorted);
 });
+
+test("the track menu shows the current sound and replaces it with a library sample", async ({
+  page,
+}) => {
+  await importSamples(page, fixtureFiles({ "Big Kick.wav": wav(oneShot()) }));
+  const name = page.locator('[data-panel="drum-machine"] [data-hint="dm.track.name"]').first();
+  await name.click({ button: "right" });
+  const picker = page.getByTestId("sound-picker");
+  await expect(picker.getByTestId("current-sound")).toHaveText("909 Kick");
+  await expect(page.getByTestId("sound-search")).toBeFocused();
+  // typing doesn't trigger shortcuts (d = draw tool, space = play)
+  await page.keyboard.type("big d");
+  await expect(page.getByTestId("sound-search")).toHaveValue("big d");
+  expect(
+    await page.evaluate(
+      () =>
+        (
+          window as never as { __rebeat: { store: { getState(): { playing: boolean } } } }
+        ).__rebeat.store.getState().playing,
+    ),
+  ).toBe(false);
+  await page.getByTestId("sound-search").fill("big");
+  await expect(picker.locator("[data-sound]")).toHaveCount(1);
+  await picker.locator("[data-sound]").click();
+  await expect(picker).toBeHidden();
+  const source = () =>
+    page.evaluate(
+      () =>
+        (
+          window as never as {
+            __rebeat: { store: { getState(): { project: { tracks: { source: string }[] } } } };
+          }
+        ).__rebeat.store.getState().project.tracks[0].source,
+    );
+  expect(await source()).toBe("Big Kick");
+  await name.click({ button: "right" });
+  await expect(picker.getByTestId("current-sound")).toHaveText("Big Kick");
+  await expect(picker.locator('[data-sound][data-active="true"]')).toHaveText("Big Kick");
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("ControlOrMeta+z");
+  await expect.poll(source).toBe("909 Kick");
+});
