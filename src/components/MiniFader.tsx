@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import { useGlide } from "./glide";
 import { VOLUME_FORMAT } from "../model/params";
 
 interface Props {
@@ -13,6 +14,7 @@ interface Props {
 /** Small horizontal volume fader. Drag (Shift = fine); double-click = 0 dB. */
 export function MiniFader({ value, color, onChange, width = 44, hint }: Props) {
   const drag = useRef<{ x: number; v: number } | null>(null);
+  const glider = useGlide();
   return (
     <div
       data-hint={hint}
@@ -21,6 +23,7 @@ export function MiniFader({ value, color, onChange, width = 44, hint }: Props) {
       title={`Volume ${VOLUME_FORMAT(value)} dB · drag · double-click = 0 dB`}
       onPointerDown={(e) => {
         e.stopPropagation();
+        glider.stop();
         e.currentTarget.setPointerCapture(e.pointerId);
         drag.current = { x: e.clientX, v: value };
       }}
@@ -30,7 +33,7 @@ export function MiniFader({ value, color, onChange, width = 44, hint }: Props) {
         onChange(Math.min(1, Math.max(0, v)));
       }}
       onPointerUp={() => (drag.current = null)}
-      onDoubleClick={() => onChange(0.8)}
+      onDoubleClick={() => glider.glide(value, 0.8, onChange)}
     >
       <div
         className="absolute inset-y-0 left-0 rounded-[3px]"

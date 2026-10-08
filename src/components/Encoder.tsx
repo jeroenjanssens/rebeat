@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef } from "react";
 import type { ParamDef } from "../model/params";
 import { contextMenu } from "./Menu";
 import { startMidiLearn } from "../midi/learn";
+import { useGlide } from "./glide";
 
 interface Props {
   def: ParamDef;
@@ -56,6 +57,13 @@ export function Encoder({
     changeRef.current = onChange;
   });
 
+  const glider = useGlide();
+  // stepped params (choke groups, delay times) have no values in between: they jump
+  const reset = () =>
+    def.steps
+      ? onChange(def.default)
+      : glider.glide(valueRef.current ?? def.default, def.default, (x) => changeRef.current(x));
+
   const quantize = (v: number) =>
     def.steps ? Math.round(v * (def.steps - 1)) / (def.steps - 1) : v;
 
@@ -64,6 +72,7 @@ export function Encoder({
     const onWheel = (e: WheelEvent) => {
       if (valueRef.current === null) return;
       e.preventDefault();
+      glider.stop();
       const unit = def.steps ? 1 / (def.steps - 1) : e.shiftKey ? 0.004 : 0.02;
       changeRef.current(quantize(clamp(valueRef.current - Math.sign(e.deltaY) * unit)));
     };
@@ -97,6 +106,7 @@ export function Encoder({
         style={{ cursor: disabled ? "default" : "ns-resize" }}
         onPointerDown={(e) => {
           if (disabled || e.button !== 0) return;
+          glider.stop();
           e.currentTarget.setPointerCapture(e.pointerId);
           drag.current = { y: e.clientY, v };
         }}
@@ -106,10 +116,10 @@ export function Encoder({
           onChange(quantize(clamp(drag.current.v + (drag.current.y - e.clientY) * sens)));
         }}
         onPointerUp={() => (drag.current = null)}
-        onDoubleClick={() => !disabled && onChange(def.default)}
+        onDoubleClick={() => !disabled && reset()}
         onContextMenu={(e) =>
           contextMenu(e, [
-            { label: "Reset to default", onSelect: () => onChange(def.default), disabled },
+            { label: "Reset to default", onSelect: reset, disabled },
             { separator: true },
             {
               label: "MIDI learn",

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { tapTempo } from "../../app/TransportBar";
 import { Encoder } from "../../components/Encoder";
+import { useGlide } from "../../components/glide";
 import { contextMenu } from "../../components/Menu";
 import { useScratch } from "../../components/useScratch";
 import * as engine from "../../engine/engine";
@@ -401,6 +402,7 @@ function PlatterFor({
 }
 
 function MasterFx() {
+  const glider = useGlide();
   const perf = usePerf();
   const bpm = useStore((s) => s.project.bpm);
   const pattern = useStore(
@@ -477,8 +479,9 @@ function MasterFx() {
           max={1}
           step={0.005}
           value={perf.crossfader}
+          onPointerDown={glider.stop}
           onChange={(e) => setCrossfader(Number(e.target.value))}
-          onDoubleClick={() => setCrossfader(0.5)}
+          onDoubleClick={() => glider.glide(perf.crossfader, 0.5, setCrossfader)}
           className="flex-1 accent-[var(--accent)]"
           title="Crossfader (assign tracks with a right-click on their mute buttons)"
           data-testid="crossfader"

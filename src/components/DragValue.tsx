@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import { useGlide } from "./glide";
 
 interface Props {
   value: number;
@@ -30,12 +31,14 @@ export function DragValue({
   title = "Drag or scroll · double-click = reset",
 }: Props) {
   const drag = useRef<{ y: number; v: number } | null>(null);
+  const glider = useGlide();
   const clamp = (v: number) => Math.min(max, Math.max(min, Math.round(v / step) * step));
   return (
     <span
       className={`field cursor-ns-resize touch-none ${className}`}
       title={title}
       onPointerDown={(e) => {
+        glider.stop();
         e.currentTarget.setPointerCapture(e.pointerId);
         drag.current = { y: e.clientY, v: value };
       }}
@@ -45,8 +48,15 @@ export function DragValue({
         onChange(clamp(drag.current.v + (drag.current.y - e.clientY) * range));
       }}
       onPointerUp={() => (drag.current = null)}
-      onWheel={(e) => onChange(clamp(value - Math.sign(e.deltaY) * step))}
-      onDoubleClick={() => (onReset ? onReset() : onChange(defaultValue))}
+      onWheel={(e) => {
+        glider.stop();
+        onChange(clamp(value - Math.sign(e.deltaY) * step));
+      }}
+      onDoubleClick={() =>
+        onReset
+          ? onReset()
+          : glider.glide(value, defaultValue, (v) => onChange(clamp(v)), max - min)
+      }
     >
       {label && <span className="label">{label}</span>}
       <span className="num text-ink">{format(value)}</span>

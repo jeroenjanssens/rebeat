@@ -54,7 +54,7 @@ The tabs above the encoders choose what the eight encoders control:
 Using an encoder:
 
 - **Drag** up or down, or **scroll** over it. Hold **Shift** for fine changes.
-- **Double-click** to reset it to its default.
+- **Double-click** to reset it to its default. It glides back smoothly (at most 300 ms), so you can use it during a performance, for example to open a filter again. Faders and the crossfader do the same.
 - **Right-click** for Reset and **MIDI learn** (see [MIDI](#midi)).
 
 Some sound parameters in detail: **Decay** shortens the sound ("Full" plays the whole sample). **Start** skips the beginning of the sample. **Choke** puts tracks in a group (1–8) where a new hit cuts off the others, like an open hi-hat that a closed hi-hat stops. **Drive** saturates the sound. **Warp** (audio tracks) makes loops follow the song tempo.

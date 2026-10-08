@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import { useGlide } from "./glide";
 import { VOLUME_FORMAT } from "../model/params";
 
 /** dB marks on the fader scale, as fader positions (0.8 = 0 dB, 40·log10 curve). */
@@ -20,6 +21,7 @@ export function Fader({
   hint?: string;
 }) {
   const drag = useRef<{ y: number; v: number } | null>(null);
+  const glider = useGlide();
   const clamp = (v: number) => Math.min(1, Math.max(0, v));
   return (
     <div
@@ -28,6 +30,7 @@ export function Fader({
       style={{ height }}
       title={`${VOLUME_FORMAT(value)} dB · drag · double-click = 0 dB`}
       onPointerDown={(e) => {
+        glider.stop();
         e.currentTarget.setPointerCapture(e.pointerId);
         drag.current = { y: e.clientY, v: value };
       }}
@@ -38,7 +41,7 @@ export function Fader({
       }}
       onPointerUp={() => (drag.current = null)}
       onWheel={(e) => onChange(clamp(value - Math.sign(e.deltaY) * 0.01))}
-      onDoubleClick={() => onChange(0.8)}
+      onDoubleClick={() => glider.glide(value, 0.8, onChange)}
     >
       <div className="absolute inset-y-1 left-1/2 w-[3px] -translate-x-1/2 rounded bg-pad" />
       <div

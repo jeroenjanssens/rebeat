@@ -102,6 +102,19 @@ interface State extends UiState {
 
 const project = demoProject();
 
+let groupKey: string | null = null;
+
+/** Run `fn` with edits that don't name an undo key merged under `key` (e.g. a glide's frames). */
+export function withUndoKey(key: string, fn: () => void) {
+  const prev = groupKey;
+  groupKey = key;
+  try {
+    fn();
+  } finally {
+    groupKey = prev;
+  }
+}
+
 export const useStore = create<State>()((set, get) => ({
   project,
   projectId: "",
@@ -166,7 +179,7 @@ export const useStore = create<State>()((set, get) => ({
   clipboard: null,
   euclidOpen: false,
 
-  commit: (recipe, key) => {
+  commit: (recipe, key = groupKey ?? undefined) => {
     const { project, past, lastCommitKey, lastCommitTime } = get();
     const next = produce(project, recipe);
     if (next === project) return;
