@@ -1,3 +1,4 @@
+import type { SynthPatch } from "./synth";
 export type TrackKind = "drum" | "instrument" | "audio";
 
 export type SoundCategory =
@@ -92,6 +93,10 @@ export interface InstrumentSource {
   source: "synth" | "sampler" | "smplr";
   /** Synth preset id or smplr instrument name. */
   preset: string;
+  /** Synths: the track's own (edited) patch; without one, the factory synth `preset` (D79). */
+  patch?: SynthPatch;
+  /** The sound's name when it isn't a factory one (edited or from your library). */
+  name?: string;
   /** Keyboard sampler: the sample and the note it was recorded at. */
   sampleId?: string;
   rootNote?: number;

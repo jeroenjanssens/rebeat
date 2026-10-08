@@ -231,7 +231,7 @@ export function reconcile(project: Project = useStore.getState().project) {
     if (last && last.track === t && last.audible === audible && last.bpm === bpm) continue;
     S.lastTracks.set(t.id, { track: t, audible, bpm });
     channel(t.id).update(t, audible, bpm);
-    if (t.kind === "instrument") updateSynth(t);
+    if (t.kind === "instrument") updateSynth(t, bpm);
   }
   for (const b of project.buses) bus(b.id).update(b, bpm);
   const m = ensureMaster();
@@ -269,9 +269,9 @@ function instrument(track: Track): InstrumentVoice {
   return v;
 }
 
-function updateSynth(track: Track) {
+function updateSynth(track: Track, bpm: number) {
   const v = instrument(track);
-  v.update(track);
+  v.update(track, bpm);
   // instruments use the channel filter for cutoff/resonance
   const p = track.params;
   channel(track.id).setFilter(
