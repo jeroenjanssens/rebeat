@@ -85,9 +85,56 @@ Key implementation patterns:
 
 ### 0.6 Next steps
 
+0. The polish batch in §0.6b.
+
 1. Try the app with real hardware: a microphone and audio interface (calibration, monitoring), a MIDI keyboard/controller (learn), and a Launchpad or Push (the Push color palette is approximate).
 2. Desktop releases: add signing certificates and notarization secrets, then tag `v0.1.0` to produce draft releases.
 3. Decide D6 (license) before making the repository public.
+
+### 0.6b Current work: polish batch (agreed 2026-10-08)
+
+Order: 4, 5, 10, 1, 2, 9, 3, then 6–8. One commit per item; each adds explain-mode hints for new
+controls, updates the guide chapters it touches, and passes `/tmp/verify.sh`-style full checks
+(prettier, tsc, eslint, vitest, e2e).
+
+1. **Smooth reset (glide), D72.** `components/glide.ts`: `glide(key, from, to, apply)` with ease-out on
+   the shared frame loop; a new glide or grabbing the control cancels the running one. Duration is
+   proportional to the distance: 300 ms for the full range, minimum 60 ms. Used by double-click and
+   "Reset to default" on Encoder, Fader, MiniFader, DragValue and the crossfader; stepped params
+   (`def.steps`) jump. One undo step (commit keys merge within 600 ms). MIDI/controller input never
+   glides. Check the engine smooths param changes (no zipper noise). Tests: unit (timing, curve,
+   cancel) + e2e (double-click the Performance filter → reaches the center gradually; one undo).
+2. **"Used in project" lists kit sounds.** Include built-in kit sounds (and sampler-instrument
+   samples) used by tracks next to library samples; synth-only tracks get a note "Synth tracks (n)
+   aren't samples". e2e: demo project → Used in project lists its kit sounds.
+3. **Sample picker in the track menu.** Replaces `SamplePicker` in `TrackRow.tsx`: the current sound
+   at the top (name, "Show in library", "Open in sample editor"), a search box, and one scrollable
+   list of library samples + built-in kit sounds (current one highlighted; audio tracks: loops
+   only). Click = replace (one undo step) and close. e2e: replace with a library sample, check name
+   and undo.
+4. **Play mode saved with the project, default Song, D73.** `Project.playMode: "loop" | "song"`
+   (schema v5, migration sets "song"; templates and examples use "song"). Moves out of the UI state;
+   a store action `setPlayMode` changes it without an undo step (it's transport state, like
+   play/stop) but saves it. In an example, switching play mode doesn't fork (only for the session).
+   Migration unit test; e2e: switch to Loop, reload, still Loop; update tests that assume looping.
+5. **One-column library list.** Remove the 2-column view (360–640 px); list below 640 px, tiles stay
+   for wide panels. Keyboard navigation follows.
+6. **Online kits: preview without importing.** Previews play from an in-memory cache (fetch + decode);
+   the library only changes on an explicit action: "+" per sound (add to library), "Add kit to
+   library", "Load as tracks", or dragging a sound onto a track.
+7. **Online kits: drag a sound onto a track.** New drag type `application/x-rebeat-online` (machine,
+   type, variant); dropping on a track replaces its sound, dropping on the empty area adds a track.
+   The sound is imported on drop (a track needs a stored sample).
+8. **Online kits: search sounds.** Match machine names, sound types with synonyms (hat/hihat/hh,
+   kick/bd, …) and file names from the index. Matching sounds show as one flat list across kits
+   ("Cl Hat 2 · Roland TR808 · Closed Hat.wav") with preview, + and drag; at most 200; matching kits
+   above. e2e for 6–8 with `page.route` mocking the index and serving generated WAVs.
+9. **Sorting.** Sort menu: Name / Duration / Newest plus Ascending / Descending, applied in every view
+   including built-in kits; the button shows the active sort ("Name ↑"); remembered for the session.
+   Online kits sort by name. e2e: name and duration, both directions, own samples and a kit.
+10. **Lane double-click reset.** In the velocity / probability / nudge lanes, double-click resets that
+    step to its default (80 %, 100 %, 0); Alt+double-click resets the whole lane. Instant (no glide),
+    one undo step together with the click that started it. e2e for both.
 
 ### 0.7 Known limitations and later work
 
