@@ -20,15 +20,17 @@ The **synth editor** shapes the synth of the selected instrument track. Open it 
 
 The blocks follow the path the sound takes, shown at the top: the oscillators (with sub and noise) are mixed, then filtered, then shaped by the amp, then driven to the output. That order is fixed, as on a classic analog synth: the oscillators play side by side, and the envelopes and the LFO don't carry sound, they steer the filter, the amp or the pitch. (The order of the track's **effects** can be changed in the Inspector.)
 
-| Section              | What it does                                                                                                                         |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| **Start from**       | Load a factory synth as the starting point.                                                                                          |
-| **Sound**            | A picture of the waveform; **Poly** (chords) or **Mono** (one note at a time, with **Glide**); **Velocity** and **Volume**.          |
-| **Oscillators**      | Two oscillators: the waveform, **Level**, **Octave**, **Detune**, **Width** (pulse), **Unison** (stacked voices) and **Spread**.     |
-| **Sub · noise · FM** | A sine an octave down, white noise, and frequency modulation (**FM**, **Ratio**, **FM decay**) for bells and electric pianos.        |
-| **Filter**           | Low-, high- or band-pass, 12 or 24 dB; **Cutoff**, **Reso**, **Env** (how much the filter envelope opens it), **Key** and **Drive**. |
-| **Envelopes**        | The filter's and the amplifier's attack, decay, sustain and release. Drag the points in the pictures or turn the knobs.              |
-| **LFO**              | A slow wobble on the pitch, filter, volume or pan; free or synced to the tempo.                                                      |
+| Section              | What it does                                                                                                                                                  |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Start from**       | Load a factory synth as the starting point.                                                                                                                   |
+| **Signal flow**      | The path the sound takes, with a picture of the waveform; the blocks below follow it.                                                                         |
+| **Oscillators**      | Two oscillators: the waveform, **Level**, **Octave**, **Detune**, **Width** (pulse), **Unison** (stacked voices) and **Spread**.                              |
+| **Sub · noise · FM** | A sine an octave down, white noise, and frequency modulation (**FM**, **Ratio**, **FM time**) for bells and electric pianos.                                  |
+| **Filter**           | Low-, high- or band-pass, 12 or 24 dB; **Cutoff**, **Reso**, **Env** (how much the filter envelope opens it) and **Key**.                                     |
+| **Envelopes**        | The filter's and the amp's attack, decay, sustain and release. Drag the points in the pictures or turn the knobs.                                             |
+| **Voice · output**   | **Poly** (chords) or **Mono** (one note at a time, with **Glide**); **Vel** (how much velocity matters), **Drive** (saturation at the output) and **Volume**. |
+| **LFO**              | A slow wobble on the pitch, filter, volume or pan; free or synced to the tempo.                                                                               |
+| **Keyboard**         | Play the synth while you shape it: held notes, softer higher up on a key.                                                                                     |
 
 Play it on the **keyboard** at the bottom: hold a key and the note sounds until you let go, so you hear the sustain and the release (click higher on a key to play softer; drag across keys for a glissando). The computer keys **A**–**L** play it too while the editor has focus (**Z** / **X** or the + / − buttons change the octave). Changes apply right away, also to a note you're holding.
 
