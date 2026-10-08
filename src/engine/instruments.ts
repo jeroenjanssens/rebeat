@@ -7,6 +7,8 @@ import type { Smplr } from "smplr";
 import { FACTORY_SYNTHS, factorySynth } from "../library/synths";
 import { sanitizePatch, withKnobs, type SynthPatch } from "../model/synth";
 import { patchSynth } from "./synth";
+import { markBusy, markDownloaded } from "../library/downloads";
+import { CATALOG } from "../library/instruments";
 import { toUnit } from "../model/params";
 import { noteName } from "../model/notes";
 import type { InstrumentSource, Note, Track } from "../model/types";
@@ -20,26 +22,13 @@ export function patchOf(src: InstrumentSource): SynthPatch {
   return src.patch ?? factorySynth(src.preset)?.patch ?? FACTORY_SYNTHS[0].patch;
 }
 
-export interface SampledInstrument {
-  id: string;
-  name: string;
-}
-
-/** smplr instruments; samples stream from smplr's CDN the first time they're used. */
-export const SAMPLED_INSTRUMENTS: SampledInstrument[] = [
-  { id: "piano", name: "Grand piano" },
-  { id: "epiano:CP80", name: "Electric piano (CP80)" },
-  { id: "epiano:WurlitzerEP200", name: "Wurlitzer" },
-  { id: "epiano:TX81Z", name: "FM piano (TX81Z)" },
-  { id: "sf:string_ensemble_1", name: "Strings" },
-  { id: "sf:choir_aahs", name: "Choir" },
-  { id: "sf:acoustic_guitar_nylon", name: "Nylon guitar" },
-  { id: "sf:electric_bass_finger", name: "Electric bass" },
-  { id: "sf:flute", name: "Flute" },
-  { id: "sf:marimba", name: "Marimba" },
-  { id: "sf:vibraphone", name: "Vibraphone" },
-  { id: "sf:trumpet", name: "Trumpet" },
-];
+/** Sampled instruments from the catalog (D78), for pickers. */
+export const SAMPLED_INSTRUMENTS = CATALOG.filter((c) => c.source.source === "smplr").map((c) => ({
+  id: c.source.preset,
+  name: c.name,
+  family: c.family,
+  group: c.group,
+}));
 
 export function defaultInstrument(track: Track): InstrumentSource {
   return { source: "synth", preset: track.category === "bass" ? "acid" : "warm-pad" };
@@ -124,31 +113,47 @@ function samplerVoice(src: InstrumentSource, dest: Tone.InputNode): InstrumentVo
   };
 }
 
+type SmplrModule = typeof import("smplr");
+
+/** Create a smplr instrument for a preset ("piano", "sf:flute", "mallet:…", "vcsl:…"). */
+function makeSmplr(m: SmplrModule, ctx: BaseAudioContext, preset: string, destination: AudioNode) {
+  // samples are cached in the browser (Cache API) where available: offline after the first use
+  const storage = typeof caches !== "undefined" && isSecureContext ? m.CacheStorage() : undefined;
+  const opts = { destination, volume: 90, ...(storage ? { storage } : {}) };
+  const [kind, ...rest] = preset.split(":");
+  const name = rest.join(":");
+  const c = ctx as AudioContext;
+  if (preset === "piano") return m.SplendidGrandPiano(c, opts);
+  if (kind === "epiano") return m.ElectricPiano(c, { ...opts, instrument: name });
+  if (kind === "mallet") return m.Mallet(c, { ...opts, instrument: name });
+  if (kind === "smolken") return m.Smolken(c, { ...opts, instrument: name });
+  if (kind === "vcsl") return m.Versilian(c, { ...opts, instrument: name });
+  return m.Soundfont(c, { ...opts, instrument: preset.replace(/^sf:/, "") });
+}
+
 function smplrVoice(src: InstrumentSource, dest: Tone.Gain): InstrumentVoice {
-  const ctx = Tone.getContext().rawContext as AudioContext;
   // smplr wants a native node; the channel input is a Tone.Gain around one
   const destination = dest.input as unknown as AudioNode;
   let inst: Smplr | null = null;
   let disposed = false;
   let state: "ready" | "loading" | "error" = "loading";
+  markBusy(src.preset, true);
   // smplr (and its samples) load on first use
   import("smplr")
-    .then(({ ElectricPiano, Soundfont, SplendidGrandPiano }) => {
+    .then((m) => {
       if (disposed) return;
-      if (src.preset === "piano") inst = SplendidGrandPiano(ctx, { destination, volume: 90 });
-      else if (src.preset.startsWith("epiano:"))
-        inst = ElectricPiano(ctx, { instrument: src.preset.slice(7), destination, volume: 90 });
-      else
-        inst = Soundfont(ctx, {
-          instrument: src.preset.replace(/^sf:/, ""),
-          destination,
-          volume: 90,
-        });
+      inst = makeSmplr(m, destination.context, src.preset, destination) as Smplr;
       return inst.ready;
     })
     .then(
-      () => (state = "ready"),
-      () => (state = "error"),
+      () => {
+        state = "ready";
+        markDownloaded(src.preset);
+      },
+      () => {
+        state = "error";
+        markBusy(src.preset, false);
+      },
     );
   return {
     key: `smplr:${src.preset}`,
@@ -170,6 +175,23 @@ function smplrVoice(src: InstrumentSource, dest: Tone.Gain): InstrumentVoice {
       inst?.dispose();
     },
   };
+}
+
+/** Download a streamed instrument now, so it plays (and renders) offline later. */
+export async function prefetchInstrument(preset: string): Promise<void> {
+  markBusy(preset, true);
+  try {
+    const m = await import("smplr");
+    const ctx = Tone.getContext().rawContext as AudioContext;
+    const sink = ctx.createGain();
+    const inst = makeSmplr(m, ctx, preset, sink) as Smplr;
+    await inst.ready;
+    inst.dispose();
+    markDownloaded(preset);
+  } catch (e) {
+    markBusy(preset, false);
+    throw e;
+  }
 }
 
 export function instrumentKey(track: Track): string {

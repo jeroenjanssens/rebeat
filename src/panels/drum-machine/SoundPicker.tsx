@@ -45,13 +45,13 @@ export function SoundPicker({ track, close }: { track: Track; close: () => void 
       return SYNTH_PRESETS.map((p) => ({
         id: `synth:${p.id}`,
         name: p.name,
-        group: "Synths",
+        group: p.group,
       })).filter(match);
     if (inst && kind === "smplr")
       return SAMPLED_INSTRUMENTS.map((p) => ({
         id: `smplr:${p.id}`,
         name: p.name,
-        group: "Sampled instruments (streamed the first time)",
+        group: p.family === p.group ? p.family : `${p.family} · ${p.group}`,
       })).filter(match);
     const own: Sound[] = [...samples]
       .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))

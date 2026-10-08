@@ -186,9 +186,9 @@ test("the track menu shows and changes an instrument track's sound", async ({ pa
   await name.click({ button: "right" });
   await expect(picker.getByTestId("current-sound")).toHaveText("Sampler · 909 Kick");
   await picker.getByTestId("sound-kind").getByRole("button", { name: "Instrument" }).click();
-  await picker.locator("[data-sound]", { hasText: "Grand piano" }).click();
+  await picker.locator(`[data-sound="smplr:piano"]`).click();
   expect((await bass()).instrument).toEqual({ source: "smplr", preset: "piano" });
   await expect(
-    page.locator('[data-panel="drum-machine"]').getByText("Grand piano").first(),
+    page.locator('[data-panel="drum-machine"]').getByText("Grand Piano").first(),
   ).toBeVisible();
 });

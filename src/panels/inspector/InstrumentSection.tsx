@@ -104,10 +104,14 @@ export function InstrumentSection({ track }: { track: Track }) {
             data-testid="synth-preset"
             data-hint="inspector.instrument.synth.preset"
           >
-            {SYNTH_PRESETS.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
+            {[...new Set(SYNTH_PRESETS.map((p) => p.group))].map((g) => (
+              <optgroup key={g} label={g}>
+                {SYNTH_PRESETS.filter((p) => p.group === g).map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </optgroup>
             ))}
           </select>
         )}
@@ -120,10 +124,14 @@ export function InstrumentSection({ track }: { track: Track }) {
               onChange={(e) => setSource({ source: "smplr", preset: e.target.value })}
               data-hint="inspector.instrument.smplr.preset"
             >
-              {SAMPLED_INSTRUMENTS.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
+              {[...new Set(SAMPLED_INSTRUMENTS.map((p) => `${p.family} · ${p.group}`))].map((g) => (
+                <optgroup key={g} label={g}>
+                  {SAMPLED_INSTRUMENTS.filter((p) => `${p.family} · ${p.group}` === g).map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
             <p className="text-[10px] leading-snug text-faint">
