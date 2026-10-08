@@ -8,7 +8,7 @@ import { EFFECT_PARAMS, MIX_PARAMS, SOUND_PARAMS, defaultParams } from "./params
 import { emptyLane, type Project } from "./project";
 import { MAX_STEPS, emptyStep, type Effect, type Lane, type Step } from "./types";
 
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 export interface SerializedProject {
   format: "rebeat-project";
@@ -61,6 +61,8 @@ const migrations: Record<number, Migration> = {
   },
   // 3 → 4: MIDI mappings and the performance setup (mute groups, crossfader)
   3: (p) => ({ midiMappings: [], perf: defaultPerf(), ...p }),
+  // 4 → 5: the play mode is saved with the project (it used to start as "loop")
+  4: (p) => ({ playMode: "song", ...p }),
 };
 
 export function serializeProject(project: Project): SerializedProject {

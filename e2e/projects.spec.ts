@@ -76,3 +76,37 @@ test("undo after the first change keeps working in the copy", async ({ page }) =
   await expect(pad).not.toHaveClass(/\bon\b/);
   await expect(page.getByTestId("example-badge")).toHaveCount(0);
 });
+
+test("the play mode is saved with the project and starts as song", async ({ page }) => {
+  const mode = page.locator('[data-hint="transport.playmode"]');
+  const id = () =>
+    page.evaluate(
+      () =>
+        (
+          window as never as { __rebeat: { store: { getState(): { projectId: string } } } }
+        ).__rebeat.store.getState().projectId,
+    );
+  await expect(mode.getByRole("button", { name: "Song" })).toHaveAttribute("data-active", "true");
+
+  // switching in an example doesn't make a copy
+  await mode.getByRole("button", { name: "Page" }).click();
+  await expect(mode.getByRole("button", { name: "Page" })).toHaveAttribute("data-active", "true");
+  expect(await id()).toMatch(/^example:/);
+
+  // in your own project it's saved
+  await pad(page).click();
+  await expect.poll(id).not.toMatch(/^example:/);
+  await expect(page.getByTestId("save-status")).toHaveAttribute("data-status", "saved", {
+    timeout: 5000,
+  });
+  await page.keyboard.press("l");
+  await expect(mode.getByRole("button", { name: "Song" })).toHaveAttribute("data-active", "true");
+  await mode.getByRole("button", { name: "Page" }).click();
+  await expect(page.getByTestId("save-status")).toHaveAttribute("data-status", "saved", {
+    timeout: 5000,
+  });
+  await page.reload();
+  await page.getByTestId("audio-overlay").click();
+  await waitForProject(page);
+  await expect(mode.getByRole("button", { name: "Page" })).toHaveAttribute("data-active", "true");
+});

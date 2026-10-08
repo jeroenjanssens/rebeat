@@ -302,7 +302,8 @@ function PageThumb({
 
 export function PageStrip({ sizeClass }: { sizeClass: SizeClass }) {
   const project = useStore((s) => s.project);
-  const { playMode, songLoop, editSlotId, setUi, commit } = useStore();
+  const { songLoop, editSlotId, setUi, setPlayMode, commit } = useStore();
+  const playMode = useStore((s) => s.project.playMode);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const mods = useRef({ alt: false, shift: false });
 
@@ -382,10 +383,10 @@ export function PageStrip({ sizeClass }: { sizeClass: SizeClass }) {
         </button>
       )}
       <div className="segmented shrink-0" title="Playback mode" data-hint="dm.page.mode">
-        <button data-active={playMode === "loop"} onClick={() => setUi({ playMode: "loop" })}>
+        <button data-active={playMode === "loop"} onClick={() => setPlayMode("loop")}>
           Loop page
         </button>
-        <button data-active={playMode === "song"} onClick={() => setUi({ playMode: "song" })}>
+        <button data-active={playMode === "song"} onClick={() => setPlayMode("song")}>
           Song
         </button>
       </div>

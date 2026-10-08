@@ -7,6 +7,7 @@ type R = {
   store: {
     getState(): Record<string, never> & {
       setUi(p: object): void;
+      setPlayMode(m: string): void;
       commit(fn: (p: never) => void): void;
     };
   };
@@ -37,7 +38,8 @@ test("song mode without looping stops after the last page", async ({ page }) => 
       p.bpm = 300;
       p.slots.forEach((x) => (x.repeats = 1));
     });
-    s.setUi({ playMode: "song", songLoop: false, editSlotId: "slot-fill" });
+    s.setPlayMode("song");
+    s.setUi({ songLoop: false, editSlotId: "slot-fill" });
   });
   await page.keyboard.press("Space");
   await expect.poll(() => state(page, "s.playing"), { timeout: 10000 }).toBe(false);

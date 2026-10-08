@@ -18,6 +18,7 @@ export function emptyProject(name: string, bpm: number): Project {
     master: defaultMaster(),
     key: { root: 0, scale: "minor" },
     midiMappings: [],
+    playMode: "song",
     perf: defaultPerf(),
   };
 }

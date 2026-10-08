@@ -9,7 +9,7 @@ import { useStore } from "../state/store";
 export function FloatingTransport() {
   const playing = useStore((s) => s.playing);
   const bpm = useStore((s) => s.project.bpm);
-  const playMode = useStore((s) => s.playMode);
+  const playMode = useStore((s) => s.project.playMode);
   const [visible, setVisible] = useState(true);
   const timer = useRef(0);
   const hovering = useRef(false);
@@ -68,13 +68,13 @@ export function FloatingTransport() {
       <div className="segmented" data-hint="transport.playmode">
         <button
           data-active={playMode === "loop"}
-          onClick={() => useStore.getState().setUi({ playMode: "loop" })}
+          onClick={() => useStore.getState().setPlayMode("loop")}
         >
           Page
         </button>
         <button
           data-active={playMode === "song"}
-          onClick={() => useStore.getState().setUi({ playMode: "song" })}
+          onClick={() => useStore.getState().setPlayMode("song")}
         >
           Song
         </button>

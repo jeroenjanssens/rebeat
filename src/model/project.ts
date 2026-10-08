@@ -39,7 +39,11 @@ export interface Project {
   midiMappings: MidiMapping[];
   /** Performance: mute groups (track ids) and crossfader sides. */
   perf: PerfSetup;
+  /** Loop the page being edited, or play the pages in song order (D73). */
+  playMode: PlayMode;
 }
+
+export type PlayMode = "loop" | "song";
 
 export interface MidiMapping {
   id: string;

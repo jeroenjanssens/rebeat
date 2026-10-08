@@ -187,7 +187,7 @@ function nextSlot(atPageEnd: boolean, pattern: Pattern): string | null {
   }
   if (!atPageEnd) return null;
   repeatCount += 1;
-  if (s.playMode === "song" && repeatCount >= slot.repeats) {
+  if (s.project.playMode === "song" && repeatCount >= slot.repeats) {
     const i = slots.indexOf(slot);
     if (i === slots.length - 1 && !s.songLoop) return END;
     return slots[(i + 1) % slots.length].id;

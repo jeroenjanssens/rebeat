@@ -50,7 +50,7 @@ export function defaultCommands(): Command[] {
       title: "Toggle loop page / song",
       category: "Transport",
       keys: ["L"],
-      run: () => store().setUi({ playMode: store().playMode === "loop" ? "song" : "loop" }),
+      run: () => store().setPlayMode(store().project.playMode === "loop" ? "song" : "loop"),
     },
     {
       id: "transport.bpmUp",

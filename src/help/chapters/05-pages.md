@@ -18,6 +18,7 @@ Within a page, a track can have its **own length** (it loops sooner, for polyrhy
 ## Playing a song
 
 - In **Page** mode, the page you're on repeats.
+- **Song** is the default, and the mode you pick is saved with the project.
 - In **Song** mode, the pages play in order, each as often as its repeat count (right-click → Repeat). After the last page the song starts over, unless you switch looping off with the loop button next to **Loop page / Song**.
 - While playing, **click a page to queue it**: it starts at the end of the current page, or on the next bar or beat if you choose so in [Settings](#settings).
 - **Follow** (header bar) makes the drum machine show whichever page is playing.

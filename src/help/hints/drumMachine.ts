@@ -105,7 +105,7 @@ const hints: Hints = {
   },
   "dm.page.mode": {
     title: "Playback mode",
-    text: "Loop page repeats the current page indefinitely. Song plays all pages in order, each for its repeat count, then loops or stops.",
+    text: "Loop page repeats the current page indefinitely. Song plays all pages in order, each for its repeat count, then loops or stops. Saved with the project.",
     guide: "pages-playing-a-song",
   },
 

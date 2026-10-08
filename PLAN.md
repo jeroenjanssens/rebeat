@@ -9,7 +9,7 @@
 
 ### 0.1 Where we are
 
-- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D71), and the build order is in §7.
+- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D73), and the build order is in §7.
 - Every phase in §7 is built, tested (unit + Playwright e2e) and pushed. The mockup (Phase M) became the app: its components, model and store were kept and extended; `src/mock/` was replaced by the real engine.
 - The desktop app (Phase 10) runs and packages locally (unsigned); signing/notarization need certificates (see `.github/workflows/desktop.yml`).
 
@@ -31,7 +31,7 @@ src/
                          ProjectBrowser, projectActions, ExportDialog, WelcomeDialog, AudioStartOverlay, openers
   platform/              Platform interface; web.ts; electron.ts (native dialogs via window.rebeatNative)
   model/                 types (Track, Pattern, Step, Note, Effect…), project ops, schema (versions + migrations,
-                         now v4), params (+ toUnit), effects (buses, master, perf setup), notes (keys, chords, arp),
+                         now v5), params (+ toUnit), effects (buses, master, perf setup), notes (keys, chords, arp),
                          noteOps (piano roll), timing (polyrhythm), tempo (tap), midiFile (SMF export)
   state/                 store (project + undo + UI), settings (persisted), actions (steps, function buttons),
                          input (pads, step entry, live recording, cursor), trackActions, effectActions, clipActions
@@ -689,6 +689,7 @@ Format: **Dn — Question.** Default ✅, alternatives.
 - **D69 — Example songs.** Read-only and generated (never stored), so they can't be overwritten; the first edit makes a copy named "… (copy)" and the edit continues in it, undo included. They reproduce the grooves, tempos, keys and chord progressions; basslines and synth parts are written in the style of the originals, not copied note for note. Alt: editable examples.
 - **D70 — In-app guide.** Markdown chapters in `src/help/chapters`, bundled with the app (works offline) and shown in a dockable Guide panel. Shortcuts are filled in from the command registry, so rebinding a key updates the guide; links can open panels or run commands. An e2e test checks that every anchor and shortcut reference resolves. Keep the chapters up to date when a panel or button changes. Alt: an external docs site.
 - **D71 — Explain mode.** Controls carry `data-hint="<id>"`; the texts live in `src/help/hints/*.ts` (one file per area; knobs share `param.<track.params key>` and `fx.<Effect>.<param>` entries). One plain-DOM layer (`app/hintLayer.ts`, installed in every window including pop-outs) shows the card, parks native `title` tooltips while it does, falls back to the `title` for controls without a hint, and shows the live shortcut from the command registry. A unit test checks literal ids and guide anchors; an e2e test checks every hint rendered in the app. New controls need a hint. Alt: a tooltip component around every button.
+- **D73 — Play mode in the project.** `Project.playMode` (schema v5; older projects open in Song, the new default). `setPlayMode` saves it without an undo step and keeps it through undo/redo of other edits; switching it in an example doesn't make a copy. Alt: UI state (reset to the default on every start).
 - **D35 — Build order.** ✅ The phases in §7, starting with the mockup (Phase M), each ending with something you can play with.
 
 ---

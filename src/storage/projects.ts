@@ -114,6 +114,10 @@ function forkExample() {
   );
 }
 
+const onlyPlayModeChanged = (a: Project, b: Project) =>
+  a.playMode !== b.playMode &&
+  (Object.keys(b) as (keyof Project)[]).every((k) => k === "playMode" || a[k] === b[k]);
+
 let starting: Promise<void> | null = null;
 
 /** Debounced autosave of every edit; on start, reopen the last project (crash recovery). */
@@ -136,12 +140,15 @@ async function start(fallback: string) {
   let lastId = useStore.getState().projectId;
   useStore.subscribe((s) => {
     if (s.project === last) return;
+    const prev = last;
     const opened = s.projectId !== lastId;
     last = s.project;
     lastId = s.projectId;
     // opening a project isn't an edit
     if (opened) return;
     if (isExampleId(s.projectId)) {
+      // switching loop/song while listening to an example doesn't make a copy
+      if (onlyPlayModeChanged(prev, s.project)) return;
       forkExample();
       last = useStore.getState().project;
       lastId = useStore.getState().projectId;

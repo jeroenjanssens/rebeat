@@ -71,7 +71,7 @@ const hints: Hints = {
   },
   "transport.playmode": {
     title: "Playback mode",
-    text: "Page loops the current page; Song plays all your pages in order with their repeat counts.",
+    text: "Page loops the current page; Song plays all your pages in order with their repeat counts. Saved with the project.",
     command: "transport.mode",
     guide: "transport-bar",
   },

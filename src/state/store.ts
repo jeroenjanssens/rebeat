@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { produce, type Draft } from "immer";
 import { demoProject } from "../templates/nightDrive";
-import { slotPattern, type Project } from "../model/project";
+import { slotPattern, type PlayMode, type Project } from "../model/project";
 import type { Step } from "../model/types";
 
 export type FnKey =
@@ -58,7 +58,6 @@ export interface UiState {
   fillHeld: boolean;
   fillLatched: boolean;
   repeatRate: RepeatRate;
-  playMode: "loop" | "song";
   /** Song mode: start over after the last page (otherwise stop). */
   songLoop: boolean;
   playing: boolean;
@@ -97,6 +96,8 @@ interface State extends UiState {
   undo: () => void;
   redo: () => void;
   setUi: (partial: Partial<UiState>) => void;
+  /** Switch loop/song: saved with the project, but not an undo step (it's transport state). */
+  setPlayMode: (mode: PlayMode) => void;
 }
 
 const project = demoProject();
@@ -154,7 +155,6 @@ export const useStore = create<State>()((set, get) => ({
   fillHeld: false,
   fillLatched: false,
   repeatRate: "1/16",
-  playMode: "loop",
   songLoop: true,
   playing: false,
   recording: false,
@@ -201,6 +201,13 @@ export const useStore = create<State>()((set, get) => ({
     });
   },
   setUi: (partial) => set(partial),
+  setPlayMode: (playMode) => {
+    const { project, past, future } = get();
+    if (project.playMode === playMode) return;
+    // the undo history keeps the play mode the user chose
+    const keep = (p: Project) => ({ ...p, playMode });
+    set({ project: keep(project), past: past.map(keep), future: future.map(keep) });
+  },
 }));
 
 // ---------- selectors ----------

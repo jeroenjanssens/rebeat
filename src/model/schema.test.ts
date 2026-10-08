@@ -95,4 +95,14 @@ describe("migration 2 → 3", () => {
     ]);
     expect(lane.kind === "steps" && "length" in lane.steps[4]).toBe(false);
   });
+
+  it("saves the play mode, and opens older projects in song mode", () => {
+    const p = demoProject() as unknown as Record<string, unknown>;
+    expect(p.playMode).toBe("song");
+    delete p.playMode;
+    const m = deserializeProject({ format: "rebeat-project", schemaVersion: 4, project: p });
+    expect(m.playMode).toBe("song");
+    const loop = deserializeProject(serializeProject({ ...demoProject(), playMode: "loop" }));
+    expect(loop.playMode).toBe("loop");
+  });
 });

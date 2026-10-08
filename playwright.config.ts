@@ -9,7 +9,7 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? "github" : "list",
   use: {
-    baseURL: "http://localhost:5174",
+    baseURL: "http://localhost:5391",
     trace: "retain-on-failure",
     actionTimeout: process.env.CI ? 30_000 : 0,
     // the fake microphone (see the launch flags) needs the permission granted up front
@@ -24,8 +24,8 @@ export default defineConfig({
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"], viewport: { width: 1600, height: 950 } } }],
   webServer: {
-    command: "pnpm vite --port 5174 --strictPort",
-    url: "http://localhost:5174",
+    command: "pnpm vite --port 5391 --strictPort",
+    url: "http://localhost:5391",
     reuseExistingServer: !process.env.CI,
   },
 });

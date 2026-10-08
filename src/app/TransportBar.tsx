@@ -183,7 +183,7 @@ function AudioStatus() {
 export function TransportBar() {
   const playing = useStore((s) => s.playing);
   const project = useStore((s) => s.project);
-  const playMode = useStore((s) => s.playMode);
+  const playMode = useStore((s) => s.project.playMode);
   const projectId = useStore((s) => s.projectId);
   const quantize = useStore((s) => s.quantize);
   const recording = useStore((s) => s.recording);
@@ -382,10 +382,16 @@ export function TransportBar() {
         <span className="num">{quantize}</span>
       </button>
       <div className="segmented" title="Playback mode (L)" data-hint="transport.playmode">
-        <button data-active={playMode === "loop"} onClick={() => setUi({ playMode: "loop" })}>
+        <button
+          data-active={playMode === "loop"}
+          onClick={() => useStore.getState().setPlayMode("loop")}
+        >
           Page
         </button>
-        <button data-active={playMode === "song"} onClick={() => setUi({ playMode: "song" })}>
+        <button
+          data-active={playMode === "song"}
+          onClick={() => useStore.getState().setPlayMode("song")}
+        >
           Song
         </button>
       </div>

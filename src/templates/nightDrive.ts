@@ -48,6 +48,7 @@ export function demoProject(): Project {
     master: defaultMaster(),
     key: { root: 0, scale: "minor" },
     midiMappings: [],
+    playMode: "song",
     perf: defaultPerf(),
     tracks: [kick, snare, clap, hat, ohat, perc, bass, chords, vox],
     patterns: {},
