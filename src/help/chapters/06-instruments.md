@@ -23,7 +23,7 @@ The blocks follow the path the sound takes, shown at the top: the oscillators (w
 | Section              | What it does                                                                                                                                                  |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Start from**       | Load a factory synth as the starting point.                                                                                                                   |
-| **Signal flow**      | The path the sound takes, with a picture of the waveform; the blocks below follow it.                                                                         |
+| **Signal flow**      | The path the sound takes, with a picture of the waveform (click it to hear a note); the blocks below follow it.                                               |
 | **Oscillators**      | Two oscillators: the waveform, **Level**, **Octave**, **Detune**, **Width** (pulse), **Unison** (stacked voices) and **Spread**.                              |
 | **Sub · noise · FM** | A sine an octave down, white noise, and frequency modulation (**FM**, **Ratio**, **FM time**) for bells and electric pianos.                                  |
 | **Filter**           | Low-, high- or band-pass, 12 or 24 dB; **Cutoff**, **Reso**, **Env** (how much the filter envelope opens it) and **Key**.                                     |
@@ -32,7 +32,7 @@ The blocks follow the path the sound takes, shown at the top: the oscillators (w
 | **LFO**              | A slow wobble on the pitch, filter, volume or pan; free or synced to the tempo.                                                                               |
 | **Keyboard**         | Play the synth while you shape it: held notes, softer higher up on a key.                                                                                     |
 
-Play it on the **keyboard** at the bottom: hold a key and the note sounds until you let go, so you hear the sustain and the release (click higher on a key to play softer; drag across keys for a glissando). The computer keys **A**–**L** play it too while the editor has focus (**Z** / **X** or the + / − buttons change the octave). Changes apply right away, also to a note you're holding.
+Play it on the **keyboard** at the bottom (the keys show their notes, with the octave on every C: C3, C4…): hold a key and the note sounds until you let go, so you hear the sustain and the release (click higher on a key to play softer; drag across keys for a glissando). The computer keys **A**–**L** play it too while the editor has focus (**Z** / **X** or the + / − buttons change the octave). Changes apply right away, also to a note you're holding.
 
 Editing a factory synth edits a copy on the track; the factory synth itself never changes (the revert button brings it back). **Save to library** stores the synth with the track's SOUND knobs and effects under **Your instruments** in the library; drop it on any track, in any project. Right-click any instrument track → **Save sound** does the same for samplers and sampled instruments.
 

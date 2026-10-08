@@ -814,3 +814,18 @@ kbd,
   border-radius: 3px;
   background: var(--surface);
 }
+
+/* a waveform playing once (components/Playhead) */
+@keyframes playhead {
+  from {
+    left: 0;
+    opacity: 1;
+  }
+  95% {
+    opacity: 1;
+  }
+  to {
+    left: 100%;
+    opacity: 0;
+  }
+}

@@ -1,4 +1,6 @@
 import { useState } from "react";
+import * as engine from "../../engine/engine";
+import { Playhead } from "../../components/Playhead";
 import { soundLabel } from "../../state/trackActions";
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from "lucide-react";
 import { Encoder } from "../../components/Encoder";
@@ -180,6 +182,7 @@ function Display({ track, width }: { track: Track; width: number }) {
   );
   const index = useStore((s) => s.project.tracks.findIndex((t) => t.id === track.id));
   const samples = useSamplesVersion();
+  const [run, setRun] = useState<{ n: number; seconds: number } | null>(null);
   const { ref } = useCanvas(
     (ctx, { width: w, height: h }) => {
       ctx.clearRect(0, 0, w, h);
@@ -229,8 +232,14 @@ function Display({ track, width }: { track: Track; width: number }) {
         </span>
         <span className="label ml-auto !text-white/40">{track.kind}</span>
       </div>
-      <div className="relative my-1.5 h-[30px]">
+      <div
+        className="relative my-1.5 h-[30px] cursor-pointer"
+        onClick={() => setRun({ n: performance.now(), seconds: engine.playOnce(track) })}
+        title="Click to hear it"
+        data-testid="display-wave"
+      >
         <canvas ref={ref} className="block h-full w-full" />
+        <Playhead run={run} />
         {selectedCount > 0 && (
           <div className="label absolute inset-0 flex items-center justify-center rounded bg-black/70 !text-[10px] !text-white">
             {selectedCount} step{selectedCount > 1 ? "s" : ""} selected

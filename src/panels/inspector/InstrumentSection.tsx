@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
 import { DragValue } from "../../components/DragValue";
+import { PeaksCanvas } from "../../components/PeaksCanvas";
+import { Playhead } from "../../components/Playhead";
+import * as engine from "../../engine/engine";
+import { samplePeaks } from "../../engine/samples";
 import { instrumentState } from "../../engine/engine";
 import { SAMPLED_INSTRUMENTS, SYNTH_PRESETS, defaultInstrument } from "../../engine/instruments";
 import { droppedSamples } from "../../library/drop";
@@ -29,6 +33,7 @@ export function InstrumentSection({ track }: { track: Track }) {
   const src = track.instrument ?? defaultInstrument(track);
   const state = useInstrumentState(track.id);
   const [hover, setHover] = useState(false);
+  const [run, setRun] = useState<{ n: number; seconds: number } | null>(null);
   const arp = track.arp ?? DEFAULT_ARP;
 
   const update = (fn: (t: Track) => void, key?: string) =>
@@ -175,6 +180,21 @@ export function InstrumentSection({ track }: { track: Track }) {
                 ? sampleName(src.sampleId)
                 : "Drop a sample here to play it across the keyboard"}
             </div>
+            {src.sampleId && (
+              <div
+                className="relative mb-1.5 cursor-pointer rounded bg-display"
+                onClick={() => setRun({ n: performance.now(), seconds: engine.playOnce(track) })}
+                title="Click to hear it at its root note"
+                data-testid="sampler-wave"
+              >
+                <PeaksCanvas
+                  peaks={samplePeaks(src.sampleId, 160)}
+                  color={track.color}
+                  className="h-8 w-full"
+                />
+                <Playhead run={run} />
+              </div>
+            )}
             <label className="flex items-center gap-2">
               <span className="label">Root note</span>
               <select

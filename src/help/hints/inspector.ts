@@ -17,7 +17,7 @@ const hints: Hints = {
 
   "inspector.sample": {
     title: "Sample",
-    text: "Shows the current sample's waveform and details. Drop a new sample here to replace the sound on this track.",
+    text: "Shows the current sample's waveform and details. Click the waveform to hear it once, as the track plays it; drop a new sample here to replace the sound on this track.",
     keys: "Drop: replace sound",
     guide: "mixing-the-inspector",
   },
@@ -56,7 +56,7 @@ const hints: Hints = {
   },
   "inspector.instrument.sampler.drop": {
     title: "Sampler",
-    text: "Drop a sample here to play it across the full keyboard range. Set the Root note to match the original pitch of the sample.",
+    text: "Drop a sample here to play it across the full keyboard range. Set the Root note to match the original pitch of the sample; click the waveform to hear it at that note.",
     keys: "Drop: load sample",
     guide: "instruments-sound-sources",
   },

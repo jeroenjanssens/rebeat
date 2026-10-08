@@ -200,7 +200,7 @@ function Editor({ track }: { track: Track }) {
         )}
       </div>
 
-      <SignalFlow patch={patch} color={track.color} />
+      <SignalFlow patch={patch} color={track.color} onPlay={() => engine.playOnce(track)} />
       <div className="scroll-thin grid min-h-0 flex-1 auto-rows-min grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-2 overflow-auto p-2">
         {oscBox(1)}
         {oscBox(2)}
@@ -442,7 +442,15 @@ function EnvelopeView({
 }
 
 /** The path the sound takes, left to right; the envelopes and the LFO steer it. */
-function SignalFlow({ patch, color }: { patch: SynthPatch; color: string }) {
+function SignalFlow({
+  patch,
+  color,
+  onPlay,
+}: {
+  patch: SynthPatch;
+  color: string;
+  onPlay: () => void;
+}) {
   const sources = [
     "Osc 1",
     patch.osc2.level > 0 && "Osc 2",
@@ -461,9 +469,14 @@ function SignalFlow({ patch, color }: { patch: SynthPatch; color: string }) {
       className="flex shrink-0 flex-wrap items-center gap-1.5 border-b border-line px-3 py-1.5"
       data-hint="synth.flow"
     >
-      <div className="w-[140px]">
+      <button
+        className="w-[140px]"
+        onClick={onPlay}
+        title="Click to hear it"
+        data-testid="synth-wave"
+      >
         <WavePreview patch={patch} color={color} />
-      </div>
+      </button>
       {step(sources.join(" + "), patch.fm.index > 0 ? "with FM" : undefined)}
       {arrow}
       {step("Filter", "filter envelope")}

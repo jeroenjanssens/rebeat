@@ -368,6 +368,41 @@ function playNotes(track: Track, velocity: number, time: number, o: TriggerOptio
   );
 }
 
+/**
+ * Clicking a wave (A1): hear the track once, as it plays it. Drum tracks: a hit; instrument
+ * tracks: a note at the root; audio tracks: the clip from its start (again: stop). Returns how long
+ * it sounds in seconds (0 when nothing has a playhead), for the playhead on the wave.
+ */
+export function playOnce(track: Track): number {
+  const t = audioNow() + 0.01;
+  if (track.kind === "audio") {
+    if (S.clips.has(track.id)) {
+      stopClip(track.id);
+      return 0;
+    }
+    // while the song plays, the clip plays with it
+    if (useStore.getState().playing) return 0;
+    startClip(track, t, 3600, true);
+    return 0;
+  }
+  if (track.kind === "instrument") {
+    // a sampler plays its sample at its own pitch
+    const sampler = track.instrument?.source === "sampler" ? track.instrument : null;
+    const pitch = sampler ? (sampler.rootNote ?? 60) : track.category === "bass" ? 36 : 60;
+    const buffer = sampler && !sampler.zones?.length ? getBuffer(sampler.sampleId) : undefined;
+    const length = buffer ? Math.max(1, buffer.duration / 0.125) : 4;
+    trigger(track, 0.8, { time: t, notes: [{ pitch, length, velocity: 0.8 }], stepDur: 0.125 });
+    return buffer?.duration ?? 0;
+  }
+  trigger(track, 0.8, { time: t });
+  const buffer = getBuffer(track.sampleId);
+  if (!buffer) return 0;
+  const p = track.params;
+  const rate = Math.pow(2, toUnit.semis(24)(p["sound.tune"] ?? 0.5) / 12);
+  const start = (p["sound.start"] ?? 0) * buffer.duration;
+  return Math.min((buffer.duration - start) / rate, toUnit.drumDecay(p["sound.decay"] ?? 1));
+}
+
 /** Start a note on an instrument track that sounds until released (on-screen and MIDI keys). */
 export function holdNote(track: Track, pitch: number, velocity: number): () => void {
   if (track.kind !== "instrument") return () => {};

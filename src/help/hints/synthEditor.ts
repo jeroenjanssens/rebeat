@@ -51,7 +51,7 @@ const hints: Hints = {
   },
   "synth.wave.view": {
     title: "Waveform picture",
-    text: "One cycle of what the oscillators make together.",
+    text: "One cycle of what the oscillators make together. Click it to hear a note.",
     guide,
   },
   "synth.mono": {

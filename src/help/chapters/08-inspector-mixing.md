@@ -4,7 +4,7 @@
 
 The [Inspector](panel:inspector) shows everything about the selected track:
 
-- **Sample** (drum and audio tracks): the sound's name, waveform and details. Drop a sample here to replace it. The buttons show it in the library and open it in the sample editor.
+- **Sample** (drum and audio tracks): the sound's name, waveform and details. Click the waveform to hear it once; drop a sample here to replace it. The buttons show it in the library and open it in the sample editor.
 - **Instrument** (instrument tracks): the sound source, transpose and arpeggiator. See [Instrument tracks](#instruments).
 - **Sound** and **Mix**: the same parameters as the encoder banks, all at once.
 - **Effects**: the track's insert effects (below).

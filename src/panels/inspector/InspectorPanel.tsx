@@ -4,6 +4,8 @@ import { focusPanel, openSampleEditor } from "../../app/openers";
 import { Encoder } from "../../components/Encoder";
 import { InlineEdit } from "../../components/InlineEdit";
 import { PeaksCanvas } from "../../components/PeaksCanvas";
+import { Playhead } from "../../components/Playhead";
+import * as engine from "../../engine/engine";
 import { useSamplesVersion } from "../../components/useSamplesVersion";
 import { getBuffer, samplePeaks } from "../../engine/samples";
 import { droppedSamples, isSampleDrag } from "../../library/drop";
@@ -80,6 +82,7 @@ function SampleSection({ track }: { track: Track }) {
   useSamplesVersion();
   const record = useLibrary((s) => s.samples.find((x) => x.id === track.sampleId));
   const [hover, setHover] = useState(false);
+  const [run, setRun] = useState<{ n: number; seconds: number } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const buffer = getBuffer(track.sampleId);
   const id = track.sampleId;
@@ -136,7 +139,15 @@ function SampleSection({ track }: { track: Track }) {
         <div className="mb-1.5 truncate text-[11.5px] text-white/85">
           {id ? sampleName(id) : "No sample: drop one here"}
         </div>
-        <PeaksCanvas peaks={samplePeaks(id, 160)} color={track.color} className="h-10 w-full" />
+        <div
+          className="relative cursor-pointer"
+          onClick={() => setRun({ n: performance.now(), seconds: engine.playOnce(track) })}
+          title="Click to hear it"
+          data-testid="inspector-wave"
+        >
+          <PeaksCanvas peaks={samplePeaks(id, 160)} color={track.color} className="h-10 w-full" />
+          <Playhead run={run} />
+        </div>
         <div className="num mt-1.5 flex gap-3 text-[10px] text-white/45">
           {buffer && <span>{buffer.duration.toFixed(2)} s</span>}
           {buffer && <span>{(buffer.sampleRate / 1000).toFixed(1)} kHz</span>}

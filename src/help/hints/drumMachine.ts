@@ -112,7 +112,7 @@ const hints: Hints = {
   // ─────────────────────────────────── Encoder strip ─────────────────────────────────
   "dm.encoder.display": {
     title: "Track display",
-    text: "Shows the selected track: its number, name, type, waveform (or envelope shape for instruments) and the sound's name. When steps are selected it shows the count.",
+    text: "Shows the selected track: its number, name, type, waveform (or envelope shape for instruments) and the sound's name. Click the waveform to hear the sound once, as the track plays it. When steps are selected it shows the count.",
     guide: "drum-machine-the-display-and-the-eight-encoders",
   },
   "dm.encoder.bank.sound": {
@@ -209,7 +209,7 @@ const hints: Hints = {
   },
   "dm.track.clip-view": {
     title: "Audio clip",
-    text: "The waveform of this track's audio clip. Right-click for options: double or halve the clip length, manage overdub layers, merge layers, or clear the clip.",
+    text: "The waveform of this track's audio clip. Click it to hear the clip once from the start (click again to stop). Right-click for options: double or halve the clip length, manage overdub layers, merge layers, or clear the clip.",
     keys: "Right-click: clip options",
     guide: "drum-machine-audio-tracks",
   },

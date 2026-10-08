@@ -133,6 +133,9 @@ export function ClipView({ track, lane, width, height }: Props) {
         e.stopPropagation();
         contextMenu(e, clipMenu(track));
       }}
+      // click: hear the clip once (again: stop); while the song plays it plays along
+      onClick={() => engine.playOnce(track)}
+      data-testid="clip-wave"
     >
       <canvas ref={ref} className="block h-full w-full" />
       {layers.length > 0 && (

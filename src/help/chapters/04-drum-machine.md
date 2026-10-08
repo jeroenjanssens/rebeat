@@ -40,7 +40,7 @@ The strip shows every page of the song as a small picture of its pattern. A song
 
 ## The display and the eight encoders
 
-The dark **display** shows the selected track: its number, name and type, the waveform of its sample (or the envelope of its synth), and the sound's name. When steps are selected, it says how many.
+The dark **display** shows the selected track: its number, name and type, the waveform of its sample (or the envelope of its synth), and the sound's name. **Click the waveform** to hear the sound once, as the track plays it (a line runs across while it plays). When steps are selected, it says how many.
 
 The tabs above the encoders choose what the eight encoders control:
 
@@ -93,7 +93,7 @@ At the bottom, **drop samples** from your computer or the library to add tracks,
 
 ### Audio tracks
 
-An audio track shows its **clip** as a waveform instead of pads, exactly as wide as a row of pads, so it lines up with the other tracks. The buttons in its top-right corner: the power button turns the clip on or off for this page, the disc button opens a **scratch strip**, and the label switches between **Loop** (the clip loops, restarting with each page) and **1-shot** (it plays once). Right-click the clip for: Double length, Halve length, the overdub layers (click one to mute it), Undo last layer, Merge layers, Last layer → new track, and Clear clip. See [The loop station](#loop-station).
+An audio track shows its **clip** as a waveform instead of pads, exactly as wide as a row of pads, so it lines up with the other tracks. The buttons in its top-right corner: the power button turns the clip on or off for this page, the disc button opens a **scratch strip**, and the label switches between **Loop** (the clip loops, restarting with each page) and **1-shot** (it plays once). **Click** the clip to hear it once from the start, click again to stop (while the song plays, it plays along anyway). Right-click the clip for: Double length, Halve length, the overdub layers (click one to mute it), Undo last layer, Merge layers, Last layer → new track, and Clear clip. See [The loop station](#loop-station).
 
 ## Pads (steps)
 

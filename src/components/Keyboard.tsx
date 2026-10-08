@@ -23,6 +23,8 @@ const LETTERS = Object.fromEntries(
 );
 
 const BLACK = [1, 3, 6, 8, 10];
+/** C4 = 60 */
+const octave = (n: number) => Math.floor(n / 12) - 1;
 const NAMES = ["C", "C♯", "D", "E♭", "E", "F", "F♯", "G", "A♭", "A", "B♭", "B"];
 
 /**
@@ -133,13 +135,15 @@ export function Keyboard({
         onPointerEnter={(e) => e.buttons === 1 && press(pointer, n, 0.7)}
         onPointerUp={() => lift(pointer, n)}
         onPointerLeave={() => lift(pointer, n)}
-        title={`${NAMES[n % 12]}${Math.floor(n / 12) - 1}${letter ? ` (${letter})` : ""}`}
+        title={`${NAMES[n % 12]}${octave(n)}${letter ? ` (key ${letter})` : ""}`}
+        data-note-name={`${NAMES[n % 12]}${octave(n)}`}
       >
-        {letter && (
+        {/* white keys show their note; every C its octave */}
+        {!black && (
           <span
-            className={`absolute bottom-1 left-0 right-0 text-center text-[9px] ${black ? "text-white/50" : "text-black/40"}`}
+            className={`absolute bottom-1 left-0 right-0 text-center text-[9px] ${n % 12 === 0 ? "font-semibold text-black/70" : "text-black/35"}`}
           >
-            {letter}
+            {n % 12 === 0 ? `C${octave(n)}` : NAMES[n % 12]}
           </span>
         )}
       </div>
