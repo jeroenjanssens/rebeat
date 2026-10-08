@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import type { Step, StepLane, Track } from "../../model/types";
+import { emptyStep, type Step, type StepLane, type Track } from "../../model/types";
 import { editSteps } from "../../state/actions";
 import { stepKey } from "../../state/store";
 import type { Geometry } from "./layout";
@@ -7,6 +7,8 @@ import type { Geometry } from "./layout";
 type Field = "velocity" | "probability" | "nudge";
 
 const LABEL: Record<Field, string> = { velocity: "Velocity", probability: "Prob", nudge: "Nudge" };
+
+const DEFAULTS = emptyStep();
 
 const read = (s: Step, f: Field) => (f === "nudge" ? s.nudge + 0.5 : s[f]);
 
@@ -25,6 +27,9 @@ export function ParamLane({
   field: Field;
 }) {
   const drawing = useRef<string | null>(null);
+  // the reset merges with the clicks that started the double-click: one undo step
+  const lastKey = useRef("");
+  const lastDown = useRef(0);
   const h = 38;
 
   const apply = (x: number, y: number) => {
@@ -60,11 +65,31 @@ export function ParamLane({
         style={{ gap: geo.beatGap, height: h + 8 }}
         onPointerDown={(e) => {
           e.currentTarget.setPointerCapture(e.pointerId);
-          drawing.current = `lane-${field}-${performance.now()}`;
+          // pointer events have no click count: a quick second press continues the first
+          const now = performance.now();
+          if (now - lastDown.current > 500) lastKey.current = `lane-${field}-${now}`;
+          lastDown.current = now;
+          drawing.current = lastKey.current;
           apply(e.clientX, e.clientY);
         }}
         onPointerMove={(e) => drawing.current && apply(e.clientX, e.clientY)}
         onPointerUp={() => (drawing.current = null)}
+        // double-click: back to the default; Alt+double-click: the whole lane
+        onDoubleClick={(e) => {
+          // (pointer capture makes the lane itself the target, so look at the coordinates)
+          const el = document
+            .elementFromPoint(e.clientX, e.clientY)
+            ?.closest<HTMLElement>("[data-lane-i]");
+          if (!el && !e.altKey) return;
+          const indices = e.altKey
+            ? Array.from({ length }, (_, i) => i)
+            : [Number(el!.dataset.laneI)];
+          editSteps(
+            indices.map((i) => stepKey(track.id, i)),
+            (s) => void (s[field] = DEFAULTS[field]),
+            lastKey.current,
+          );
+        }}
       >
         {geo.groups.map((g, gi) => (
           <div key={gi} className="flex items-end" style={{ gap: geo.beatGap }}>

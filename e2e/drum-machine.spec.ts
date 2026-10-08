@@ -108,3 +108,58 @@ test("right-drag erases steps; right-click opens the step menu", async ({ page }
   await kickPads.nth(8).click({ button: "right" });
   await expect(page.locator(".menu").getByText("Probability")).toBeVisible();
 });
+
+test("double-click in a lane resets a step; Alt+double-click the whole lane", async ({ page }) => {
+  type S = {
+    project: {
+      tracks: { id: string }[];
+      slots: { id: string; patternId: string }[];
+      patterns: Record<
+        string,
+        { lanes: Record<string, { steps: { velocity: number; on: boolean }[] }> }
+      >;
+    };
+    editSlotId: string;
+    past: unknown[];
+    setUi(p: object): void;
+  };
+  const read = () =>
+    page.evaluate(() => {
+      const s = (
+        window as never as { __rebeat: { store: { getState(): S } } }
+      ).__rebeat.store.getState();
+      const slot = s.project.slots.find((x) => x.id === s.editSlotId)!;
+      const steps = s.project.patterns[slot.patternId].lanes[s.project.tracks[0].id].steps;
+      return { v: steps.filter((x) => x.on).map((x) => x.velocity), undo: s.past.length };
+    });
+  await page.evaluate(() =>
+    (window as never as { __rebeat: { store: { getState(): S } } }).__rebeat.store
+      .getState()
+      .setUi({ lanes: { velocity: true } }),
+  );
+  const bars = dm(page).locator('[data-hint="dm.param-lane.bars"] [data-lane-i]');
+  const first = (await read()).v.length;
+  expect(first).toBeGreaterThan(1);
+  // draw low velocities on every lit step
+  const box = (await bars.first().boundingBox())!;
+  const last = (await bars.nth(15).boundingBox())!;
+  await page.mouse.move(box.x + 2, box.y + box.height - 3);
+  await page.mouse.down();
+  await page.mouse.move(last.x + 4, last.y + last.height - 3, { steps: 20 });
+  await page.mouse.up();
+  await expect.poll(async () => Math.max(...(await read()).v)).toBeLessThan(0.3);
+
+  // the kick's first step is on
+  await page.waitForTimeout(700);
+  const before = (await read()).undo;
+  await bars.first().dblclick();
+  await expect.poll(async () => (await read()).v[0]).toBeCloseTo(0.8);
+  const after = await read();
+  expect(Math.max(...after.v.slice(1))).toBeLessThan(0.3);
+  expect(after.undo).toBe(before + 1);
+
+  await page.waitForTimeout(700);
+  await bars.nth(4).dblclick({ modifiers: ["Alt"] });
+  await expect.poll(async () => Math.min(...(await read()).v)).toBeCloseTo(0.8);
+  for (const v of (await read()).v) expect(v).toBeCloseTo(0.8);
+});

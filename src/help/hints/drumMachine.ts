@@ -246,6 +246,7 @@ const hints: Hints = {
   "dm.param-lane.bars": {
     title: "Parameter lane",
     text: "Drag up or down over a bar to set velocity, probability or nudge for that step. Only steps that are on have a bar to drag.",
+    keys: "Double-click: back to the default · Alt+double-click: reset the whole lane",
     guide: "drum-machine-the-header-bar",
   },
 
