@@ -21,6 +21,8 @@ Rebeat works with MIDI keyboards, pads and controllers (in Chrome and Edge).
 
 - Turn it on in **Settings → MIDI → Enable MIDI**, and choose which inputs to use.
 - **Notes** play the selected instrument track, sounding for as long as you hold the key. On drum tracks, notes from 36 (C1) upwards play pads 1, 2, 3…, as on most pad controllers. They record like pad hits.
+- **Pitch bend**, the **mod wheel** (CC 1) and **aftertouch** (channel or per-key pressure) reach the selected synth track: bend moves the pitch by the synth's **Bend** range, and the mod wheel and aftertouch are sources in its mod matrix (vibrato on the mod wheel, say).
+- The **sustain pedal** (CC 64) keeps released notes sounding until the pedal comes up.
 
 ### MIDI learn {#midi}
 

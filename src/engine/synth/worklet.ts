@@ -11,10 +11,16 @@ export type SynthMessage =
   | { type: "on"; id: number; note: number; velocity: number; at: number }
   | { type: "off"; id: number; at: number }
   | { type: "releaseAll"; at: number }
-  | { type: "control"; name: keyof Controls; value: number };
+  | { type: "control"; name: keyof Controls; value: number }
+  | { type: "monitor"; on: boolean };
+
+/** What the worklet sends back: the newest voice's modulation, about 30 times a second. */
+export type SynthReport = { type: "mod"; values: number[] | null };
 
 class SynthProcessor extends AudioWorkletProcessor {
   private core = new SynthCore(sampleRate, upgradePatch(null));
+  private monitor = false;
+  private blocks = 0;
 
   constructor() {
     super();
@@ -36,12 +42,19 @@ class SynthProcessor extends AudioWorkletProcessor {
         return this.core.releaseAll(frame(m.at));
       case "control":
         this.core.controls[m.name] = m.value;
+        return;
+      case "monitor":
+        this.monitor = m.on;
     }
   }
 
   process(_inputs: Float32Array[][], outputs: Float32Array[][]) {
     const [left, right] = outputs[0];
     this.core.process(left, right ?? left, currentFrame, left.length);
+    if (this.monitor && ++this.blocks % 12 === 0) {
+      const mod = this.core.modulation();
+      this.port.postMessage({ type: "mod", values: mod ? [...mod] : null } satisfies SynthReport);
+    }
     return true;
   }
 }

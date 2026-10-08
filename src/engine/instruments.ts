@@ -6,7 +6,7 @@ import * as Tone from "tone";
 import type { Smplr } from "smplr";
 import { FACTORY_SYNTHS, factorySynth } from "../library/synths";
 import { sanitizePatch, upgradePatch, withKnobs, type SynthPatch } from "../model/synth";
-import { workletSynth } from "./synth/node";
+import { workletSynth, type WorkletSynth } from "./synth/node";
 import { markBusy, markDownloaded } from "../library/downloads";
 import { CATALOG } from "../library/instruments";
 import { toUnit } from "../model/params";
@@ -53,6 +53,8 @@ export interface InstrumentVoice {
   play(notes: Note[], time: number, stepDur: number): void;
   releaseAll(time: number): void;
   update(track: Track, bpm?: number): void;
+  /** Synths: mod wheel, aftertouch and pitch bend; modulation reports for the editor. */
+  synth?: WorkletSynth;
   /** Start a held note; the returned function releases it (keyboards, MIDI). */
   hold?(pitch: number, velocity: number, time: number): (end: number) => void;
   dispose(): void;
@@ -84,6 +86,7 @@ function synthVoice(track: Track, src: InstrumentSource, dest: Tone.Gain): Instr
     releaseAll: (time) => synth.releaseAll(time),
     update: (t, bpm = 120) => synth.setPatch(effective(t), bpm),
     dispose: () => synth.dispose(),
+    synth,
   };
 }
 

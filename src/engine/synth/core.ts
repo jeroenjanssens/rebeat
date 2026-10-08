@@ -372,6 +372,13 @@ export class SynthCore {
     this.events.splice(i, 0, e);
   }
 
+  /** The mod matrix's output of the newest sounding voice (for the editor's knob rings). */
+  modulation(): Float64Array | null {
+    let newest: Voice | null = null;
+    for (const v of this.voices) if (v.active && (!newest || v.order > newest.order)) newest = v;
+    return newest ? newest.mod : null;
+  }
+
   /** How many voices are sounding. */
   get active() {
     return this.voices.filter((v) => v.active).length;

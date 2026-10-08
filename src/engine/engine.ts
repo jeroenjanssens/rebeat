@@ -403,6 +403,11 @@ export function playOnce(track: Track): number {
   return Math.min((buffer.duration - start) / rate, toUnit.drumDecay(p["sound.decay"] ?? 1));
 }
 
+/** The synth of an instrument track (live engine), if it plays one. */
+export function trackSynth(track: Track) {
+  return track.kind === "instrument" ? instrument(track).synth : undefined;
+}
+
 /** Start a note on an instrument track that sounds until released (on-screen and MIDI keys). */
 export function holdNote(track: Track, pitch: number, velocity: number): () => void {
   if (track.kind !== "instrument") return () => {};

@@ -281,4 +281,36 @@ describe("synth core", () => {
     const seconds = (performance.now() - start) / 1000;
     expect(seconds).toBeLessThan(1);
   });
+
+  it("bends the pitch by the bend range", () => {
+    const { core, mono } = render({ osc: [sine], voice: { bend: 12 } }, [[57, 0, null]], 0.2);
+    void mono;
+    core.controls.pitchbend = 1;
+    const n = Math.round(0.4 * SR);
+    const l = new Float32Array(n);
+    const r = new Float32Array(n);
+    for (let f = 0; f < n; f += 128)
+      core.process(l.subarray(f, f + 128), r.subarray(f, f + 128), Math.round(0.2 * SR) + f);
+    // a full bend up of 12 semitones: 220 Hz → 440 Hz
+    expect(freq(l.subarray(Math.round(0.1 * SR)))).toBeCloseTo(440, -0.5);
+  });
+
+  it("scales a slot by its via source: vibrato only with the mod wheel up", () => {
+    const spec: PatchSpec = {
+      osc: [sine],
+      lfos: [{ rate: 2, shape: "square" as const, mode: "global" as const }],
+      matrix: [
+        {
+          source: "lfo1" as const,
+          dest: "pitch" as const,
+          amount: 1 / 24,
+          via: "modwheel" as const,
+        },
+      ],
+    };
+    const still = render(spec, [[69, 0, null]], 1).mono;
+    const f = [0.05, 0.3, 0.55, 0.8].map((t) => freq(slice(still, t, t + 0.15)));
+    // mod wheel down: no vibrato
+    expect(Math.max(...f) / Math.min(...f)).toBeLessThan(1.005);
+  });
 });

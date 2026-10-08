@@ -5,7 +5,7 @@
 import { create } from "zustand";
 import { runCommand } from "../app/commands";
 import { toast } from "../components/Toast";
-import { holdNote, trigger } from "../engine/engine";
+import { holdNote, trackSynth, trigger } from "../engine/engine";
 import { uid } from "../model/id";
 import type { MidiMapping } from "../model/project";
 import { platform } from "../platform";
@@ -37,7 +37,7 @@ export const useMidi = create<MidiState>()(() => ({
 }));
 
 export interface MidiMessage {
-  type: "noteon" | "noteoff" | "cc" | "other";
+  type: "noteon" | "noteoff" | "cc" | "pitchbend" | "aftertouch" | "other";
   channel: number;
   number: number;
   value: number; // 0..127
@@ -132,7 +132,17 @@ function parse(e: MIDIMessageEvent, device: string): MidiMessage {
         ? "noteoff"
         : status === 0xb0
           ? "cc"
-          : "other";
+          : status === 0xe0
+            ? "pitchbend"
+            : status === 0xd0 || status === 0xa0
+              ? "aftertouch"
+              : "other";
+  // pitch bend is 14 bits: value is 0..127 with 64 the middle, `data` has the detail
+  if (type === "pitchbend")
+    return { type, channel, number: 0, value: ((d[2] << 7) | d[1]) / 128, device, data: d };
+  // channel pressure has its value in byte 1; polyphonic aftertouch in byte 2
+  if (type === "aftertouch")
+    return { type, channel, number: 0, value: status === 0xd0 ? d[1] : d[2], device, data: d };
   return { type, channel, number: d[1] ?? 0, value: d[2] ?? 0, device, data: d };
 }
 
@@ -185,14 +195,40 @@ function handle(e: MIDIMessageEvent, device: string) {
   }
   if (m.type === "noteon") playNote(m.number, m.value / 127);
   else if (m.type === "noteoff") releaseNote(m.number);
+  else if (m.type === "pitchbend") {
+    // 14 bits, 8192 in the middle
+    const raw = (m.data[2] << 7) | m.data[1];
+    synthControl("pitchbend", Math.max(-1, Math.min(1, (raw - 8192) / 8191)));
+  } else if (m.type === "aftertouch") synthControl("aftertouch", m.value / 127);
+  else if (m.type === "cc" && m.number === 1) synthControl("modwheel", m.value / 127);
+  else if (m.type === "cc" && m.number === 64) sustainPedal(m.value >= 64);
+}
+
+/** Mod wheel, aftertouch and pitch bend go to the selected instrument track's synth. */
+function synthControl(name: "modwheel" | "aftertouch" | "pitchbend", value: number) {
+  const s = useStore.getState();
+  const track = s.project.tracks.find((t) => t.id === s.selectedTrackId);
+  if (track) trackSynth(track)?.control(name, value);
+}
+
+/** The sustain pedal: notes let go while it's down keep sounding until it comes up. */
+let sustain = false;
+const sustained: (() => void)[] = [];
+
+function sustainPedal(down: boolean) {
+  sustain = down;
+  if (down) return;
+  for (const release of sustained.splice(0)) release();
 }
 
 /** Notes held on a MIDI keyboard: they sound until the key goes up. */
 const held = new Map<number, (() => void)[]>();
 
 function releaseNote(note: number) {
-  for (const release of held.get(note) ?? []) release();
+  const releases = held.get(note) ?? [];
   held.delete(note);
+  if (sustain) sustained.push(...releases);
+  else for (const release of releases) release();
 }
 
 /** Notes play the selected instrument track; on drum tracks 36… = pads 1… (MPC/Push layout). */

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, RotateCcw, Save } from "lucide-react";
 import { Encoder } from "../../components/Encoder";
 import { Keyboard } from "../../components/Keyboard";
@@ -22,10 +22,13 @@ import type { Track } from "../../model/types";
 import { useSelectedTrack, useStore } from "../../state/store";
 import { setInstrument, soundLabel } from "../../state/trackActions";
 import {
+  KNOB_OF_DEST,
   SECTIONS,
   fromKnob,
   getPath,
   knobDef,
+  modRanges,
+  modulated,
   setPath,
   toKnob,
   type PatchParam,
@@ -116,17 +119,44 @@ function Editor({ track }: { track: Track }) {
   const set = (path: string, v: unknown) =>
     edit((p) => setPath(p, path, v), `syn-${track.id}-${path}`);
 
-  const knob = (d: PatchParam) => (
-    <Encoder
-      key={d.path}
-      def={knobDef(d, getPath(defaults, d.path))}
-      value={toKnob(d, getPath(patch, d.path))}
-      onChange={(k) => set(d.path, fromKnob(d, k))}
-      color={track.color}
-      size={34}
-      hint={hintFor(d.path)}
-    />
-  );
+  // modulation: the range the matrix can move each knob, and where it is now (live)
+  const synth = engine.trackSynth(track);
+  useEffect(() => {
+    synth?.monitor(true);
+    return () => synth?.monitor(false);
+  }, [synth]);
+  const ranges = modRanges(patch);
+  const DESTS = Object.keys(MOD_DESTS) as ModDest[];
+  const knob = (d: PatchParam) => {
+    const value = getPath(patch, d.path);
+    const r = ranges.get(d.path);
+    const octaves = r ? KNOB_OF_DEST[r.dest]?.octaves : false;
+    const toK = (v: number) => toKnob(d, Math.min(d.max, Math.max(d.min, v)));
+    return (
+      <Encoder
+        key={d.path}
+        def={knobDef(d, getPath(defaults, d.path))}
+        value={toKnob(d, value)}
+        onChange={(k) => set(d.path, fromKnob(d, k))}
+        color={track.color}
+        size={34}
+        hint={hintFor(d.path)}
+        modRange={
+          r
+            ? [toK(modulated(value, r.lo, octaves)), toK(modulated(value, r.hi, octaves))]
+            : undefined
+        }
+        live={
+          r && synth
+            ? () => {
+                const m = synth.modulation();
+                return m ? toK(modulated(value, m[DESTS.indexOf(r.dest)], octaves)) : null;
+              }
+            : undefined
+        }
+      />
+    );
+  };
   const knobs = (id: string, skip: (path: string) => boolean = () => false) => (
     <div className="flex flex-wrap gap-1">
       {SECTIONS.find((s) => s.id === id)!
@@ -478,14 +508,95 @@ function Editor({ track }: { track: Track }) {
         </Box>
         <Box title="Output">{knobs("output")}</Box>
       </div>
-      <div className="h-[74px] shrink-0 border-t border-line px-2 py-1.5">
-        <Keyboard
-          low={low}
-          scope={root}
-          onOctave={(d) => setLow((l) => Math.max(12, Math.min(84, l + 12 * d)))}
-          play={(pitch, velocity) => engine.holdNote(track, pitch, velocity)}
-        />
+      <div className="flex h-[74px] shrink-0 gap-2 border-t border-line px-2 py-1.5">
+        <Wheels track={track} />
+        <div className="min-w-0 flex-1">
+          <Keyboard
+            low={low}
+            scope={root}
+            onOctave={(d) => setLow((l) => Math.max(12, Math.min(84, l + 12 * d)))}
+            play={(pitch, velocity) => engine.holdNote(track, pitch, velocity)}
+          />
+        </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Pitch bend and mod wheel, like the ones beside a keyboard: bend springs back to the middle
+ * when you let go; the mod wheel stays where you leave it.
+ */
+function Wheels({ track }: { track: Track }) {
+  const [bend, setBend] = useState(0);
+  const [mod, setMod] = useState(0);
+  const send = (name: "pitchbend" | "modwheel", v: number) =>
+    engine.trackSynth(track)?.control(name, v);
+  const wheel = (
+    label: string,
+    value: number,
+    bipolar: boolean,
+    onValue: (v: number) => void,
+    onRelease: (() => void) | null,
+    hint: string,
+    testid: string,
+  ) => {
+    const at = (e: React.PointerEvent) => {
+      const r = e.currentTarget.getBoundingClientRect();
+      const k = 1 - Math.min(1, Math.max(0, (e.clientY - r.top) / r.height));
+      onValue(bipolar ? k * 2 - 1 : k);
+    };
+    const pos = bipolar ? (value + 1) / 2 : value;
+    return (
+      <div className="flex flex-col items-center gap-0.5" data-hint={hint}>
+        <div
+          className="relative w-5 flex-1 cursor-ns-resize touch-none rounded bg-display"
+          onPointerDown={(e) => {
+            e.currentTarget.setPointerCapture(e.pointerId);
+            at(e);
+          }}
+          onPointerMove={(e) => e.buttons && at(e)}
+          onPointerUp={() => onRelease?.()}
+          data-testid={testid}
+        >
+          <div
+            className="absolute inset-x-0.5 h-1.5 rounded-sm bg-[var(--lit)]"
+            style={{ bottom: `calc(${pos * 100}% - 3px)` }}
+          />
+        </div>
+        <span className="label !text-[8.5px]">{label}</span>
+      </div>
+    );
+  };
+  return (
+    <div className="flex gap-1.5">
+      {wheel(
+        "Bend",
+        bend,
+        true,
+        (v) => {
+          setBend(v);
+          send("pitchbend", v);
+        },
+        () => {
+          setBend(0);
+          send("pitchbend", 0);
+        },
+        "synth.wheel.bend",
+        "bend-wheel",
+      )}
+      {wheel(
+        "Mod",
+        mod,
+        false,
+        (v) => {
+          setMod(v);
+          send("modwheel", v);
+        },
+        null,
+        "synth.wheel.mod",
+        "mod-wheel",
+      )}
     </div>
   );
 }

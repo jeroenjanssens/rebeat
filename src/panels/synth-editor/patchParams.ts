@@ -3,7 +3,7 @@
  * curve, how it reads, and what it does (also the explain-mode text).
  */
 import type { ParamDef } from "../../model/params";
-import type { SynthPatch } from "../../model/synth";
+import { MOD_DESTS, type ModDest, type SynthPatch } from "../../model/synth";
 
 export interface PatchParam {
   /** "osc.0.level", "filters.1.cutoff", "voice.glide" */
@@ -497,4 +497,66 @@ export function knobDef(d: PatchParam, defaultValue: number): ParamDef {
     steps: d.int ? d.max - d.min + 1 : undefined,
     format: (k) => d.format(fromKnob(d, k)),
   };
+}
+
+/**
+ * Which knob each mod destination moves, and how: added in the knob's own units, or in octaves
+ * (multiplied, for frequencies and rates). Destinations without a single knob (pitch, volume)
+ * aren't listed.
+ */
+export const KNOB_OF_DEST: Partial<Record<ModDest, { path: string; octaves?: boolean }>> = {
+  "osc1.shape": { path: "osc.0.shape" },
+  "osc2.shape": { path: "osc.1.shape" },
+  "osc3.shape": { path: "osc.2.shape" },
+  "osc1.pw": { path: "osc.0.pw" },
+  "osc2.pw": { path: "osc.1.pw" },
+  "osc3.pw": { path: "osc.2.pw" },
+  "osc1.level": { path: "osc.0.level" },
+  "osc2.level": { path: "osc.1.level" },
+  "osc3.level": { path: "osc.2.level" },
+  "sub.level": { path: "sub.level" },
+  "noise.level": { path: "noise.level" },
+  ring: { path: "ring" },
+  fm: { path: "fm.amount" },
+  "filter1.cutoff": { path: "filters.0.cutoff", octaves: true },
+  "filter2.cutoff": { path: "filters.1.cutoff", octaves: true },
+  "filter1.reso": { path: "filters.0.reso" },
+  "filter2.reso": { path: "filters.1.reso" },
+  "filter1.drive": { path: "filters.0.drive" },
+  pan: { path: "output.pan" },
+  "lfo1.rate": { path: "lfos.0.rate", octaves: true },
+  "lfo2.rate": { path: "lfos.1.rate", octaves: true },
+  "lfo3.rate": { path: "lfos.2.rate", octaves: true },
+};
+
+/** Sources that only go up from 0 (the rest swing both ways). */
+const UNIPOLAR = new Set(["env1", "env2", "env3", "velocity", "modwheel", "aftertouch"]);
+
+/** A knob's value moved by a modulation amount (in the destination's units). */
+export const modulated = (value: number, mod: number, octaves?: boolean) =>
+  octaves ? value * Math.pow(2, mod) : value + mod;
+
+/** How far the matrix can move each knob: path → [lowest, highest] modulation. */
+export function modRanges(p: SynthPatch): Map<string, { lo: number; hi: number; dest: ModDest }> {
+  const out = new Map<string, { lo: number; hi: number; dest: ModDest }>();
+  for (const s of p.matrix) {
+    if (!s.source || !s.dest || s.amount === 0) continue;
+    const knob = KNOB_OF_DEST[s.dest];
+    if (!knob) continue;
+    const a = s.amount * MOD_DESTS[s.dest].range;
+    const unipolar =
+      UNIPOLAR.has(s.source) ||
+      s.source.startsWith("macro") ||
+      (s.source.startsWith("lfo") && p.lfos[Number(s.source[3]) - 1].unipolar);
+    const r = out.get(knob.path) ?? { lo: 0, hi: 0, dest: s.dest };
+    if (unipolar) {
+      r.lo += Math.min(0, a);
+      r.hi += Math.max(0, a);
+    } else {
+      r.lo -= Math.abs(a);
+      r.hi += Math.abs(a);
+    }
+    out.set(knob.path, r);
+  }
+  return out;
 }

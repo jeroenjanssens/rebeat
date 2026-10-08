@@ -3,6 +3,7 @@ import type { ParamDef } from "../model/params";
 import { contextMenu } from "./Menu";
 import { startMidiLearn } from "../midi/learn";
 import { useGlide } from "./glide";
+import { onFrame } from "../render/raf";
 
 interface Props {
   def: ParamDef;
@@ -14,6 +15,10 @@ interface Props {
   midiTarget?: string;
   /** Explain-mode hint id (help/hints). */
   hint?: string;
+  /** How far modulation moves it (knob units 0..1), drawn as an inner ring. */
+  modRange?: [number, number];
+  /** Its current modulated value (knob units), drawn as a moving dot; null hides it. */
+  live?: () => number | null;
 }
 
 const START = -135;
@@ -47,6 +52,8 @@ export function Encoder({
   size = 40,
   midiTarget,
   hint,
+  modRange,
+  live,
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const drag = useRef<{ y: number; v: number } | null>(null);
@@ -80,6 +87,22 @@ export function Encoder({
     return () => el.removeEventListener("wheel", onWheel);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [def]);
+
+  // the live dot moves without React: straight on the DOM, every frame
+  const dot = useRef<SVGCircleElement>(null);
+  useEffect(() => {
+    if (!live) return;
+    return onFrame(() => {
+      const el = dot.current;
+      if (!el) return;
+      const k = live();
+      el.style.opacity = k === null ? "0" : "1";
+      if (k === null) return;
+      const [x, y] = polar(size / 2, size / 2, size / 2 - 3, START + clamp(k) * (END - START));
+      el.setAttribute("cx", String(x));
+      el.setAttribute("cy", String(y));
+    });
+  }, [live, size]);
 
   const disabled = value === null;
   const v = value ?? def.default;
@@ -146,6 +169,22 @@ export function Encoder({
             style={{ filter: `drop-shadow(0 0 3px ${color})` }}
           />
         )}
+        {modRange && modRange[1] - modRange[0] > 0.005 && (
+          <path
+            d={arc(
+              c,
+              c,
+              r - 3.5,
+              START + clamp(modRange[0]) * (END - START),
+              START + clamp(modRange[1]) * (END - START),
+            )}
+            stroke="var(--lit)"
+            strokeWidth={1.5}
+            fill="none"
+            strokeLinecap="round"
+            data-mod-ring
+          />
+        )}
         <circle cx={c} cy={c} r={r - 6} fill="var(--raised)" stroke="var(--border-strong)" />
         <line
           x1={ox}
@@ -156,6 +195,9 @@ export function Encoder({
           strokeWidth={2}
           strokeLinecap="round"
         />
+        {live && (
+          <circle ref={dot} r={2.5} fill="var(--lit)" style={{ opacity: 0 }} data-live-dot />
+        )}
       </svg>
       <div className="num text-[10.5px] text-ink">{disabled ? "—" : def.format(v)}</div>
     </div>

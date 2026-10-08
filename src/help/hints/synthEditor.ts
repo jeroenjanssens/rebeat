@@ -29,6 +29,16 @@ const hints: Hints = {
     keys: "Drag across keys: glissando · + / −: octave",
     guide,
   },
+  "synth.wheel.bend": {
+    title: "Pitch bend",
+    text: "Bend the pitch up or down while you play (by the Bend range in Voice); it springs back to the middle when you let go. A MIDI keyboard's bend wheel does the same.",
+    guide,
+  },
+  "synth.wheel.mod": {
+    title: "Mod wheel",
+    text: "A control you can use in the mod matrix (as a source, or “via” to bring in vibrato or a filter sweep). It stays where you leave it. A MIDI keyboard's mod wheel does the same.",
+    guide,
+  },
   "synth.flow": hint(
     "Signal flow",
     "The path the sound takes: the oscillators (with sub, noise and ring) are mixed, filtered, shaped by the amp, then driven to the output. Envelopes, LFOs and the mod matrix steer it. The blocks below follow this order.",

@@ -6,7 +6,7 @@ import type * as Tone from "tone";
 import type { SynthPatch } from "../../model/synth";
 import type { Note } from "../../model/types";
 import type { Controls } from "./core";
-import type { SynthMessage } from "./worklet";
+import type { SynthMessage, SynthReport } from "./worklet";
 import workletUrl from "./worklet.ts?worker&url";
 
 const loaded = new WeakMap<BaseAudioContext, Promise<void>>();
@@ -27,6 +27,11 @@ export interface WorkletSynth {
   releaseAll(time: number): void;
   setPatch(patch: SynthPatch, bpm: number): void;
   control(name: keyof Controls, value: number): void;
+  /** Ask for (or stop) modulation reports, and read the latest. */
+  monitor(on: boolean): void;
+  modulation(): number[] | null;
+  /** The controls last sent (mod wheel, aftertouch, pitch bend). */
+  controls: Controls;
   ready(): boolean;
   dispose(): void;
 }
@@ -39,6 +44,8 @@ export function workletSynth(dest: Tone.Gain | { input: AudioNode }): WorkletSyn
   let disposed = false;
   let pending: SynthMessage[] = [];
   let next = 1;
+  let mod: number[] | null = null;
+  const controls: Controls = { modwheel: 0, aftertouch: 0, pitchbend: 0 };
   const send = (m: SynthMessage) => (node ? node.port.postMessage(m) : pending.push(m));
   void loadSynthWorklet(ctx).then(() => {
     if (disposed) return;
@@ -48,6 +55,9 @@ export function workletSynth(dest: Tone.Gain | { input: AudioNode }): WorkletSyn
       outputChannelCount: [2],
     });
     node.connect(out);
+    node.port.onmessage = (e: MessageEvent<SynthReport>) => {
+      if (e.data.type === "mod") mod = e.data.values;
+    };
     for (const m of pending) node.port.postMessage(m);
     pending = [];
   });
@@ -69,7 +79,16 @@ export function workletSynth(dest: Tone.Gain | { input: AudioNode }): WorkletSyn
       send({ type: "patch", patch });
       send({ type: "tempo", bpm });
     },
-    control: (name, value) => send({ type: "control", name, value }),
+    control(name, value) {
+      controls[name] = value;
+      send({ type: "control", name, value });
+    },
+    monitor(on) {
+      if (!on) mod = null;
+      send({ type: "monitor", on });
+    },
+    modulation: () => mod,
+    controls,
     ready: () => !!node,
     dispose() {
       disposed = true;

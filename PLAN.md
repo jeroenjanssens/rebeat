@@ -90,7 +90,7 @@ Key implementation patterns:
 
 ### 0.6 Next steps
 
-0. The complete synth in §0.6e.
+0. The complete synth in §0.6e (A–D ✅; next: E).
 
 
 1. Try the app with real hardware: a microphone and audio interface (calibration, monitoring), a MIDI keyboard/controller (learn), and a Launchpad or Push (the Push color palette is approximate).
@@ -226,6 +226,8 @@ with tests, explain-mode hints, guide updates and the full checks:
 9. **Exports include sampled instruments** where smplr can load them offline (from the cache).
 
 ### 0.6e The complete synth (agreed 2026-10-08)
+
+Progress: A ✅ · B ✅ · C ✅ · D ✅ · E · F · G · H · I.
 
 Make the synth feature complete for experienced players while keeping it approachable: one editor
 with a **Basic** view (8 macros) and an **Advanced** view (everything), on a new AudioWorklet
@@ -867,6 +869,7 @@ Format: **Dn — Question.** Default ✅, alternatives.
 - **D81 — Synth editor and your instruments.** A panel edits the selected track's synth from one table of patch knobs (`synth-editor/patchParams.ts`, which also feeds the explain-mode hints). Editing a factory synth copies its patch onto the track (`instrument.patch`); built-ins never change, revert drops the copy. **Save to library** (editor, or any instrument track's menu) stores instrument + SOUND knobs + effects in the `instruments` table (DB v3) as Your instruments; dropping one applies all of it (replacing the track's effects, undoable). Tracks keep a full copy, so projects stay self-contained; `from` links them back for Used in project. Alt: an expandable Inspector section; references instead of copies.
 - **D82 — Your own instruments.** `.sf2` files are stored as blobs (`sf2:<sha256>`) and become one of Your instruments per instrument inside (source `sf2`, played by smplr's Soundfont2 with the `soundfont2` parser); `.rebeat` files carry them under `soundfonts/`. Samplers can have zones (note → sample; nearest note plays): made from a library folder (notes read from file names, else a semitone apart from C3) or from pitched strudel.json entries (note maps) in link sources. Alt: an SFZ importer.
 - **D83 — The AudioWorklet synth.** One worklet processor per synth track (`engine/synth/worklet.ts`), loaded into each context (live and offline) via Vite's `?worker&url`; the DSP is a pure TypeScript core (`engine/synth/core.ts`, unit-tested in Node): polyBLEP oscillators with shape morph, unison and stereo spread, hard sync, ring and phase modulation, drift; a ZDF ladder with tanh in the feedback loop (self-oscillates) and a ZDF SVF; AHDSR envelopes with curves and looping; LFOs with S&H/smooth random, sync, delay; an 8-slot mod matrix at control rate (16 samples); voice stealing that continues from the current level; mono/legato with a note stack and glide. Patch version 2 (`model/synth.ts`); version 1 patches are upgraded on read (`upgradeV1`), the factory synths too until they're voiced again. Gotcha: `structuredClone` doesn't exist in AudioWorklets (and a throwing module still resolves `addModule`): modules the worklet imports clone via JSON. Alt: native Web Audio nodes (no sync, ladder or per-sample modulation).
+- **D84 — Playing controls.** MIDI pitch bend (14-bit, −1..1 × the patch's bend range), the mod wheel (CC 1) and aftertouch (channel and poly pressure) go to the selected track's synth as `control` messages; they're per synth, not per note, and not recorded. The sustain pedal (CC 64) defers note-offs until it comes up. The editor's on-screen wheels send the same messages (bend springs back, mod stays). Knob rings: `modRanges` sums each matrix slot's reach on the knob it moves (unipolar sources one way, bipolar both); while monitoring, the worklet posts the newest voice's modulation every 12 blocks and a dot shows it live. Alt: MPE (per-note bend and pressure), recording controller movement as automation.
 - **D35 — Build order.** ✅ The phases in §7, starting with the mockup (Phase M), each ending with something you can play with.
 
 ---
