@@ -9,7 +9,7 @@
 
 ### 0.1 Where we are
 
-- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D77), and the build order is in §7.
+- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D80), and the build order is in §7.
 - Every phase in §7 is built, tested (unit + Playwright e2e) and pushed. The mockup (Phase M) became the app: its components, model and store were kept and extended; `src/mock/` was replaced by the real engine.
 - The desktop app (Phase 10) runs and packages locally (unsigned); signing/notarization need certificates (see `.github/workflows/desktop.yml`).
 
@@ -779,6 +779,8 @@ Format: **Dn — Question.** Default ✅, alternatives.
 - **D75 — Velocity of note steps.** Notes carry their own velocity, so `stepVelocity`/`setStepVelocity` (model/types) treat a note step's velocity as its loudest note's and scale the notes to keep a chord's balance. Every editor (lane, STEP encoder, Shift+drag, digits, accent) goes through them. Alt: multiply step × note velocity.
 - **D76 — Converting keeps the sample.** Drum/audio → instrument makes a keyboard sampler of the track's sample (root C4; the drum Tune becomes transpose) so existing hits sound the same; sampler → drum hands the sample back; synth → drum returns to the sample the track had. Alt: root note from pitch analysis.
 - **D77 — Audio export formats.** WAV via our own encoder; MP3 and OGG Vorbis via `wasm-media-encoders` (MIT; its LAME build is LGPL), imported lazily with its .wasm files as separate assets (precached by the service worker). Samples export as heard (rendered settings) or as the stored file; the song Export dialog shares the format picker. Alt: Opus/WebM via MediaRecorder, no dependency.
+- **D79 — Synth patches.** A synth is data (`model/synth.ts`): two oscillators with unison, sub, noise, FM, a 12/24 dB filter with key tracking and an envelope, amp envelope, one LFO (pitch/filter/amp/pan, free or synced), drive, glide. `engine/synth.ts` plays any patch with native nodes (a small graph per poly note, one running voice for mono), live and offline. The SOUND knobs override a patch's envelope, glide and detune once moved (`withKnobs`); Cutoff/Reso stay on the channel filter. Alt: Tone.js synth classes per preset (not editable as data).
+- **D80 — Factory synths.** 37 patches (`library/synths.ts`) in the style of well-known songs and synths, grouped Bass/Leads/Pads/Keys/Plucks & stabs/FX; ids are stable (the first ten were the old presets). Loudness is balanced to about −22 dB RMS for a test phrase; an e2e test renders each one and checks it's audible, doesn't clip and stays within 6 dB of the others. Alt: import third-party patch banks (no portable format).
 - **D35 — Build order.** ✅ The phases in §7, starting with the mockup (Phase M), each ending with something you can play with.
 
 ---
