@@ -114,7 +114,9 @@ test("the synth showcase song renders loud and clean", async ({ page }) => {
         };
       }
     ).__rebeat.store.getState();
-    const chorus = s.project.slots.find((x) => s.project.patterns[x.patternId].name === "Chorus")!;
+    const chorus = s.project.slots.find(
+      (x) => s.project.patterns[x.patternId].name === "Chorus A",
+    )!;
     s.setUi({ editSlotId: chorus.id });
   });
   await page.keyboard.press("ControlOrMeta+E");

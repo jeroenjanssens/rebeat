@@ -14,6 +14,7 @@ import {
   notes,
   page,
   sampledTrack,
+  splitLongPages,
   synthTrack,
 } from "./builder";
 
@@ -322,4 +323,14 @@ function lateNightCafe(): Project {
   return p;
 }
 
-export const SHOWCASE = { neonHorizon, lateNightCafe };
+/** The songs as written: in 4-bar phrases (64-step pages). */
+export const SHOWCASE_PHRASES = { neonHorizon, lateNightCafe };
+
+/** Pages of at most 32 steps are easier to see and edit: the same songs, split. */
+const split = (make: () => Project) => () => {
+  const p = make();
+  splitLongPages(p);
+  return p;
+};
+
+export const SHOWCASE = { neonHorizon: split(neonHorizon), lateNightCafe: split(lateNightCafe) };

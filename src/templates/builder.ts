@@ -150,3 +150,39 @@ export function chord(name: string, octave = 4): number[] {
 export function note(name: string, octave: number): number {
   return 12 * (octave + 1) + pitchOf(name);
 }
+
+/**
+ * Split pages longer than `max` steps into pages of `max` steps ("Verse A", "Verse B"), without
+ * changing the song: a page that repeats becomes its parts in order, repeated as linked copies
+ * (A B A B). Notes keep their length, so a long note carries over into the next part.
+ */
+export function splitLongPages(p: Project, max = 32) {
+  const parts = new Map<string, Pattern[]>();
+  for (const pattern of Object.values(p.patterns)) {
+    if (pattern.stepCount <= max) continue;
+    const n = Math.ceil(pattern.stepCount / max);
+    const pieces = Array.from({ length: n }, (_, k) => {
+      const part: Pattern = {
+        ...structuredClone(pattern),
+        ...makePattern(p, `${pattern.name} ${String.fromCharCode(65 + k)}`, max),
+      };
+      part.stepSize = pattern.stepSize;
+      for (const [trackId, lane] of Object.entries(pattern.lanes)) {
+        const target = part.lanes[trackId];
+        if (lane.kind !== "steps" || target?.kind !== "steps") continue;
+        for (let i = 0; i < max; i++) target.steps[i] = structuredClone(lane.steps[k * max + i]);
+      }
+      p.patterns[part.id] = part;
+      return part;
+    });
+    parts.set(pattern.id, pieces);
+    delete p.patterns[pattern.id];
+  }
+  p.slots = p.slots.flatMap((slot) => {
+    const pieces = parts.get(slot.patternId);
+    if (!pieces) return [slot];
+    return Array.from({ length: slot.repeats }, (_, r) =>
+      pieces.map((part, k) => ({ id: `${slot.id}-${r}${k}`, patternId: part.id, repeats: 1 })),
+    ).flat();
+  });
+}
