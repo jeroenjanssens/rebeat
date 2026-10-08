@@ -420,8 +420,9 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
                 onChange={(v) => update((t) => (t.volume = v), `vol-${track.id}`)}
                 hint="dm.track.fader"
               />
+              {/* fixed width: "FX 2" mustn't push the other controls aside */}
               <button
-                className="num h-[18px] min-w-[26px] rounded-[3px] border border-line px-1 text-[9.5px] text-dim hover:text-ink"
+                className="num h-[18px] w-[30px] shrink-0 rounded-[3px] border border-line text-[9.5px] text-dim hover:text-ink"
                 title={track.effects.map((f) => f.name).join(" → ") || "No effects"}
                 data-hint="dm.track.fx"
                 onPointerDown={(e) => e.stopPropagation()}
@@ -449,20 +450,28 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
               flats={flats}
             />
           ) : (
-            <div className="flex items-center gap-1.5">
-              <div className="flex flex-col gap-1">
+            // the clip spans exactly the width of a row of pads; its buttons sit on top of it
+            <div className="relative" data-hint="dm.track.clip-view">
+              <ClipView
+                track={track}
+                lane={lane}
+                width={Math.max(80, geo.stepsW)}
+                height={geo.padH}
+              />
+              <div className="absolute right-1 top-1 flex items-center gap-1">
                 <button
-                  className="tool-btn !h-[18px] !min-w-[18px] !p-0"
+                  className="tool-btn !h-[16px] !min-w-[16px] bg-panel/80 !p-0"
                   data-active={lane.active}
                   title={lane.active ? "Clip active on this page" : "Clip inactive on this page"}
                   data-hint="dm.track.clip-active"
+                  data-testid="clip-active"
                   onClick={() => updateLane((l) => l.kind === "clip" && (l.active = !l.active))}
                 >
-                  <Power size={11} />
+                  <Power size={10} />
                 </button>
                 {!compact && (
                   <button
-                    className="tool-btn !h-[18px] !min-w-[18px] !p-0"
+                    className="tool-btn !h-[16px] !min-w-[16px] bg-panel/80 !p-0"
                     data-active={jogOpen}
                     title="Scratch"
                     data-hint="dm.track.scratch"
@@ -470,19 +479,11 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
                       setUi({ jogOpen: { ...useStore.getState().jogOpen, [track.id]: !jogOpen } })
                     }
                   >
-                    <Disc3 size={11} />
+                    <Disc3 size={10} />
                   </button>
                 )}
-              </div>
-              <div className="relative" data-hint="dm.track.clip-view">
-                <ClipView
-                  track={track}
-                  lane={lane}
-                  width={Math.max(80, geo.stepsW - 26)}
-                  height={geo.padH}
-                />
                 <button
-                  className="label absolute right-1.5 top-1 rounded bg-panel/80 px-1 !text-[8.5px] hover:!text-ink"
+                  className="label rounded bg-panel/80 px-1 !text-[8.5px] hover:!text-ink"
                   onClick={() =>
                     updateLane(
                       (l) =>

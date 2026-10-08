@@ -97,12 +97,14 @@ export function geometry(
   const gapsW =
     (n - groups.length) * m.gap + (groups.length - 1) * m.beatGap + bars * (m.beatGap + 1);
   const available = width - m.headerW - m.scopeW - 40;
-  const padW = Math.max(m.minPad * zoom, Math.min(m.maxPad * zoom, (available - gapsW) / n));
+  const fit = Math.max(m.minPad * zoom, Math.min(m.maxPad * zoom, (available - gapsW) / n));
+  // pads and everything sized like a row of pads (clips, lanes) use the same rounded width
+  const padW = Math.floor(fit * 10) / 10;
   return {
     sizeClass,
     headerW: m.headerW,
     scopeW: m.scopeW,
-    padW: Math.floor(padW * 10) / 10,
+    padW,
     padH: Math.round(m.padH * Math.min(1.6, Math.max(0.8, zoom))),
     gap: m.gap,
     beatGap: m.beatGap,

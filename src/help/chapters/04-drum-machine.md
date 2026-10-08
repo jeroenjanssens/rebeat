@@ -93,7 +93,7 @@ At the bottom, **drop samples** from your computer or the library to add tracks,
 
 ### Audio tracks
 
-An audio track shows its **clip** as a waveform instead of pads. The power button turns the clip on or off for this page. The label in the corner switches between **Loop** (the clip loops, restarting with each page) and **1-shot** (it plays once). The disc button opens a **scratch strip**. Right-click the clip for: Double length, Halve length, the overdub layers (click one to mute it), Undo last layer, Merge layers, Last layer → new track, and Clear clip. See [The loop station](#loop-station).
+An audio track shows its **clip** as a waveform instead of pads, exactly as wide as a row of pads, so it lines up with the other tracks. The buttons in its top-right corner: the power button turns the clip on or off for this page, the disc button opens a **scratch strip**, and the label switches between **Loop** (the clip loops, restarting with each page) and **1-shot** (it plays once). Right-click the clip for: Double length, Halve length, the overdub layers (click one to mute it), Undo last layer, Merge layers, Last layer → new track, and Clear clip. See [The loop station](#loop-station).
 
 ## Pads (steps)
 

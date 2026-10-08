@@ -163,3 +163,30 @@ test("double-click in a lane resets a step; Alt+double-click the whole lane", as
   await expect.poll(async () => Math.min(...(await read()).v)).toBeCloseTo(0.8);
   for (const v of (await read()).v) expect(v).toBeCloseTo(0.8);
 });
+
+test("audio clips line up with the pads, and track controls line up", async ({ page }) => {
+  const rows = dm(page).locator("[data-track-row]");
+  const kick = rows.first();
+  const vox = rows.filter({ has: page.locator('[data-hint="dm.track.clip-view"]') }).first();
+  const pads = kick.locator("[data-pad]");
+  const first = (await pads.first().boundingBox())!;
+  const last = (await pads.last().boundingBox())!;
+  const clip = (await vox.locator('[data-hint="dm.track.clip-view"] canvas').boundingBox())!;
+  expect(Math.abs(clip.x - first.x)).toBeLessThan(1.5);
+  expect(Math.abs(clip.x + clip.width - (last.x + last.width))).toBeLessThan(1.5);
+
+  // the snare has effects ("FX 1"), the clap doesn't: everything still lines up
+  for (const hint of [
+    "dm.track.mute",
+    "dm.track.solo",
+    "dm.track.arm",
+    "dm.track.fader",
+    "dm.track.fx",
+  ]) {
+    const xs = await rows
+      .locator(`[data-hint="${hint}"]`)
+      .evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().left)));
+    expect(xs.length).toBeGreaterThan(5);
+    expect(new Set(xs).size, hint).toBe(1);
+  }
+});
