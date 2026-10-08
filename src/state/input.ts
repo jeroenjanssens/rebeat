@@ -7,7 +7,7 @@ import { audioContext } from "../engine/context";
 import { chordInKey, snapToKey } from "../model/notes";
 import { pageKey, slotPattern } from "../model/project";
 import { STEP_SIZE_QUARTERS, setStepVelocity, type Step, type Track } from "../model/types";
-import { laneLen } from "./actions";
+import { laneLen, switchStep, toggleSelectedSteps } from "./actions";
 import { useStore } from "./store";
 
 const get = () => useStore.getState();
@@ -129,6 +129,7 @@ export function moveCursor(dx: number, dy: number) {
 }
 
 export function cursorToggle() {
+  if (toggleSelectedSteps()) return;
   const c = get().cursor;
   if (!c) return moveCursor(0, 0);
   const s = get();
@@ -139,12 +140,9 @@ export function cursorToggle() {
     c.trackId,
     c.index,
     (st) => {
-      st.on = on;
       const track = s.project.tracks.find((t) => t.id === c.trackId);
-      if (on && track?.kind === "instrument" && !st.notes?.length)
-        st.notes = [
-          { pitch: track.category === "bass" ? 36 : 60, length: 1, velocity: st.velocity },
-        ];
+      if (track) switchStep(st, track, on);
+      else st.on = on;
     },
     `cursor-${performance.now()}`,
   );

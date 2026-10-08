@@ -13,7 +13,7 @@ import {
   slotPattern,
   type Project,
 } from "../model/project";
-import { emptyStep, setStepVelocity, type Step, type StepLane } from "../model/types";
+import { emptyStep, setStepVelocity, type Step, type StepLane, type Track } from "../model/types";
 import { stepKey, useStore, type FnKey } from "./store";
 
 const get = () => useStore.getState();
@@ -69,14 +69,47 @@ export function setStep(trackId: string, index: number, on: boolean, key = "pain
   }, key);
 }
 
-export function editSteps(keys: string[], fn: (s: Draft<Step>) => void, key: string) {
+export function editSteps(keys: string[], fn: (s: Draft<Step>, track: Track) => void, key: string) {
   get().commit((p) => {
     for (const k of keys) {
       const [trackId, i] = k.split(":");
       const lane = stepLane(p, trackId);
-      if (lane) fn(lane.steps[Number(i)]);
+      const track = p.tracks.find((t) => t.id === trackId);
+      if (lane && track) fn(lane.steps[Number(i)], track);
     }
   }, key);
+}
+
+/** Turn a step on or off; an instrument step that's turned on gets a note to play. */
+export function switchStep(s: Draft<Step>, track: Track, on: boolean) {
+  s.on = on;
+  if (on && track.kind === "instrument" && !s.notes?.length)
+    s.notes = [{ pitch: track.category === "bass" ? 36 : 60, length: 1, velocity: s.velocity }];
+}
+
+/** The steps a step menu acts on: the whole selection if the step is part of it. */
+export function menuTargets(trackId: string, index: number): string[] {
+  const own = stepKey(trackId, index);
+  const selected = Object.keys(get().selectedSteps);
+  return selected.includes(own) ? selected : [own];
+}
+
+/**
+ * Enter with steps selected: turn them all on, or all off when they're all on already.
+ * Returns false when nothing is selected.
+ */
+export function toggleSelectedSteps(): boolean {
+  const keys = Object.keys(get().selectedSteps);
+  if (!keys.length) return false;
+  const s = get();
+  const pattern = slotPattern(s.project, s.editSlotId);
+  const allOn = keys.every((k) => {
+    const [t, i] = k.split(":");
+    const lane = pattern.lanes[t];
+    return lane?.kind === "steps" && lane.steps[Number(i)].on;
+  });
+  editSteps(keys, (st, track) => switchStep(st, track, !allOn), `sel-${performance.now()}`);
+  return true;
 }
 
 export function toggleSelected(trackId: string, index: number, additive = true) {

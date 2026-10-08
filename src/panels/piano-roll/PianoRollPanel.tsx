@@ -369,21 +369,42 @@ function PianoRoll({ track }: { track: Track }) {
     }
   };
 
+  // on a selected note, the menu acts on every selected note
   const noteMenu = (e: React.MouseEvent, ref: NoteRef) => {
-    const n = getNote(lane, ref);
-    if (!n) return;
+    const refs = selected.has(noteKey(ref)) ? selRefs() : [ref];
+    const notes = refs.flatMap((r) => getNote(lane, r) ?? []);
+    if (!notes.length) return;
+    const many = refs.length > 1;
+    const allSlide = notes.every((n) => n.slide);
+    const each = (fn: (n: Note) => void) =>
+      edit((l) => {
+        for (const r of refs) {
+          const n = getNote(l, r);
+          if (n) fn(n);
+        }
+      });
     contextMenu(e, [
+      ...(many
+        ? [{ render: () => <div className="label px-2 pt-1">{refs.length} selected notes</div> }]
+        : []),
       {
-        label: n.slide ? "Remove slide" : "Slide into this note",
-        onSelect: () => edit((l) => void (getNote(l, ref)!.slide = !n.slide)),
+        label: allSlide ? "Remove slide" : many ? "Slide into these notes" : "Slide into this note",
+        onSelect: () => each((n) => void (n.slide = !allSlide)),
       },
       ...[1, 2, 4, 8].map((len) => ({
         label: `Length ${len}`,
-        checked: n.length === len,
-        onSelect: () => edit((l) => void (getNote(l, ref)!.length = len)),
+        checked: notes.every((n) => n.length === len),
+        onSelect: () => each((n) => void (n.length = len)),
       })),
       { separator: true },
-      { label: "Delete", shortcut: "⌫", onSelect: () => edit((l) => void removeNote(l, ref)) },
+      {
+        label: many ? `Delete ${refs.length} notes` : "Delete",
+        shortcut: "⌫",
+        onSelect: () => {
+          edit((l) => refs.forEach((r) => void removeNote(l, r)));
+          setSelected(new Set());
+        },
+      },
     ]);
   };
 

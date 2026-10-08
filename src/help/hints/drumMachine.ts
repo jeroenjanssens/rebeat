@@ -237,8 +237,8 @@ const hints: Hints = {
   // ─────────────────────────────────── Step pads ─────────────────────────────────────
   "dm.step.pad": {
     title: "Step pad",
-    text: "Click to toggle a step on or off. Drag across pads to paint or erase. Right-click for velocity, probability, ratchet, condition and parameter lock options.",
-    keys: "Shift+drag: set velocity · Alt+click: select · Right-drag: erase · Right-click: step menu",
+    text: "Click to toggle a step on or off. Drag across pads to paint or erase. Right-click for accent, probability, ratchet, condition and parameter lock options; on a selected pad, they apply to all selected steps.",
+    keys: "Shift+drag: set velocity · Alt+click: select · Right-drag: erase · Right-click: step menu · Enter: turn the selection on/off",
     guide: "drum-machine-pads-steps",
   },
 

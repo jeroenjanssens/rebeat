@@ -315,7 +315,7 @@ export function defaultCommands(): Command[] {
     },
     {
       id: "cursor.toggle",
-      title: "Toggle step at cursor",
+      title: "Toggle step at cursor / turn selected steps on or off",
       category: "Step cursor",
       keys: ["Enter"],
       run: cursorToggle,

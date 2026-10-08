@@ -116,10 +116,10 @@ An audio track shows its **clip** as a waveform instead of pads, exactly as wide
 Working with pads:
 
 - **Click** to turn a step on or off. **Drag** across pads to paint (or erase, if you started on a lit pad).
-- **Right-drag** to erase. **Right-click** a pad (without dragging) for its menu: on/off, Accent, Select, Probability, Ratchet, Condition and Clear parameter locks.
+- **Right-drag** to erase. **Right-click** a pad (without dragging) for its menu: on/off, Accent, Select, Probability, Ratchet, Condition and Clear parameter locks. Right-click a **selected** pad and the menu applies to every selected step (it shows how many); right-click an unselected pad and it applies to that pad only.
 - With the Draw tool, **Shift+drag** up or down on a pad to set its velocity.
 - **Alt+click** a pad to select it (and edit it with the Step bank). With the **Select** tool, drag a box to select several; hold Shift to add to the selection.
-- **Keyboard**: the arrow keys move a cursor over the steps, {{key:cursor.toggle}} turns the step under it on or off, and the digit keys 1–9 set the velocity (of the selected steps, or the step under the cursor). Esc clears the selection and the cursor.
+- **Keyboard**: the arrow keys move a cursor over the steps, {{key:cursor.toggle}} turns the step under it on or off (with steps selected, it turns them all on, or all off when they're all on already), and the digit keys 1–9 set the velocity (of the selected steps, or the step under the cursor). Esc clears the selection and the cursor.
 - {{key:edit.copy}} / {{key:edit.paste}} copy and paste steps; {{key:edit.clear}} clears the selected steps (or the whole track); {{key:edit.undo}} undoes, {{key:edit.redo}} redoes.
 
 ## Function buttons

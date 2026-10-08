@@ -190,3 +190,88 @@ test("audio clips line up with the pads, and track controls line up", async ({ p
     expect(new Set(xs).size, hint).toBe(1);
   }
 });
+
+test.describe("selected steps", () => {
+  type S = {
+    project: {
+      tracks: { id: string }[];
+      slots: { id: string; patternId: string }[];
+      patterns: Record<
+        string,
+        { lanes: Record<string, { steps: { on: boolean; probability: number }[] }> }
+      >;
+    };
+    editSlotId: string;
+    selectedSteps: Record<string, true>;
+  };
+  const kickSteps = (page: Page) =>
+    page.evaluate(() => {
+      const s = (
+        window as never as { __rebeat: { store: { getState(): S } } }
+      ).__rebeat.store.getState();
+      const slot = s.project.slots.find((x) => x.id === s.editSlotId)!;
+      return s.project.patterns[slot.patternId].lanes[s.project.tracks[0].id].steps.slice(0, 8);
+    });
+  const pad = (page: Page, i: number) =>
+    dm(page).locator("[data-track-row]").first().locator(`[data-pad][data-i="${i}"]`);
+
+  /** Select kick steps 0–5 with the select tool (step 0 and 4 are on in the demo). */
+  async function selectSix(page: Page) {
+    await page.keyboard.press("s");
+    const a = (await pad(page, 0).boundingBox())!;
+    const b = (await pad(page, 5).boundingBox())!;
+    await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 8 });
+    await page.mouse.up();
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            Object.keys(
+              (
+                window as never as { __rebeat: { store: { getState(): S } } }
+              ).__rebeat.store.getState().selectedSteps,
+            ).length,
+        ),
+      )
+      .toBe(6);
+  }
+
+  test("Enter turns them all on, then all off", async ({ page }) => {
+    await selectSix(page);
+    expect((await kickSteps(page)).slice(0, 6).map((s) => s.on)).toContain(false);
+    await page.keyboard.press("Enter");
+    await expect
+      .poll(async () => (await kickSteps(page)).slice(0, 6).every((s) => s.on))
+      .toBe(true);
+    await page.keyboard.press("Enter");
+    await expect
+      .poll(async () => (await kickSteps(page)).slice(0, 6).some((s) => s.on))
+      .toBe(false);
+    // the step after the selection is untouched
+    expect((await kickSteps(page))[6].on).toBe(false);
+  });
+
+  test("the step menu acts on the whole selection", async ({ page }) => {
+    await selectSix(page);
+    await pad(page, 2).click({ button: "right" });
+    const menu = page.locator(".menu");
+    await expect(menu).toContainText("6 selected steps");
+    await menu.getByRole("button", { name: "Turn on 6 steps" }).click();
+    await expect
+      .poll(async () => (await kickSteps(page)).slice(0, 6).every((s) => s.on))
+      .toBe(true);
+    await pad(page, 3).click({ button: "right" });
+    await menu.getByRole("button", { name: "50%" }).click();
+    for (const s of (await kickSteps(page)).slice(0, 6)) expect(s.probability).toBe(0.5);
+
+    // an unselected step: just that one
+    await pad(page, 7).click({ button: "right" });
+    await expect(menu).not.toContainText("selected steps");
+    await menu.getByRole("button", { name: "Turn on", exact: true }).click();
+    const after = await kickSteps(page);
+    expect(after[7].on).toBe(true);
+    expect(after[7].probability).toBe(1);
+  });
+});

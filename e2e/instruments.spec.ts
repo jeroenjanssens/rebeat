@@ -117,3 +117,46 @@ test("the velocity lane sets the notes' velocities on an instrument track", asyn
   expect(top.length).toBeGreaterThan(2);
   for (const v of top) expect(v).toBeLessThan(0.3);
 });
+
+test("the piano roll's note menu acts on all selected notes", async ({ page }) => {
+  await page.locator("[data-track-row]", { hasText: "CHORDS" }).getByText("CHORDS").click();
+  await page.getByText("Piano roll", { exact: true }).click();
+  const roll = page.getByTestId("piano-roll");
+  const notes = roll.locator("[data-note]");
+  await expect(notes.first()).toBeAttached();
+  const count = await notes.count();
+  expect(count).toBeGreaterThan(3);
+  await notes.first().click();
+  await page.keyboard.press("ControlOrMeta+a");
+  await notes.nth(1).click({ button: "right" });
+  const menu = page.locator(".menu");
+  await expect(menu).toContainText(`${count} selected notes`);
+  await menu.getByRole("button", { name: "Length 2" }).click();
+  const lengths = await page.evaluate(() => {
+    type S = {
+      project: {
+        tracks: { id: string; name: string }[];
+        slots: { id: string; patternId: string }[];
+        patterns: Record<
+          string,
+          { lanes: Record<string, { steps: { notes?: { length: number }[] }[] }> }
+        >;
+      };
+      editSlotId: string;
+    };
+    const s = (
+      window as never as { __rebeat: { store: { getState(): S } } }
+    ).__rebeat.store.getState();
+    const chords = s.project.tracks.find((t) => t.name === "Chords")!;
+    const slot = s.project.slots.find((x) => x.id === s.editSlotId)!;
+    return s.project.patterns[slot.patternId].lanes[chords.id].steps.flatMap((x) =>
+      (x.notes ?? []).map((n) => n.length),
+    );
+  });
+  expect(lengths).toHaveLength(count);
+  expect(new Set(lengths)).toEqual(new Set([2]));
+
+  await notes.first().click({ button: "right" });
+  await menu.getByRole("button", { name: `Delete ${count} notes` }).click();
+  await expect(notes).toHaveCount(0);
+});
