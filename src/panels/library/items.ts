@@ -9,6 +9,7 @@ import { CATALOG, catalogId, type CatalogInstrument, type Family } from "../../l
 import { useSettings } from "../../state/settings";
 import { samplePeaks } from "../../engine/samples";
 import { useLibrary } from "../../library/library";
+import { useUserInstruments, userEntry } from "../../library/userInstruments";
 import { sortSamples } from "../../library/sort";
 import { useStore } from "../../state/store";
 
@@ -100,6 +101,7 @@ export function useLibraryItems(loc: Location, f: Filters): Item[] {
   const samples = useLibrary((s) => s.samples);
   const sort = useLibrary((s) => s.sort);
   const favorites = useSettings((s) => s.instrumentFavorites);
+  const mine = useUserInstruments((s) => s.list);
   const usedIds = useUsedIds();
   return useMemo(() => {
     const q = f.query.trim().toLowerCase();
@@ -107,7 +109,8 @@ export function useLibraryItems(loc: Location, f: Filters): Item[] {
       !q || `${i.name} ${i.folder} ${i.tags.join(" ")}`.toLowerCase().includes(q);
     // instruments keep the catalog's order (grouped); samples follow the sort
     const instruments = (keep: (c: CatalogInstrument) => boolean) =>
-      CATALOG.filter(keep)
+      [...CATALOG, ...mine.map(userEntry)]
+        .filter(keep)
         .map((c) => instrumentItem(c, favorites))
         .filter(matches);
     if (loc.kind === "instruments") return instruments((c) => c.family === loc.family);
@@ -159,7 +162,7 @@ export function useLibraryItems(loc: Location, f: Filters): Item[] {
     if (loc.kind === "used") return [...sorted, ...instruments((c) => usedIds.has(c.id))];
     if (loc.kind === "all" && q) return [...sorted, ...instruments(() => true)];
     return sorted;
-  }, [loc, samples, f.query, f.type, f.tag, f.length, sort, usedIds, favorites]);
+  }, [loc, samples, f.query, f.type, f.tag, f.length, sort, usedIds, favorites, mine]);
 }
 
 /** Folders of the library (with their parents) and tags, for the sidebar and filter. */

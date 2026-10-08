@@ -4,6 +4,7 @@ import { toast } from "../../components/Toast";
 import { prefetchInstrument } from "../../engine/instruments";
 import { useDownloads } from "../../library/downloads";
 import type { CatalogInstrument } from "../../library/instruments";
+import { deleteInstrument, renameInstrument } from "../../library/userInstruments";
 import { useSettings } from "../../state/settings";
 import { openSampleEditor } from "../../app/openers";
 import { useShell } from "../../app/shell";
@@ -145,6 +146,24 @@ function instrumentMenu(
             disabled: downloaded,
             onSelect: () => void makeOffline(c),
           },
+        ]
+      : []),
+    ...(c.id.startsWith("user:")
+      ? [
+          { separator: true },
+          {
+            render: (close: () => void) => (
+              <FieldRow
+                label="Name"
+                value={c.name}
+                onCommit={(v) => {
+                  if (v.trim()) void renameInstrument(c.id.slice(5), v.trim());
+                  close();
+                }}
+              />
+            ),
+          },
+          { label: "Delete", onSelect: () => void deleteInstrument(c.id.slice(5)) },
         ]
       : []),
     { separator: true },

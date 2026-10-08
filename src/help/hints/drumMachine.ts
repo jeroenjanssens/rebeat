@@ -454,6 +454,11 @@ const hints: Hints = {
     text: "Trim, tune, loop or slice this track's sample in the sample editor.",
     guide: "sample-editor",
   },
+  "dm.track.savesound": {
+    title: "Save sound to library",
+    text: "Store this track's sound (synth, sampler or instrument, with its SOUND knobs and effects) under Your instruments, to use it on other tracks and in other projects.",
+    guide: "instruments-the-synth-editor",
+  },
   "dm.sound.kind": {
     title: "Kind of sound",
     text: "Instrument tracks can play a built-in synth, one of your samples across the keyboard (Sampler), or a sampled instrument such as a grand piano or strings (streamed the first time you use it).",

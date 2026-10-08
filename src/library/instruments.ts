@@ -201,6 +201,7 @@ export const CATALOG: CatalogInstrument[] = [
 
 /** The catalog id of what a source plays ("synth:acid", "smplr:piano"), or null for samplers. */
 export function catalogId(src: InstrumentSource): string | null {
+  if (src.from) return src.from;
   if (src.source === "sampler") return null;
   return `${src.source}:${src.preset}`;
 }

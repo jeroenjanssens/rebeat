@@ -14,6 +14,24 @@ A new instrument track plays a built-in synth: **Mono · Acid Bass** for bass tr
 
 **Transpose** moves all notes of the track up or down. The **Arpeggiator** plays the notes of a chord one after another: choose the order (Up, Down, Up/down, Random, Played), the rate, the number of octaves and the **Gate** (how long each note sounds).
 
+## The synth editor
+
+The **synth editor** shapes the synth of the selected instrument track. Open it with **Edit synth…** in the Inspector, or right-click the track's name → **Edit synth…**.
+
+| Section              | What it does                                                                                                                         |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| **Start from**       | Load a factory synth as the starting point.                                                                                          |
+| **Sound**            | A picture of the waveform; **Poly** (chords) or **Mono** (one note at a time, with **Glide**); **Velocity** and **Volume**.          |
+| **Oscillators**      | Two oscillators: the waveform, **Level**, **Octave**, **Detune**, **Width** (pulse), **Unison** (stacked voices) and **Spread**.     |
+| **Sub · noise · FM** | A sine an octave down, white noise, and frequency modulation (**FM**, **Ratio**, **FM decay**) for bells and electric pianos.        |
+| **Filter**           | Low-, high- or band-pass, 12 or 24 dB; **Cutoff**, **Reso**, **Env** (how much the filter envelope opens it), **Key** and **Drive**. |
+| **Envelopes**        | The filter's and the amplifier's attack, decay, sustain and release. Drag the points in the pictures or turn the knobs.              |
+| **LFO**              | A slow wobble on the pitch, filter, volume or pan; free or synced to the tempo.                                                      |
+
+Click in the editor and type **A**–**L** to play it (**Z** / **X** change the octave); the changes apply right away.
+
+Editing a factory synth edits a copy on the track; the factory synth itself never changes (the revert button brings it back). **Save to library** stores the synth with the track's SOUND knobs and effects under **Your instruments** in the library; drop it on any track, in any project. Right-click any instrument track → **Save sound** does the same for samplers and sampled instruments.
+
 ## Entering notes
 
 - In the grid: click a pad to add a note, then set its pitch with the **Note** encoder (Step bank) and its length with **Length**.

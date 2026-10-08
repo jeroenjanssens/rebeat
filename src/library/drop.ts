@@ -1,7 +1,8 @@
 /** What a drop on a track (or the track list) brings: library samples, online sounds or files. */
 import type { SoundCategory } from "../model/types";
 import { INSTRUMENT_MIME, SAMPLE_MIME } from "../state/trackActions";
-import { catalogEntry, type CatalogInstrument } from "./instruments";
+import type { CatalogInstrument } from "./instruments";
+import { findInstrument } from "./userInstruments";
 import { filesFromDrop, importFiles } from "./library";
 import { importSounds } from "./onlineImport";
 import { ONLINE_MIME, typeCategory, type OnlineSound } from "./onlineKits";
@@ -20,7 +21,7 @@ export function isSampleDrag(dt: DataTransfer): boolean {
 /** The instrument a drop carries, if any. */
 export function droppedInstrument(dt: DataTransfer): CatalogInstrument | undefined {
   const id = dt.getData(INSTRUMENT_MIME);
-  return id ? catalogEntry(id) : undefined;
+  return id ? findInstrument(id) : undefined;
 }
 
 /** The sample ids of a drop, importing online sounds and files into the library first. */

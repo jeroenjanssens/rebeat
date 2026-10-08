@@ -10,6 +10,7 @@ import {
   SlidersVertical,
   Activity,
   BookOpen,
+  Waves,
 } from "lucide-react";
 import { DrumMachine } from "../panels/drum-machine/DrumMachine";
 import { InspectorPanel } from "../panels/inspector/InspectorPanel";
@@ -27,6 +28,9 @@ const PerformancePanel = lazyPanel(() =>
 );
 const PianoRollPanel = lazyPanel(() =>
   import("../panels/piano-roll/PianoRollPanel").then((m) => m.PianoRollPanel),
+);
+const SynthEditorPanel = lazyPanel(() =>
+  import("../panels/synth-editor/SynthEditorPanel").then((m) => m.SynthEditorPanel),
 );
 const GuidePanel = lazyPanel(() => import("../panels/guide/GuidePanel").then((m) => m.GuidePanel));
 const SampleEditorPanel = lazyPanel(() =>
@@ -105,6 +109,13 @@ export const PANELS: PanelDef[] = [
     component: MasterScopePanel,
     minWidth: 200,
     minHeight: 120,
+  },
+  {
+    id: "synth-editor",
+    title: "Synth editor",
+    icon: Waves,
+    component: SynthEditorPanel,
+    minHeight: 200,
   },
   {
     id: "guide",

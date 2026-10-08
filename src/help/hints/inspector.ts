@@ -34,6 +34,11 @@ const hints: Hints = {
 
   // ─── Instrument section ──────────────────────────────────────────────────
 
+  "inspector.instrument.synth.edit": {
+    title: "Edit synth",
+    text: "Open the synth editor to shape this track's synth: oscillators, filter, envelopes, LFO.",
+    guide: "instruments-the-synth-editor",
+  },
   "inspector.instrument.source": {
     title: "Sound source",
     text: "Choose between a built-in Synth (with presets), a Sampler (plays any sample across the keyboard), or a sampled Instrument (grand piano, strings, guitar and more).",

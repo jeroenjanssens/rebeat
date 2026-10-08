@@ -1,6 +1,7 @@
 /** Opening panels for things (a sample in the editor, a track in the piano roll). */
 import { sampleName } from "../library/library";
 import { openPanel } from "./layouts";
+import { useStore } from "../state/store";
 import { dock } from "./shell";
 
 /** One sample editor tab per sample, reused when it's already open (D31). */
@@ -47,4 +48,19 @@ export function openGuide(anchor?: string) {
     initialWidth: Math.min(640, Math.round(api.width * 0.4)),
     position: { direction: "right" },
   });
+}
+
+/** The synth editor for a track (selecting it). */
+export function openSynthEditor(trackId: string) {
+  useStore.getState().setUi({ selectedTrackId: trackId });
+  const api = dock.api;
+  if (!api) return;
+  if (api.getPanel("synth-editor")) return focusPanel("synth-editor");
+  // next to the sample editor and piano roll, below the drum machine
+  const anchor = api.getPanel("piano-roll") ?? api.getPanel("mixer");
+  openPanel(
+    api,
+    "synth-editor",
+    anchor ? { referencePanel: anchor.id, direction: "within" } : { direction: "below" },
+  );
 }

@@ -1,5 +1,6 @@
 /** IndexedDB (via Dexie): projects, the sample library and audio blobs. */
 import Dexie, { type EntityTable } from "dexie";
+import type { Effect, InstrumentSource } from "../model/types";
 
 export interface ProjectRecord {
   id: string;
@@ -42,6 +43,19 @@ export interface BlobRecord {
   blob: Blob;
 }
 
+/** An instrument you saved to the library (D81): a sound with its knobs and effects. */
+export interface InstrumentRecord {
+  id: string;
+  name: string;
+  createdAt: number;
+  sound: {
+    instrument: InstrumentSource;
+    /** The SOUND knobs ("sound.cutoff" → value). */
+    params: Record<string, number>;
+    effects: Effect[];
+  };
+}
+
 export interface MetaRecord {
   key: string;
   value: unknown;
@@ -52,6 +66,7 @@ export class RebeatDB extends Dexie {
   samples!: EntityTable<SampleRecord, "id">;
   blobs!: EntityTable<BlobRecord, "id">;
   meta!: EntityTable<MetaRecord, "key">;
+  instruments!: EntityTable<InstrumentRecord, "id">;
 
   constructor(name = "rebeat") {
     super(name);
@@ -65,6 +80,8 @@ export class RebeatDB extends Dexie {
     this.version(2).stores({
       samples: "id, name, folder, *tags, favorite, createdAt, contentHash",
     });
+    // your own instruments (saved synths and sounds)
+    this.version(3).stores({ instruments: "id, name, createdAt" });
   }
 }
 

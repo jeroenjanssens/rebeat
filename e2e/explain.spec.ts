@@ -75,6 +75,24 @@ test("every hint on screen has an entry and a real command", async ({ page }) =>
     await page.waitForTimeout(300);
     expect(await problems(page)).toEqual(none);
   }
+  // the synth editor, with a synth track selected
+  await page.evaluate(() => {
+    const w = window as unknown as {
+      __rebeat: {
+        store: {
+          getState(): {
+            project: { tracks: { id: string; kind: string }[] };
+            setUi(p: object): void;
+          };
+        };
+      };
+    };
+    const s = w.__rebeat.store.getState();
+    s.setUi({ selectedTrackId: s.project.tracks.find((t) => t.kind === "instrument")!.id });
+  });
+  await run("panel.synth-editor");
+  await page.getByTestId("synth-editor").waitFor();
+  expect(await problems(page)).toEqual(none);
   // the pad view
   await run("dm.view");
   await page.waitForTimeout(200);

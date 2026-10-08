@@ -97,6 +97,8 @@ export interface InstrumentSource {
   patch?: SynthPatch;
   /** The sound's name when it isn't a factory one (edited or from your library). */
   name?: string;
+  /** The library instrument it came from ("user:<id>"), for Used in project. */
+  from?: string;
   /** Keyboard sampler: the sample and the note it was recorded at. */
   sampleId?: string;
   rootNote?: number;

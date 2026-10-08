@@ -6,6 +6,8 @@ import {
   addSampleTracks,
   playInstrumentOn,
   replaceSound,
+  setInstrument,
+  soundLabel,
 } from "../../state/trackActions";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -17,7 +19,9 @@ import { MiniFader } from "../../components/MiniFader";
 import { Scope } from "../../components/Scope";
 import { onStep } from "../../engine/transport";
 import { TRACK_PALETTE } from "../../model/colors";
-import { focusPanel } from "../../app/openers";
+import { focusPanel, openSynthEditor } from "../../app/openers";
+import { toast } from "../../components/Toast";
+import { saveInstrument } from "../../library/userInstruments";
 import { toUnit } from "../../model/params";
 import { keyUsesFlats } from "../../model/notes";
 import {
@@ -158,8 +162,12 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
         onSelect: () => commit((p) => void duplicateTrack(p, track.id)),
       },
       { label: "Delete", onSelect: () => commit((p) => deleteTrack(p, track.id)) },
+      ...(track.kind === "instrument" && (track.instrument?.source ?? "synth") === "synth"
+        ? [{ label: "Edit synth…", onSelect: () => openSynthEditor(track.id) }]
+        : []),
       ...(track.kind === "instrument"
         ? [
+            { render: (close: () => void) => <SaveSound track={track} close={close} /> },
             {
               label: "Open in piano roll",
               onSelect: () => {
@@ -571,5 +579,37 @@ function TrackButton(props: {
     >
       {props.label}
     </button>
+  );
+}
+
+/** Save an instrument track's sound to the library, named in place (D81). */
+function SaveSound({ track, close }: { track: Track; close: () => void }) {
+  const [name, setName] = useState(soundLabel(track));
+  return (
+    <form
+      className="flex items-center gap-1.5 px-2 py-1"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!name.trim()) return;
+        void saveInstrument(track, name.trim()).then((entry) => {
+          setInstrument(track.id, entry.source);
+          toast(`Saved “${name.trim()}” to Your instruments`);
+        });
+        close();
+      }}
+      data-hint="dm.track.savesound"
+    >
+      <span className="label shrink-0">Save sound</span>
+      <input
+        className="input !h-6 min-w-0 flex-1"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        onKeyDown={(e) => e.stopPropagation()}
+        data-testid="save-sound-name"
+      />
+      <button className="tool-btn !h-6 border border-line" type="submit">
+        Save
+      </button>
+    </form>
   );
 }

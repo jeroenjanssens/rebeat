@@ -8,6 +8,7 @@ import { noteName } from "../../model/notes";
 import type { Arpeggiator, InstrumentSource, StepSize, Track } from "../../model/types";
 import { useStore } from "../../state/store";
 import { setInstrument } from "../../state/trackActions";
+import { openSynthEditor } from "../../app/openers";
 import { Section } from "./InspectorPanel";
 
 const ARP_RATES: StepSize[] = ["1/4", "1/8", "1/8T", "1/16", "1/16T", "1/32"];
@@ -96,6 +97,16 @@ export function InstrumentSection({ track }: { track: Track }) {
           ))}
         </div>
 
+        {src.source === "synth" && (
+          <button
+            className="tool-btn self-start border border-line"
+            onClick={() => openSynthEditor(track.id)}
+            data-hint="inspector.instrument.synth.edit"
+            data-testid="edit-synth"
+          >
+            Edit synth…
+          </button>
+        )}
         {src.source === "synth" && (
           <select
             className="input"

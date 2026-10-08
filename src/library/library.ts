@@ -2,6 +2,7 @@
  * The sample library (shared by all projects): import, organize, and decode samples on demand.
  * Samples are content-addressed (SHA-256), so importing the same file twice is detected.
  */
+import { loadUserInstruments } from "./userInstruments";
 import { DEFAULT_SORT, type SampleSort } from "./sort";
 import { unzipSync } from "fflate";
 import { create } from "zustand";
@@ -398,6 +399,7 @@ export function startLibrary() {
   if (started) return;
   started = true;
   void refresh();
+  void loadUserInstruments();
   let last: unknown = null;
   const ensure = () => {
     const { project } = useStore.getState();
