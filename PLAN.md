@@ -9,7 +9,7 @@
 
 ### 0.1 Where we are
 
-- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D73), and the build order is in §7.
+- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D77), and the build order is in §7.
 - Every phase in §7 is built, tested (unit + Playwright e2e) and pushed. The mockup (Phase M) became the app: its components, model and store were kept and extended; `src/mock/` was replaced by the real engine.
 - The desktop app (Phase 10) runs and packages locally (unsigned); signing/notarization need certificates (see `.github/workflows/desktop.yml`).
 
@@ -46,7 +46,8 @@ src/
   library/               library (import, dedupe, decode, versions, settings), analysis (BPM, onsets, key, LUFS),
                          processing (non-destructive sample settings), editorOps, renderFx, fft, wav, audition,
                          onlineKits (tidal-drum-machines index, sound search) + onlineImport (download cache,
-                         import), drop (samples from drags: library, online, files), sort
+                         import, links) + sources (link and strudel.json parsing), encode (WAV/MP3/OGG),
+                         drop (samples from drags: library, online, files), sort
   storage/               db (Dexie), projects (autosave, crash recovery), rebeatFile (.rebeat zip)
   panels/                drum-machine/, library/, inspector/, mixer/, master-scope/, piano-roll/, sample-editor/,
                          performance/, guide/
@@ -136,7 +137,7 @@ controls, updates the guide chapters it touches, and passes `/tmp/verify.sh`-sty
     step to its default (80 %, 100 %, 0); Alt+double-click resets the whole lane. Instant (no glide),
     one undo step together with the click that started it. e2e for both.
 
-### 0.6c Second polish batch (agreed 2026-10-08)
+### 0.6c Second polish batch (agreed and done 2026-10-08) ✅
 
 Order: G, F, C, D+E, B, A. One commit per item, each with explain-mode hints, guide updates and the
 full checks (prettier, tsc, eslint, vitest, e2e).
@@ -725,6 +726,7 @@ Format: **Dn — Question.** Default ✅, alternatives.
 - **D71 — Explain mode.** Controls carry `data-hint="<id>"`; the texts live in `src/help/hints/*.ts` (one file per area; knobs share `param.<track.params key>` and `fx.<Effect>.<param>` entries). One plain-DOM layer (`app/hintLayer.ts`, installed in every window including pop-outs) shows the card, parks native `title` tooltips while it does, falls back to the `title` for controls without a hint, and shows the live shortcut from the command registry. A unit test checks literal ids and guide anchors; an e2e test checks every hint rendered in the app. New controls need a hint. Alt: a tooltip component around every button.
 - **D72 — Smooth resets.** Double-click (and "Reset to default") glides knobs, faders, drag values and the crossfader back with an ease-out over 300 ms × the distance (minimum 60 ms) via `components/glide.ts` on the shared frame loop. Grabbing the control stops it; stepped params jump; all frames are one undo step (`withUndoKey` in the store groups commits that don't name a key). MIDI and controllers set values directly. Alt: a fixed 300 ms.
 - **D73 — Play mode in the project.** `Project.playMode` (schema v5; older projects open in Song, the new default). `setPlayMode` saves it without an undo step and keeps it through undo/redo of other edits; switching it in an example doesn't make a copy. Alt: UI state (reset to the default on every start).
+- **D74 — Sample sources from links.** Audio files and zips import straight away; strudel.json files and GitHub repositories (strudel.json at the given ref, `HEAD` by default; else the repo's audio files via the GitHub trees API, grouped by folder) become sources listed under Online kits with the same browse/preview/search/drag/add tools as the tidal kits, saved in the settings (`sampleSources`). `library/sources.ts` parses (unit-tested); `onlineImport.ts` fetches. Sites must allow cross-origin downloads (GitHub does). Alt: import every sound straight into a folder.
 - **D75 — Velocity of note steps.** Notes carry their own velocity, so `stepVelocity`/`setStepVelocity` (model/types) treat a note step's velocity as its loudest note's and scale the notes to keep a chord's balance. Every editor (lane, STEP encoder, Shift+drag, digits, accent) goes through them. Alt: multiply step × note velocity.
 - **D76 — Converting keeps the sample.** Drum/audio → instrument makes a keyboard sampler of the track's sample (root C4; the drum Tune becomes transpose) so existing hits sound the same; sampler → drum hands the sample back; synth → drum returns to the sample the track had. Alt: root note from pitch analysis.
 - **D77 — Audio export formats.** WAV via our own encoder; MP3 and OGG Vorbis via `wasm-media-encoders` (MIT; its LAME build is LGPL), imported lazily with its .wasm files as separate assets (precached by the service worker). Samples export as heard (rendered settings) or as the stored file; the song Export dialog shares the format picker. Alt: Opus/WebM via MediaRecorder, no dependency.

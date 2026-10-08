@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import * as Tone from "tone";
-import { FolderPlus, ListPlus, Loader2, Plus, Search } from "lucide-react";
+import { FolderPlus, ListPlus, Loader2, Plus, Search, X } from "lucide-react";
 import { toast } from "../../components/Toast";
 import { auditionBuffer } from "../../library/audition";
 import {
@@ -17,16 +17,29 @@ import {
   type OnlineKit,
   type OnlineSound,
 } from "../../library/onlineKits";
-import { importSounds, previewBuffer } from "../../library/onlineImport";
+import { importSounds, loadSource, previewBuffer } from "../../library/onlineImport";
+import { useSettings } from "../../state/settings";
 import { addSampleTracks } from "../../state/trackActions";
 
+const kitKey = (k: OnlineKit) => `${k.source ?? "tidal"}|${k.machine}`;
+
+/** Forget a source you added. */
+const removeSource = (src: string) =>
+  useSettings
+    .getState()
+    .set({ sampleSources: useSettings.getState().sampleSources.filter((s) => s !== src) });
+
 /**
- * Browse the online tidal-drum-machines collection. Previews play without touching the library;
- * sounds are added on request (+, Add kit, Load as tracks, or dragging one onto a track).
+ * Browse the sources you added (links, D74) and the online tidal-drum-machines collection.
+ * Previews play without touching the library; sounds are added on request (+, Add kit, Load as
+ * tracks, or dragging one onto a track).
  */
 export function OnlineKits() {
   const [kits, setKits] = useState<OnlineKit[] | null>(null);
   const [error, setError] = useState("");
+  const sources = useSettings((s) => s.sampleSources);
+  // a source's kit, or why it couldn't be loaded
+  const [mine, setMine] = useState<Record<string, OnlineKit | string>>({});
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -34,13 +47,27 @@ export function OnlineKits() {
   useEffect(() => {
     fetchKitIndex().then(setKits, (e) => setError(String(e.message ?? e)));
   }, []);
+  useEffect(() => {
+    for (const src of sources)
+      loadSource(src).then(
+        (kit) => setMine((m) => ({ ...m, [src]: kit })),
+        (e) => setMine((m) => ({ ...m, [src]: String(e instanceof Error ? e.message : e) })),
+      );
+  }, [sources]);
 
+  const all = useMemo(
+    () => [
+      ...sources.flatMap((s) => (typeof mine[s] === "object" ? [mine[s] as OnlineKit] : [])),
+      ...(kits ?? []),
+    ],
+    [sources, mine, kits],
+  );
   const q = query.trim().toLowerCase();
   const matchingKits = useMemo(
-    () => (kits ?? []).filter((k) => machineName(k.machine).toLowerCase().includes(q)),
-    [kits, q],
+    () => all.filter((k) => machineName(k.machine).toLowerCase().includes(q)),
+    [all, q],
   );
-  const matchingSounds = useMemo(() => searchSounds(kits ?? [], q), [kits, q]);
+  const matchingSounds = useMemo(() => searchSounds(all, q), [all, q]);
 
   const run = async (key: string, fn: () => Promise<void>) => {
     setBusy(key);
@@ -65,14 +92,17 @@ export function OnlineKits() {
       toast(`Added ${soundName(s)} to the library`);
     });
 
+  // a drum machine: one of each sound; your own sources: everything
   const addKit = (kit: OnlineKit) =>
-    run(`kit:${kit.machine}`, async () => {
-      const ids = (await importSounds(kitDefaults(kit))).filter(Boolean);
+    run(`kit:${kitKey(kit)}`, async () => {
+      const ids = (await importSounds(kit.source ? kitSoundList(kit) : kitDefaults(kit))).filter(
+        Boolean,
+      );
       toast(`Added ${ids.length} sounds of ${machineName(kit.machine)} to the library`);
     });
 
   const load = (kit: OnlineKit) =>
-    run(`tracks:${kit.machine}`, async () => {
+    run(`tracks:${kitKey(kit)}`, async () => {
       const sounds = kitDefaults(kit);
       const ids = await importSounds(sounds);
       const ok = sounds.flatMap((s, i) => (ids[i] ? [{ id: ids[i]!, s }] : []));
@@ -83,15 +113,6 @@ export function OnlineKits() {
       );
       toast(`Loaded ${machineName(kit.machine)}: ${ok.length} tracks`);
     });
-
-  if (error)
-    return <div className="p-4 text-[12px] text-faint">Online kits are unavailable: {error}</div>;
-  if (!kits)
-    return (
-      <div className="flex items-center gap-2 p-4 text-[12px] text-faint">
-        <Loader2 size={13} className="animate-spin" /> Loading the kit index…
-      </div>
-    );
 
   const row = (s: OnlineSound, withMachine: boolean) => (
     <SoundRow
@@ -112,29 +133,53 @@ export function OnlineKits() {
           <input
             className="min-w-0 flex-1 bg-transparent text-[12px] outline-none placeholder:text-faint"
             placeholder="Search machines and sounds"
-            title={`${kits.length} drum machines`}
+            title={`${all.length} kits`}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             data-testid="online-search"
           />
         </label>
         <p className="mt-1.5 text-[10px] leading-snug text-faint">
-          From the community “tidal-drum-machines” collection. Click a sound to hear it; add it to
-          your library with +, or drag it onto a track. The sounds come from many sources: check
-          their licensing before publishing music made with them.
+          Sources you added with the link button, then the community “tidal-drum-machines”
+          collection. Click a sound to hear it; add it to your library with +, or drag it onto a
+          track. Check the sounds' licensing before publishing music made with them.
         </p>
       </div>
       <div className="scroll-thin min-h-0 flex-1 overflow-auto p-1.5">
+        {sources.map((src) =>
+          typeof mine[src] === "string" ? (
+            <div
+              key={src}
+              className="flex items-center gap-1.5 rounded-md px-1.5 py-1 text-[11px]"
+              data-testid="source-error"
+            >
+              <span className="min-w-0 flex-1 text-faint">
+                <span className="text-dim">{src}</span>: {mine[src] as string}
+              </span>
+              <RemoveSource src={src} />
+            </div>
+          ) : mine[src] ? null : (
+            <div key={src} className="flex items-center gap-2 px-1.5 py-1 text-[11px] text-faint">
+              <Loader2 size={11} className="animate-spin" /> {src}
+            </div>
+          ),
+        )}
         {matchingKits.map((kit) => {
-          const isOpen = open === kit.machine;
+          const key = kitKey(kit);
+          const isOpen = open === key;
           const sounds = kitSoundList(kit);
           return (
-            <div key={kit.machine} className="rounded-md" data-online-kit={kit.machine}>
+            <div
+              key={key}
+              className="rounded-md"
+              data-online-kit={kit.machine}
+              data-source={kit.source}
+            >
               <div className="flex h-8 items-center gap-1.5 rounded-md px-1.5 hover:bg-surface">
                 <button
                   className="min-w-0 flex-1 truncate text-left text-[12px]"
                   data-hint="library.online.machine"
-                  onClick={() => setOpen(isOpen ? null : kit.machine)}
+                  onClick={() => setOpen(isOpen ? null : key)}
                 >
                   {machineName(kit.machine)}
                   <span className="ml-1.5 text-[10px] text-faint">{sounds.length} sounds</span>
@@ -142,11 +187,11 @@ export function OnlineKits() {
                 <button
                   className="tool-btn !h-6 !w-6 shrink-0 !p-0"
                   disabled={!!busy}
-                  title="Add the kit to the library"
-                  data-hint="library.online.addkit"
+                  title={kit.source ? "Add all to the library" : "Add the kit to the library"}
+                  data-hint={kit.source ? "library.online.addall" : "library.online.addkit"}
                   onClick={() => addKit(kit)}
                 >
-                  {busy === `kit:${kit.machine}` ? (
+                  {busy === `kit:${key}` ? (
                     <Loader2 size={12} className="animate-spin" />
                   ) : (
                     <FolderPlus size={13} />
@@ -160,12 +205,13 @@ export function OnlineKits() {
                   data-hint="library.online.load"
                   onClick={() => load(kit)}
                 >
-                  {busy === `tracks:${kit.machine}` ? (
+                  {busy === `tracks:${key}` ? (
                     <Loader2 size={12} className="animate-spin" />
                   ) : (
                     <ListPlus size={14} />
                   )}
                 </button>
+                {kit.source && <RemoveSource src={kit.source} />}
               </div>
               {isOpen && <div className="pb-1.5 pl-2">{sounds.map((s) => row(s, false))}</div>}
             </div>
@@ -181,6 +227,16 @@ export function OnlineKits() {
         )}
         {q && !matchingKits.length && !matchingSounds.length && (
           <div className="px-1.5 py-2 text-[12px] text-faint">Nothing found</div>
+        )}
+        {error && (
+          <div className="px-1.5 py-2 text-[12px] text-faint">
+            The online drum machines are unavailable: {error}
+          </div>
+        )}
+        {!kits && !error && (
+          <div className="flex items-center gap-2 px-1.5 py-2 text-[12px] text-faint">
+            <Loader2 size={13} className="animate-spin" /> Loading the online drum machines…
+          </div>
         )}
       </div>
     </div>
@@ -238,5 +294,19 @@ function SoundRow({
         )}
       </button>
     </div>
+  );
+}
+
+function RemoveSource({ src }: { src: string }) {
+  return (
+    <button
+      className="tool-btn !h-6 !w-6 shrink-0 !p-0"
+      title="Remove this source"
+      aria-label="Remove this source"
+      data-hint="library.online.remove"
+      onClick={() => removeSource(src)}
+    >
+      <X size={13} />
+    </button>
   );
 }

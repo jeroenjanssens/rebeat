@@ -54,6 +54,8 @@ export interface Settings {
   onboarded: boolean;
   /** Explain mode: detailed hover cards on buttons (D71). */
   explain: boolean;
+  /** Sample sources you added by link (strudel.json, GitHub repositories), D74. */
+  sampleSources: string[];
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -78,6 +80,7 @@ export const DEFAULT_SETTINGS: Settings = {
   freeFirstLoop: false,
   onboarded: false,
   explain: false,
+  sampleSources: [],
 };
 
 interface SettingsState extends Settings {

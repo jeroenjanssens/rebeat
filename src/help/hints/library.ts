@@ -89,6 +89,26 @@ const hints: Hints = {
 
   // ─── Online kits ─────────────────────────────────────────────────────────
 
+  "library.import.link": {
+    title: "Import from a link",
+    text: "Paste a link to an audio file or zip (imported right away), or to a strudel.json or a GitHub repository full of samples (added under Online kits, so you can listen first and pick).",
+    guide: "library-importing",
+  },
+  "library.import.link.input": {
+    title: "Link",
+    text: "For example https://github.com/user/repo, github:user/repo, a link to a strudel.json, or a link to a .wav, .mp3 or .zip file.",
+    guide: "library-importing",
+  },
+  "library.online.addall": {
+    title: "Add all to the library",
+    text: "Downloads every sound of this source into your library, in the folder Kits/<name>.",
+    guide: "library-kits",
+  },
+  "library.online.remove": {
+    title: "Remove this source",
+    text: "Takes the source out of Online kits. Sounds you already added to your library stay there.",
+    guide: "library-kits",
+  },
   "library.online.search": {
     title: "Search drum machines and sounds",
     text: "Type a machine (808, Linn) or a sound (hat, snare, cowbell), or both. Matching kits come first, then every matching sound across all kits, so you can compare, say, hi-hats from different machines.",

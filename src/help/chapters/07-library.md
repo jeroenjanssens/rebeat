@@ -5,7 +5,10 @@ The [Library](panel:library) holds your samples. It's shared by all projects: a 
 ## Importing
 
 - Drop audio files, whole **folders**, or **zip** files onto the library (or onto the drum machine).
-- Or use the import buttons: the arrow for files, the folder for a folder.
+- Or use the import buttons: the arrow for files, the folder for a folder, the **link** for a link.
+- **Import from a link** accepts:
+  - a link to an audio file or a zip: imported right away (into the folder Downloads);
+  - a link to a **strudel.json** sample map, a **GitHub repository** (`https://github.com/user/repo`, also a folder in it), or Strudel's shorthand `github:user/repo`: added as a **source** at the top of **Online kits**, where you can listen to its sounds and add the ones you want (or all of them). A repository without a strudel.json lists its audio files, grouped by folder. Sources stay until you remove them with ×.
 - WAV, MP3, OGG, FLAC, AIFF, M4A and other formats the browser can play are supported.
 
 Importing the same file twice doesn't make a duplicate. Loops get their **tempo** detected (shown as a small number next to them).

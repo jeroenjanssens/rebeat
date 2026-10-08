@@ -4,12 +4,16 @@
  * so check their licensing before publishing music made with them.
  */
 import type { SoundCategory } from "../model/types";
+import { guessCategory } from "./analysis";
 
 const INDEX =
   "https://raw.githubusercontent.com/felixroos/dough-samples/main/tidal-drum-machines.json";
 
 export interface OnlineKit {
+  /** The kit's name: a drum machine ("RolandTR808"), or the name of a source you added. */
   machine: string;
+  /** Sources you added: the link they came from (to remove them again). */
+  source?: string;
   /** Sound type (bd, sd, hh, …) → sample URLs. */
   sounds: Record<string, string[]>;
 }
@@ -55,7 +59,7 @@ export const TYPE_ORDER = [
 ];
 
 export function typeName(type: string) {
-  return TYPE_NAMES[type] ?? type.toUpperCase();
+  return TYPE_NAMES[type] ?? type.charAt(0).toUpperCase() + type.slice(1);
 }
 
 export function typeCategory(type: string): SoundCategory {
@@ -65,7 +69,8 @@ export function typeCategory(type: string): SoundCategory {
   if (["hh", "oh", "cr", "rd"].includes(type)) return "hat";
   if (["lt", "mt", "ht"].includes(type)) return "tom";
   if (type === "fx" || type === "misc") return "fx";
-  return "perc";
+  // sounds of your own sources have names like "kick" or "hihat"
+  return guessCategory(type);
 }
 
 /** "RolandTR808" → "Roland TR808" */

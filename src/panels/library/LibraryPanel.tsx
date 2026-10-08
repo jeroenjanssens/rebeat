@@ -4,6 +4,7 @@ import {
   Disc3,
   Folder,
   FolderInput,
+  Link2,
   Globe,
   Heart,
   Mic,
@@ -40,6 +41,7 @@ import {
   type SortBy,
 } from "../../library/sort";
 import { useShell } from "../../app/shell";
+import { ImportLink } from "./ImportLink";
 import { OnlineKits } from "./OnlineKits";
 import { RecorderStrip } from "./RecorderStrip";
 
@@ -127,6 +129,7 @@ export function LibraryPanel() {
   const [sync, setSync] = useState(false);
   const [dropHover, setDropHover] = useState(false);
   const [renaming, setRenaming] = useState<string | null>(null);
+  const [linkOpen, setLinkOpen] = useState(false);
   const sortRef = useRef<HTMLButtonElement>(null);
   const filterRef = useRef<HTMLButtonElement>(null);
   const locRef = useRef<HTMLButtonElement>(null);
@@ -540,6 +543,20 @@ export function LibraryPanel() {
         >
           <FolderInput size={13} />
         </button>
+        <button
+          className="tool-btn shrink-0"
+          title="Import from a link"
+          data-hint="library.import.link"
+          data-testid="library-import-link"
+          onClick={() => setLinkOpen(true)}
+        >
+          <Link2 size={13} />
+        </button>
+        <ImportLink
+          open={linkOpen}
+          onClose={() => setLinkOpen(false)}
+          onSource={() => setLoc({ kind: "online" })}
+        />
       </div>
 
       <div className="flex min-h-0 flex-1">
