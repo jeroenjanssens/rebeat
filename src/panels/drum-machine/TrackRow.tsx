@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { droppedSamples, isSampleDrag } from "../../library/drop";
+import { sampleName } from "../../library/library";
 import { addSampleTracks, replaceSound } from "../../state/trackActions";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -289,7 +290,7 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
         (["drum", "instrument", "audio"] as const).map((k) => ({
           label: k[0].toUpperCase() + k.slice(1),
           active: track.kind === k,
-          onClick: () => commit((p) => convertTrack(p, track.id, k)),
+          onClick: () => commit((p) => convertTrack(p, track.id, k, sampleName)),
         })),
       ),
     ];

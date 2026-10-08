@@ -87,7 +87,7 @@ Each row is a **track**. Tracks exist on every page; the pages only hold their s
 - **Track length on this page**: let the track loop over fewer steps than the page (for example 3 or 5 against 16, for polyrhythms).
 - **Track rate on this page**: give the track its own step size.
 - **Track swing**: its own swing.
-- **Choke group** (drum tracks) and **Convert to** drum, instrument or audio track.
+- **Choke group** (drum tracks) and **Convert to** drum, instrument or audio track. The sample comes along: a drum (or audio) track becomes a keyboard sampler of its sample that plays your hits at the same pitch, so you can play melodies with it; converting a sampler back gives the drum track its sample again.
 
 At the bottom, **drop samples** from your computer or the library to add tracks, or use **+ Drum**, **+ Instrument** or **+ Audio**. Drop a sample **on a track** to replace its sound (hold Alt to add it as a new track below instead).
 

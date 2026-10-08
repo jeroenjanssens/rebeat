@@ -2,7 +2,7 @@ import { current, isDraft, type Draft } from "immer";
 import { CATEGORY_COLOR, LINK_COLORS } from "./colors";
 import type { Bus, Master } from "./effects";
 import { uid } from "./id";
-import { MIX_PARAMS, SOUND_PARAMS, defaultParams } from "./params";
+import { MIX_PARAMS, SOUND_PARAMS, defaultParams, toUnit } from "./params";
 import {
   MAX_STEPS,
   emptyStep,
@@ -280,16 +280,44 @@ export function stepAt(pattern: Pattern, trackId: string, index: number): Step |
   return lane?.kind === "steps" ? lane.steps[index] : undefined;
 }
 
-/** Change a track's type; step data carries over between drum and instrument tracks. */
-export function convertTrack(project: Project, trackId: string, kind: TrackKind) {
+/**
+ * Change a track's type. Step data carries over between drum and instrument tracks, and so does
+ * the sample (D76): a drum or audio track becomes a keyboard sampler of its sample (rooted at C4,
+ * with its tune as transpose, so it sounds the same); a sampler gives its sample back.
+ * `nameOf` names a sample for the track's source label.
+ */
+export function convertTrack(
+  project: Project,
+  trackId: string,
+  kind: TrackKind,
+  nameOf: (sampleId: string) => string = (id) => id,
+) {
   const track = project.tracks.find((t) => t.id === trackId);
   if (!track || track.kind === kind) return;
   const from = track.kind;
+  const tune = Math.round(toUnit.semis(24)(track.params["sound.tune"] ?? 0.5));
   track.kind = kind;
   for (const key of Object.keys(track.params))
     if (key.startsWith("sound.")) delete track.params[key];
   Object.assign(track.params, prefixed("sound", defaultParams(SOUND_PARAMS[kind])));
-  if (kind === "instrument") track.source = "Poly · Init";
+  if (kind === "instrument") {
+    const sampleId = track.sampleId;
+    if (sampleId) {
+      track.instrument = { source: "sampler", preset: "sampler", sampleId, rootNote: 60 };
+      track.source = `Sampler · ${nameOf(sampleId)}`;
+      if (tune) track.transpose = tune;
+    } else track.source = "Poly · Init";
+  } else if (from === "instrument") {
+    const sampler = track.instrument?.source === "sampler" ? track.instrument.sampleId : undefined;
+    // a sampler hands its sample over; a synth goes back to the sample the track had before
+    if (sampler) track.sampleId = sampler;
+    if (track.transpose && kind === "drum")
+      track.params["sound.tune"] = Math.min(1, Math.max(0, 0.5 + track.transpose / 48));
+    delete track.instrument;
+    delete track.transpose;
+    delete track.arp;
+    track.source = track.sampleId ? nameOf(track.sampleId) : "";
+  }
   for (const p of Object.values(project.patterns)) {
     const lane = p.lanes[trackId];
     if (!lane) continue;
