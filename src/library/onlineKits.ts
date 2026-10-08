@@ -4,7 +4,6 @@
  * so check their licensing before publishing music made with them.
  */
 import type { SoundCategory } from "../model/types";
-import { importItems } from "./library";
 
 const INDEX =
   "https://raw.githubusercontent.com/felixroos/dough-samples/main/tidal-drum-machines.json";
@@ -99,29 +98,85 @@ export function fetchKitIndex(): Promise<OnlineKit[]> {
   return index;
 }
 
-/** Download sounds into the library (folder "Kits/<machine>"); returns [type, sampleId] pairs. */
-export async function downloadKit(
-  kit: OnlineKit,
-  opts: { types?: string[]; variant?: number } = {},
-): Promise<[string, string][]> {
-  const types = (opts.types ?? TYPE_ORDER.filter((t) => kit.sounds[t])).filter(
-    (t) => kit.sounds[t],
-  );
-  const folder = `Kits/${machineName(kit.machine)}`;
-  const items = await Promise.all(
-    types.map(async (type) => {
-      const urls = kit.sounds[type];
-      const url = urls[Math.min(opts.variant ?? 0, urls.length - 1)];
-      const res = await fetch(url);
-      if (!res.ok) return null;
-      const name = `${machineName(kit.machine)} ${typeName(type)}${urls.length > 1 ? ` ${(opts.variant ?? 0) + 1}` : ""}`;
-      return {
-        type,
-        item: { name: `${name}.wav`, data: await res.arrayBuffer(), folder, tags: ["kit", type] },
-      };
-    }),
-  );
-  const ok = items.filter((x): x is NonNullable<typeof x> => !!x);
-  const ids = await importItems(ok.map((x) => x.item));
-  return ok.flatMap((x, i) => (ids[i] ? [[x.type, ids[i]] as [string, string]] : []));
+/** One sound of an online kit: a sound type ("hh") and which of its variants. */
+export interface OnlineSound {
+  machine: string;
+  type: string;
+  variant: number;
+  url: string;
+  /** How many variants its type has (for the name). */
+  variants: number;
 }
+
+export function kitSoundList(kit: OnlineKit): OnlineSound[] {
+  const types = TYPE_ORDER.filter((t) => kit.sounds[t]).concat(
+    Object.keys(kit.sounds).filter((t) => !TYPE_ORDER.includes(t)),
+  );
+  return types.flatMap((type) =>
+    kit.sounds[type].map((url, variant) => ({
+      machine: kit.machine,
+      type,
+      variant,
+      url,
+      variants: kit.sounds[type].length,
+    })),
+  );
+}
+
+/** "Cl Hat 2" */
+export function soundLabel(s: OnlineSound) {
+  return `${typeName(s.type)}${s.variants > 1 ? ` ${s.variant + 1}` : ""}`;
+}
+
+/** "Roland TR808 Cl Hat 2", the name in the library. */
+export function soundName(s: OnlineSound) {
+  return `${machineName(s.machine)} ${soundLabel(s)}`;
+}
+
+/** The file name in the collection, e.g. "Hat Closed.wav". */
+export function soundFile(s: OnlineSound) {
+  return decodeURIComponent(s.url.slice(s.url.lastIndexOf("/") + 1));
+}
+
+const SYNONYMS: Record<string, string> = {
+  bd: "kick bass drum bassdrum",
+  sd: "snare",
+  cp: "clap",
+  hh: "hat hihat hi-hat closed",
+  oh: "hat hihat hi-hat open",
+  rim: "rimshot",
+  cb: "cowbell",
+  lt: "tom low",
+  mt: "tom mid",
+  ht: "tom high",
+  cr: "crash cymbal",
+  rd: "ride cymbal",
+  sh: "shaker",
+  tb: "tambourine",
+  perc: "percussion",
+};
+
+/** Sounds across all kits whose machine, type (or a synonym) or file name match every word. */
+export function searchSounds(kits: OnlineKit[], query: string, limit = 200): OnlineSound[] {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (!words.length) return [];
+  const out: OnlineSound[] = [];
+  for (const kit of kits)
+    for (const s of kitSoundList(kit)) {
+      const text =
+        `${machineName(s.machine)} ${s.machine} ${s.type} ${typeName(s.type)} ${SYNONYMS[s.type] ?? ""} ${soundFile(s)}`.toLowerCase();
+      if (words.every((w) => text.includes(w))) {
+        out.push(s);
+        if (out.length >= limit) return out;
+      }
+    }
+  return out;
+}
+
+/** The first variant of every sound type: what "Load as tracks" and "Add kit" use. */
+export function kitDefaults(kit: OnlineKit): OnlineSound[] {
+  return kitSoundList(kit).filter((s) => s.variant === 0);
+}
+
+/** A sound dragged from the online kits, as drag data. */
+export const ONLINE_MIME = "application/x-rebeat-online";

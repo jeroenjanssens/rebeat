@@ -6,17 +6,12 @@ import { InlineEdit } from "../../components/InlineEdit";
 import { PeaksCanvas } from "../../components/PeaksCanvas";
 import { useSamplesVersion } from "../../components/useSamplesVersion";
 import { getBuffer, samplePeaks } from "../../engine/samples";
-import {
-  filesFromDrop,
-  importFiles,
-  isBuiltIn,
-  sampleName,
-  useLibrary,
-} from "../../library/library";
+import { droppedSamples, isSampleDrag } from "../../library/drop";
+import { isBuiltIn, sampleName, useLibrary } from "../../library/library";
 import { MIX_PARAMS, SOUND_PARAMS, type ParamDef } from "../../model/params";
 import type { Track } from "../../model/types";
 import { useSelectedTrack, useStore } from "../../state/store";
-import { SAMPLE_MIME, replaceSound } from "../../state/trackActions";
+import { replaceSound } from "../../state/trackActions";
 import { EffectsSection } from "./EffectsSection";
 import { InstrumentSection } from "./InstrumentSection";
 import { MidiSection } from "./MidiSection";
@@ -125,8 +120,7 @@ function SampleSection({ track }: { track: Track }) {
         style={{ borderColor: hover ? "var(--accent)" : "var(--border)" }}
         data-hint="inspector.sample"
         onDragOver={(e) => {
-          const t = [...e.dataTransfer.types];
-          if (!t.includes(SAMPLE_MIME) && !t.includes("Files")) return;
+          if (!isSampleDrag(e.dataTransfer)) return;
           e.preventDefault();
           setHover(true);
         }}
@@ -134,8 +128,7 @@ function SampleSection({ track }: { track: Track }) {
         onDrop={async (e) => {
           e.preventDefault();
           setHover(false);
-          let sid = e.dataTransfer.getData(SAMPLE_MIME);
-          if (!sid) sid = (await importFiles(await filesFromDrop(e.dataTransfer)))[0];
+          const [sid] = (await droppedSamples(e.dataTransfer)).ids;
           if (sid) replaceSound(track.id, sid);
         }}
         title="Drop a sample here to replace the sound"

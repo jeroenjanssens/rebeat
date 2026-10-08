@@ -28,7 +28,8 @@ if (import.meta.env.DEV || import.meta.env.MODE === "test") {
     import("./app/commands"),
     import("./app/shell"),
     import("./engine/perf"),
-  ]).then(([engine, transport, store, hints, commands, shell, perf]) => {
+    import("./library/library"),
+  ]).then(([engine, transport, store, hints, commands, shell, perf, library]) => {
     (window as unknown as Record<string, unknown>).__rebeat = {
       engine,
       transport,
@@ -37,6 +38,7 @@ if (import.meta.env.DEV || import.meta.env.MODE === "test") {
       commands: commands.allCommands,
       dock: shell.dock,
       perf: perf.usePerf,
+      library: library.useLibrary,
     };
   });
 }

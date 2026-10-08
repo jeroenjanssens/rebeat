@@ -34,7 +34,15 @@ A dot next to a sample means it's used in the open project. Selecting a track sh
 
 The **909 kit** and **808 kit** are built in (they're synthesized, so there are no licensing questions). **Load kit as tracks** adds all their sounds at once; you can also drag the kit's title onto the drum machine.
 
-**Online kits** browses more than 70 classic drum machines from the community _tidal-drum-machines_ collection. Click a machine to see its sounds (click one to download and hear it), or **Load as tracks**. Downloaded sounds are added to your library under Kits. Check the sounds' licensing before you publish music made with them.
+**Online kits** browses more than 70 classic drum machines from the community _tidal-drum-machines_ collection. Click a machine to see its sounds and click a sound to hear it: listening doesn't add anything to your library. To use sounds:
+
+- **+** next to a sound adds it to your library (folder Kits/<machine>).
+- **Drag a sound onto a track** to replace that track's sound (Alt+drop adds it as a new track; drop it below the tracks for a new one). It's added to your library at the same time.
+- The folder button next to a machine adds one of each of its sound types to your library; the **Load as tracks** button (the list with a plus) also makes a track for each.
+
+The search box finds machines _and_ sounds: type "hat", "808 snare" or "cowbell" to list matching sounds across all machines (by sound type or file name), handy for comparing the same sound on different machines.
+
+Check the sounds' licensing before you publish music made with them.
 
 ## Recording into the library
 

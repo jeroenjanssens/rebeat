@@ -423,93 +423,102 @@ export function LibraryPanel() {
             <ChevronDown size={12} className="shrink-0 text-dim" />
           </button>
         )}
-        <label
-          className="field order-first min-w-[140px] flex-1 basis-full @[420px]:order-none @[420px]:basis-0"
-          data-hint="library.search"
-        >
-          <Search size={12} className="shrink-0 text-dim" />
-          <input
-            className="min-w-0 flex-1 bg-transparent text-[12px] outline-none placeholder:text-faint"
-            placeholder="Search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            data-testid="library-search"
-          />
-        </label>
-        <button
-          ref={filterRef}
-          className="tool-btn shrink-0"
-          data-active={type !== "all" || !!tag || length !== "any"}
-          title="Filter"
-          data-hint="library.filter"
-          onClick={() =>
-            dropdown(filterRef.current!, [
-              ...(["all", "loops", "oneshots"] as TypeFilter[]).map((t) => ({
-                label:
-                  t === "all" ? "All types" : t === "loops" ? "Loops (with tempo)" : "One-shots",
-                checked: type === t,
-                onSelect: () => setType(t),
-              })),
-              { separator: true },
-              ...(["any", "short", "medium", "long"] as Length[]).map((l) => ({
-                label:
-                  l === "any"
-                    ? "Any length"
-                    : l === "short"
-                      ? "Short (< 1 s)"
-                      : l === "medium"
-                        ? "Medium (1–5 s)"
-                        : "Long (> 5 s)",
-                checked: length === l,
-                onSelect: () => setLength(l),
-              })),
-              { separator: true },
-              { label: "Any tag", checked: !tag, onSelect: () => setTag(null) },
-              ...tags.map((t) => ({
-                label: `#${t}`,
-                checked: tag === t,
-                onSelect: () => setTag(t),
-              })),
-            ])
-          }
-        >
-          <span className="label !text-inherit">Filter</span>
-        </button>
-        <button
-          ref={sortRef}
-          className="tool-btn shrink-0"
-          title="Sort"
-          data-hint="library.sort"
-          onClick={() =>
-            dropdown(sortRef.current!, [
-              ...(["name", "duration", "recent"] as SortBy[]).map((by) => ({
-                label: by === "recent" ? "Date added" : by === "name" ? "Name" : "Duration",
-                checked: sort.by === by,
-                onSelect: () => setSort({ by, dir: NATURAL_DIR[by] }),
-              })),
-              { separator: true },
-              ...(["asc", "desc"] as const).map((dir) => ({
-                label:
-                  sort.by === "recent"
-                    ? dir === "asc"
-                      ? "Oldest first"
-                      : "Newest first"
-                    : sort.by === "name"
-                      ? dir === "asc"
-                        ? "A → Z"
-                        : "Z → A"
-                      : dir === "asc"
-                        ? "Shortest first"
-                        : "Longest first",
-                checked: sort.dir === dir,
-                onSelect: () => setSort({ ...sort, dir }),
-              })),
-            ])
-          }
-          data-testid="library-sort"
-        >
-          <span className="label !text-inherit">{sortLabel(sort)}</span>
-        </button>
+        {/* online kits have their own search */}
+        {loc.kind !== "online" && (
+          <>
+            <label
+              className="field order-first min-w-[140px] flex-1 basis-full @[420px]:order-none @[420px]:basis-0"
+              data-hint="library.search"
+            >
+              <Search size={12} className="shrink-0 text-dim" />
+              <input
+                className="min-w-0 flex-1 bg-transparent text-[12px] outline-none placeholder:text-faint"
+                placeholder="Search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                data-testid="library-search"
+              />
+            </label>
+            <button
+              ref={filterRef}
+              className="tool-btn shrink-0"
+              data-active={type !== "all" || !!tag || length !== "any"}
+              title="Filter"
+              data-hint="library.filter"
+              onClick={() =>
+                dropdown(filterRef.current!, [
+                  ...(["all", "loops", "oneshots"] as TypeFilter[]).map((t) => ({
+                    label:
+                      t === "all"
+                        ? "All types"
+                        : t === "loops"
+                          ? "Loops (with tempo)"
+                          : "One-shots",
+                    checked: type === t,
+                    onSelect: () => setType(t),
+                  })),
+                  { separator: true },
+                  ...(["any", "short", "medium", "long"] as Length[]).map((l) => ({
+                    label:
+                      l === "any"
+                        ? "Any length"
+                        : l === "short"
+                          ? "Short (< 1 s)"
+                          : l === "medium"
+                            ? "Medium (1–5 s)"
+                            : "Long (> 5 s)",
+                    checked: length === l,
+                    onSelect: () => setLength(l),
+                  })),
+                  { separator: true },
+                  { label: "Any tag", checked: !tag, onSelect: () => setTag(null) },
+                  ...tags.map((t) => ({
+                    label: `#${t}`,
+                    checked: tag === t,
+                    onSelect: () => setTag(t),
+                  })),
+                ])
+              }
+            >
+              <span className="label !text-inherit">Filter</span>
+            </button>
+            <button
+              ref={sortRef}
+              className="tool-btn shrink-0"
+              title="Sort"
+              data-hint="library.sort"
+              onClick={() =>
+                dropdown(sortRef.current!, [
+                  ...(["name", "duration", "recent"] as SortBy[]).map((by) => ({
+                    label: by === "recent" ? "Date added" : by === "name" ? "Name" : "Duration",
+                    checked: sort.by === by,
+                    onSelect: () => setSort({ by, dir: NATURAL_DIR[by] }),
+                  })),
+                  { separator: true },
+                  ...(["asc", "desc"] as const).map((dir) => ({
+                    label:
+                      sort.by === "recent"
+                        ? dir === "asc"
+                          ? "Oldest first"
+                          : "Newest first"
+                        : sort.by === "name"
+                          ? dir === "asc"
+                            ? "A → Z"
+                            : "Z → A"
+                          : dir === "asc"
+                            ? "Shortest first"
+                            : "Longest first",
+                    checked: sort.dir === dir,
+                    onSelect: () => setSort({ ...sort, dir }),
+                  })),
+                ])
+              }
+              data-testid="library-sort"
+            >
+              <span className="label !text-inherit">{sortLabel(sort)}</span>
+            </button>
+          </>
+        )}
         <button
           className="tool-btn shrink-0"
           title="Import files (or drop files, folders and zips here)"

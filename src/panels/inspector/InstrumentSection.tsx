@@ -7,11 +7,11 @@ import {
   defaultInstrument,
   instrumentName,
 } from "../../engine/instruments";
-import { filesFromDrop, importFiles, loadSample, sampleName } from "../../library/library";
+import { droppedSamples } from "../../library/drop";
+import { loadSample, sampleName } from "../../library/library";
 import { noteName } from "../../model/notes";
 import type { Arpeggiator, InstrumentSource, StepSize, Track } from "../../model/types";
 import { useStore } from "../../state/store";
-import { SAMPLE_MIME } from "../../state/trackActions";
 import { Section } from "./InspectorPanel";
 
 const ARP_RATES: StepSize[] = ["1/4", "1/8", "1/8T", "1/16", "1/16T", "1/32"];
@@ -154,8 +154,7 @@ export function InstrumentSection({ track }: { track: Track }) {
             onDrop={async (e) => {
               e.preventDefault();
               setHover(false);
-              let id = e.dataTransfer.getData(SAMPLE_MIME);
-              if (!id) id = (await importFiles(await filesFromDrop(e.dataTransfer)))[0];
+              const [id] = (await droppedSamples(e.dataTransfer)).ids;
               if (!id) return;
               await loadSample(id);
               setSource({ ...src, sampleId: id });

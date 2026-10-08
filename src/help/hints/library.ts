@@ -90,23 +90,34 @@ const hints: Hints = {
   // ─── Online kits ─────────────────────────────────────────────────────────
 
   "library.online.search": {
-    title: "Search drum machines",
-    text: "Filter the list of online drum machines by name.",
+    title: "Search drum machines and sounds",
+    text: "Type a machine (808, Linn) or a sound (hat, snare, cowbell), or both. Matching kits come first, then every matching sound across all kits, so you can compare, say, hi-hats from different machines.",
     guide: "library-kits",
   },
   "library.online.machine": {
     title: "Drum machine",
-    text: "Click to expand and see the individual sounds of this drum machine. Sounds are downloaded on demand.",
+    text: "Click to show or hide its sounds. Nothing is downloaded until you listen to or add a sound.",
+    guide: "library-kits",
+  },
+  "library.online.addkit": {
+    title: "Add the kit to the library",
+    text: "Downloads one of each sound type into your library, in the folder Kits/<machine>, without adding tracks.",
     guide: "library-kits",
   },
   "library.online.load": {
     title: "Load as tracks",
-    text: "Downloads all sounds of this drum machine and adds them as new tracks in your project.",
+    text: "Adds one of each sound type to your library and a track for each to your project.",
     guide: "library-kits",
   },
   "library.online.sound": {
-    title: "Sound preview",
-    text: "Downloads this sound and plays it so you can hear what it sounds like before loading the whole kit.",
+    title: "Online sound",
+    text: "Click to hear it; it doesn't go into your library. Drag it onto a track to use it there (it's added to the library then).",
+    keys: "Drag onto a track: replace its sound · Alt+drop: add as a new track · Drop below the tracks: new track",
+    guide: "library-kits",
+  },
+  "library.online.add": {
+    title: "Add to the library",
+    text: "Downloads this one sound into your library, in the folder Kits/<machine>.",
     guide: "library-kits",
   },
 

@@ -15,8 +15,8 @@ import { contextMenu } from "../../components/Menu";
 import { applyHeld, editSteps, setStep, toggleSelected } from "../../state/actions";
 import { stepMenu } from "./stepMenu";
 import { stepKey, useStore } from "../../state/store";
-import { KIT_MIME, SAMPLE_MIME, addSampleTracks } from "../../state/trackActions";
-import { filesFromDrop, importFiles } from "../../library/library";
+import { KIT_MIME, addSampleTracks } from "../../state/trackActions";
+import { droppedSamples } from "../../library/drop";
 import type { Geometry } from "./layout";
 import { ParamLane } from "./ParamLane";
 import { TrackRow } from "./TrackRow";
@@ -259,10 +259,8 @@ export function TrackList({ geo }: { geo: Geometry }) {
       );
       return;
     }
-    const id = e.dataTransfer.getData(SAMPLE_MIME);
-    if (id) return void addSampleTracks([id]);
-    const ids = await importFiles(await filesFromDrop(e.dataTransfer));
-    if (ids.length) addSampleTracks(ids);
+    const { ids, categories } = await droppedSamples(e.dataTransfer);
+    if (ids.length) addSampleTracks(ids, undefined, categories);
   };
 
   const selected = project.tracks.find((t) => t.id === selectedTrackId);

@@ -22,7 +22,12 @@ export function stopAudition() {
 export async function audition(id: string, opts: { sync?: boolean; bpm?: number } = {}) {
   stopAudition();
   const buffer = getBuffer(id) ?? (await loadSample(id));
-  if (!buffer) return;
+  if (buffer) auditionBuffer(buffer, opts);
+}
+
+/** Play a buffer that isn't (necessarily) in the library, e.g. an online kit preview. */
+export function auditionBuffer(buffer: AudioBuffer, opts: { sync?: boolean; bpm?: number } = {}) {
+  stopAudition();
   const ctx = Tone.getContext().rawContext as AudioContext;
   if (!out) {
     out = ctx.createGain();
