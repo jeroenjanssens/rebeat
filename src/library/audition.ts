@@ -116,7 +116,7 @@ export async function previewInstrument(c: CatalogInstrument) {
   const step = 0.125;
   const t = audioNow() + 0.05;
   const n = (pitch: number, length = 1.6) => ({ pitch, length, velocity: 0.8 });
-  const mono = c.source.source === "synth" && patchOf(c.source).mono;
+  const mono = c.source.source === "synth" && patchOf(c.source).voice.mode !== "poly";
   [root, root + 4, root + 7].forEach((p, i) => v.play([n(p)], t + i * 0.2, step));
   if (mono) v.play([n(root + 12, 4)], t + 0.6, step);
   else v.play([n(root, 6), n(root + 4, 6), n(root + 7, 6), n(root + 12, 6)], t + 0.65, step);

@@ -29,7 +29,7 @@ if (import.meta.env.DEV || import.meta.env.MODE === "test") {
     import("./app/shell"),
     import("./engine/perf"),
     import("./library/library"),
-    import("./engine/synth"),
+    import("./engine/synth/node"),
     import("./library/synths"),
   ]).then(([engine, transport, store, hints, commands, shell, perf, library, synth, synths]) => {
     (window as unknown as Record<string, unknown>).__rebeat = {
@@ -41,7 +41,7 @@ if (import.meta.env.DEV || import.meta.env.MODE === "test") {
       dock: shell.dock,
       perf: perf.usePerf,
       library: library.useLibrary,
-      patchSynth: synth.patchSynth,
+      renderPatch: synth.renderPatch,
       synths: synths.FACTORY_SYNTHS,
     };
   });

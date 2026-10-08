@@ -5,8 +5,8 @@
 import * as Tone from "tone";
 import type { Smplr } from "smplr";
 import { FACTORY_SYNTHS, factorySynth } from "../library/synths";
-import { sanitizePatch, withKnobs, type SynthPatch } from "../model/synth";
-import { patchSynth } from "./synth";
+import { sanitizePatch, upgradePatch, withKnobs, type SynthPatch } from "../model/synth";
+import { workletSynth } from "./synth/node";
 import { markBusy, markDownloaded } from "../library/downloads";
 import { CATALOG } from "../library/instruments";
 import { toUnit } from "../model/params";
@@ -20,7 +20,9 @@ export const SYNTH_PRESETS = FACTORY_SYNTHS;
 
 /** The patch a synth source plays: its own, or its factory synth's. */
 export function patchOf(src: InstrumentSource): SynthPatch {
-  return src.patch ?? factorySynth(src.preset)?.patch ?? FACTORY_SYNTHS[0].patch;
+  // patches saved before version 2 are upgraded as they're read
+  if (src.patch) return upgradePatch(src.patch);
+  return factorySynth(src.preset)?.patch ?? FACTORY_SYNTHS[0].patch;
 }
 
 /** Sampled instruments from the catalog (D78), for pickers. */
@@ -68,14 +70,15 @@ function envelope(track: Track) {
   };
 }
 
-/** A synth playing its patch, with the track's moved SOUND knobs on top (D79). */
+/** A synth playing its patch (D83), with the track's moved SOUND knobs on top. */
 function synthVoice(track: Track, src: InstrumentSource, dest: Tone.Gain): InstrumentVoice {
   const effective = (t: Track) => sanitizePatch(withKnobs(patchOf(t.instrument ?? src), t.params));
-  const synth = patchSynth(dest, effective(track));
+  const synth = workletSynth(dest);
+  synth.setPatch(effective(track), 120);
   return {
     // one voice for every patch: switching sounds doesn't rebuild the graph
     key: "synth",
-    state: () => "ready",
+    state: () => (synth.ready() ? "ready" : "loading"),
     play: (notes, time, step) => synth.play(notes, time, step),
     hold: (pitch, velocity, time) => synth.hold(pitch, velocity, time),
     releaseAll: (time) => synth.releaseAll(time),

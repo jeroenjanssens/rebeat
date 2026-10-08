@@ -13,13 +13,13 @@ type T = {
     preset: string;
     name?: string;
     from?: string;
-    patch?: { osc1: { wave: string }; filter: { cutoff: number } };
+    patch?: { version: number; osc: { retrigger: boolean }[]; filters: { cutoff: number }[] };
   };
 };
 type W = {
   __rebeat: {
     store: { getState(): { project: { tracks: T[] } } };
-    synths: { id: string; patch: { osc1: { wave: string } } }[];
+    synths: { id: string; patch: { osc: { retrigger: boolean }[] } }[];
   };
 };
 const track = (page: Page, name: string) =>
@@ -39,23 +39,21 @@ test("shape a synth, save it to the library and use it on another track", async 
   await expect(editor).toBeVisible();
 
   // the first edit copies the factory synth onto the track
-  await editor
-    .locator('[data-hint="synth.wave"]')
-    .first()
-    .getByRole("button", { name: "Square" })
-    .click();
+  await editor.locator('[data-hint="synth.osc.retrigger"]').first().click();
   let bass = await track(page, "Bass");
   expect(bass.instrument?.preset).toBe("acid");
-  expect(bass.instrument?.patch?.osc1.wave).toBe("square");
+  expect(bass.instrument?.patch?.version).toBe(2);
+  expect(bass.instrument?.patch?.osc[0].retrigger).toBe(true);
   // the factory synth didn't change
   const factory = await page.evaluate(
-    () => (window as never as W).__rebeat.synths.find((s) => s.id === "acid")!.patch.osc1.wave,
+    () =>
+      (window as never as W).__rebeat.synths.find((s) => s.id === "acid")!.patch.osc[0].retrigger,
   );
-  expect(factory).toBe("sawtooth");
+  expect(factory).toBe(false);
   await expect(editor.getByText("edited")).toBeVisible();
 
   // a knob
-  const cutoff = editor.locator('[data-hint="synth.filter.cutoff"] svg');
+  const cutoff = editor.locator('[data-hint="synth.filters.cutoff"] svg').first();
   await cutoff.scrollIntoViewIfNeeded();
   const box = (await cutoff.boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
@@ -63,7 +61,7 @@ test("shape a synth, save it to the library and use it on another track", async 
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 - 40, { steps: 5 });
   await page.mouse.up();
   bass = await track(page, "Bass");
-  expect(bass.instrument!.patch!.filter.cutoff).toBeGreaterThan(200);
+  expect(bass.instrument!.patch!.filters[0].cutoff).toBeGreaterThan(200);
 
   // play it from the keyboard
   await editor.click({ position: { x: 5, y: 5 } });
@@ -90,7 +88,7 @@ test("shape a synth, save it to the library and use it on another track", async 
   await mine.dragTo(row(page, "CHORDS"));
   await expect.poll(async () => (await track(page, "Chords")).instrument?.name).toBe("My Acid");
   const chords = await track(page, "Chords");
-  expect(chords.instrument?.patch?.osc1.wave).toBe("square");
+  expect(chords.instrument?.patch?.osc[0].retrigger).toBe(true);
   // the sound comes with the effects it was saved with
   expect(chords.effects.map((e) => e.name)).toEqual(bass.effects.map((e) => e.name));
 
@@ -113,7 +111,10 @@ test("revert brings the factory synth back", async ({ page }) => {
   await row(page, "BASS").locator('[data-hint="dm.track.name"]').click({ button: "right" });
   await page.locator(".menu").getByRole("button", { name: "Edit synth…" }).click();
   const editor = page.getByTestId("synth-editor");
-  await editor.locator('[data-hint="synth.mono"]').getByRole("button", { name: "Poly" }).click();
+  await editor
+    .locator('[data-hint="synth.voice.mode"]')
+    .getByRole("button", { name: "Poly" })
+    .click();
   expect((await track(page, "Bass")).instrument?.patch).toBeTruthy();
   await editor.locator('[data-hint="synth.revert"]').click();
   await expect.poll(async () => (await track(page, "Bass")).instrument?.patch).toBeUndefined();

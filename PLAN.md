@@ -9,7 +9,7 @@
 
 ### 0.1 Where we are
 
-- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D82), and the build order is in §7.
+- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D83), and the build order is in §7.
 - Every phase in §7 is built, tested (unit + Playwright e2e) and pushed. The mockup (Phase M) became the app: its components, model and store were kept and extended; `src/mock/` was replaced by the real engine.
 - The desktop app (Phase 10) runs and packages locally (unsigned); signing/notarization need certificates (see `.github/workflows/desktop.yml`).
 
@@ -35,7 +35,7 @@ src/
                          noteOps (piano roll), timing (polyrhythm), tempo (tap), midiFile (SMF export)
   state/                 store (project + undo + UI), settings (persisted), actions (steps, function buttons),
                          input (pads, step entry, live recording, cursor), trackActions, effectActions, clipActions
-  engine/                context (native AudioContext + Tone), engine (scoped graph: channels, voices, clips,
+  engine/                context (native AudioContext + Tone), engine (scoped graph: channels, voices, clips, synth/ (AudioWorklet synth: core DSP, worklet, node),
                          metering, scratch), channel (strips, buses), effects (factory + chains), instruments (voices:
                          synth patches, sampler with zones, smplr, SoundFonts), synth (the patch voice), transport (lookahead scheduler, playPageStep), ticker (worker),
                          kits (offline-synthesized 808/909 + vox), samples (buffers, peaks), metronome, looper,
@@ -866,6 +866,7 @@ Format: **Dn — Question.** Default ✅, alternatives.
 - **D80 — Factory synths.** 37 patches (`library/synths.ts`) in the style of well-known songs and synths, grouped Bass/Leads/Pads/Keys/Plucks & stabs/FX; ids are stable (the first ten were the old presets). Loudness is balanced to about −22 dB RMS for a test phrase; an e2e test renders each one and checks it's audible, doesn't clip and stays within 6 dB of the others. Alt: import third-party patch banks (no portable format).
 - **D81 — Synth editor and your instruments.** A panel edits the selected track's synth from one table of patch knobs (`synth-editor/patchParams.ts`, which also feeds the explain-mode hints). Editing a factory synth copies its patch onto the track (`instrument.patch`); built-ins never change, revert drops the copy. **Save to library** (editor, or any instrument track's menu) stores instrument + SOUND knobs + effects in the `instruments` table (DB v3) as Your instruments; dropping one applies all of it (replacing the track's effects, undoable). Tracks keep a full copy, so projects stay self-contained; `from` links them back for Used in project. Alt: an expandable Inspector section; references instead of copies.
 - **D82 — Your own instruments.** `.sf2` files are stored as blobs (`sf2:<sha256>`) and become one of Your instruments per instrument inside (source `sf2`, played by smplr's Soundfont2 with the `soundfont2` parser); `.rebeat` files carry them under `soundfonts/`. Samplers can have zones (note → sample; nearest note plays): made from a library folder (notes read from file names, else a semitone apart from C3) or from pitched strudel.json entries (note maps) in link sources. Alt: an SFZ importer.
+- **D83 — The AudioWorklet synth.** One worklet processor per synth track (`engine/synth/worklet.ts`), loaded into each context (live and offline) via Vite's `?worker&url`; the DSP is a pure TypeScript core (`engine/synth/core.ts`, unit-tested in Node): polyBLEP oscillators with shape morph, unison and stereo spread, hard sync, ring and phase modulation, drift; a ZDF ladder with tanh in the feedback loop (self-oscillates) and a ZDF SVF; AHDSR envelopes with curves and looping; LFOs with S&H/smooth random, sync, delay; an 8-slot mod matrix at control rate (16 samples); voice stealing that continues from the current level; mono/legato with a note stack and glide. Patch version 2 (`model/synth.ts`); version 1 patches are upgraded on read (`upgradeV1`), the factory synths too until they're voiced again. Gotcha: `structuredClone` doesn't exist in AudioWorklets (and a throwing module still resolves `addModule`): modules the worklet imports clone via JSON. Alt: native Web Audio nodes (no sync, ladder or per-sample modulation).
 - **D35 — Build order.** ✅ The phases in §7, starting with the mockup (Phase M), each ending with something you can play with.
 
 ---
