@@ -23,7 +23,7 @@ const hints: Hints = {
   },
   "library.sort": {
     title: "Sort",
-    text: "Sort the list by newest first, name or duration.",
+    text: "Sort the list by name, duration or date added, in either direction. The button shows the current order; it applies everywhere, built-in kits included.",
     guide: "library-finding-sounds",
   },
   "library.import.files": {

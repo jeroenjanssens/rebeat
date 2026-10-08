@@ -2,6 +2,7 @@
  * The sample library (shared by all projects): import, organize, and decode samples on demand.
  * Samples are content-addressed (SHA-256), so importing the same file twice is detected.
  */
+import { DEFAULT_SORT, type SampleSort } from "./sort";
 import { unzipSync } from "fflate";
 import { create } from "zustand";
 import { audioContext } from "../engine/context";
@@ -37,6 +38,8 @@ interface LibraryState {
   loaded: boolean;
   selectedId: string | null;
   importing: { done: number; total: number } | null;
+  /** The library list's sort, kept for the session. */
+  sort: SampleSort;
   set: (p: Partial<Omit<LibraryState, "set">>) => void;
 }
 
@@ -45,6 +48,7 @@ export const useLibrary = create<LibraryState>()((set) => ({
   loaded: false,
   selectedId: null,
   importing: null,
+  sort: DEFAULT_SORT,
   set: (p) => set(p),
 }));
 

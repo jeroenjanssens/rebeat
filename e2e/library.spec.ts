@@ -89,3 +89,52 @@ test("used in project lists the built-in sounds the tracks play", async ({ page 
   // the bass and chords are synths
   await expect(page.getByTestId("used-synths")).toContainText("2 instrument tracks");
 });
+
+test("sorts by name and duration in both directions, also in a kit", async ({ page }) => {
+  await importSamples(
+    page,
+    fixtureFiles({
+      "b medium.wav": wav(oneShot(80, 1)),
+      "a long.wav": wav(oneShot(70, 2)),
+      "c short.wav": wav(oneShot(90, 0.2)),
+    }),
+  );
+  const list = page.getByTestId("library-list");
+  await expect(list.locator("[data-sample]")).toHaveCount(3);
+  const names = () =>
+    list
+      .locator("[data-sample]")
+      .evaluateAll((els) => els.map((e) => e.textContent!.trim().split(/\s/)[0]));
+  const pick = async (label: string) => {
+    await page.getByTestId("library-sort").click();
+    await page.locator(".menu").getByRole("button", { name: label }).click();
+  };
+  await pick("Name");
+  await expect(page.getByTestId("library-sort")).toHaveText("Name ↑");
+  expect(await names()).toEqual(["a", "b", "c"]);
+  await pick("Z → A");
+  expect(await names()).toEqual(["c", "b", "a"]);
+  await pick("Duration");
+  await expect(page.getByTestId("library-sort")).toHaveText("Duration ↑");
+  expect(await names()).toEqual(["c", "b", "a"]);
+  await pick("Longest first");
+  expect(await names()).toEqual(["a", "b", "c"]);
+
+  // a built-in kit, by name
+  await page.getByTestId("library").getByRole("button", { name: "All samples" }).click();
+  await page.locator(".menu").getByRole("button", { name: "909 kit" }).click();
+  await pick("Name");
+  const kit = await list
+    .locator("[data-sample]")
+    .evaluateAll((els) => els.map((e) => e.getAttribute("data-sample")));
+  const sorted = await list
+    .locator("[data-sample]")
+    .evaluateAll((els) => els.map((e) => e.querySelector(".truncate")?.textContent ?? ""));
+  expect(kit).toHaveLength(8);
+  expect(sorted.every((n) => /909/.test(n))).toBe(true);
+  expect(
+    [...sorted].sort((a, b) =>
+      a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }),
+    ),
+  ).toEqual(sorted);
+});

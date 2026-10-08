@@ -32,6 +32,13 @@ import { platform } from "../../platform";
 import { useSettings } from "../../state/settings";
 import { useSelectedTrack, useStore } from "../../state/store";
 import { KIT_MIME, SAMPLE_MIME, addSampleTracks, replaceSound } from "../../state/trackActions";
+import {
+  NATURAL_DIR,
+  sortLabel,
+  sortSamples,
+  type SampleSort,
+  type SortBy,
+} from "../../library/sort";
 import { OnlineKits } from "./OnlineKits";
 import { RecorderStrip } from "./RecorderStrip";
 
@@ -43,7 +50,6 @@ type Location =
   | { kind: "kit"; kit: string }
   | { kind: "online" };
 
-type Sort = "name" | "recent" | "duration";
 type TypeFilter = "all" | "loops" | "oneshots";
 type Length = "any" | "short" | "medium" | "long";
 
@@ -112,7 +118,8 @@ export function LibraryPanel() {
   const previewVolume = useSettings((s) => s.previewVolume);
   const [loc, setLoc] = useState<Location>({ kind: "all" });
   const [query, setQuery] = useState("");
-  const [sort, setSort] = useState<Sort>("recent");
+  const sort = useLibrary((s) => s.sort);
+  const setSort = (next: SampleSort) => useLibrary.getState().set({ sort: next });
   const [type, setType] = useState<TypeFilter>("all");
   const [tag, setTag] = useState<string | null>(null);
   const [length, setLength] = useState<Length>("any");
@@ -195,12 +202,7 @@ export function LibraryPanel() {
     if (length === "short") list = list.filter((i) => i.duration < 1);
     if (length === "medium") list = list.filter((i) => i.duration >= 1 && i.duration <= 5);
     if (length === "long") list = list.filter((i) => i.duration > 5);
-    const by: Record<Sort, (a: Item, b: Item) => number> = {
-      name: (a, b) => a.name.localeCompare(b.name),
-      recent: (a, b) => b.createdAt - a.createdAt,
-      duration: (a, b) => a.duration - b.duration,
-    };
-    return loc.kind === "kit" ? list : list.sort(by[sort]);
+    return sortSamples(list, sort);
   }, [loc, samples, query, type, tag, length, sort, usedIds]);
 
   // selecting a track shows its sample in the library
@@ -479,17 +481,34 @@ export function LibraryPanel() {
           title="Sort"
           data-hint="library.sort"
           onClick={() =>
-            dropdown(
-              sortRef.current!,
-              (["recent", "name", "duration"] as Sort[]).map((s) => ({
-                label: s === "recent" ? "Newest first" : s === "name" ? "Name" : "Duration",
-                checked: sort === s,
-                onSelect: () => setSort(s),
+            dropdown(sortRef.current!, [
+              ...(["name", "duration", "recent"] as SortBy[]).map((by) => ({
+                label: by === "recent" ? "Date added" : by === "name" ? "Name" : "Duration",
+                checked: sort.by === by,
+                onSelect: () => setSort({ by, dir: NATURAL_DIR[by] }),
               })),
-            )
+              { separator: true },
+              ...(["asc", "desc"] as const).map((dir) => ({
+                label:
+                  sort.by === "recent"
+                    ? dir === "asc"
+                      ? "Oldest first"
+                      : "Newest first"
+                    : sort.by === "name"
+                      ? dir === "asc"
+                        ? "A → Z"
+                        : "Z → A"
+                      : dir === "asc"
+                        ? "Shortest first"
+                        : "Longest first",
+                checked: sort.dir === dir,
+                onSelect: () => setSort({ ...sort, dir }),
+              })),
+            ])
           }
+          data-testid="library-sort"
         >
-          <span className="label !text-inherit">Sort</span>
+          <span className="label !text-inherit">{sortLabel(sort)}</span>
         </button>
         <button
           className="tool-btn shrink-0"
