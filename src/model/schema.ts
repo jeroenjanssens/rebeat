@@ -160,6 +160,7 @@ export function projectSampleIds(p: Project): string[] {
     if (t.sampleId) ids.add(t.sampleId);
     for (const l of t.layers ?? []) ids.add(l.sampleId);
     if (t.instrument?.sampleId) ids.add(t.instrument.sampleId);
+    for (const z of t.instrument?.zones ?? []) ids.add(z.sampleId);
   }
   return [...ids];
 }

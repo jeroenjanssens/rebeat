@@ -6,9 +6,13 @@
 import { create } from "zustand";
 import { defaultInstrument } from "../engine/instruments";
 import { uid } from "../model/id";
-import type { Track } from "../model/types";
+import { SOUND_PARAMS, defaultParams } from "../model/params";
+import { prefixed } from "../model/project";
+import type { InstrumentSource, Track } from "../model/types";
 import { db, type InstrumentRecord } from "../storage/db";
 import { COLLECTIONS, CATALOG, type CatalogInstrument } from "./instruments";
+import { sha256 } from "./library";
+import { zonesFor } from "./sources";
 
 export const useUserInstruments = create<{ list: InstrumentRecord[] }>()(() => ({ list: [] }));
 
@@ -25,7 +29,13 @@ export function userEntry(r: InstrumentRecord): CatalogInstrument {
     name: r.name,
     family: "Your instruments",
     group:
-      src.source === "synth" ? "Synths" : src.source === "sampler" ? "Samplers" : "Instruments",
+      src.source === "synth"
+        ? "Synths"
+        : src.source === "sf2"
+          ? "SoundFonts"
+          : src.source === "sampler"
+            ? "Samplers"
+            : "Instruments",
     source: { ...src, name: r.name, from: `user:${r.id}` },
     streamed: src.source === "smplr",
     collection: COLLECTIONS.user,
@@ -75,4 +85,60 @@ export async function renameInstrument(id: string, name: string) {
 export async function deleteInstrument(id: string) {
   await db.instruments.delete(id);
   await loadUserInstruments();
+}
+
+// ---------- your own multi-sample instruments and SoundFonts (D82) ----------
+
+const record = (name: string, instrument: InstrumentSource): InstrumentRecord => ({
+  id: uid("ins"),
+  name,
+  createdAt: Date.now(),
+  sound: {
+    instrument: { ...instrument, name },
+    params: prefixed("sound", defaultParams(SOUND_PARAMS.instrument)),
+    effects: [],
+  },
+});
+
+/** A SoundFont becomes one of your instruments per instrument inside it. Returns how many. */
+export async function importSoundfont(file: File): Promise<number> {
+  const data = new Uint8Array(await file.arrayBuffer());
+  const { SoundFont2 } = await import("soundfont2");
+  const names = [...new Set(new SoundFont2(data).instruments.map((i) => i.header.name))].filter(
+    (n) => n && n !== "EOI",
+  );
+  if (!names.length) throw new Error(`${file.name} has no instruments`);
+  const id = `sf2:${await sha256(data.buffer as ArrayBuffer)}`;
+  if (!(await db.blobs.get(id))) await db.blobs.put({ id, blob: new Blob([data]) });
+  const base = file.name.replace(/\.sf2$/i, "");
+  await db.instruments.bulkPut(
+    names.map((n) =>
+      record(names.length > 1 ? `${base} · ${n}` : base, {
+        source: "sf2",
+        preset: n,
+        sampleId: id,
+      }),
+    ),
+  );
+  await loadUserInstruments();
+  return names.length;
+}
+
+/** A multi-sample instrument from samples (each at the note in its name). */
+export async function makeMultiSample(
+  name: string,
+  samples: { id: string; name: string; note?: number }[],
+): Promise<CatalogInstrument> {
+  if (!samples.length) throw new Error("No samples");
+  // notes given (a pitched strudel.json), or read from the names
+  const zones = samples.every((s) => s.note !== undefined)
+    ? samples.map((s) => ({ note: s.note!, sampleId: s.id }))
+    : zonesFor(samples.map((s) => s.name)).map((z) => ({
+        note: z.note,
+        sampleId: samples[z.index].id,
+      }));
+  const rec = record(name, { source: "sampler", preset: "sampler", zones });
+  await db.instruments.put(rec);
+  await loadUserInstruments();
+  return userEntry(rec);
 }

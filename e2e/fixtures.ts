@@ -53,3 +53,72 @@ export function fixtureFiles(files: Record<string, Buffer>): string[] {
     return p;
   });
 }
+
+/** A minimal SoundFont 2 file: one sine sample, one instrument and one preset with that name. */
+export function soundfont(name = "Test Sine", rate = 22050): Buffer {
+  const str = (s: string, n: number) => {
+    const b = Buffer.alloc(n);
+    b.write(s.slice(0, n - 1), "latin1");
+    return b;
+  };
+  const u16 = (v: number) => {
+    const b = Buffer.alloc(2);
+    b.writeUInt16LE(v);
+    return b;
+  };
+  const u32 = (v: number) => {
+    const b = Buffer.alloc(4);
+    b.writeUInt32LE(v);
+    return b;
+  };
+  const chunk = (id: string, data: Buffer) => {
+    const pad = data.length % 2 ? Buffer.alloc(1) : Buffer.alloc(0);
+    return Buffer.concat([Buffer.from(id, "latin1"), u32(data.length), data, pad]);
+  };
+  const list = (type: string, ...chunks: Buffer[]) =>
+    chunk("LIST", Buffer.concat([Buffer.from(type, "latin1"), ...chunks]));
+
+  // a second of a 440 Hz sine, then the 46 zero samples SoundFont wants after each sample
+  const n = rate;
+  const pcm = Buffer.alloc((n + 46) * 2);
+  for (let i = 0; i < n; i++)
+    pcm.writeInt16LE(Math.round(Math.sin((2 * Math.PI * 440 * i) / rate) * 20000), i * 2);
+
+  const info = list(
+    "INFO",
+    chunk("ifil", Buffer.concat([u16(2), u16(1)])),
+    chunk("isng", str("EMU8000", 8)),
+    chunk("INAM", str("Test", 6)),
+  );
+  const sdta = list("sdta", chunk("smpl", pcm));
+  const gen = (oper: number, amount: number) => Buffer.concat([u16(oper), u16(amount)]);
+  const preset = (n: string, bag: number) =>
+    Buffer.concat([str(n, 20), u16(0), u16(0), u16(bag), u32(0), u32(0), u32(0)]);
+  const inst = (n: string, bag: number) => Buffer.concat([str(n, 20), u16(bag)]);
+  const shdr = (n: string, start: number, end: number, type: number) =>
+    Buffer.concat([
+      str(n, 20),
+      u32(start),
+      u32(end),
+      u32(end ? start + 8 : 0),
+      u32(Math.max(0, end - 8)),
+      u32(rate),
+      Buffer.from([69, 0]),
+      u16(0),
+      u16(type),
+    ]);
+  const pdta = list(
+    "pdta",
+    chunk("phdr", Buffer.concat([preset(name, 0), preset("EOP", 1)])),
+    chunk("pbag", Buffer.concat([u16(0), u16(0), u16(1), u16(0)])),
+    chunk("pmod", Buffer.alloc(10)),
+    chunk("pgen", Buffer.concat([gen(41, 0), gen(0, 0)])),
+    chunk("inst", Buffer.concat([inst(name, 0), inst("EOI", 1)])),
+    chunk("ibag", Buffer.concat([u16(0), u16(0), u16(1), u16(0)])),
+    chunk("imod", Buffer.alloc(10)),
+    chunk("igen", Buffer.concat([gen(53, 0), gen(0, 0)])),
+    chunk("shdr", Buffer.concat([shdr("Sine", 0, n, 1), shdr("EOS", 0, 0, 0)])),
+  );
+  const body = Buffer.concat([Buffer.from("sfbk", "latin1"), info, sdta, pdta]);
+  return Buffer.concat([Buffer.from("RIFF", "latin1"), u32(body.length), body]);
+}

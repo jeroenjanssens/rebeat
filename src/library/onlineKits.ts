@@ -14,6 +14,8 @@ export interface OnlineKit {
   machine: string;
   /** Sources you added: the link they came from (to remove them again). */
   source?: string;
+  /** Pitched entries of a strudel.json (note → file): multi-sample instruments (D82). */
+  instruments?: Record<string, { note: number; url: string }[]>;
   /** Sound type (bd, sd, hh, …) → sample URLs. */
   sounds: Record<string, string[]>;
 }

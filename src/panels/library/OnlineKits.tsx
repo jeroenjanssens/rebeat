@@ -17,7 +17,8 @@ import {
   type OnlineKit,
   type OnlineSound,
 } from "../../library/onlineKits";
-import { importSounds, loadSource, previewBuffer } from "../../library/onlineImport";
+import { importPitched, importSounds, loadSource, previewBuffer } from "../../library/onlineImport";
+import { SoundIcon } from "../../components/soundIcons";
 import { useSettings } from "../../state/settings";
 import { addSampleTracks } from "../../state/trackActions";
 
@@ -213,7 +214,46 @@ export function OnlineKits() {
                 </button>
                 {kit.source && <RemoveSource src={kit.source} />}
               </div>
-              {isOpen && <div className="pb-1.5 pl-2">{sounds.map((s) => row(s, false))}</div>}
+              {isOpen && (
+                <div className="pb-1.5 pl-2">
+                  {Object.entries(kit.instruments ?? {}).map(([name, zones]) => (
+                    <div
+                      key={name}
+                      className="flex h-7 items-center gap-1.5 rounded-md px-1.5 hover:bg-surface"
+                      data-online-instrument={name}
+                      data-hint="library.online.instrument"
+                    >
+                      <span className="text-faint">
+                        <SoundIcon kind="instrument" size={11} />
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-[12px]">
+                        {name}
+                        <span className="ml-1.5 text-[10.5px] text-faint">
+                          instrument · {zones.length} samples
+                        </span>
+                      </span>
+                      <button
+                        className="tool-btn !h-6 shrink-0 border border-line !text-[10.5px]"
+                        disabled={!!busy}
+                        onClick={() =>
+                          run(`inst:${key}:${name}`, async () => {
+                            const c = await importPitched(kit, name);
+                            toast(`Added ${c.name} to Your instruments`);
+                          })
+                        }
+                        data-testid="online-add-instrument"
+                      >
+                        {busy === `inst:${key}:${name}` ? (
+                          <Loader2 size={11} className="animate-spin" />
+                        ) : (
+                          "Add instrument"
+                        )}
+                      </button>
+                    </div>
+                  ))}
+                  {sounds.map((s) => row(s, false))}
+                </div>
+              )}
             </div>
           );
         })}

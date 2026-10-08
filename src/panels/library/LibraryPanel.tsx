@@ -12,6 +12,7 @@ import {
 } from "../../library/audition";
 import { COLLECTIONS, type Collection, type Family } from "../../library/instruments";
 import { filesFromDrop, importFiles, useLibrary } from "../../library/library";
+import { importSoundfont } from "../../library/userInstruments";
 import { platform } from "../../platform";
 import { useSettings } from "../../state/settings";
 import { useSelectedTrack } from "../../state/store";
@@ -162,7 +163,17 @@ export function LibraryPanel() {
   // playing the selected instrument from the computer keyboard
   const octave = useRef(0);
 
-  const doImport = async (files: File[], folder = loc.kind === "folder" ? loc.path : "") => {
+  const doImport = async (all: File[], folder = loc.kind === "folder" ? loc.path : "") => {
+    // SoundFonts become instruments (D82); everything else is samples
+    const fonts = all.filter((f) => /\.sf2$/i.test(f.name));
+    for (const f of fonts)
+      await importSoundfont(f).then(
+        (n) => toast(`Added ${n} instrument${n > 1 ? "s" : ""} from ${f.name} to Your instruments`),
+        (e) => toast(`Couldn't read ${f.name}: ${e instanceof Error ? e.message : e}`, "error"),
+      );
+    const files = all.filter((f) => !fonts.includes(f));
+    if (fonts.length && !files.length)
+      return setLoc({ kind: "instruments", family: "Your instruments" });
     if (!files.length) return;
     const ids = await importFiles(files, folder);
     toast(
@@ -273,7 +284,9 @@ export function LibraryPanel() {
           title="Import files (or drop files, folders and zips here)"
           data-hint="library.import.files"
           onClick={async () =>
-            doImport(await platform.files.open({ accept: ["audio/*", ".zip"], multiple: true }))
+            doImport(
+              await platform.files.open({ accept: ["audio/*", ".zip", ".sf2"], multiple: true }),
+            )
           }
           data-testid="library-import"
         >

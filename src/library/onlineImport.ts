@@ -1,10 +1,13 @@
 /** Downloading online kit sounds: previews stay in memory; importing adds them to the library. */
 import { importFiles, importItems } from "./library";
+import type { CatalogInstrument } from "./instruments";
 import { machineName, soundName, type OnlineKit, type OnlineSound } from "./onlineKits";
+import { makeMultiSample } from "./userInstruments";
 import {
   groupRepoFiles,
   parseSourceUrl,
   parseStrudelJson,
+  parseStrudelMap,
   rawGithub,
   type ParsedUrl,
 } from "./sources";
@@ -78,15 +81,49 @@ async function importFile(url: string, name: string): Promise<Resolved> {
   return { kind: "files", ids };
 }
 
-const collection = (name: string, sounds: Record<string, string[]>, source: string): Resolved => ({
+const collection = (
+  name: string,
+  sounds: Record<string, string[]>,
+  source: string,
+  instruments?: Record<string, { note: number; url: string }[]>,
+): Resolved => ({
   kind: "collection",
-  kit: { machine: name, sounds, source },
+  kit: {
+    machine: name,
+    sounds,
+    source,
+    ...(instruments && Object.keys(instruments).length ? { instruments } : {}),
+  },
 });
+
+/** A strudel.json as a collection: its sounds, and its pitched entries as instruments. */
+const fromMap = (name: string, json: unknown, url: string, source: string) => {
+  parseStrudelJson(json, url); // throws when there's nothing in it
+  const { sounds, pitched } = parseStrudelMap(json, url);
+  return collection(name, sounds, source, pitched);
+};
+
+/** Add a link source's pitched instrument to Your instruments, downloading its samples. */
+export async function importPitched(kit: OnlineKit, name: string): Promise<CatalogInstrument> {
+  const zones = kit.instruments?.[name] ?? [];
+  const sounds: OnlineSound[] = zones.map((z, i) => ({
+    machine: kit.machine,
+    type: name,
+    variant: i,
+    url: z.url,
+    variants: zones.length,
+  }));
+  const ids = await importSounds(sounds);
+  const samples = zones.flatMap((z, i) =>
+    ids[i] ? [{ id: ids[i]!, name: `${name} ${i + 1}`, note: z.note }] : [],
+  );
+  return makeMultiSample(`${machineName(kit.machine)} ${name}`, samples);
+}
 
 async function fromGithub(p: Extract<ParsedUrl, { kind: "github" }>, input: string) {
   const json = rawGithub(p.owner, p.repo, p.ref, `${p.path ? `${p.path}/` : ""}strudel.json`);
   const res = await fetch(json).catch(() => null);
-  if (res?.ok) return collection(p.name, parseStrudelJson(await res.json(), json), input);
+  if (res?.ok) return fromMap(p.name, await res.json(), json, input);
   // no sample map: the repository's audio files, grouped by folder
   const tree = await get(
     `https://api.github.com/repos/${p.owner}/${p.repo}/git/trees/${p.ref}?recursive=1`,
@@ -111,7 +148,7 @@ export async function resolveLink(input: string): Promise<Resolved> {
   const res = await get(p.url);
   const type = res.headers.get("content-type") ?? "";
   if (p.kind === "json" || type.includes("json"))
-    return collection(p.name, parseStrudelJson(await res.json(), p.url), input.trim());
+    return fromMap(p.name, await res.json(), p.url, input.trim());
   if (type.startsWith("audio/") || type.includes("zip")) return importFile(p.url, p.name);
   throw new Error("That link isn't an audio file, a zip, a strudel.json or a GitHub repository");
 }

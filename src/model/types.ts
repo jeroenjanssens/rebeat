@@ -90,8 +90,8 @@ export interface Effect {
 }
 
 export interface InstrumentSource {
-  source: "synth" | "sampler" | "smplr";
-  /** Synth preset id or smplr instrument name. */
+  source: "synth" | "sampler" | "smplr" | "sf2";
+  /** Synth preset id, smplr instrument name, or the instrument inside a SoundFont. */
   preset: string;
   /** Synths: the track's own (edited) patch; without one, the factory synth `preset` (D79). */
   patch?: SynthPatch;
@@ -99,9 +99,11 @@ export interface InstrumentSource {
   name?: string;
   /** The library instrument it came from ("user:<id>"), for Used in project. */
   from?: string;
-  /** Keyboard sampler: the sample and the note it was recorded at. */
+  /** Keyboard sampler: the sample and the note it was recorded at. SoundFonts: the .sf2 file. */
   sampleId?: string;
   rootNote?: number;
+  /** Multi-sample sampler (D82): samples at their notes; each note plays from the nearest. */
+  zones?: { note: number; sampleId: string }[];
 }
 
 export interface ClipLayer {

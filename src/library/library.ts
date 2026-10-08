@@ -405,7 +405,8 @@ export function startLibrary() {
     const { project } = useStore.getState();
     if (project === last) return;
     last = project;
-    for (const id of projectSampleIds(project)) void loadSample(id);
+    // SoundFont files aren't samples: their voice reads them itself
+    for (const id of projectSampleIds(project)) if (!id.startsWith("sf2:")) void loadSample(id);
   };
   ensure();
   useStore.subscribe(ensure);

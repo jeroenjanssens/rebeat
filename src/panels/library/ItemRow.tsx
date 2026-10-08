@@ -4,13 +4,13 @@ import { toast } from "../../components/Toast";
 import { prefetchInstrument } from "../../engine/instruments";
 import { useDownloads } from "../../library/downloads";
 import type { CatalogInstrument } from "../../library/instruments";
-import { deleteInstrument, renameInstrument } from "../../library/userInstruments";
+import { deleteInstrument, makeMultiSample, renameInstrument } from "../../library/userInstruments";
 import { useSettings } from "../../state/settings";
 import { openSampleEditor } from "../../app/openers";
 import { useShell } from "../../app/shell";
 import { contextMenu, type MenuItem } from "../../components/Menu";
 import { PeaksCanvas } from "../../components/PeaksCanvas";
-import { deleteSample, updateSample, usageOf } from "../../library/library";
+import { deleteSample, updateSample, usageOf, useLibrary } from "../../library/library";
 import type { Track } from "../../model/types";
 import { useStore } from "../../state/store";
 import {
@@ -27,6 +27,18 @@ function fmtDur(s: number) {
   return s >= 60
     ? `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`
     : `${s.toFixed(s < 10 ? 2 : 1)}s`;
+}
+
+/** The samples of a folder as one multi-sample instrument (notes from their names, D82). */
+async function instrumentFromFolder(folder: string) {
+  const samples = useLibrary.getState().samples.filter((s) => s.folder === folder);
+  const name = folder.split("/").pop()!;
+  try {
+    await makeMultiSample(name, samples.slice(0, 128));
+    toast(`Made “${name}” from ${Math.min(128, samples.length)} samples (in Your instruments)`);
+  } catch (e) {
+    toast(`Couldn't make an instrument: ${e instanceof Error ? e.message : e}`, "error");
+  }
 }
 
 /** The right-click menu of a sample. */
@@ -51,6 +63,14 @@ function sampleMenu(
       onSelect: () => openSampleEditor(item.id),
     },
     { label: "Export…", onSelect: () => useShell.getState().set({ sampleExport: item.id }) },
+    ...(item.builtIn || !item.folder
+      ? []
+      : [
+          {
+            label: `Make instrument from “${item.folder.split("/").pop()}”`,
+            onSelect: () => void instrumentFromFolder(item.folder),
+          },
+        ]),
     { separator: true },
     ...(item.builtIn
       ? []

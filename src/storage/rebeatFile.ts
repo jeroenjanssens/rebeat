@@ -38,6 +38,11 @@ export async function exportRebeat(project: Project): Promise<Blob> {
     const blob = await db.blobs.get(s.id);
     if (blob) files[`samples/${s.id}`] = new Uint8Array(await blob.blob.arrayBuffer());
   }
+  // SoundFonts the tracks play (D82)
+  for (const id of ids.filter((x) => x.startsWith("sf2:"))) {
+    const blob = await db.blobs.get(id);
+    if (blob) files[`soundfonts/${id.slice(4)}`] = new Uint8Array(await blob.blob.arrayBuffer());
+  }
   const bytes = await zipAsync(files);
   return new Blob([bytes as Uint8Array<ArrayBuffer>], { type: "application/x-rebeat" });
 }
@@ -61,6 +66,12 @@ export async function importRebeat(file: Blob): Promise<Project> {
         blob: new Blob([audio as Uint8Array<ArrayBuffer>], { type: s.mime }),
       });
     });
+  }
+  for (const [path, data] of Object.entries(files)) {
+    if (!path.startsWith("soundfonts/")) continue;
+    const id = `sf2:${path.slice(11)}`;
+    if (!(await db.blobs.get(id)))
+      await db.blobs.put({ id, blob: new Blob([data as Uint8Array<ArrayBuffer>]) });
   }
   return project;
 }

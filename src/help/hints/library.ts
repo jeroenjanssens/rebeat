@@ -115,6 +115,11 @@ const hints: Hints = {
     keys: "Enter: new track · Right-click: favorites, offline, source and license",
     guide: "library",
   },
+  "library.online.instrument": {
+    title: "Pitched instrument",
+    text: "Samples of one instrument at different notes. Add instrument downloads them and makes a multi-sample instrument under Your instruments: each note plays from the nearest sample.",
+    guide: "library-instruments",
+  },
   "library.online.search": {
     title: "Search drum machines and sounds",
     text: "Type a machine (808, Linn) or a sound (hat, snare, cowbell), or both. Matching kits come first, then every matching sound across all kits, so you can compare, say, hi-hats from different machines.",

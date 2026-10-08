@@ -69,12 +69,24 @@ describe("parseStrudelJson", () => {
         "https://raw.githubusercontent.com/u/r/main/wav/kick1.wav",
         "https://raw.githubusercontent.com/u/r/main/wav/kick2.wav",
       ],
-      piano: [
-        "https://raw.githubusercontent.com/u/r/main/p/C3.mp3",
-        "https://raw.githubusercontent.com/u/r/main/p/E3.mp3",
-      ],
       abs: ["https://cdn.example.com/x.wav"],
     });
+  });
+
+  it("keeps note maps apart, as instruments", async () => {
+    const { parseStrudelMap } = await import("./sources");
+    const { sounds, pitched } = parseStrudelMap(
+      { _base: "https://e.com/", piano: { e3: "p/E3.mp3", c3: "p/C3.mp3" }, odd: { x: "a.wav" } },
+      "https://e.com/strudel.json",
+    );
+    expect(pitched).toEqual({
+      piano: [
+        { note: 48, url: "https://e.com/p/C3.mp3" },
+        { note: 52, url: "https://e.com/p/E3.mp3" },
+      ],
+    });
+    // a map that isn't by note stays a set of sounds
+    expect(sounds).toEqual({ odd: ["https://e.com/a.wav"] });
   });
 
   it("resolves against the file's own location without _base, and rejects non-maps", () => {
@@ -103,5 +115,34 @@ describe("groupRepoFiles", () => {
     expect(groupRepoFiles(["a/b/c.wav", "z.wav"], "a", url)).toEqual({
       b: ["https://raw/a/b/c.wav"],
     });
+  });
+});
+
+describe("multi-sample zones", () => {
+  it("reads notes in names", async () => {
+    const { noteNumber, noteInName } = await import("./sources");
+    expect(noteNumber("C4")).toBe(60);
+    expect(noteNumber("a0")).toBe(21);
+    expect(noteNumber("f#2")).toBe(42);
+    expect(noteNumber("Bb3")).toBe(58);
+    expect(noteNumber("Cs4")).toBe(61);
+    expect(noteNumber("hello")).toBeNull();
+    expect(noteInName("Piano C4.wav")).toBe(60);
+    expect(noteInName("piano_f#2_v3.wav")).toBe(42);
+    expect(noteInName("Harp-A3.ogg")).toBe(57);
+    expect(noteInName("Big Kick.wav")).toBeNull();
+  });
+
+  it("places samples at their notes, or a semitone apart from C3", async () => {
+    const { zonesFor } = await import("./sources");
+    expect(zonesFor(["Piano E4.wav", "Piano C4.wav"])).toEqual([
+      { index: 1, note: 60 },
+      { index: 0, note: 64 },
+    ]);
+    expect(zonesFor(["hit 2.wav", "hit 10.wav", "hit 1.wav"])).toEqual([
+      { index: 2, note: 48 },
+      { index: 0, note: 49 },
+      { index: 1, note: 50 },
+    ]);
   });
 });

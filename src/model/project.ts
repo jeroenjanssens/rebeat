@@ -103,7 +103,7 @@ export function makeTrack(
   };
 }
 
-function prefixed(prefix: string, values: Record<string, number>): Record<string, number> {
+export function prefixed(prefix: string, values: Record<string, number>): Record<string, number> {
   return Object.fromEntries(Object.entries(values).map(([k, v]) => [`${prefix}.${k}`, v]));
 }
 

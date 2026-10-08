@@ -10,6 +10,19 @@ describe(".rebeat files", () => {
     await db.blobs.clear();
   });
 
+  it("carries the SoundFonts its tracks play", async () => {
+    const p = demoProject();
+    const bass = p.tracks.find((t) => t.kind === "instrument")!;
+    bass.instrument = { source: "sf2", preset: "Strings", sampleId: "sf2:feed" };
+    await db.blobs.put({ id: "sf2:feed", blob: new Blob([new Uint8Array([9, 8, 7])]) });
+    const file = await exportRebeat(p);
+    await db.blobs.clear();
+    const back = await importRebeat(file);
+    expect(back.tracks.find((t) => t.id === bass.id)?.instrument?.sampleId).toBe("sf2:feed");
+    const blob = (await db.blobs.get("sf2:feed"))!.blob;
+    expect([...new Uint8Array(await blob.arrayBuffer())]).toEqual([9, 8, 7]);
+  });
+
   it("round-trips a project with an embedded library sample", async () => {
     const p = demoProject();
     p.tracks[0].sampleId = "abc123";

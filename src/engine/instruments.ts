@@ -13,6 +13,7 @@ import { toUnit } from "../model/params";
 import { noteName } from "../model/notes";
 import type { InstrumentSource, Note, Track } from "../model/types";
 import { getBuffer } from "./samples";
+import { db } from "../storage/db";
 
 /** The factory synths, for pickers (D80). */
 export const SYNTH_PRESETS = FACTORY_SYNTHS;
@@ -80,19 +81,33 @@ function synthVoice(track: Track, src: InstrumentSource, dest: Tone.Gain): Instr
   };
 }
 
+/** A keyboard sampler: one sample, or several at their notes (multi-sample, D82). */
 function samplerVoice(src: InstrumentSource, dest: Tone.InputNode): InstrumentVoice {
   let sampler: Tone.Sampler | null = null;
+  const zones = src.zones?.length
+    ? src.zones
+    : src.sampleId
+      ? [{ note: src.rootNote ?? 60, sampleId: src.sampleId }]
+      : [];
   const make = () => {
-    const buf = getBuffer(src.sampleId);
-    if (!buf || sampler) return;
-    sampler = new Tone.Sampler({
-      urls: { [noteName(src.rootNote ?? 60).replace("♭", "b")]: buf },
-    }).connect(dest);
+    if (sampler || !zones.length) return;
+    const urls: Record<string, AudioBuffer> = {};
+    for (const z of zones) {
+      const buf = getBuffer(z.sampleId);
+      // wait until every sample is loaded
+      if (!buf) return;
+      urls[noteName(z.note).replace("♭", "b")] = buf;
+    }
+    sampler = new Tone.Sampler({ urls }).connect(dest);
   };
+  // the library loads the samples a project uses (zones included)
   make();
   return {
-    key: `sampler:${src.sampleId}:${src.rootNote ?? 60}`,
-    state: () => (sampler ? "ready" : "loading"),
+    key: samplerKey(src),
+    state: () => {
+      make();
+      return sampler ? "ready" : "loading";
+    },
     play(notes, time, step) {
       make();
       if (!sampler) return;
@@ -110,6 +125,59 @@ function samplerVoice(src: InstrumentSource, dest: Tone.InputNode): InstrumentVo
       sampler.release = e.release;
     },
     dispose: () => sampler?.dispose(),
+  };
+}
+
+const samplerKey = (src: InstrumentSource) =>
+  src.zones?.length
+    ? `sampler:${src.zones.map((z) => `${z.note}=${z.sampleId}`).join(",")}`
+    : `sampler:${src.sampleId}:${src.rootNote ?? 60}`;
+
+/** A SoundFont (.sf2) you imported: one of its instruments, played by smplr (D82). */
+function sf2Voice(src: InstrumentSource, dest: Tone.Gain): InstrumentVoice {
+  const destination = dest.input as unknown as AudioNode;
+  let inst: (Smplr & { loadInstrument(n: string): Promise<void> }) | null = null;
+  let state: "ready" | "loading" | "error" = "loading";
+  let disposed = false;
+  let url = "";
+  void (async () => {
+    const blob = src.sampleId ? (await db.blobs.get(src.sampleId))?.blob : undefined;
+    if (!blob) throw new Error("The SoundFont file is missing");
+    const [m, { SoundFont2 }] = await Promise.all([import("smplr"), import("soundfont2")]);
+    if (disposed) return;
+    url = URL.createObjectURL(blob);
+    inst = m.Soundfont2(destination.context as AudioContext, {
+      url,
+      createSoundfont: (data) => new SoundFont2(data),
+      destination,
+      volume: 90,
+    }) as unknown as typeof inst;
+    await inst!.ready;
+    await inst!.loadInstrument(src.preset);
+  })().then(
+    () => (state = "ready"),
+    () => (state = "error"),
+  );
+  return {
+    key: `sf2:${src.sampleId}:${src.preset}`,
+    state: () => state,
+    play(notes, time, step) {
+      if (state !== "ready" || !inst) return;
+      for (const n of notes)
+        inst.start({
+          note: n.pitch,
+          velocity: Math.round(n.velocity * 127),
+          time,
+          duration: n.length * step * 0.95,
+        });
+    },
+    releaseAll: () => inst?.stop(),
+    update: () => {},
+    dispose: () => {
+      disposed = true;
+      inst?.dispose();
+      if (url) URL.revokeObjectURL(url);
+    },
   };
 }
 
@@ -196,7 +264,8 @@ export async function prefetchInstrument(preset: string): Promise<void> {
 
 export function instrumentKey(track: Track): string {
   const src = track.instrument ?? defaultInstrument(track);
-  if (src.source === "sampler") return `sampler:${src.sampleId}:${src.rootNote ?? 60}`;
+  if (src.source === "sampler") return samplerKey(src);
+  if (src.source === "sf2") return `sf2:${src.sampleId}:${src.preset}`;
   if (src.source === "synth") return "synth";
   return `${src.source}:${src.preset}`;
 }
@@ -205,5 +274,6 @@ export function createInstrument(track: Track, dest: Tone.Gain): InstrumentVoice
   const src = track.instrument ?? defaultInstrument(track);
   if (src.source === "sampler") return samplerVoice(src, dest);
   if (src.source === "smplr") return smplrVoice(src, dest);
+  if (src.source === "sf2") return sf2Voice(src, dest);
   return synthVoice(track, src, dest);
 }
