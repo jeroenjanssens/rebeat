@@ -76,6 +76,16 @@ export interface Env {
   loop: boolean;
 }
 
+/**
+ * An envelope segment's shape: 0..1 over the segment (x 0..1). c < 0 starts fast, c > 0 slow,
+ * 0 is a straight line. The engine and the editor's pictures share it.
+ */
+export function envCurve(x: number, c: number) {
+  if (Math.abs(c) < 0.01) return x;
+  const k = c * 6;
+  return (Math.exp(k * x) - 1) / (Math.exp(k) - 1);
+}
+
 export type LfoShape = "sine" | "triangle" | "rampUp" | "rampDown" | "square" | "sh" | "smooth";
 
 export interface Lfo {

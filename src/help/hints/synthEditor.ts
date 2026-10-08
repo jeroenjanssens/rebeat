@@ -100,7 +100,7 @@ const hints: Hints = {
   ),
   "synth.env.view": hint(
     "Envelope",
-    "How this envelope moves over a note: rise (attack), hold, fall (decay) to the sustain level while held, and fall away (release) after. Drag the points.",
+    "How this envelope moves over a note: rise (attack), hold, fall (decay) to the sustain level while held, and fall away (release) after. Drag the big points to change the times and the sustain; drag the small ones in the middle of the attack and the decay up or down to bend their curves (double-click one to straighten it).",
   ),
   "synth.env.loop": hint(
     "Loop",
@@ -157,6 +157,18 @@ const hints: Hints = {
   "synth.scope": hint(
     "Scope",
     "The synth's output as you play it, on the keyboard below or in the song.",
+  ),
+  "synth.spectrum": hint(
+    "Spectrum",
+    "Which frequencies the synth makes as you play: low on the left, high on the right. Watch the filter and the oscillators change it.",
+  ),
+  "synth.group": hint(
+    "Section",
+    "Fold or unfold this part of the synth. The sections follow the sound: oscillators, filters, envelopes, LFOs, then the matrix and macros, voice and output. The editor remembers what you folded.",
+  ),
+  "synth.lfo.view": hint(
+    "LFO picture",
+    "How the LFO moves over about two seconds: its shape, where it starts (Phase), how it fades in (Delay, the dashed line), and whether it swings both ways or only up (0..1).",
   ),
   "synth.macro.name": hint(
     "Macro name",

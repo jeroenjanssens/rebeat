@@ -60,6 +60,8 @@ export interface Settings {
   instrumentFavorites: string[];
   /** The synth editor's view: Basic (the macros) first, then the one you used last. */
   synthView: "basic" | "advanced";
+  /** The synth editor's folded sections (Advanced). */
+  synthFolded: string[];
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -87,6 +89,7 @@ export const DEFAULT_SETTINGS: Settings = {
   sampleSources: [],
   instrumentFavorites: [],
   synthView: "basic",
+  synthFolded: [],
 };
 
 interface SettingsState extends Settings {

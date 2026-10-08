@@ -14,6 +14,7 @@ import {
   soundHint,
 } from "../../library/synthTrack";
 import { useSettings } from "../../state/settings";
+import { EnvelopeView, H, LfoView, W } from "./pictures";
 import { factorySynth } from "../../library/synths";
 import { saveInstrument } from "../../library/userInstruments";
 import {
@@ -24,7 +25,6 @@ import {
   MOD_DESTS,
   MOD_SOURCES,
   NOTE_LENGTHS,
-  type Env,
   type LfoShape,
   type MacroTarget,
   type ModDest,
@@ -112,6 +112,7 @@ function Editor({ track }: { track: Track }) {
   const values = macroValues(track, patch);
   const shown = applyMacros(withMacroValues(patch, values));
   const view = useSettings((s) => s.synthView);
+  const bpm = useStore((s) => s.project.bpm);
   const factory = factorySynth(src.preset);
   const defaults = factory?.patch ?? INIT_PATCH;
   const edited = !!src.patch;
@@ -345,6 +346,7 @@ function Editor({ track }: { track: Track }) {
           )}
           {toggle(l.unipolar, "0..1", (v) => set(`lfos.${i}.unipolar`, v), "synth.lfo.unipolar")}
         </div>
+        <LfoView lfo={l} color={track.color} bpm={bpm} />
         {knobs(`lfo${i}`, (p) => p.endsWith(".rate") && !!l.sync)}
       </Box>
     );
@@ -460,109 +462,142 @@ function Editor({ track }: { track: Track }) {
         />
       ) : (
         <>
-          <SignalFlow patch={shown} color={track.color} onPlay={() => engine.playOnce(track)} />
+          <div className="flex shrink-0 items-center border-b border-line">
+            <SignalFlow patch={shown} color={track.color} onPlay={() => engine.playOnce(track)} />
+            <div className="flex shrink-0 gap-1.5 px-2">
+              <div className="h-[40px] w-[120px]" data-hint="synth.scope">
+                <Scope
+                  trackId={track.id}
+                  color={track.color}
+                  meter={false}
+                  className="h-full w-full"
+                />
+              </div>
+              <div className="h-[40px] w-[120px]" data-hint="synth.spectrum">
+                <Scope
+                  trackId={track.id}
+                  color={track.color}
+                  meter={false}
+                  mode="spectrum"
+                  className="h-full w-full"
+                />
+              </div>
+            </div>
+          </div>
 
-          <div className="scroll-thin grid min-h-0 flex-1 auto-rows-min grid-cols-[repeat(auto-fill,minmax(270px,1fr))] gap-2 overflow-auto p-2">
-            {oscBox(0)}
-            {oscBox(1)}
-            {oscBox(2)}
-            <Box title="Sub · noise · ring · FM">
-              <div className="flex flex-wrap gap-1.5">
-                {choice(
-                  patch.sub.octave,
-                  [
-                    [-1, "Sub −1"],
-                    [-2, "−2"],
-                  ],
-                  (v) => set("sub.octave", v),
-                  "synth.sub.octave",
-                )}
-                {choice(
-                  patch.sub.shape,
-                  [
-                    ["sine", "Sine"],
-                    ["square", "Square"],
-                  ],
-                  (v) => set("sub.shape", v),
-                  "synth.sub.shape",
-                )}
-                {choice(
-                  patch.noise.color,
-                  [
-                    ["white", "White"],
-                    ["pink", "Pink"],
-                  ],
-                  (v) => set("noise.color", v),
-                  "synth.noise.color",
-                )}
-                {choice(
-                  patch.fm.route,
-                  [
-                    ["2>1", "FM 2→1"],
-                    ["3>1", "3→1"],
-                    ["3>2", "3→2"],
-                    ["1>1", "1→1"],
-                  ],
-                  (v) => set("fm.route", v),
-                  "synth.fm.route",
-                )}
-              </div>
-              {knobs("extra")}
-            </Box>
-            {filterBox(0)}
-            {filterBox(1)}
-            {envBox(0, "Amp envelope")}
-            {envBox(1, "Filter envelope")}
-            {envBox(2, "Mod envelope")}
-            {lfoBox(0)}
-            {lfoBox(1)}
-            {lfoBox(2)}
-            <Box title="Mod matrix" wide>
-              <Matrix patch={patch} onChange={(fn) => edit(fn)} color={track.color} />
-            </Box>
-            <Box title="Voice">
-              <div className="flex flex-wrap gap-1.5">
-                {choice(
-                  patch.voice.mode,
-                  [
-                    ["poly", "Poly"],
-                    ["mono", "Mono"],
-                    ["legato", "Legato"],
-                  ],
-                  (v) => set("voice.mode", v),
-                  "synth.voice.mode",
-                )}
-                {choice(
-                  patch.voice.glideMode,
-                  [
-                    ["always", "Glide always"],
-                    ["legato", "Overlapping"],
-                  ],
-                  (v) => set("voice.glideMode", v),
-                  "synth.voice.glideMode",
-                )}
-                {choice(
-                  patch.voice.steal,
-                  [
-                    ["oldest", "Steal oldest"],
-                    ["quietest", "Quietest"],
-                  ],
-                  (v) => set("voice.steal", v),
-                  "synth.voice.steal",
-                )}
-              </div>
-              {knobs("voice")}
-            </Box>
-            <Box title="Output">{knobs("output")}</Box>
-            <Box title="Macros" wide>
-              <Macros
-                track={track}
-                patch={patch}
-                values={values}
-                setMacro={setMacro}
-                onChange={(fn, key) => edit(fn, key)}
-              />
-            </Box>
+          <div className="scroll-thin flex min-h-0 flex-1 flex-col gap-2 overflow-auto p-2">
+            <Group id="osc" title="Oscillators">
+              {oscBox(0)}
+              {oscBox(1)}
+              {oscBox(2)}
+              <Box title="Sub · noise · ring · FM">
+                <div className="flex flex-wrap gap-1.5">
+                  {choice(
+                    patch.sub.octave,
+                    [
+                      [-1, "Sub −1"],
+                      [-2, "−2"],
+                    ],
+                    (v) => set("sub.octave", v),
+                    "synth.sub.octave",
+                  )}
+                  {choice(
+                    patch.sub.shape,
+                    [
+                      ["sine", "Sine"],
+                      ["square", "Square"],
+                    ],
+                    (v) => set("sub.shape", v),
+                    "synth.sub.shape",
+                  )}
+                  {choice(
+                    patch.noise.color,
+                    [
+                      ["white", "White"],
+                      ["pink", "Pink"],
+                    ],
+                    (v) => set("noise.color", v),
+                    "synth.noise.color",
+                  )}
+                  {choice(
+                    patch.fm.route,
+                    [
+                      ["2>1", "FM 2→1"],
+                      ["3>1", "3→1"],
+                      ["3>2", "3→2"],
+                      ["1>1", "1→1"],
+                    ],
+                    (v) => set("fm.route", v),
+                    "synth.fm.route",
+                  )}
+                </div>
+                {knobs("extra")}
+              </Box>
+            </Group>
+            <Group id="filters" title="Filters">
+              {filterBox(0)}
+              {filterBox(1)}
+            </Group>
+            <Group id="envs" title="Envelopes">
+              {envBox(0, "Amp envelope")}
+              {envBox(1, "Filter envelope")}
+              {envBox(2, "Mod envelope")}
+            </Group>
+            <Group id="lfos" title="LFOs">
+              {lfoBox(0)}
+              {lfoBox(1)}
+              {lfoBox(2)}
+            </Group>
+            <Group id="matrix" title="Matrix · macros">
+              <Box title="Mod matrix" wide>
+                <Matrix patch={patch} onChange={(fn) => edit(fn)} color={track.color} />
+              </Box>
+              <Box title="Macros" wide>
+                <Macros
+                  track={track}
+                  patch={patch}
+                  values={values}
+                  setMacro={setMacro}
+                  onChange={(fn, key) => edit(fn, key)}
+                />
+              </Box>
+            </Group>
+            <Group id="voice" title="Voice · output">
+              <Box title="Voice">
+                <div className="flex flex-wrap gap-1.5">
+                  {choice(
+                    patch.voice.mode,
+                    [
+                      ["poly", "Poly"],
+                      ["mono", "Mono"],
+                      ["legato", "Legato"],
+                    ],
+                    (v) => set("voice.mode", v),
+                    "synth.voice.mode",
+                  )}
+                  {choice(
+                    patch.voice.glideMode,
+                    [
+                      ["always", "Glide always"],
+                      ["legato", "Overlapping"],
+                    ],
+                    (v) => set("voice.glideMode", v),
+                    "synth.voice.glideMode",
+                  )}
+                  {choice(
+                    patch.voice.steal,
+                    [
+                      ["oldest", "Steal oldest"],
+                      ["quietest", "Quietest"],
+                    ],
+                    (v) => set("voice.steal", v),
+                    "synth.voice.steal",
+                  )}
+                </div>
+                {knobs("voice")}
+              </Box>
+              <Box title="Output">{knobs("output")}</Box>
+            </Group>
           </div>
         </>
       )}
@@ -971,6 +1006,36 @@ function Matrix({
   );
 }
 
+/**
+ * A section of the Advanced view, in the order the sound flows. Fold it with its title; the
+ * editor remembers which are folded.
+ */
+function Group({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
+  const folded = useSettings((s) => s.synthFolded.includes(id));
+  const toggle = () => {
+    const f = useSettings.getState().synthFolded;
+    useSettings.getState().set({ synthFolded: folded ? f.filter((x) => x !== id) : [...f, id] });
+  };
+  return (
+    <section className="flex flex-col gap-1.5" data-group={id}>
+      <button
+        className="flex items-center gap-1.5 self-start text-left"
+        onClick={toggle}
+        aria-expanded={!folded}
+        data-hint="synth.group"
+      >
+        {folded ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
+        <span className="label !text-ink">{title}</span>
+      </button>
+      {!folded && (
+        <div className="grid auto-rows-min grid-cols-[repeat(auto-fill,minmax(270px,1fr))] gap-2">
+          {children}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function Box({
   title,
   children,
@@ -1020,9 +1085,6 @@ function Box({
   );
 }
 
-const W = 230;
-const H = 56;
-
 /** One cycle of what the oscillators make together. */
 function WavePreview({ patch, color }: { patch: SynthPatch; color: string }) {
   const basic = (k: number, t: number, pw: number) =>
@@ -1063,80 +1125,6 @@ function WavePreview({ patch, color }: { patch: SynthPatch; color: string }) {
   );
 }
 
-/** An envelope's shape with draggable points: attack, decay/sustain, release. */
-function EnvelopeView({
-  env,
-  color,
-  onChange,
-  hint,
-}: {
-  env: Env;
-  color: string;
-  onChange: (e: Partial<Env>, key: string) => void;
-  hint: string;
-}) {
-  const ref = useRef<SVGSVGElement>(null);
-  const drag = useRef<{ point: "a" | "d" | "r"; key: string } | null>(null);
-  // times drawn on a square-root scale, so short and long envelopes both fit
-  const seg = W / 4;
-  const tx = (t: number) => Math.sqrt(Math.min(t, 10) / 10) * seg;
-  const fromX = (x: number) => Math.max(0.001, Math.pow(Math.max(0, x) / seg, 2) * 10);
-  const a = tx(env.attack);
-  const h = a + tx(env.hold);
-  const d = h + tx(env.decay);
-  const s = H - 4 - env.sustain * (H - 8);
-  const hold = d + seg * 0.6;
-  const r = hold + tx(env.release);
-  const move = (e: React.PointerEvent) => {
-    if (!drag.current || !ref.current) return;
-    const box = ref.current.getBoundingClientRect();
-    const x = ((e.clientX - box.left) / box.width) * W;
-    const y = ((e.clientY - box.top) / box.height) * H;
-    const next: Partial<Env> = {};
-    if (drag.current.point === "a") next.attack = fromX(x);
-    if (drag.current.point === "d") {
-      next.decay = fromX(x - h);
-      next.sustain = Math.min(1, Math.max(0, (H - 4 - y) / (H - 8)));
-    }
-    if (drag.current.point === "r") next.release = Math.min(15, fromX(x - hold));
-    onChange(next, drag.current.key);
-  };
-  const handle = (point: "a" | "d" | "r", x: number, y: number) => (
-    <circle
-      cx={x}
-      cy={y}
-      r={4}
-      fill={color}
-      className="cursor-grab"
-      onPointerDown={(e) => {
-        e.currentTarget.setPointerCapture(e.pointerId);
-        drag.current = { point, key: `env-${point}-${performance.now()}` };
-      }}
-    />
-  );
-  return (
-    <svg
-      ref={ref}
-      width="100%"
-      viewBox={`0 0 ${W} ${H}`}
-      className="touch-none rounded bg-display"
-      onPointerMove={move}
-      onPointerUp={() => (drag.current = null)}
-      data-hint={hint}
-    >
-      <polyline
-        points={`0,${H - 4} ${a},4 ${h},4 ${d},${s} ${hold},${s} ${r},${H - 4}`}
-        fill={`color-mix(in oklab, ${color} 18%, transparent)`}
-        stroke={color}
-        strokeWidth={1.5}
-      />
-      {handle("a", a, 4)}
-      {handle("d", d, s)}
-      {handle("r", r, H - 4)}
-    </svg>
-  );
-}
-
 /** The path the sound takes, left to right; the envelopes, LFOs and matrix steer it. */
 function SignalFlow({
   patch,
@@ -1166,7 +1154,7 @@ function SignalFlow({
   const mods = patch.matrix.filter((m) => m.source && m.dest && m.amount !== 0).length;
   return (
     <div
-      className="flex shrink-0 flex-wrap items-center gap-1.5 border-b border-line px-3 py-1.5"
+      className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 px-3 py-1.5"
       data-hint="synth.flow"
     >
       <button

@@ -90,7 +90,7 @@ Key implementation patterns:
 
 ### 0.6 Next steps
 
-0. The complete synth in §0.6e (A–E ✅; next: F).
+0. The complete synth in §0.6e (A–F ✅; next: G).
 
 
 1. Try the app with real hardware: a microphone and audio interface (calibration, monitoring), a MIDI keyboard/controller (learn), and a Launchpad or Push (the Push color palette is approximate).
@@ -227,7 +227,7 @@ with tests, explain-mode hints, guide updates and the full checks:
 
 ### 0.6e The complete synth (agreed 2026-10-08)
 
-Progress: A ✅ · B ✅ · C ✅ · D ✅ · E ✅ · F · G · H · I.
+Progress: A ✅ · B ✅ · C ✅ · D ✅ · E ✅ · F ✅ · G · H · I.
 
 Make the synth feature complete for experienced players while keeping it approachable: one editor
 with a **Basic** view (8 macros) and an **Advanced** view (everything), on a new AudioWorklet
@@ -871,6 +871,7 @@ Format: **Dn — Question.** Default ✅, alternatives.
 - **D83 — The AudioWorklet synth.** One worklet processor per synth track (`engine/synth/worklet.ts`), loaded into each context (live and offline) via Vite's `?worker&url`; the DSP is a pure TypeScript core (`engine/synth/core.ts`, unit-tested in Node): polyBLEP oscillators with shape morph, unison and stereo spread, hard sync, ring and phase modulation, drift; a ZDF ladder with tanh in the feedback loop (self-oscillates) and a ZDF SVF; AHDSR envelopes with curves and looping; LFOs with S&H/smooth random, sync, delay; an 8-slot mod matrix at control rate (16 samples); voice stealing that continues from the current level; mono/legato with a note stack and glide. Patch version 2 (`model/synth.ts`); version 1 patches are upgraded on read (`upgradeV1`), the factory synths too until they're voiced again. Gotcha: `structuredClone` doesn't exist in AudioWorklets (and a throwing module still resolves `addModule`): modules the worklet imports clone via JSON. Alt: native Web Audio nodes (no sync, ladder or per-sample modulation).
 - **D84 — Playing controls.** MIDI pitch bend (14-bit, −1..1 × the patch's bend range), the mod wheel (CC 1) and aftertouch (channel and poly pressure) go to the selected track's synth as `control` messages; they're per synth, not per note, and not recorded. The sustain pedal (CC 64) defers note-offs until it comes up. The editor's on-screen wheels send the same messages (bend springs back, mod stays). Knob rings: `modRanges` sums each matrix slot's reach on the knob it moves (unipolar sources one way, bipolar both); while monitoring, the worklet posts the newest voice's modulation every 12 blocks and a dot shows it live. Alt: MPE (per-note bend and pressure), recording controller movement as automation.
 - **D85 — Macros and the SOUND knobs.** A macro's value is a track param (`sound.macro1..8`, default: where the patch rests it), so p-locks, MIDI learn, controllers and Save to library work as for any knob; choosing another synth drops them. Targets have absolute ranges (`min` at 0, `max` at 1; frequencies and times interpolate in octaves). Patches that don't say otherwise get `autoMacros`: ranges placed around the patch's own values (Brightness, Bite, Character, Thickness, Attack, Release, Drive; Movement = an LFO 2 matrix slot with the macro as via), resting where the sound is unchanged (unit-tested for every factory synth). Editing a knob a macro moves shifts that target's range so the macro, where it is, gives the new value (`setThroughMacros`, also used by MIDI-learned synth knobs: `track:<id>:synth:<path>`). Macro p-locks: the engine sends the step's values with an id (`lockMacros`) and an end at the note's end; an end only applies if no newer lock started. Conversion: schema 6 turns moved SOUND knobs on synth tracks (envelope, glide, detune → `withKnobs`; the channel filter → filter 2 as an SVF low-pass when free) into patch edits and drops old sound locks on them; saved instruments convert when applied. Library code for synth tracks lives in `library/synthTrack.ts`; the knob table moved to `model/patchParams.ts`. Alt: macros as relative modulation (Vital-style); keeping the old SOUND knobs beside the macros.
+- **D86 — The Advanced editor.** Six foldable sections in signal order (`data-group`: osc, filters, envs, lfos, matrix (with the macros), voice); folds are a user setting (`synthFolded`), the view too (`synthView`). The flow bar carries the track's live Scope (wave and spectrum). Pictures live in `synth-editor/pictures.tsx`: envelopes on a log time scale (5 ms..10 s) drawn with the engine's `envCurve` (moved to `model/synth.ts`), with draggable attack, decay/sustain and release points and curve handles (hold has no handle: at 0 it would cover the attack point); LFOs over about two seconds (1–8 cycles) with phase, delay and polarity, the random shapes from a fixed sequence. Alt: auto-zooming envelope pictures; drawing LFO shapes by hand.
 - **D35 — Build order.** ✅ The phases in §7, starting with the mockup (Phase M), each ending with something you can play with.
 
 ---

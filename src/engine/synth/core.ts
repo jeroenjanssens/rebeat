@@ -11,6 +11,7 @@ import {
   MOD_DESTS,
   MOD_SOURCES,
   applyMacros,
+  envCurve,
   withMacroValues,
   noteLengthQuarters,
   type Env,
@@ -67,11 +68,7 @@ function wave(shape: number, pw: number, t: number, dt: number) {
 }
 
 /** A curved 0..1 ramp: c < 0 starts fast, c > 0 starts slow, 0 is linear. */
-function curve(x: number, c: number) {
-  if (Math.abs(c) < 0.01) return x;
-  const k = c * 6;
-  return (Math.exp(k * x) - 1) / (Math.exp(k) - 1);
-}
+const curve = envCurve;
 
 // ---------- envelopes ----------
 
