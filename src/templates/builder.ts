@@ -49,6 +49,19 @@ export function synthTrack(
   return t;
 }
 
+/** An instrument track with a sampled instrument (smplr preset, see library/instruments.ts). */
+export function sampledTrack(
+  name: string,
+  preset: string,
+  source: string,
+  category: SoundCategory,
+  effects: Effect[] = [],
+) {
+  const t = makeTrack("instrument", category, name, source, effects);
+  t.instrument = { source: "smplr", preset };
+  return t;
+}
+
 /** Add a page (after the tracks exist) and put it in the song order. */
 export function page(
   p: Project,

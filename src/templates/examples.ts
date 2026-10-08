@@ -7,6 +7,7 @@ import { makeEffect } from "../model/effects";
 import type { Project } from "../model/project";
 import { chord, drum, drumTrack, emptyProject, note, notes, page, synthTrack } from "./builder";
 import { demoProject } from "./nightDrive";
+import { SHOWCASE } from "./showcase";
 
 export interface Example {
   id: string;
@@ -350,6 +351,20 @@ export const EXAMPLES: Example[] = [
     artist: "Eurythmics",
     year: 1983,
     create: sweetDreams,
+  },
+  {
+    id: "neon-horizon",
+    name: "Neon Horizon",
+    artist: "Rebeat demo · factory synths",
+    year: 2026,
+    create: SHOWCASE.neonHorizon,
+  },
+  {
+    id: "late-night-cafe",
+    name: "Late Night Café",
+    artist: "Rebeat demo · sampled instruments",
+    year: 2026,
+    create: SHOWCASE.lateNightCafe,
   },
   {
     id: "around-the-world",

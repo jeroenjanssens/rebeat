@@ -15,7 +15,7 @@ Browsers only allow sound after you click somewhere, so Rebeat starts with **Cli
 
 ## Examples and your own projects
 
-The demo song and the other **examples** (Blue Monday, Billie Jean, Planet Rock, Sweet Dreams, Around the World) are read-only. When you change one, Rebeat makes a copy called "… (copy)" and saves your change there, so the example stays as it was. The project name in the transport bar shows an **Example** badge while you're in an example.
+The demo song and the other **examples** (Blue Monday, Billie Jean, Planet Rock, Sweet Dreams, Around the World, and two songs that show off the instruments: **Neon Horizon**, synthwave made of the built-in synths, and **Late Night Café**, lo-fi jazz on sampled piano, double bass, vibraphone, strings and electric piano) are read-only. When you change one, Rebeat makes a copy called "… (copy)" and saves your change there, so the example stays as it was. The project name in the transport bar shows an **Example** badge while you're in an example.
 
 Open the [project browser](command:project.home) ({{key:project.home}}) to start a new project from a template, open an example, or go back to one of your projects. See [Projects, export and the desktop app](#projects).
 

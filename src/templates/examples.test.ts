@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { KIT_SOUNDS } from "../engine/kits";
 import { SYNTH_PRESETS } from "../engine/instruments";
+import { CATALOG } from "../library/instruments";
 import { deserializeProject, serializeProject } from "../model/schema";
 import { chord, note } from "./builder";
 import { EXAMPLES } from "./examples";
@@ -14,6 +15,11 @@ describe("example songs", () => {
       if (t.sampleId) expect(KIT_SOUNDS.some((k) => k.id === t.sampleId)).toBe(true);
       if (t.instrument?.source === "synth")
         expect(SYNTH_PRESETS.some((s) => s.id === t.instrument!.preset)).toBe(true);
+      if (t.instrument?.source === "smplr")
+        expect(
+          CATALOG.some((c) => c.id === `smplr:${t.instrument!.preset}`),
+          t.name,
+        ).toBe(true);
     }
     for (const pattern of Object.values(p.patterns))
       for (const lane of Object.values(pattern.lanes)) {

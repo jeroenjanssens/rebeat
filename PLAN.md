@@ -287,7 +287,7 @@ These terms are used consistently throughout the plan and later in the code.
 ### 3.2 Projects
 
 - Home/project browser: new, open, recent, duplicate, rename, delete, templates ("Empty", "808 starter", "Loop station").
-- **Example songs** (D69): Night Drive plus five drum-machine classics (Blue Monday, Billie Jean, Planet Rock, Sweet Dreams, Around the World). Examples are read-only: the first change copies the example into your own project and carries on there.
+- **Example songs** (D69): Night Drive plus five drum-machine classics (Blue Monday, Billie Jean, Planet Rock, Sweet Dreams, Around the World) and two instrument showcases (`templates/showcase.ts`): Neon Horizon (factory synths) and Late Night Café (sampled instruments). Examples are read-only: the first change copies the example into your own project and carries on there.
 - **Autosave** to browser storage (debounced) and crash recovery.
 - **Export / import** a project as a single `.rebeat` file (a zip with `project.json` plus the audio it uses), so projects can be moved between machines.
 - On Chromium browsers, optionally "Save to folder" through the File System Access API.
