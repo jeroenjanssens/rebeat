@@ -136,6 +136,40 @@ controls, updates the guide chapters it touches, and passes `/tmp/verify.sh`-sty
     step to its default (80 %, 100 %, 0); Alt+double-click resets the whole lane. Instant (no glide),
     one undo step together with the click that started it. e2e for both.
 
+### 0.6c Second polish batch (agreed 2026-10-08)
+
+Order: G, F, C, D+E, B, A. One commit per item, each with explain-mode hints, guide updates and the
+full checks (prettier, tsc, eslint, vitest, e2e).
+
+- **G. Alignment.** The audio track's Power and Scratch buttons move into the waveform's top-right
+  corner next to the Loop/1-shot badge; the clip is exactly as wide as the pads of a step track.
+  The FX button gets a fixed width so M, S, ● and the fader line up on every track. e2e geometry test.
+- **F. Converting keeps the sample (D76).** Drum → instrument makes a keyboard sampler with the
+  track's sample (root C4, so hits sound the same); a sampler → drum gives its sample back; a synth
+  → drum returns to the sample it had; audio → instrument uses the clip's sample. Unit tests.
+- **C. Velocity on instrument tracks (D75).** One helper for a step's velocity: on steps with notes it
+  sets the notes' velocities, keeping a chord's balance (loudest = the value). Used by the velocity
+  lane, the STEP velocity encoder, Shift+drag on pads and the velocity digits. Probability and
+  nudge already apply to every track kind. Unit tests of `playPageStep` (engine mocked) for
+  velocity, probability and nudge on drum and instrument tracks; e2e on the lane.
+- **D. Selected steps on/off.** Enter with steps selected turns them all on (all off when they're all
+  on already); without a selection Enter keeps toggling at the cursor. The step menu reads "Turn
+  on 4 steps".
+- **E. Menus act on the selection.** Right-clicking a selected step applies every step-menu item to
+  all selected steps (across tracks), with the count in the menu; right-clicking an unselected
+  step acts on that step only. The piano roll's note menu does the same for selected notes. e2e.
+- **B. Export samples (D77).** "Export…" in the library's sample menu and the sample editor's toolbar:
+  WAV (16/24/32f), MP3 (128/192/320) or OGG Vorbis; "as heard" (default) or the original file.
+  MP3/OGG via `wasm-media-encoders` (MIT; its LAME build is LGPL), loaded on first use. The song
+  Export dialog gets MP3/OGG too. e2e checks the downloaded files' headers.
+- **A. Import from a URL (D74).** A link button in the library: a direct audio file or .zip imports
+  straight away; a strudel.json URL, a GitHub repo URL (also /tree/<branch>/<path>) or
+  `github:user/repo` becomes a source under Online kits (browse, preview, search, drag, +, Add
+  all, remove; saved in the settings). Repos: strudel.json on main, then master; without one, the
+  repo's audio files via the GitHub API, grouped by folder. `library/sources.ts` resolves URLs
+  (unit tests); the online-kit model becomes a list of sources with tidal built in. e2e with a
+  mocked network.
+
 ### 0.7 Known limitations and later work
 
 - Offline renders (export, resampling) leave out smplr instruments (they stream samples) and repitch instead of time-stretching warped clips.
