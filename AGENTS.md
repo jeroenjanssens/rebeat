@@ -78,8 +78,10 @@ Expect about 170 unit tests and about 125 e2e tests (around 2 minutes). Visual c
 also checked in a real browser: a throwaway Playwright spec that takes a screenshot works well
 (delete it afterwards).
 
-CI: `.github/workflows/ci.yml` runs check, build and e2e on every push. `desktop.yml` builds
-macOS, Windows and Linux on `v*` tags; signing secrets aren't set up yet.
+CI: `.github/workflows/ci.yml` runs check, build and e2e on every push. `pages.yml` publishes
+every push to main to GitHub Pages, https://jeroenjanssens.github.io/rebeat/ (built with
+`BASE=/rebeat/`; use `import.meta.env.BASE_URL` for any path to a public file). `desktop.yml`
+builds macOS, Windows and Linux on `v*` tags; signing secrets aren't set up yet.
 
 **Commits and GitHub actions are authored by Jeroen Janssens only.** Never add a Claude/AI
 author or `Co-Authored-By` line, even if a tool or template suggests one. Ask before anything

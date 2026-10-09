@@ -20,7 +20,7 @@
 
 - macOS; Node 25, pnpm 12, `just` 1.45. Use `pnpm` for JS dependencies (`pnpm-workspace.yaml` allows only Electron's install script). For any Python tooling, use `uv` (never `pip`).
 - `just dev` (Vite on http://localhost:5173), `just check` (tsc for app + Electron, eslint, vitest), `just e2e` (Playwright, Chromium), `just build`, `just preview`, `just desktop` (Electron against the dev server), `just desktop-build` (package into `release/`), `just e2e-desktop`, `just fmt`, `just clean`.
-- CI: `.github/workflows/ci.yml` (check, build, e2e on every push), `.github/workflows/desktop.yml` (manual or `v*` tags: macOS/Windows/Linux builds).
+- CI: `.github/workflows/ci.yml` (check, build, e2e on every push), `.github/workflows/pages.yml` (every push to main is published to GitHub Pages: https://jeroenjanssens.github.io/rebeat/, with `BASE=/rebeat/`), `.github/workflows/desktop.yml` (manual or `v*` tags: macOS/Windows/Linux builds).
 - In dev builds `window.__rebeat` exposes the engine, transport, store and more (`hints`, `commands()`, `dock`, `perf`, `library`, `renderPatch`, `synths`, `previews()`) for debugging and e2e tests; see AGENTS.md §7.
 
 ### 0.3 Code map
@@ -99,7 +99,7 @@ Key implementation patterns:
    and icons to match.
 1. Try the app with real hardware: a microphone and audio interface (calibration, monitoring), a MIDI keyboard/controller (learn), and a Launchpad or Push (the Push color palette is approximate).
 2. Desktop releases: add signing certificates and notarization secrets, then tag `v0.1.0` to produce draft releases.
-3. Decide D6 (license) before making the repository public.
+3. Decide D6 (license): the repository is public now, without one.
 
 ### 0.6b Polish batch (agreed and done 2026-10-08) ✅
 
@@ -867,7 +867,7 @@ Format: **Dn — Question.** Default ✅, alternatives.
 - **D3 — Package manager.** ✅ pnpm. Alt: npm, bun.
 - **D4 — UI kit.** ✅ Tailwind + shadcn/ui (Radix). Alt: Mantine, Chakra.
 - **D5 — Phaser.** ✅ **Confirmed:** don't use it; Canvas 2D with a shared rAF loop, PixiJS only if needed later. Alt: use Phaser for one dedicated visualizer panel.
-- **D6 — License of Rebeat.** ✅ Keep the repo private for now, avoid GPL/AGPL dependencies so every option stays open, and decide before publishing. Alt: MIT now.
+- **D6 — License of Rebeat.** ✅ Keep the repo private for now, avoid GPL/AGPL dependencies so every option stays open, and decide before publishing. Alt: MIT now. *Update 2026-10-09: the repository is public (needed for GitHub Pages on the free plan), still without a license, so all rights are reserved until one is chosen.*
 - **D7 — App name.** ✅ "Rebeat" (from the folder name).
 
 ### Sequencer model
