@@ -64,7 +64,7 @@ const hints: Hints = {
 
   "library.sample": {
     title: "Sample",
-    text: "Click to preview this sound. Drag it onto a track to replace its sound, or onto the drop zone below the tracks to create a new track. Double-click to open it in the sample editor.",
+    text: "Click to preview this sound. Drag it onto a track to replace its sound, or onto the drop zone below the tracks to create a new track. Double-click to open it in the sample editor (a built-in sound is copied into your library first, since built-in sounds can't change).",
     keys: "Click: preview · Drag: use on track · Double-click: open in editor · Right-click: more options · ↑↓: navigate list · Enter: add as track · Space: replay · Esc: stop",
     guide: "library-listening",
   },
@@ -111,8 +111,8 @@ const hints: Hints = {
   },
   "library.instrument": {
     title: "Instrument",
-    text: "A synth or sampled instrument. Click to hear a short phrase; with it selected, the A–L keys play it like a piano (Z and X change the octave). Drag it onto a track to play it there: drum and audio tracks become instrument tracks.",
-    keys: "Enter: new track · Right-click: favorites, offline, source and license",
+    text: "A synth or sampled instrument. Click to hear a short phrase; with it selected, the A–L keys play it like a piano (Z and X change the octave). Drag it onto a track to play it there: drum and audio tracks become instrument tracks. Double-click to open it in its editor: synths in the synth editor, sampled instruments in the Inspector (on a track that plays it, or a new one). Selecting another instrument starts the keys at its own octave again.",
+    keys: "Enter: new track · Double-click: open in editor · Right-click: favorites, offline, source and license",
     guide: "library",
   },
   "library.online.instrument": {

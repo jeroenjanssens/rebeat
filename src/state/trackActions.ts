@@ -135,9 +135,10 @@ export function playInstrumentOn(trackId: string, c: CatalogInstrument) {
 }
 
 /** A new instrument track playing a library instrument. */
-export function addInstrumentTrack(c: CatalogInstrument, index?: number) {
+export function addInstrumentTrack(c: CatalogInstrument, index?: number): string {
   const track = makeTrack("instrument", c.low ? "bass" : "keys", c.name, c.name);
   applyEntry(track, c);
   useStore.getState().commit((p) => addTrack(p, track, index));
   useStore.getState().setUi({ selectedTrackId: track.id });
+  return track.id;
 }

@@ -816,22 +816,41 @@ function Wheels({ track }: { track: Track }) {
 }
 
 const SHAPE_NAMES = ["Sine", "Triangle", "Saw", "Pulse"];
+/** The shapes to pick: the four, and halfway between each. */
+const SHAPE_STOPS = [0, 0.5, 1, 1.5, 2, 2.5, 3];
+const stopName = (k: number) =>
+  Number.isInteger(k)
+    ? SHAPE_NAMES[k]
+    : `Between ${SHAPE_NAMES[Math.floor(k)].toLowerCase()} and ${SHAPE_NAMES[Math.ceil(k)].toLowerCase()}`;
 
-/** One cycle of a basic shape, as an SVG path in a w × h box. */
-function shapePath(k: number, pw: number, w: number, h: number) {
+/** One cycle of a shape (morphing as the engine does) as an SVG path in a w × h box. */
+function shapePath(shape: number, pw: number, w: number, h: number) {
+  const basic = (k: number, t: number) =>
+    k === 0
+      ? Math.sin(t * 2 * Math.PI)
+      : k === 1
+        ? 1 - 4 * Math.abs(t - 0.5)
+        : k === 2
+          ? 2 * t - 1
+          : t < pw
+            ? 1
+            : -1;
+  const a = Math.min(2, Math.floor(shape));
+  const f = shape - a;
   const y = (v: number) => h / 2 - v * (h / 2 - 2);
-  if (k === 3) return `M0 ${y(1)} H${w * pw} V${y(-1)} H${w} `;
-  const pts = Array.from({ length: 41 }, (_, i) => {
-    const t = i / 40;
-    const v = k === 0 ? Math.sin(t * 2 * Math.PI) : k === 1 ? 1 - 4 * Math.abs(t - 0.5) : 2 * t - 1;
-    return `${t * w},${y(v)}`;
+  const n = 48;
+  const pts = Array.from({ length: n + 1 }, (_, i) => {
+    // a hair before and after the pulse's edges, so they draw upright
+    const t = Math.min(0.9999, i / n);
+    return `${t * w},${y(basic(a, t) * (1 - f) + basic(a + 1, t) * f)}`;
   });
   return `M${pts.join(" L")}`;
 }
 
 /**
- * The oscillator's shape as four pictures: one click picks one. Between two shapes (a macro or
- * the mod matrix can morph them) both light up, each as much as it's heard.
+ * The oscillator's shape as pictures, always in view: one click picks one. The four shapes and
+ * halfway between each (the engine morphs smoothly; macros and the matrix can go anywhere, and
+ * the nearest pictures light up as much as they're heard).
  */
 function ShapePicker({
   shape,
@@ -844,39 +863,39 @@ function ShapePicker({
   color: string;
   onPick: (shape: number) => void;
 }) {
-  const w = 34;
-  const h = 18;
+  const w = 22;
+  const h = 14;
   return (
-    <div className="flex gap-1" role="radiogroup" aria-label="Shape" data-hint="synth.osc.shape">
-      {SHAPE_NAMES.map((name, k) => {
-        // how much of this shape you hear (1 when it's exactly this one)
-        const amount = Math.max(0, 1 - Math.abs(shape - k));
+    <div className="flex gap-0.5" role="radiogroup" aria-label="Shape" data-hint="synth.osc.shape">
+      {SHAPE_STOPS.map((k) => {
+        // how much of this picture you hear (1 when it's exactly this one)
+        const amount = Math.max(0, 1 - Math.abs(shape - k) * 2);
+        const active = Math.abs(shape - k) < 0.125;
         return (
           <button
-            key={name}
+            key={k}
             role="radio"
-            aria-checked={amount > 0.5}
-            aria-label={name}
-            title={name}
-            data-active={amount > 0.5}
+            aria-checked={active}
+            aria-label={stopName(k)}
+            title={stopName(k)}
+            data-active={active}
             data-shape={k}
-            className="flex flex-col items-center rounded border px-1 py-0.5"
+            className="rounded border p-0.5"
             style={{
-              borderColor: amount > 0 ? color : "var(--line)",
+              borderColor: active ? color : "var(--line)",
               background: `color-mix(in oklab, ${color} ${Math.round(amount * 22)}%, transparent)`,
             }}
             onClick={() => onPick(k)}
           >
-            <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
+            <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="block">
               <path
                 d={shapePath(k, pw, w, h)}
                 fill="none"
                 stroke={amount > 0 ? color : "currentColor"}
-                strokeWidth={1.5}
-                opacity={0.4 + amount * 0.6}
+                strokeWidth={1.3}
+                opacity={0.45 + amount * 0.55}
               />
             </svg>
-            <span className="text-[9px] text-faint">{name}</span>
           </button>
         );
       })}

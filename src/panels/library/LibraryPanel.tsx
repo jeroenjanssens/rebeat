@@ -163,6 +163,10 @@ export function LibraryPanel() {
     item.instrument ? addInstrumentTrack(item.instrument) : addSampleTracks([item.id]);
   // playing the selected instrument from the computer keyboard
   const octave = useRef(0);
+  // another sound previews from its own range again
+  useEffect(() => {
+    octave.current = 0;
+  }, [selectedId]);
 
   const doImport = async (all: File[], folder = loc.kind === "folder" ? loc.path : "") => {
     // SoundFonts and synth files become instruments (D82, §0.6e G); everything else is samples

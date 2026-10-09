@@ -91,16 +91,25 @@ test("drag an envelope's points and curves", async ({ page }) => {
 test("an oscillator's shape is one click on its picture", async ({ page }) => {
   const editor = await openAdvanced(page);
   const shapes = editor.locator('[data-section="Oscillator 1"] [data-hint="synth.osc.shape"]');
-  await expect(shapes.getByRole("radio")).toHaveCount(4);
+  // the four shapes and halfway between each
+  await expect(shapes.getByRole("radio")).toHaveCount(7);
   // the acid bass is a saw
-  await expect(shapes.getByRole("radio", { name: "Saw" })).toHaveAttribute("aria-checked", "true");
-  await shapes.getByRole("radio", { name: "Pulse" }).click();
-  await expect.poll(async () => (await patch(page))?.osc[0].shape).toBe(3);
-  await expect(shapes.getByRole("radio", { name: "Pulse" })).toHaveAttribute(
+  await expect(shapes.getByRole("radio", { name: "Saw", exact: true })).toHaveAttribute(
     "aria-checked",
     "true",
   );
-  await expect(shapes.getByRole("radio", { name: "Saw" })).toHaveAttribute("aria-checked", "false");
+  await shapes.getByRole("radio", { name: "Pulse", exact: true }).click();
+  await expect.poll(async () => (await patch(page))?.osc[0].shape).toBe(3);
+  await expect(shapes.getByRole("radio", { name: "Pulse", exact: true })).toHaveAttribute(
+    "aria-checked",
+    "true",
+  );
+  await expect(shapes.getByRole("radio", { name: "Saw", exact: true })).toHaveAttribute(
+    "aria-checked",
+    "false",
+  );
+  await shapes.getByRole("radio", { name: "Between sine and triangle" }).click();
+  await expect.poll(async () => (await patch(page))?.osc[0].shape).toBe(0.5);
   // no dial for it any more
   await expect(editor.locator('[data-section="Oscillator 1"] [title^="Shape:"]')).toHaveCount(0);
 });

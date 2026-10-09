@@ -6,7 +6,7 @@ import { useDownloads } from "../../library/downloads";
 import type { CatalogInstrument } from "../../library/instruments";
 import { deleteInstrument, makeMultiSample, renameInstrument } from "../../library/userInstruments";
 import { useSettings } from "../../state/settings";
-import { openSampleEditor } from "../../app/openers";
+import { editorLabel, openInstrument, openSample } from "./open";
 import { useShell } from "../../app/shell";
 import { contextMenu, type MenuItem } from "../../components/Menu";
 import { PeaksCanvas } from "../../components/PeaksCanvas";
@@ -57,11 +57,7 @@ function sampleMenu(
       disabled: !track,
       onSelect: () => track && replaceSound(track.id, item.id),
     },
-    {
-      label: "Open in sample editor",
-      disabled: item.builtIn,
-      onSelect: () => openSampleEditor(item.id),
-    },
+    { label: "Open in sample editor", onSelect: () => void openSample(item.id, item.name) },
     { label: "Export…", onSelect: () => useShell.getState().set({ sampleExport: item.id }) },
     ...(item.builtIn || !item.folder
       ? []
@@ -154,6 +150,7 @@ function instrumentMenu(
       disabled: !track,
       onSelect: () => track && playInstrumentOn(track.id, c),
     },
+    { label: editorLabel(c), onSelect: () => openInstrument(c) },
     { separator: true },
     {
       label: item.favorite ? "Remove from favorites" : "Add to favorites",
@@ -233,6 +230,7 @@ function InstrumentRow({
         onSelect();
         onPlay();
       }}
+      onDoubleClick={() => openInstrument(c)}
       onContextMenu={(e) => {
         onSelect();
         contextMenu(e, instrumentMenu(item, c, track, onPlay, downloaded));
@@ -331,7 +329,7 @@ export function ItemRow({
         onSelect();
         onPlay();
       }}
-      onDoubleClick={() => !item.builtIn && openSampleEditor(item.id)}
+      onDoubleClick={() => void openSample(item.id, item.name)}
       onContextMenu={(e) => {
         onSelect();
         contextMenu(

@@ -30,7 +30,8 @@ A dot next to a sample means it's used in the open project. Selecting a track sh
 
 - **Drag** a sample onto a track to replace its sound, or onto the drop zone under the tracks for a new track. Loops become audio tracks; one-shots drum tracks.
 - **Right-click** a sample for: Audition, Add as new track, Use on (the selected track), Open in sample editor, **Export…**, Add to favorites, Rename, Tags, Folder, which tracks use it, and Delete.
-- **Double-click** a sample to open it in the [sample editor](#sample-editor).
+- **Double-click** a sample to open it in the [sample editor](#sample-editor) (or right-click → **Open in sample editor**). Built-in sounds can't change, so Rebeat edits a copy in your library.
+- **Double-click** an instrument to open it in its editor (or right-click → **Open in …**): a synth in the [synth editor](#instruments-the-synth-editor), a single-sample sampler in the sample editor, other instruments in the Inspector. The editor works on a track that plays it (the selected one first), or a new track with it.
 - **Export…** saves a sample as a file: as heard (with the sample editor's settings) in WAV, MP3 or OGG, or the original file as it was imported.
 - Drag a sample onto a folder on the left to move it there.
 
@@ -62,7 +63,7 @@ The library also holds everything an **instrument track** can play, under **Inst
 
 Working with instruments:
 
-- **Click** one to hear a short phrase. While it's selected, the keys **A** to **L** play it like a piano (**W E T Y U O** are the black keys); **Z** and **X** move an octave down or up.
+- **Click** one to hear a short phrase. While it's selected, the keys **A** to **L** play it like a piano (**W E T Y U O** are the black keys); **Z** and **X** move an octave down or up (selecting another sound starts at its own octave again).
 - **Drag** it onto an instrument track to play it there, onto a drum or audio track to turn that track into an instrument track, or below the tracks for a new one. **Enter** adds it as a new track too.
 - The heart adds it to **Favorites**; **Used in project** lists the instruments your tracks play.
 - Searching in **All samples** finds instruments as well; the filter's **Instruments** type shows only them.
