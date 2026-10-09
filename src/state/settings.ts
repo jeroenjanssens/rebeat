@@ -41,6 +41,8 @@ export interface Settings {
   /** Recording latency compensation, in ms (measured by the calibration wizard). */
   recordLatencyMs: number;
   monitorWhileArmed: boolean;
+  /** Stop lets reverb and delay tails (and notes' releases) ring out, instead of silence (D99). */
+  ringOutOnStop: boolean;
   speakerMode: boolean;
   autosave: boolean;
   pageSwitch: PageSwitch;
@@ -78,6 +80,7 @@ export const DEFAULT_SETTINGS: Settings = {
   inputDeviceId: "",
   recordLatencyMs: 0,
   monitorWhileArmed: true,
+  ringOutOnStop: false,
   speakerMode: false,
   autosave: true,
   pageSwitch: "page",

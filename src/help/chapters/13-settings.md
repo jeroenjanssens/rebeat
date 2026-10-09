@@ -15,15 +15,16 @@ Open [Settings](command:app.settings) with the gear in the transport bar ({{key:
 
 ## Audio
 
-| Setting                 | What it does                                                                                               |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------- |
-| **Output device**       | Where the sound goes (Chrome and Edge).                                                                    |
-| **Input device**        | The microphone or audio interface input for recording. Names appear after the first microphone permission. |
-| **Latency**             | Low, Balanced or Safe: lower is more responsive, higher has fewer dropouts. Applies after reloading.       |
-| **Recording latency**   | How much recordings are shifted earlier, in ms. **Calibrate…** measures it.                                |
-| **Free first loop**     | The first loop recording sets the tempo when nothing is playing yet.                                       |
-| **Monitor while armed** | Hear the input through armed tracks.                                                                       |
-| **Speaker mode**        | Echo cancellation, for recording without headphones.                                                       |
+| Setting                             | What it does                                                                                               |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| **Output device**                   | Where the sound goes (Chrome and Edge).                                                                    |
+| **Input device**                    | The microphone or audio interface input for recording. Names appear after the first microphone permission. |
+| **Latency**                         | Low, Balanced or Safe: lower is more responsive, higher has fewer dropouts. Applies after reloading.       |
+| **Recording latency**               | How much recordings are shifted earlier, in ms. **Calibrate…** measures it.                                |
+| **Let effects ring out after stop** | Off: stop is silent at once. On: the notes end, but reverb and delay tails ring out.                       |
+| **Free first loop**                 | The first loop recording sets the tempo when nothing is playing yet.                                       |
+| **Monitor while armed**             | Hear the input through armed tracks.                                                                       |
+| **Speaker mode**                    | Echo cancellation, for recording without headphones.                                                       |
 
 ## MIDI
 

@@ -247,6 +247,9 @@ function shape(fx: Effect) {
 }
 
 /** A chain of effects between two nodes, reconciled against data. */
+/** Effects whose output goes on after their input stops. */
+const HOLDS_SOUND = new Set(["Reverb", "Delay", "Chorus", "Phaser"]);
+
 export class FxChain {
   private nodes: FxNode[] = [];
   private key = "";
@@ -281,6 +284,16 @@ export class FxChain {
     }
     this.last = effects;
     this.lastBpm = bpm;
+  }
+
+  /**
+   * Drop the sound the effects still hold (D99): the ones with memory (reverb, delay, chorus,
+   * phaser) are built again, the rest keep their nodes. A new reverb makes a new impulse.
+   */
+  flush() {
+    if (!this.last.some((fx) => !fx.bypass && HOLDS_SOUND.has(fx.name))) return;
+    this.key = "";
+    this.sync(this.last, this.lastBpm);
   }
 
   /** Resolves when every effect can process audio (reverb impulse responses are built). */

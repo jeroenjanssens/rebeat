@@ -13,6 +13,8 @@ vi.mock("./engine", () => ({
   startClip: vi.fn(),
   stopAll: vi.fn(),
   stopClip: vi.fn(),
+  panic: vi.fn(),
+  ungate: vi.fn(),
   trigger: (...args: unknown[]) => trigger(...args),
 }));
 

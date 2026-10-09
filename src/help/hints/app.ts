@@ -359,6 +359,11 @@ const hints: Hints = {
     text: "When nothing is playing, the length of the first loop recording sets the tempo, treating that recording as one bar.",
     guide: "loop-station-free-first-loop",
   },
+  "app.settings.ringout": {
+    title: "Let effects ring out after stop",
+    text: "Off (the default): stopping is silent at once, without reverb or delay tails or the release of held notes. On: the notes end, but reverb and delay tails ring out as they would on a mixing desk.",
+    guide: "transport-bar",
+  },
   "app.settings.monitor": {
     title: "Monitor while armed",
     text: "Hear the input through armed Clip tracks while recording. Turn this off if your audio interface already monitors the input directly.",

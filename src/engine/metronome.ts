@@ -23,5 +23,21 @@ export function click(time: number, accent: boolean) {
   osc.connect(env).connect(out);
   osc.start(time);
   osc.stop(time + 0.06);
-  osc.onended = () => env.disconnect();
+  scheduled.add(osc);
+  osc.onended = () => {
+    scheduled.delete(osc);
+    env.disconnect();
+  };
+}
+
+const scheduled = new Set<OscillatorNode>();
+
+/** Clicks already scheduled (the transport looks ahead) don't play after a stop. */
+export function silenceMetronome() {
+  for (const osc of scheduled) {
+    osc.onended = null;
+    osc.stop();
+    osc.disconnect();
+  }
+  scheduled.clear();
 }

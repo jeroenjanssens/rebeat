@@ -65,6 +65,33 @@ function period(x: Float32Array, min: number, max: number) {
 const sine = { shape: 0, drift: 0 };
 
 describe("synth core", () => {
+  it("panic: silent at once, without the release, and notes still to come never play", () => {
+    // a long release, and a note queued for later
+    const core = new SynthCore(
+      SR,
+      makePatch({ osc: [sine], filters: [{ on: false }], envs: [{ release: 4 }] }),
+    );
+    core.noteOn(0, 60, 0.8, 0);
+    core.noteOn(1, 64, 0.8, Math.round(0.5 * SR));
+    const n = Math.round(0.8 * SR);
+    const left = new Float32Array(n);
+    const right = new Float32Array(n);
+    const block = (f: number) =>
+      core.process(left.subarray(f, f + 128), right.subarray(f, f + 128), f);
+    let f = 0;
+    for (; f < 0.2 * SR; f += 128) block(f);
+    expect(core.active).toBe(1);
+    core.panic();
+    expect(core.busy).toBe(false);
+    for (; f < n; f += 128) block(f);
+    expect(peak(left.subarray(Math.round(0.2 * SR) + 128))).toBe(0);
+    // and the next note starts from silence, with its attack
+    core.noteOn(2, 60, 0.8, f);
+    const out = new Float32Array(128);
+    core.process(out, new Float32Array(128), f);
+    expect(Math.abs(out[0])).toBeLessThan(0.01);
+  });
+
   it("plays in tune: A4 is 440 Hz", () => {
     const { mono } = render({ osc: [sine] }, [[69, 0, null]], 0.5);
     expect(freq(slice(mono, 0.1, 0.5))).toBeCloseTo(440, 0);

@@ -703,6 +703,84 @@ export function stopAll() {
   for (const v of S.synths.values()) v.releaseAll(t);
 }
 
+/** How long stop takes to fade the master out (and back in): instant, without a click. */
+const FADE = 0.005;
+/** Tracks whose notes can't be cut short (smplr lets them decay): muted until then. */
+const gated = new Set<string>();
+let ungateTimer = 0;
+let reopenTimer = 0;
+
+/**
+ * Stop means silence (D99). The master fades out over a few milliseconds; every source stops
+ * without its release (hits, clips, synth voices and the notes still to come, samplers); the
+ * effects that hold sound are built again on every track, bus and the master, so a reverb or
+ * delay tail doesn't come back; then the master fades in again, over silence.
+ */
+export function panic() {
+  const m = ensureMaster();
+  const t = audioNow();
+  const at = t + FADE;
+  const g = m.output.gain;
+  g.cancelScheduledValues(t);
+  g.setValueAtTime(g.value, t);
+  g.linearRampToValueAtTime(0, at);
+  const mute = (id: string) => {
+    const input = channel(id).input.gain;
+    input.cancelScheduledValues(t);
+    input.setValueAtTime(input.value, t);
+    input.linearRampToValueAtTime(0, at);
+    gated.add(id);
+  };
+  for (const v of S.voices) stopVoice(v, at);
+  for (const id of [...S.clips.keys()]) stopClip(id, at);
+  // a warped clip's time-stretcher still holds a few hundred milliseconds of audio
+  for (const t of useStore.getState().project.tracks) if (t.mode === "clip") mute(t.id);
+  // decaying on their own (smplr): quiet until they're done, or until playing starts
+  for (const [id, v] of S.synths) if (v.panic(at)) mute(id);
+  clearTimeout(ungateTimer);
+  if (gated.size) ungateTimer = window.setTimeout(ungate, 600);
+  clearTimeout(flushTimer);
+  clearTimeout(reopenTimer);
+  // after the fade (and a little time for the audio thread): drop the tails
+  flushTimer = window.setTimeout(() => {
+    for (const ch of S.channels.values()) ch.flush();
+    for (const b of S.buses.values()) b.flush();
+    m.fx.flush();
+  }, 30);
+  // the master's own filters ring a little longer: open again once that's gone, or on play
+  reopenTimer = window.setTimeout(reopen, 300);
+}
+
+let flushTimer = 0;
+
+/** Open the master again after a stop. */
+function reopen() {
+  clearTimeout(reopenTimer);
+  const g = S.master?.output.gain;
+  if (!g || g.value > 0.999) return;
+  const now = audioNow();
+  g.cancelScheduledValues(now);
+  g.setValueAtTime(g.value, now);
+  g.linearRampToValueAtTime(1, now + FADE);
+}
+
+/**
+ * Open what a stop closed: the master, and the tracks muted until their notes decayed. When
+ * playing starts, or once they're quiet.
+ */
+export function ungate() {
+  reopen();
+  clearTimeout(ungateTimer);
+  const t = audioNow();
+  for (const id of gated) {
+    const input = S.channels.get(id)?.input.gain;
+    input?.cancelScheduledValues(t);
+    input?.setValueAtTime(0, t);
+    input?.linearRampToValueAtTime(1, t + FADE);
+  }
+  gated.clear();
+}
+
 // ---------- metering ----------
 
 const scratchBufs = new Map<string, Float32Array<ArrayBuffer>>();

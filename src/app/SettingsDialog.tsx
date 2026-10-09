@@ -340,6 +340,16 @@ export function SettingsDialog() {
                   </button>
                 </Row>
                 <Row
+                  label="Let effects ring out after stop"
+                  hint="Off: stop is silent at once. On: notes end, reverb and delay tails ring out"
+                >
+                  <Toggle
+                    value={s.ringOutOnStop}
+                    onChange={(ringOutOnStop) => set({ ringOutOnStop })}
+                    hint="app.settings.ringout"
+                  />
+                </Row>
+                <Row
                   label="Free first loop"
                   hint="When nothing plays yet, the first loop recording sets the tempo"
                 >

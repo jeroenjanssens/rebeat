@@ -383,6 +383,26 @@ export class SynthCore {
     this.queue({ at, kind: "releaseAll" });
   }
 
+  /**
+   * Silence now (D99): every voice stops without its release, notes still to come are dropped,
+   * and a macro lock ends. For stop: the next note starts from silence.
+   */
+  panic() {
+    this.events = [];
+    this.held = [];
+    for (const v of this.voices) {
+      v.active = false;
+      for (const e of v.envs) {
+        e.stage = Stage.Idle;
+        e.value = 0;
+      }
+    }
+    if (this.lock) {
+      this.lock = null;
+      this.setPatch(this.base);
+    }
+  }
+
   private queue(e: Event) {
     // keep the queue sorted (events mostly arrive in order)
     let i = this.events.length;

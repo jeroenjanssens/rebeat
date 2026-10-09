@@ -10,8 +10,17 @@ import type { Project } from "../model/project";
 import { STEP_SIZE_QUARTERS, clipOf, type Pattern, type Step, type Track } from "../model/types";
 import { useSettings } from "../state/settings";
 import { isAudible, useStore } from "../state/store";
-import { audioNow, initEngine, startClip, stopAll, stopClip, trigger } from "./engine";
-import { click } from "./metronome";
+import {
+  audioNow,
+  initEngine,
+  panic,
+  startClip,
+  stopAll,
+  stopClip,
+  trigger,
+  ungate,
+} from "./engine";
+import { click, silenceMetronome } from "./metronome";
 import { startTicker } from "./ticker";
 
 export interface StepEvent {
@@ -386,6 +395,8 @@ export function play() {
   const s = useStore.getState();
   if (s.playing) return;
   initEngine();
+  // tracks muted by a stop open again
+  ungate();
   pageStep = -1;
   tick = 0;
   ending = false;
@@ -412,7 +423,12 @@ export function play() {
 export function stop() {
   stopTicker?.();
   stopTicker = null;
-  stopAll();
+  // silence at once (D99), unless the tails may ring out
+  if (useSettings.getState().ringOutOnStop) stopAll();
+  else panic();
+  silenceMetronome();
+  // library previews too: stop means quiet
+  void import("../library/audition").then((a) => (a.stopPreview(), a.stopAudition()));
   Tone.getDraw().cancel(0);
   pageStep = -1;
   countInUntil = 0;

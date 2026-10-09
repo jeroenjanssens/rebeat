@@ -46,6 +46,11 @@ export interface InstrumentVoice {
   key: string;
   play(notes: Note[], time: number, stepDur: number): void;
   releaseAll(time: number): void;
+  /**
+   * Stop now, without release tails (D99). Returns true when its notes can't be cut short
+   * (smplr lets them decay), so the engine mutes the track until they're gone.
+   */
+  panic(time: number): boolean;
   update(track: Track, bpm?: number): void;
   /** Synths: mod wheel, aftertouch and pitch bend; modulation reports for the editor. */
   synth?: WorkletSynth;
@@ -78,6 +83,7 @@ function synthVoice(track: Track, src: Sound, dest: Tone.Gain): InstrumentVoice 
     play: (notes, time, step) => synth.play(notes, time, step),
     hold: (pitch, velocity, time) => synth.hold(pitch, velocity, time),
     releaseAll: (time) => synth.releaseAll(time),
+    panic: () => (synth.panic(), false),
     update: (t, bpm = 120) => synth.setPatch(effective(t), bpm),
     dispose: () => synth.dispose(),
     synth,
@@ -126,6 +132,16 @@ function samplerVoice(src: Sound, dest: Tone.InputNode): InstrumentVoice {
     },
     releaseAll(time) {
       sampler?.releaseAll(time);
+    },
+    panic(time) {
+      if (!sampler) return false;
+      // each sounding note took its fade-out (the release) when it started: shorten them first
+      const active = (
+        sampler as unknown as { _activeSources: Map<number, Tone.ToneBufferSource[]> }
+      )._activeSources;
+      for (const sources of active?.values() ?? []) for (const src of sources) src.fadeOut = 0.005;
+      sampler.releaseAll(time);
+      return false;
     },
     update(track) {
       make();
@@ -187,6 +203,7 @@ function sf2Voice(src: Sound, dest: Tone.Gain): InstrumentVoice {
       return (end) => stop(end);
     },
     releaseAll: () => inst?.stop(),
+    panic: () => (inst?.stop(), true),
     update: () => {},
     dispose: () => {
       disposed = true;
@@ -258,6 +275,7 @@ function smplrVoice(src: Sound, dest: Tone.Gain): InstrumentVoice {
       return (end) => stop(end);
     },
     releaseAll: () => inst?.stop(),
+    panic: () => (inst?.stop(), true),
     update: () => {},
     dispose: () => {
       disposed = true;

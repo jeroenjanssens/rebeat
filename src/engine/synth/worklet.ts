@@ -11,6 +11,7 @@ export type SynthMessage =
   | { type: "on"; id: number; note: number; velocity: number; at: number; from?: number }
   | { type: "off"; id: number; at: number }
   | { type: "releaseAll"; at: number }
+  | { type: "panic" }
   | { type: "control"; name: keyof Controls; value: number }
   | { type: "monitor"; on: boolean }
   | { type: "macros"; id: number; values: number[] | null; at: number };
@@ -66,6 +67,8 @@ class SynthProcessor extends AudioWorkletProcessor {
         return this.core.noteOff(m.id, frame(m.at));
       case "releaseAll":
         return this.core.releaseAll(frame(m.at));
+      case "panic":
+        return this.core.panic();
       case "control":
         this.core.controls[m.name] = m.value;
         return;

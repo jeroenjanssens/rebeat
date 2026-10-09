@@ -40,6 +40,11 @@ export class BusChannel {
     return this.fx.ready();
   }
 
+  /** Drop the sound its effects still hold (reverb and delay tails), for stop (D99). */
+  flush() {
+    this.fx.flush();
+  }
+
   update(bus: Bus, bpm: number) {
     this.fx.sync(bus.effects, bpm);
     this.fader.gain.rampTo(bus.mute ? 0 : faderGain(bus.volume), 0.02);
@@ -109,6 +114,11 @@ export class TrackChannel {
     if (this.last[key] === value) return;
     this.last[key] = value;
     apply(value);
+  }
+
+  /** Drop the sound its effects still hold (reverb and delay tails), for stop (D99). */
+  flush() {
+    this.fx.flush();
   }
 
   update(track: Track, audible: boolean, bpm: number) {

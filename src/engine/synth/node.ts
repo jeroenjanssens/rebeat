@@ -25,6 +25,8 @@ export interface WorkletSynth {
   play(notes: Note[], time: number, stepDur: number): void;
   hold(pitch: number, velocity: number, time: number): (end: number) => void;
   releaseAll(time: number): void;
+  /** Silence now: voices and notes still to come are dropped (stop, D99). */
+  panic(): void;
   setPatch(patch: SynthPatch, bpm: number): void;
   control(name: keyof Controls, value: number): void;
   /** A step's macro lock: the macros at `values` from `time` until `end`. */
@@ -96,6 +98,11 @@ export function workletSynth(dest: Tone.Gain | { input: AudioNode }): WorkletSyn
       return (end) => send({ type: "off", id, at: end });
     },
     releaseAll: (at) => send({ type: "releaseAll", at }),
+    panic() {
+      // notes not sent yet never play
+      pending = pending.filter((m) => m.type !== "on" && m.type !== "off" && m.type !== "macros");
+      send({ type: "panic" });
+    },
     setPatch(patch, bpm) {
       send({ type: "patch", patch });
       send({ type: "tempo", bpm });
