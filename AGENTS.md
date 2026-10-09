@@ -3,7 +3,7 @@
 This file is the fast way in. It explains what Rebeat is, how the code is organized, how the
 pieces talk to each other, how to verify a change, and the gotchas that cost time before.
 `PLAN.md` is the long-form record: the product spec (§1–§3), the original architecture (§4),
-and every design decision (§6, D1–D104). When this file and the code disagree, the code wins.
+and every design decision (§6, D1–D118). When this file and the code disagree, the code wins.
 Please fix this file in the same change.
 
 Status (2026-10-09): every phase of the original roadmap is built, plus several feature batches
@@ -11,7 +11,9 @@ Status (2026-10-09): every phase of the original roadmap is built, plus several 
 the `step-tracks` branch and merged): the drum / instrument / audio track kinds became one kind
 of track with a **sound** (sample, synth, sampled instrument) and a **mode** (Hits, Notes,
 Clip), schema 7, a library ordered by what you pick, one set of icons, and an Inspector Sound
-section. Proposed next: **beatbox to step tracks** (§0.6h, D105–D116). Left: tests
+section. The latest batch is **beatbox to step tracks** (§0.6h, D105–D118, on the `beatbox`
+branch): a Beatbox panel and a small deep learning model (trained in `ml/`) that turn your
+beatboxing into step tracks. Left: tests
 with real hardware (mic, MIDI, Launchpad/Push), signing the desktop release, the license (D6),
 and the "later" items in PLAN.md §0.7. The repository is public and `main` deploys to GitHub
 Pages.
@@ -35,6 +37,9 @@ sequencer**, with:
 - **Performance tools**: DJ filter, tape stop, beat repeat, crossfader, mute groups, page queueing.
 - **MIDI**: learn, note input, pitch bend and mod wheel, Launchpad/Push as grid controllers.
 - **Export**: WAV/MP3/OGG, stems, MIDI files, `.rebeat` project files.
+- **Beatbox**: record or add beatboxing, label its hits, let a small model (trained in `ml/`,
+  run in the browser with ONNX Runtime Web) calibrate to your voice, and convert takes into step
+  tracks.
 - **A built-in user guide**, plus an "explain mode" that shows a hover card on every control.
 
 It should feel like a professional desktop DAW: dockable panels (Dockview), 20 themes,
@@ -72,6 +77,10 @@ Environment:
 | `just desktop-build`          | package the desktop app into `release/` (unsigned)                   |
 | `just e2e-desktop`            | desktop smoke tests (`playwright.desktop.config.ts`, `e2e-desktop/`) |
 | `just fmt`                    | Prettier (print width 100)                                           |
+| `just ml-fetch` / `ml-synth`  | beatbox model: download the datasets / make the synthetic takes      |
+| `just ml-train <name>`        | train and evaluate a run into `ml/runs/<name>` (uv, PyTorch)         |
+| `just ml-export <run> <ver>`  | ship a run as `public/models/beatbox/<ver>` (+ the parity fixtures)  |
+| `just ml-test`                | the Python tests in `ml/`                                            |
 
 **Verify every change** with the full sequence. Use `--workers=4`: more parallel browsers make
 audio-timing tests flaky on a laptop.
@@ -138,6 +147,10 @@ src/
                        sustain), controllers/ (Launchpad/Push grid model, profiles, runtime)
   midi/learn.ts        startMidiLearn(target, label)
   library/             samples and instruments:
+                       - beatbox/ (D105–D118): classes, onsets (+ resample to 16 kHz), model.ts +
+                         model.worker.ts (ONNX Runtime Web, loaded on first use), calibrate,
+                         store (voices, recordings, hits in IndexedDB; predictions), record,
+                         convert (grid, timing, velocity, folding), preview, transfer (dataset zips)
                        - library.ts (import, dedupe, decode, versions), analysis (BPM/onsets/key/LUFS)
                        - processing (sample settings), editorOps, renderFx, encode, wav, fft
                        - audition.ts (previews), online kits (onlineKits, onlineImport, sources)
@@ -149,7 +162,8 @@ src/
   storage/             db.ts (Dexie: projects, samples, blobs, meta, instruments), projects.ts
                        (autosave, crash recovery, example forking), rebeatFile.ts (.rebeat zip)
   panels/              one folder per Dockview panel: drum-machine, library, inspector, mixer,
-                       master-scope, piano-roll, sample-editor, performance, synth-editor, guide
+                       master-scope, piano-roll, sample-editor, performance, synth-editor, guide,
+                       beatbox (recordings list, HitWaveform, RecordDialog, ConvertView, ModelView)
   components/          Encoder (knob), Fader, MiniFader, DragValue, Keyboard (piano), Scope,
                        PeaksCanvas, Playhead, Menu (contextMenu/dropdown), Dialog, Toast,
                        EffectEditor, glide (smooth resets), soundIcons…
@@ -159,6 +173,9 @@ src/
   templates/           builder.ts (song-writing helpers), examples.ts (example songs), showcase.ts,
                        synthSongs.ts, nightDrive.ts, index.ts (new-project templates)
 public/worklets/       recorder.js, scratch.js (plain JS AudioWorklets)
+public/models/beatbox/ the beatbox model per version (model.onnx, model.json, report.md)
+ml/                    training the beatbox model (uv): data, onsets (port of onsets.ts), synth,
+                       windows, model, train, evaluate, tune, export; README.md, DATA.md
 electron/              main.cts, preload.cts (compiled to electron/dist)
 e2e/                   Playwright specs, helpers.ts (openApp, midiKeyboard), fixtures.ts (generated
                        WAVs and SoundFonts)
@@ -402,7 +419,8 @@ onPatchEdit` hook, debounced `saveSoundSoon`).
   - a click previews after 250 ms, so a double-click (open in its editor) stays silent
   - Z and X change the preview octave; it resets when you select another sound
   - previews go to their own output, not the master
-- **IndexedDB** (Dexie, `storage/db.ts`, DB version 3): `projects`, `samples`, `blobs` (audio
+- **IndexedDB** (Dexie, `storage/db.ts`, DB version 4; v4 adds `beatboxVoices`,
+  `beatboxRecordings`, `beatboxHits`): `projects`, `samples`, `blobs` (audio
   files, `.sf2` files), `meta`, `instruments`. Projects autosave (debounced) and the last one
   reopens after a crash. `.rebeat` files are zips (fflate) with the project, its samples and its
   SoundFonts.
@@ -449,6 +467,25 @@ onPatchEdit` hook, debounced `saveSoundSoon`).
   render starts, with all their messages in `processorOptions` (D92). Stems, MIDI file export
   (`model/midiFile.ts`) and `.rebeat` files are also available.
 
+### 6.6 Beatbox (D105–D118)
+
+- **The pipeline**: audio → 16 kHz mono (`resample.ts`) → hits (`onsets.ts: detectOnsets`, D117;
+  a short file is one hit, `firstOnset`) → a 200 ms window per hit, gated at the next hit
+  (`hitWindow`) → the model (`model.ts`, in a worker) → class scores and a 64-d embedding →
+  calibration per voice (`calibrate.ts`, prototypes, D112) → a guess per hit.
+- **The model** is trained in `ml/` (see `ml/README.md`): AVP, Jeroen's one-shots and synthetic
+  takes made from them (D118); beatboxset1 is test-only (ShareAlike). Its front end (log-mel) is
+  inside the ONNX graph. `MODEL_VERSION` (`modelInfo.ts`) picks `public/models/beatbox/<v>/`.
+- **Data** (`store.ts`): voices, recordings (audio in `blobs` as `bbx:<sha>`, or a library
+  sample) and hits (`label`, `labeledBy: you | import | model`) in IndexedDB, not in projects.
+  Only `you` and `import` labels are examples (`isExample`). Predictions live in memory.
+- **Converting** (`convert.ts`, pure): hits on a grid (Snap or Keep feel as nudge), detected or
+  constant velocity, repetitions folded by majority; `state/beatboxActions.ts: createTracks`
+  makes Hits tracks in one commit (your hit cut into the library under `Beatbox/`, or a kit
+  sound) and mutes the take's Clip track.
+- **The panel** (`panels/beatbox/`) handles its own keys (1–8, Enter, Delete, Tab, arrows) and
+  stops them from reaching the global shortcuts while it has focus.
+
 ## 7. Testing
 
 **Unit (Vitest, Node).** Tests live next to the code.
@@ -457,6 +494,9 @@ onPatchEdit` hook, debounced `saveSoundSoon`).
   the audio engine lazily, or split pure parts out (as `library/synthFile.ts` was split from
   `rbsynth.ts`).
 - DSP is tested through `SynthCore` directly (`engine/synth/core.test.ts`).
+- The beatbox model's parity tests (`library/beatbox/model.test.ts`, `onsets.test.ts`) run ONNX
+  Runtime Web in Node against fixtures written by `ml/rebeat_ml/export.py`.
+- `ml/` has its own tests (`just ml-test`); CI doesn't train or need Python.
 
 **End-to-end (Playwright, Chromium, port 5391).**
 
@@ -464,6 +504,8 @@ onPatchEdit` hook, debounced `saveSoundSoon`).
   - fresh storage, onboarding skipped, synthetic microphone (`window.__REBEAT_TEST_MIC__`)
   - clicks the audio overlay and waits for the project
 - `midiKeyboard(page)`: a fake Web MIDI input; send bytes with `window.__midi([0x90, 60, 100])`.
+- The synthetic mic is a tone whose polarity flips twice a second (no real onsets). Set
+  `__REBEAT_TEST_MIC__ = "beats"` for decaying noise bursts instead (`beatbox.spec.ts`).
 - `fixtures.ts` generates WAVs and SoundFonts (`fixtureFiles`).
 - **`window.__rebeat`** (dev builds and tests only):
   - `engine` (`masterLevel()`, `trackSynth(t)`, `instrumentState`, `playOnce`, …), `transport`,
@@ -538,6 +580,12 @@ onPatchEdit` hook, debounced `saveSoundSoon`).
   performance filters do).
 - **Effects that follow the beat get page steps** from `playPageStep` (`effectsStep`, D104), the
   same live and offline. A new beat-synced effect implements `onStep`.
+- **Training and the app must cut the same windows.** Any change to `onsets.ts` goes into
+  `ml/rebeat_ml/onsets.py` too (and the gate into `windows.py`), then retrain and export: the
+  export rewrites the parity fixtures, and the onset test fails until it does.
+- **The model's runtime isn't precached**: `vite.config.ts` keeps `ort-wasm*.wasm` and the model
+  worker out of the precache and caches them (and `models/beatbox/`) on first use. Don't import
+  `library/beatbox/model.ts` from code that runs at startup without a reason.
 - **The factory synth levels test** used to fail sometimes because of random oscillator phases;
   it now seeds `Math.random`. New level-sensitive tests should do the same.
 
@@ -562,8 +610,9 @@ likely to need:
 | Presets vs. copies, library editing                | D90–D91                   |
 | Step tracks: modes, sounds, library, icons, edit   | D93–D98                   |
 | Stop, removing kits, tab icons, themes, Pump, song | D99–D104                  |
+| Beatbox: model, data, panel, calibration, convert  | D105–D118                 |
 
-Feature batches and their acceptance criteria are in PLAN.md §0.6b–§0.6f. Known limitations are
+Feature batches and their acceptance criteria are in PLAN.md §0.6b–§0.6h. Known limitations are
 in §0.7.
 
 ## 10. Working conventions

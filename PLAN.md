@@ -1,6 +1,6 @@
 # Rebeat — Product & Technical Plan
 
-> **Status (2026-10-09):** All phases of §7 are implemented (M, G, 0–10), plus the batches in §0.6b–§0.6g (step tracks were built on the `step-tracks` branch and are merged). §0.6h (beatbox to step tracks) is proposed. Repo: `github.com/jeroenjanssens/rebeat` (public; `main` deploys to GitHub Pages). §0 describes the current code; §0.7 lists known limitations and what is left for later.
+> **Status (2026-10-09):** All phases of §7 are implemented (M, G, 0–10), plus the batches in §0.6b–§0.6g (step tracks were built on the `step-tracks` branch and are merged). §0.6h (beatbox to step tracks) is done on the `beatbox` branch, to be merged. Repo: `github.com/jeroenjanssens/rebeat` (public; `main` deploys to GitHub Pages). §0 describes the current code; §0.7 lists known limitations and what is left for later.
 > Every open question in §6 has a **default**. All defaults were accepted when Phase M was started, except where §6 records a different choice. To change one, refer to it by number (e.g. "D7: B").
 
 ---
@@ -12,7 +12,7 @@
 
 ### 0.1 Where we are
 
-- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D104), and the build order is in §7.
+- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D118), and the build order is in §7.
 - Every phase in §7 is built, tested (unit + Playwright e2e) and pushed. The mockup (Phase M) became the app: its components, model and store were kept and extended; `src/mock/` was replaced by the real engine.
 - The desktop app (Phase 10) runs and packages locally (unsigned); signing/notarization need certificates (see `.github/workflows/desktop.yml`).
 
@@ -48,6 +48,8 @@ src/
   audio-io/              mic (one shared stream), midi (Web MIDI, learn, note input), controllers/ (grid model,
                          Launchpad/Push profiles, runtime)
   library/               library (import, dedupe, decode, versions, settings), analysis (BPM, onsets, key, LUFS),
+                         beatbox/ (D105–D118: classes, onsets, resample, the model in a worker, calibration,
+                         recordings/hits/voices in IndexedDB, recording, convert, preview, dataset zips),
                          processing (non-destructive sample settings), editorOps, renderFx, fft, wav, audition,
                          onlineKits (tidal-drum-machines index, sound search) + onlineImport (download cache,
                          import, links) + sources (link and strudel.json parsing), encode (WAV/MP3/OGG),
@@ -57,7 +59,7 @@ src/
   model/synth            SynthPatch v2 (data), makePatch, upgradePatch, sanitizePatch, macros; synthV1 (old patches,
                          read only), patchParams (the synth editor's knob table), randomize
   storage/               db (Dexie; v3 adds instruments), projects (autosave, crash recovery), rebeatFile (.rebeat zip)
-  panels/                drum-machine/, library/, inspector/, mixer/, master-scope/, piano-roll/, sample-editor/,
+  panels/                drum-machine/, library/, inspector/, mixer/, master-scope/, piano-roll/, sample-editor/, beatbox/,
                          performance/, guide/, synth-editor/ (the knob table: model/patchParams.ts)
   help/                  the user guide: chapters/*.md (one per topic) and guide.ts (marked renderer; {#id}
                          anchors, {{key:command}} and {{shortcuts}} placeholders, panel:/command:/# links);
@@ -69,6 +71,8 @@ src/
                          (read-only, ids "example:…", forked on first edit in storage/projects): nightDrive, the
                          classics, showcase (Neon Horizon, Late Night Café), synthSongs (Hyperdrive, Liquid Ladder, Laser Highway)
 public/worklets/         recorder.js (PCM capture), scratch.js (scratch voice): plain JS for AudioWorklet scopes
+public/models/beatbox/   the beatbox model per version: model.onnx, model.json, report.md (D109)
+ml/                      training the beatbox model (uv, PyTorch): datasets, synthetic takes, train, evaluate, export
 electron/                main.cts, preload.cts, build/ (entitlements, icon); compiled to electron/dist
 e2e/, e2e-desktop/       Playwright suites (web uses a synthetic mic via window.__REBEAT_TEST_MIC__)
 ```
@@ -96,7 +100,9 @@ Key implementation patterns:
 
 ### 0.6 Next steps
 
-0. Beatbox to step tracks (§0.6h, D105–D116): proposed; agree on it, then build it step by step.
+0. Beatbox to step tracks (§0.6h, D105–D118) ✅ on the `beatbox` branch: review and merge into
+   `main`. Decide whether the shipped model may train on beatboxset1 (CC BY-SA, D108). Record and
+   label your own sounds (and friends'), export them, and train model 2 with them (`ml/README.md`).
 1. Try the app with real hardware: a microphone and audio interface (calibration, monitoring), a MIDI keyboard/controller (learn), and a Launchpad or Push (the Push color palette is approximate).
 2. Desktop releases: add signing certificates and notarization secrets, then tag `v0.1.0` to produce draft releases.
 3. Decide D6 (license): the repository is public now, without one.
@@ -444,9 +450,19 @@ Order 1–6, one or more commits each, with hints, guide updates, decisions and 
    most 32 steps, only built-in kits and synths. Tests: valid, every synth renders, it uses what
    it shows off, the busiest page is loud and clean, golden levels.
 
-### 0.6h Beatbox to step tracks (proposed 2026-10-09)
+### 0.6h Beatbox to step tracks (agreed and done 2026-10-09) ✅
 
-Progress: not started.
+Progress: 1 ✅ · 2 ✅ (target missed, see below) · 3 ✅ · 4 ✅ · 5 ✅ · 6 ✅ · 7 ✅ · 8 ✅ · 9 ✅.
+
+Outcome. Model 1 (`public/models/beatbox/1/report.md`) misses the go/no-go target (D116): on
+unseen voices it gets Kick/Snare/Closed hi-hat macro F1 0.77 (AVP amateurs) and 0.46
+(beatboxset1's beatboxers) alone, 0.80 and 0.65 calibrated. On synthetic takes of Jeroen's
+held-out recordings it gets 0.62 alone and 0.92 calibrated. The app work went ahead anyway,
+because calibration and your own exported recordings are what close the gap, and they need the
+panel. What made the difference: annotations moved to the app's onsets (the datasets click at
+different moments of an attack), augmentation for dull and bass-heavy recordings, a contrastive
+loss for the embedding, and synthetic takes of Jeroen's sounds (D118). Onset detection reaches
+an F-measure of 0.81–0.83 within 30 ms (D117); hits over a hummed bass are the hardest.
 
 Goal: make beatboxing reproducible. Record yourself beatboxing (or take any recorded loop) and
 turn it into step tracks: one track per kind of sound (kick, snare, hi-hat, …) in Hits mode,
@@ -552,7 +568,7 @@ Step 2 ends with a go/no-go on the model's accuracy before the app work builds o
    velocity and folding. e2e: the panel loads the model on demand (and not before), records from
    the synthetic mic, labels and relabels, trims, removes, exports a dataset, converts a take into
    audible tracks and undoes it. A guide chapter (recording, labeling, calibrating, converting),
-   explain-mode hints for every control, decisions D105–D116.
+   explain-mode hints for every control, decisions D105–D118.
 
 ### 0.7 Known limitations and later work
 
@@ -563,7 +579,9 @@ Step 2 ends with a go/no-go on the model's accuracy before the app work builds o
 - Beatbox to step tracks, later (§0.6h): the bass (separate the hum from the clicks with
   harmonic–percussive separation, follow its pitch with YIN/pYIN, write a Notes track);
   fine-tuning the model in the browser on your own hits (beyond calibration); detecting and
-  classifying hits in one model; live triggering (your voice plays kit sounds while you
+  classifying hits in one model, or a learned onset detector (the hand-made one finds about four
+  in five hits, fewer over a hummed bass, D117); AVP-LVT's 20 more voices (their audio has to be
+  requested); live triggering (your voice plays kit sounds while you
   beatbox); sharing voices' datasets with others.
 - Headless Chromium on macOS can't open capture devices, so e2e tests use a synthetic microphone; the real mic path is covered manually.
 
@@ -1148,15 +1166,17 @@ Format: **Dn — Question.** Default ✅, alternatives.
 - **D105 — Beatbox to steps is transcription, not stem splitting.** A beatbox take is one voice making mostly one sound at a time, so the question for each hit is *when* and *what*, not how to pull overlapping sources apart. Stem splitters (Demucs, Spleeter) are trained on mixed music and would hand the whole take back as "vocals", and they're large and slow in a browser. *When* is signal processing (spectral-flux onsets); *what* is a trained model (D106). The one place separation helps, a hummed bass under the clicks, is later work (§0.7). Alt: stem splitting.
 - **D106 — A trained model, calibrated to your voice.** A deep learning model trained on public vocal-percussion datasets and Jeroen's recordings classifies each hit; your own labeled hits adapt it to your voice (D112), because every beatboxer's kick is different. Replaces the first proposal, grouping hits by sound without training: a quick try mixed up hi-hats, snares and toms. Alt: clustering with you naming the groups; a personal classifier only (needs labels before the first use).
 - **D107 — A fixed list of classes.** Kick, Snare, Closed hi-hat, Open hi-hat, Tom, Clap, Crash and Other (vocal effects, breaths, anything else; Other hits don't become tracks unless you ask). A fixed list is what a model learns, and it maps straight to tracks and kit sounds. Some classes are rare in public datasets (AVP has only kick, snare and hi-hats), so Tom, Clap and Crash depend on Jeroen's recordings and calibration; the list is in `model.json`, so a later model can change it. Alt: the datasets' own labels; open-ended groups.
-- **D108 — Training lives in `ml/`.** A uv project in the same repository (PyTorch; never pip), so the model and the app that runs it change together. Data is downloaded, not committed (`ml/data/`, gitignored, checked by hash); `ml/DATA.md` records every dataset's license, and only data that allows it goes into the shipped model. Splits are by voice. Training is seeded and the report is committed with the model. The shipped model (≤ 5 MB) is committed under `public/models/beatbox/<version>/`; the app records which model version labeled what. Alt: a separate repository; Git LFS for models.
-- **D109 — ONNX Runtime Web, loaded when used.** The model is exported to ONNX with its log-mel front end inside the graph (16 kHz audio in, class scores and an embedding out), so Python and the browser can't compute different features. It runs in a worker with ONNX Runtime Web (WASM), imported only when the Beatbox panel is first used; the model and the runtime's `.wasm` are kept out of the precache and cached by the service worker on first use (offline afterwards; the desktop app bundles them). Checked-in parity fixtures compare the browser's outputs with PyTorch's. Budget: 10 MB downloaded. Alt: TensorFlow.js; a small CNN's inference written in TypeScript (no runtime, but every layer is ours to keep right).
+- **D108 — Training lives in `ml/`.** A uv project in the same repository (PyTorch; never pip), so the model and the app that runs it change together. Data is downloaded, not committed (`ml/data/`, gitignored, checked by hash); `ml/DATA.md` records every dataset's license, and only data that allows it goes into the shipped model. Splits are by voice. Training is seeded and the report is committed with the model. The shipped model (≤ 5 MB) is committed under `public/models/beatbox/<version>/`; the app records which model version labeled what. Every annotated onset is moved to where the app's detector finds it (a port of `onsets.ts`, `ml/rebeat_ml/onsets.py`), and every window is silenced from the next hit on with a 5 ms fade (the gate), in training and in the app alike, so the model sees the windows the app cuts. Alt: a separate repository; Git LFS for models.
+- **D109 — ONNX Runtime Web, loaded when used.** The model is exported to ONNX with its log-mel front end inside the graph (16 kHz audio in, class scores and an embedding out), so Python and the browser can't compute different features. It runs in a worker with ONNX Runtime Web (WASM), imported only when the Beatbox panel is first used; the model and the runtime's `.wasm` are kept out of the precache and cached by the service worker on first use (offline afterwards; the desktop app bundles them). Checked-in parity fixtures compare the browser's outputs with PyTorch's, and the app's onsets and gated windows with the Python port's (one of Jeroen's loops at 16 kHz). Measured: the runtime's `.wasm` is 14 MB (3.7 MB gzip, 2.3 MB brotli), the model 3.5 MB (the DFT basis of the front end is 1 MB of it): about 6–7 MB to download. Alt: TensorFlow.js; a small CNN's inference written in TypeScript (no runtime, but every layer is ours to keep right).
 - **D110 — Recordings, hits and voices.** One model for all labeled audio: a **recording** (audio stored content-addressed, or a library sample) holds **hits** (start, end, label, who labeled it, the model's confidence); a one-shot is a recording with one hit, a take a recording with many. Recordings belong to a **voice** (a person), so several people can calibrate and datasets split by voice. Stored in IndexedDB (DB v4), not in projects or `.rebeat` files; training recordings don't appear in the library. Export/import as a zip in the same dataset format as `ml/` (WAVs + `hits.csv`: file, start, end, label, voice). Alt: hits as library samples in a Beatbox folder (clutters the library, and trimming would mean new samples).
 - **D111 — A Beatbox panel, not a dialog.** Recording, labeling, calibrating and converting are a workflow you come back to, so they get a dockable panel (`panels/beatbox/`): a recordings list, the selected recording's waveform with hit regions (trim by dragging edges, add by dragging, Delete, label with 1–8, Tab to the next uncertain hit), the model's guess beside your label, a Model view and, for takes, a Convert view. Alt: a modal Convert dialog plus a separate labeling dialog.
 - **D112 — Calibration by prototypes.** For the chosen voice, each class's prototype is the average embedding of its labeled hits; a hit's class blends the model's scores with closeness to the prototypes, trusting yours more as a class gets more examples (no training in the browser, so it's instant, and every correction counts at once). The Model view shows accuracy without and with calibration (leave-one-out) and which classes need more examples. Fine-tuning happens in `ml/` on exported datasets and ships as the next model. Alt: fine-tuning a head in the browser (TensorFlow.js); nearest neighbours over every hit.
 - **D113 — The grid, timing and velocity.** A take recorded in Rebeat uses the project's tempo and bar; anything else gets a detected tempo and first beat you can adjust. Hits go to the nearest step (1/16 default). Timing: Snap (default, no nudge) or Keep feel (the offset as nudge × Strength). Velocity: Detected (loudness mapped to Min..Max, default) or Constant. Hits below a threshold are dropped. Alt: Keep feel as the default; velocity always detected.
 - **D114 — Repetitions make one clean pattern.** The pattern length is found by comparing the take's grid with itself one, two, four or eight bars on; the default folds the repetitions into one pattern by majority (velocity and nudge averaged), and Keep every bar puts the whole take on consecutive pages. Hits whose class disagrees with the other repetitions are flagged for a look. Alt: no folding (every bar as played).
 - **D115 — Your own hits, non-destructively.** Each class plays your most typical hit from the take (closest to the class prototype), cut and saved as a sample in `Beatbox/<take>`, so the result still sounds like you; one click swaps in the matching kit sound, and any library sound can be dropped on a class. Tracks are added (current page, or new pages for Keep every bar), the take's Clip track stays and is muted, and the conversion is one undo step. Alt: kit sounds by default; replacing the Clip track.
-- **D116 — Test material and targets.** Jeroen's loops and freestyle are labeled once (a draft from onsets and the first model, corrected in the panel) and stay out of training; his one-shots and later recordings may train. Targets for the go/no-go (step 2): macro F1 ≥ 0.85 over Kick, Snare and Closed hi-hat on unseen voices; on Jeroen's takes, hits found within 30 ms with F-measure ≥ 0.95 and classes right ≥ 0.9 after calibration with 10 hits per class. The numbers are recorded, so later changes can't quietly get worse. Alt: no target (judge by ear).
+- **D116 — Test material and targets.** Jeroen's loops and freestyle are labeled once (a draft from onsets and the first model, corrected in the panel) and stay out of training; his one-shots and later recordings may train. Targets for the go/no-go (step 2): macro F1 ≥ 0.85 over Kick, Snare and Closed hi-hat on unseen voices; on Jeroen's takes, hits found within 30 ms with F-measure ≥ 0.95 and classes right ≥ 0.9 after calibration with 10 hits per class. The numbers are recorded, so later changes can't quietly get worse. Result for model 1: missed (0.77 on AVP voices alone, 0.80 calibrated; see §0.6h); the work went ahead because calibration and new recordings need the panel. The loops and freestyle aren't labeled yet; synthetic takes of held-out recordings (D118) stand in for them. Alt: no target (judge by ear).
+- **D117 — Finding hits.** Spectral flux on a 512-point log-magnitude spectrogram every 5 ms (silence before the audio starts, so a hit at the very start counts), a peak above 1.4 × the mean of ±50 ms plus a share of the take's 95th percentile (not its loudest moment, which hid the hits of dense takes), moved back to where its attack starts, and only if it rises: the 30 ms after it are at least 1.15 × louder than the 20 ms before, measured on the first difference, which favors the highs (a hi-hat on a kick's tail still rises; the end of a sound doesn't). Chosen on AVP, beatboxset1 and synthetic takes: F-measure 0.83, 0.81 and 0.81 within 30 ms. A short file (under 1.5 s) is one sound: one hit at its first sample within 30 dB of its peak. TypeScript (`onsets.ts`) and Python (`onsets.py`) are tested against the same fixture. Alt: a learned onset detector (later, §0.7).
+- **D118 — Synthetic takes.** `ml/rebeat_ml/synth.py` turns Jeroen's one-shots into 150 beats at 80–145 BPM: patterns where each class likes to sit, a few classes per take, every hit with its own velocity (0 to −14 dB), pitch (±1.5 semitones) and timing, each sound ending where the next begins (as a voice does), sometimes a hummed bass or noise under it. They put a few recordings into many contexts, and give labeled onsets in dense takes. One recording per class (`data.py: HELD_OUT`) stays out of them and of training; 40 takes of those are the test of Jeroen's voice. In an A/B run they raised beatboxset1 0.57 → 0.66 and AVP 0.78 → 0.81 calibrated. Alt: only per-window augmentation (what training already did).
 - **D35 — Build order.** ✅ The phases in §7, starting with the mockup (Phase M), each ending with something you can play with.
 
 ---
