@@ -7,10 +7,11 @@ and every design decision (§6, D1–D104). When this file and the code disagree
 Please fix this file in the same change.
 
 Status (2026-10-09): every phase of the original roadmap is built, plus several feature batches
-(PLAN.md §0.6b–§0.6f). The latest batch is **step tracks** (§0.6f, D93–D98, on the
-`step-tracks` branch): the drum / instrument / audio track kinds became one kind of track with a
-**sound** (sample, synth, sampled instrument) and a **mode** (Hits, Notes, Clip), schema 7, a
-library ordered by what you pick, one set of icons, and an Inspector Sound section. Left: tests
+(PLAN.md §0.6b–§0.6g). The biggest recent batch is **step tracks** (§0.6f, D93–D98, built on
+the `step-tracks` branch and merged): the drum / instrument / audio track kinds became one kind
+of track with a **sound** (sample, synth, sampled instrument) and a **mode** (Hits, Notes,
+Clip), schema 7, a library ordered by what you pick, one set of icons, and an Inspector Sound
+section. Proposed next: **beatbox to step tracks** (§0.6h, D105–D116). Left: tests
 with real hardware (mic, MIDI, Launchpad/Push), signing the desktop release, the license (D6),
 and the "later" items in PLAN.md §0.7. The repository is public and `main` deploys to GitHub
 Pages.
