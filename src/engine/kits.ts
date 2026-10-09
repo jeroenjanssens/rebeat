@@ -322,13 +322,16 @@ export function renderKits(): Promise<void> {
       total += s.length + gap;
     }
     const rendered = await renderOffline(
-      () => {
-        all.forEach((s, i) => {
-          T = starts[i];
-          s.render();
-        });
-        T = 0;
-      },
+      () =>
+        // Tone's noise (its buffers and where each hit starts in them) comes from Math.random,
+        // and every sound is normalized to its peak: seeded, the kits sound the same every time
+        seeded(808, () => {
+          all.forEach((s, i) => {
+            T = starts[i];
+            s.render();
+          });
+          T = 0;
+        }),
       total,
       1,
       sr,
@@ -344,6 +347,21 @@ export function renderKits(): Promise<void> {
     });
   })();
   return rendering;
+}
+
+/** Run `fn` (synchronously) with a seeded Math.random. */
+function seeded(seed: number, fn: () => void) {
+  const random = Math.random;
+  let x = seed;
+  Math.random = () => {
+    x = (x * 1664525 + 1013904223) >>> 0;
+    return x / 2 ** 32;
+  };
+  try {
+    fn();
+  } finally {
+    Math.random = random;
+  }
 }
 
 function normalize(buf: AudioBuffer, target = 0.95): AudioBuffer {

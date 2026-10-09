@@ -50,7 +50,12 @@ export default defineConfig({
   ],
   // Tone.js, React and Dockview make up most of the main chunk; editors and WASM load lazily
   build: { chunkSizeWarningLimit: 1100 },
-  server: { port: 5173, strictPort: true },
+  server: {
+    port: 5173,
+    strictPort: true,
+    // tests write files there (golden levels, results): a change would reload every open page
+    watch: { ignored: ["**/e2e/**", "**/e2e-desktop/**", "**/test-results/**", "**/release/**"] },
+  },
   preview: { port: 4173, strictPort: true },
   test: { include: ["src/**/*.test.{ts,tsx}"] },
 });

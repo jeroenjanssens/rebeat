@@ -453,8 +453,9 @@ onPatchEdit` hook, debounced `saveSoundSoon`).
   - Dockview tabs are `.dv-tab`
 - **Golden levels** (`e2e/golden.spec.ts`): every example song and template renders offline (the
   mix and each track alone) and must match the levels in `e2e/golden/*.json` (RMS within
-  0.75 dB). It's the safety net for changes that shouldn't change the sound. Math.random is seeded
-  from the first line, because the built-in kits are synthesized from noise at startup. Re-record
+  0.75 dB). It's the safety net for changes that shouldn't change the sound. Each render seeds
+  Math.random (probability steps); synth phases in the worklet stay random, hence the tolerance.
+  Re-record
   with `GOLDEN_UPDATE=1 pnpm playwright test golden` only when a change is meant to sound
   different, and say so in the commit.
 - **Flakiness**:
@@ -490,6 +491,11 @@ onPatchEdit` hook, debounced `saveSoundSoon`).
   missing match saved a wrong guide table once. Re-read files after scripted edits.
 - **Encoders' MIDI learn label** defaults to the knob label ("Cutoff"). Pass `learnLabel` with
   the track and section so mappings are identifiable.
+- **The built-in kits are synthesized from noise and normalized to their peak**, so they render
+  with a seeded Math.random (`kits.ts: seeded`); unseeded, their levels moved by up to 2.5 dB on
+  every reload.
+- **Vite's dev server reloads every open page when a watched file changes**, so `e2e/` and
+  `test-results/` are ignored (`vite.config.ts`); tests that write files would reload the app.
 - **The factory synth levels test** used to fail sometimes because of random oscillator phases;
   it now seeds `Math.random`. New level-sensitive tests should do the same.
 

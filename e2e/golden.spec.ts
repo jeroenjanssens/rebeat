@@ -32,19 +32,7 @@ interface Levels {
   tracks: Record<string, Level>;
 }
 
-test.beforeEach(async ({ page }) => {
-  // the built-in kits are synthesized at startup from noise (and normalized to their peak), so a
-  // seeded Math.random from the first line on makes them, and probability steps, the same on every
-  // run; the synth worklet has its own (random oscillator phases), hence the tolerance
-  await page.addInitScript(() => {
-    let seed = 12345;
-    Math.random = () => {
-      seed = (seed * 1664525 + 1013904223) >>> 0;
-      return seed / 2 ** 32;
-    };
-  });
-  await openApp(page);
-});
+test.beforeEach(async ({ page }) => openApp(page));
 
 // one test per project: renders are slow, so they run in parallel
 const projects = [
