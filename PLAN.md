@@ -7,6 +7,9 @@
 
 ## 0. Hand-off (read this first when resuming)
 
+> For a compact, current overview of the code (layout, architecture, testing, gotchas), read
+> `AGENTS.md` at the repository root first; this section keeps the history and the batches.
+
 ### 0.1 Where we are
 
 - §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D83), and the build order is in §7.
@@ -31,13 +34,13 @@ src/
                          ProjectBrowser, projectActions, ExportDialog, WelcomeDialog, AudioStartOverlay, openers
   platform/              Platform interface; web.ts; electron.ts (native dialogs via window.rebeatNative)
   model/                 types (Track, Pattern, Step, Note, Effect…), project ops, schema (versions + migrations,
-                         now v5), params (+ toUnit), effects (buses, master, perf setup), notes (keys, chords, arp),
+                         now v6), params (+ toUnit), effects (buses, master, perf setup), notes (keys, chords, arp),
                          noteOps (piano roll), timing (polyrhythm), tempo (tap), midiFile (SMF export)
   state/                 store (project + undo + UI), settings (persisted), actions (steps, function buttons),
                          input (pads, step entry, live recording, cursor), trackActions, effectActions, clipActions
   engine/                context (native AudioContext + Tone), engine (scoped graph: channels, voices, clips, synth/ (AudioWorklet synth: core DSP, worklet, node),
                          metering, scratch), channel (strips, buses), effects (factory + chains), instruments (voices:
-                         synth patches, sampler with zones, smplr, SoundFonts), synth (the patch voice), transport (lookahead scheduler, playPageStep), ticker (worker),
+                         synth patches, sampler with zones, smplr, SoundFonts), transport (lookahead scheduler, playPageStep), ticker (worker),
                          kits (offline-synthesized 808/909 + vox), samples (buffers, peaks), metronome, looper,
                          liveInput (monitoring), recorder (PCM worklet), stretch (Signalsmith warp), perf (DJ filter,
                          tape stop, beat repeat, throws, crossfader, mute groups), render (offline export)
