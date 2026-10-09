@@ -75,4 +75,34 @@ describe("playPageStep", () => {
     expect(callFor(drum.id)).toBeUndefined();
     expect(callFor(inst.id)).toBeUndefined();
   });
+
+  it("passes hits their pitch and gate, and only Notes their notes", () => {
+    const { p, pattern, drum, inst, dStep, iStep } = setup();
+    dStep.pitch = 3;
+    dStep.gate = 0.5;
+    // a Notes track's step also has a hit pitch, and a Hits track may keep notes
+    dStep.notes = [{ pitch: 72, length: 1, velocity: 1 }];
+    playPageStep(p, pattern, 0, 10, 0.125, 0, false);
+    const hit = callFor(drum.id)![2] as { pitch: number; gate: number; notes?: unknown };
+    expect(hit).toMatchObject({ pitch: 3, gate: 0.5 });
+    expect(hit.notes).toBeUndefined();
+    expect((callFor(inst.id)![2] as { notes: unknown[] }).notes).toHaveLength(iStep.notes!.length);
+  });
+
+  it("plays a synth's hits too, without its notes; Clip tracks start their clip", async () => {
+    const { p, pattern, inst, iStep } = setup();
+    inst.mode = "hits";
+    iStep.pitch = -2;
+    playPageStep(p, pattern, 0, 10, 0.125, 0, false);
+    const hit = callFor(inst.id)![2] as { pitch: number; notes?: unknown };
+    expect(hit.pitch).toBe(-2);
+    expect(hit.notes).toBeUndefined();
+    const { startClip } = await import("./engine");
+    const vox = p.tracks.find((t) => t.mode === "clip")!;
+    pattern.lanes[vox.id].clip = { active: true, launchMode: "oneshot" };
+    trigger.mockClear();
+    playPageStep(p, pattern, 0, 10, 0.125, 0, false);
+    expect(startClip).toHaveBeenCalledWith(vox, 10, expect.any(Number), true);
+    expect(callFor(vox.id)).toBeUndefined();
+  });
 });

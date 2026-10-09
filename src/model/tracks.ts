@@ -2,7 +2,7 @@
  * Step tracks (D93): every track has a sound and a mode. These helpers answer the questions the
  * old track kinds used to: how a track plays, what it plays, and which part of the engine plays it.
  */
-import type { Sound, SoundFamily, Track, TrackMode } from "./types";
+import type { Note, Sound, SoundFamily, Track, TrackMode } from "./types";
 import { soundFamily } from "./types";
 
 export const isHits = (t: Track) => t.mode === "hits";
@@ -53,4 +53,9 @@ export function hitNoteOf(t: Track): number {
   if (t.hitNote !== undefined) return t.hitNote;
   if (t.sound?.source === "sample" || t.sound?.source === "multi") return rootOf(t.sound);
   return t.category === "bass" ? 36 : 60;
+}
+
+/** The note a hit plays on a voice: the hit note plus the step's pitch, as long as its gate. */
+export function hitNotes(t: Track, velocity: number, pitch = 0, gate = 1): Note[] {
+  return [{ pitch: hitNoteOf(t) + pitch, length: Math.max(0.1, gate), velocity }];
 }

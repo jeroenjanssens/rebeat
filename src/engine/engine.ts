@@ -15,7 +15,7 @@ import { warper } from "./stretch";
 import type { StretchNode } from "signalsmith-stretch";
 import { createInstrument, instrumentKey, type InstrumentVoice } from "./instruments";
 import { macroValues } from "../library/synthTrack";
-import { hitNoteOf, player, sampleOf } from "../model/tracks";
+import { hitNoteOf, hitNotes, player, sampleOf } from "../model/tracks";
 
 export interface TriggerOptions {
   /** Audio time; default = now. */
@@ -447,9 +447,11 @@ export function holdNote(track: Track, pitch: number, velocity: number): () => v
  * page's) are for notes: they don't move hits, so the track's is taken back out.
  */
 function hitOptions(track: Track, velocity: number, o: TriggerOptions): TriggerOptions {
-  const pitch = hitNoteOf(track) + (o.pitch ?? 0);
-  const length = Math.max(0.1, o.gate ?? 1);
-  return { ...o, transpose: -(track.transpose ?? 0), notes: [{ pitch, length, velocity }] };
+  return {
+    ...o,
+    transpose: -(track.transpose ?? 0),
+    notes: hitNotes(track, velocity, o.pitch, o.gate),
+  };
 }
 
 /** Play a track's sound (a step, a pad hit, an audition). */
