@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { openApp } from "./helpers";
 
 type Patch = {
+  osc: { shape: number }[];
   envs: { attack: number; attackCurve: number; curve: number; sustain: number }[];
   lfos: { shape: string }[];
 };
@@ -85,6 +86,23 @@ test("drag an envelope's points and curves", async ({ page }) => {
   const before = (await patch(page))!.envs[0].curve;
   await drag("dc", 0, -8);
   await expect.poll(async () => (await patch(page))?.envs[0].curve).toBeGreaterThan(before);
+});
+
+test("an oscillator's shape is one click on its picture", async ({ page }) => {
+  const editor = await openAdvanced(page);
+  const shapes = editor.locator('[data-section="Oscillator 1"] [data-hint="synth.osc.shape"]');
+  await expect(shapes.getByRole("radio")).toHaveCount(4);
+  // the acid bass is a saw
+  await expect(shapes.getByRole("radio", { name: "Saw" })).toHaveAttribute("aria-checked", "true");
+  await shapes.getByRole("radio", { name: "Pulse" }).click();
+  await expect.poll(async () => (await patch(page))?.osc[0].shape).toBe(3);
+  await expect(shapes.getByRole("radio", { name: "Pulse" })).toHaveAttribute(
+    "aria-checked",
+    "true",
+  );
+  await expect(shapes.getByRole("radio", { name: "Saw" })).toHaveAttribute("aria-checked", "false");
+  // no dial for it any more
+  await expect(editor.locator('[data-section="Oscillator 1"] [title^="Shape:"]')).toHaveCount(0);
 });
 
 test("LFOs show their shape", async ({ page }) => {

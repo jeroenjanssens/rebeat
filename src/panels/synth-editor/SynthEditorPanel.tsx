@@ -318,9 +318,18 @@ function Editor({ track }: { track: Track }) {
           )}
           {i > 0 && toggle(o.sync, "Sync to 1", (v) => set(`osc.${i}.sync`, v), "synth.osc.sync")}
         </div>
+        <ShapePicker
+          shape={o.shape}
+          pw={o.pw}
+          color={track.color}
+          onPick={(v) => set(`osc.${i}.shape`, v)}
+        />
         {knobs(
           `osc${i}`,
-          (p) => (p.endsWith(".pw") && o.shape < 2.5) || (p.endsWith(".phase") && !o.retrigger),
+          (p) =>
+            p.endsWith(".shape") ||
+            (p.endsWith(".pw") && o.shape < 2.5) ||
+            (p.endsWith(".phase") && !o.retrigger),
         )}
       </Box>
     );
@@ -802,6 +811,75 @@ function Wheels({ track }: { track: Track }) {
         "synth.wheel.mod",
         "mod-wheel",
       )}
+    </div>
+  );
+}
+
+const SHAPE_NAMES = ["Sine", "Triangle", "Saw", "Pulse"];
+
+/** One cycle of a basic shape, as an SVG path in a w × h box. */
+function shapePath(k: number, pw: number, w: number, h: number) {
+  const y = (v: number) => h / 2 - v * (h / 2 - 2);
+  if (k === 3) return `M0 ${y(1)} H${w * pw} V${y(-1)} H${w} `;
+  const pts = Array.from({ length: 41 }, (_, i) => {
+    const t = i / 40;
+    const v = k === 0 ? Math.sin(t * 2 * Math.PI) : k === 1 ? 1 - 4 * Math.abs(t - 0.5) : 2 * t - 1;
+    return `${t * w},${y(v)}`;
+  });
+  return `M${pts.join(" L")}`;
+}
+
+/**
+ * The oscillator's shape as four pictures: one click picks one. Between two shapes (a macro or
+ * the mod matrix can morph them) both light up, each as much as it's heard.
+ */
+function ShapePicker({
+  shape,
+  pw,
+  color,
+  onPick,
+}: {
+  shape: number;
+  pw: number;
+  color: string;
+  onPick: (shape: number) => void;
+}) {
+  const w = 34;
+  const h = 18;
+  return (
+    <div className="flex gap-1" role="radiogroup" aria-label="Shape" data-hint="synth.osc.shape">
+      {SHAPE_NAMES.map((name, k) => {
+        // how much of this shape you hear (1 when it's exactly this one)
+        const amount = Math.max(0, 1 - Math.abs(shape - k));
+        return (
+          <button
+            key={name}
+            role="radio"
+            aria-checked={amount > 0.5}
+            aria-label={name}
+            title={name}
+            data-active={amount > 0.5}
+            data-shape={k}
+            className="flex flex-col items-center rounded border px-1 py-0.5"
+            style={{
+              borderColor: amount > 0 ? color : "var(--line)",
+              background: `color-mix(in oklab, ${color} ${Math.round(amount * 22)}%, transparent)`,
+            }}
+            onClick={() => onPick(k)}
+          >
+            <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
+              <path
+                d={shapePath(k, pw, w, h)}
+                fill="none"
+                stroke={amount > 0 ? color : "currentColor"}
+                strokeWidth={1.5}
+                opacity={0.4 + amount * 0.6}
+              />
+            </svg>
+            <span className="text-[9px] text-faint">{name}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }

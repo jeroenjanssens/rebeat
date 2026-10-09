@@ -45,7 +45,7 @@ const osc = (i: number): PatchParam[] => {
       min: 0,
       max: 3,
       format: shapeName,
-      help: "The waveform, morphing smoothly: sine (pure) → triangle (soft) → saw (bright, buzzy) → pulse (hollow; set its width).",
+      help: "The waveform: click one of the pictures. Sine is pure, triangle soft, saw bright and buzzy, pulse hollow (set its width). Macros and the mod matrix can morph smoothly between them.",
     },
     {
       path: `${p}.pw`,
