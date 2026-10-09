@@ -3,3 +3,5 @@ allowBuilds:
   electron: true
   # only needed for Squirrel.Windows installers; we build NSIS
   electron-winstaller: false
+  # onnxruntime-web's dependency; its script only prints a notice
+  protobufjs: false

@@ -1,0 +1,68 @@
+{
+ "format": "rebeat-beatbox-model",
+ "version": "1",
+ "sampleRate": 16000,
+ "window": 3200,
+ "pre": 320,
+ "classes": [
+  {
+   "id": "kick",
+   "name": "Kick"
+  },
+  {
+   "id": "snare",
+   "name": "Snare"
+  },
+  {
+   "id": "hihat",
+   "name": "Closed hi-hat"
+  },
+  {
+   "id": "openhat",
+   "name": "Open hi-hat"
+  },
+  {
+   "id": "tom",
+   "name": "Tom"
+  },
+  {
+   "id": "clap",
+   "name": "Clap"
+  },
+  {
+   "id": "crash",
+   "name": "Crash"
+  },
+  {
+   "id": "other",
+   "name": "Other"
+  }
+ ],
+ "embedding": 64,
+ "calibration": {
+  "tau": 0.05,
+  "k": 4.0
+ },
+ "trainedOn": [
+  "Amateur Vocal Percussion dataset (Alejandro Delgado, CC BY 4.0)",
+  "beatbox-samples (Jeroen Janssens, CC BY 4.0)"
+ ],
+ "metrics": {
+  "avp": {
+   "hits": 2367,
+   "voices": 7,
+   "accuracy": 0.6806083650190115,
+   "core_macro_f1": 0.7585525504700262,
+   "calibrated_accuracy": 0.7345471969333972,
+   "calibrated_core_macro_f1": 0.8130307633839421
+  },
+  "beatboxset1": {
+   "hits": 3526,
+   "voices": 14,
+   "accuracy": 0.36074872376630746,
+   "core_macro_f1": 0.45749707377786547,
+   "calibrated_accuracy": 0.48768809849521205,
+   "calibrated_core_macro_f1": 0.6675230592101008
+  }
+ }
+}

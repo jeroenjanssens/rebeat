@@ -56,3 +56,20 @@ desktop-build: build
 e2e-desktop: build
     pnpm tsc -p electron/tsconfig.json
     pnpm playwright test -c playwright.desktop.config.ts
+
+# Beatbox model (ml/, uv): download the datasets
+ml-fetch:
+    cd ml && uv run python -m rebeat_ml.fetch
+
+# Beatbox model: train a run into ml/runs/<name> (extra args go to train.py)
+ml-train name *args:
+    cd ml && uv run python -m rebeat_ml.train --name {{name}} {{args}}
+    cd ml && uv run python -m rebeat_ml.evaluate runs/{{name}}
+
+# Beatbox model: ship a run as public/models/beatbox/<version> (then bump MODEL_VERSION)
+ml-export name version:
+    cd ml && uv run python -m rebeat_ml.export runs/{{name}} {{version}}
+
+# Beatbox model: the Python tests
+ml-test:
+    cd ml && uv run pytest -q
