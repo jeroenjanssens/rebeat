@@ -33,6 +33,9 @@ interface Levels {
   tracks: Record<string, Level>;
 }
 
+// a refactoring safety net, and the slowest tests by far: on CI only when asked (GOLDEN=1)
+test.skip(!!process.env.CI && !process.env.GOLDEN, "golden levels run locally (or GOLDEN=1)");
+
 test.beforeEach(async ({ page }) => openApp(page));
 
 // one test per project: renders are slow, so they run in parallel

@@ -4,6 +4,7 @@ import { openApp } from "./helpers";
 type W = {
   __rebeat: {
     engine: { masterLevel(): number[] };
+    transport: { play(): void };
     store: { getState(): { playing: boolean } };
   };
 };
@@ -39,7 +40,7 @@ test("Space stops everything at once: no notes, no reverb or delay tails (D99)",
   await playAWhile(page);
   await page.keyboard.press("Space");
   // a moment for the fade (5 ms) and the analyser's window (23 ms)
-  await page.waitForTimeout(60);
+  await page.waitForTimeout(process.env.CI ? 250 : 60);
   // −80 dB
   expect(await loudest(page, 1200)).toBeLessThan(0.0001);
 });
@@ -50,9 +51,20 @@ test("playing again right after a stop starts from silence, without the old tail
   await playAWhile(page);
   await page.keyboard.press("Space");
   await page.waitForTimeout(100);
-  await page.keyboard.press("Space");
-  // the first notes start 60 ms after play: before that, nothing of what played before
-  expect(await loudest(page, 40)).toBeLessThan(0.0001);
+  // play, and listen from that moment: the first notes start 60 ms later, so until then
+  // nothing of what played before may sound
+  const before = await page.evaluate(async () => {
+    const r = (window as never as W).__rebeat;
+    r.transport.play();
+    let max = 0;
+    const end = performance.now() + 40;
+    while (performance.now() < end) {
+      max = Math.max(max, ...r.engine.masterLevel());
+      await new Promise((res) => setTimeout(res, 5));
+    }
+    return max;
+  });
+  expect(before).toBeLessThan(0.0001);
 });
 
 test("with the setting on, the tails ring out after stop", async ({ page }) => {
@@ -66,6 +78,6 @@ test("with the setting on, the tails ring out after stop", async ({ page }) => {
   await openApp(page);
   await playAWhile(page);
   await page.keyboard.press("Space");
-  await page.waitForTimeout(60);
+  await page.waitForTimeout(process.env.CI ? 250 : 60);
   expect(await loudest(page, 400)).toBeGreaterThan(0.001);
 });

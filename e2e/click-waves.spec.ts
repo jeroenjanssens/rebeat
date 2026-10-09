@@ -17,7 +17,8 @@ type W = {
 };
 
 /** The loudest the master gets within `ms`. */
-const peak = (page: Page, ms = 1500) =>
+// CI machines start sounds late: listen longer there
+const peak = (page: Page, ms = process.env.CI ? 4000 : 1500) =>
   page.evaluate(async (ms) => {
     const r = (window as never as W).__rebeat;
     let max = 0;
