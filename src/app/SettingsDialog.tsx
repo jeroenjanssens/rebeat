@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Dialog } from "../components/Dialog";
 import { platform } from "../platform";
-import { ACCENTS, THEMES, useSettings, type Settings } from "../state/settings";
+import { ACCENTS, THEMES, useSettings, type Settings, type ThemeId } from "../state/settings";
 import { CalibrationDialog } from "./CalibrationDialog";
 import { MidiSettings } from "./MidiSettings";
 import { useShell } from "./shell";
@@ -195,14 +195,41 @@ export function SettingsDialog() {
                     data-testid="theme-select"
                     data-hint="app.settings.theme"
                   >
-                    <option value="system">System (Studio Dark / Paper)</option>
-                    {THEMES.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.label}
-                      </option>
+                    <option value="system">System (follows your OS)</option>
+                    {[true, false].map((dark) => (
+                      <optgroup key={String(dark)} label={dark ? "Dark" : "Light"}>
+                        {THEMES.filter((t) => t.dark === dark).map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.label}
+                          </option>
+                        ))}
+                      </optgroup>
                     ))}
                   </select>
                 </Row>
+                {s.theme === "system" &&
+                  (
+                    [
+                      ["systemDarkTheme", "When the OS is dark", true],
+                      ["systemLightTheme", "When the OS is light", false],
+                    ] as const
+                  ).map(([key, label, dark]) => (
+                    <Row key={key} label={label}>
+                      <select
+                        className="input"
+                        value={s[key]}
+                        onChange={(e) => set({ [key]: e.target.value as ThemeId })}
+                        data-testid={`theme-${dark ? "dark" : "light"}`}
+                        data-hint="app.settings.systemtheme"
+                      >
+                        {THEMES.filter((t) => t.dark === dark).map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.label}
+                          </option>
+                        ))}
+                      </select>
+                    </Row>
+                  ))}
                 <Row label="Accent color">
                   <div
                     className="flex flex-wrap items-center gap-2"

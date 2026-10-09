@@ -4,14 +4,14 @@ Open [Settings](command:app.settings) with the gear in the transport bar ({{key:
 
 ## Appearance
 
-| Setting            | What it does                                                                                                            |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------- |
-| **Theme**          | Studio Dark, Paper (light), Midnight, Ember, High Contrast, or **System** (follows your computer's light/dark setting). |
-| **Accent color**   | The highlight color; **Theme** uses the theme's own.                                                                    |
-| **UI scale**       | Make everything smaller or bigger (80–150%).                                                                            |
-| **Spacing**        | Comfortable or Compact.                                                                                                 |
-| **Explain mode**   | Detailed cards when you hover over buttons (see [Explain mode](#getting-started-explain-mode)).                         |
-| **Reduced motion** | Fewer animations: follow the system, or always on/off.                                                                  |
+| Setting            | What it does                                                                                                                                                                                                                                                                                                                                       |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Theme**          | 13 dark themes (Studio Dark, Midnight, Ember, High Contrast, Outrun, Abyss, Moss, Graphite, Oxblood, Dracula, Catppuccin Frappé, Macchiato and Mocha) and 7 light ones (Paper, Daylight, Sand, Mint, Lavender, Sky, Catppuccin Latte), or **System**: it follows your computer's light/dark setting, with the dark and the light theme you choose. |
+| **Accent color**   | The highlight color; **Theme** uses the theme's own.                                                                                                                                                                                                                                                                                               |
+| **UI scale**       | Make everything smaller or bigger (80–150%).                                                                                                                                                                                                                                                                                                       |
+| **Spacing**        | Comfortable or Compact.                                                                                                                                                                                                                                                                                                                            |
+| **Explain mode**   | Detailed cards when you hover over buttons (see [Explain mode](#getting-started-explain-mode)).                                                                                                                                                                                                                                                    |
+| **Reduced motion** | Fewer animations: follow the system, or always on/off.                                                                                                                                                                                                                                                                                             |
 
 ## Audio
 

@@ -300,7 +300,7 @@ const hints: Hints = {
   },
   "app.settings.theme": {
     title: "Theme",
-    text: "Choose the color theme. System follows your computer's own light or dark setting.",
+    text: "Choose the color theme: 13 dark ones and 7 light ones, Catppuccin and Dracula among them. System follows your computer's own light or dark setting.",
     guide: "settings-appearance",
   },
   "app.settings.accent": {
@@ -358,6 +358,11 @@ const hints: Hints = {
     title: "Free first loop",
     text: "When nothing is playing, the length of the first loop recording sets the tempo, treating that recording as one bar.",
     guide: "loop-station-free-first-loop",
+  },
+  "app.settings.systemtheme": {
+    title: "System themes",
+    text: "With the theme on System, Rebeat follows your OS's light or dark setting: choose which dark and which light theme it uses.",
+    guide: "settings-appearance",
   },
   "app.settings.ringout": {
     title: "Let effects ring out after stop",

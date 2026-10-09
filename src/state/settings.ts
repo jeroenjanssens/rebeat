@@ -3,17 +3,52 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { platform } from "../platform";
 
-export type ThemeId = "studio-dark" | "paper" | "midnight" | "ember" | "high-contrast";
+export type ThemeId =
+  | "studio-dark"
+  | "midnight"
+  | "ember"
+  | "high-contrast"
+  | "outrun"
+  | "abyss"
+  | "moss"
+  | "graphite"
+  | "oxblood"
+  | "dracula"
+  | "catppuccin-frappe"
+  | "catppuccin-macchiato"
+  | "catppuccin-mocha"
+  | "paper"
+  | "daylight"
+  | "sand"
+  | "mint"
+  | "lavender"
+  | "sky"
+  | "catppuccin-latte";
 export type ThemeSetting = ThemeId | "system";
 export type LatencyMode = "interactive" | "balanced" | "playback";
 export type PageSwitch = "page" | "bar" | "beat";
 
 export const THEMES: { id: ThemeId; label: string; dark: boolean }[] = [
   { id: "studio-dark", label: "Studio Dark", dark: true },
-  { id: "paper", label: "Paper", dark: false },
   { id: "midnight", label: "Midnight", dark: true },
   { id: "ember", label: "Ember", dark: true },
   { id: "high-contrast", label: "High Contrast", dark: true },
+  { id: "outrun", label: "Outrun", dark: true },
+  { id: "abyss", label: "Abyss", dark: true },
+  { id: "moss", label: "Moss", dark: true },
+  { id: "graphite", label: "Graphite", dark: true },
+  { id: "oxblood", label: "Oxblood", dark: true },
+  { id: "dracula", label: "Dracula", dark: true },
+  { id: "catppuccin-frappe", label: "Catppuccin Frappé", dark: true },
+  { id: "catppuccin-macchiato", label: "Catppuccin Macchiato", dark: true },
+  { id: "catppuccin-mocha", label: "Catppuccin Mocha", dark: true },
+  { id: "paper", label: "Paper", dark: false },
+  { id: "daylight", label: "Daylight", dark: false },
+  { id: "sand", label: "Sand", dark: false },
+  { id: "mint", label: "Mint", dark: false },
+  { id: "lavender", label: "Lavender", dark: false },
+  { id: "sky", label: "Sky", dark: false },
+  { id: "catppuccin-latte", label: "Catppuccin Latte", dark: false },
 ];
 
 export const ACCENTS = [
@@ -28,6 +63,9 @@ export const ACCENTS = [
 
 export interface Settings {
   theme: ThemeSetting;
+  /** The themes System follows (D102). */
+  systemDarkTheme: ThemeId;
+  systemLightTheme: ThemeId;
   /** null = the theme's own accent color. */
   accent: string | null;
   uiScale: number; // 0.8..1.5
@@ -70,6 +108,8 @@ export interface Settings {
 
 export const DEFAULT_SETTINGS: Settings = {
   theme: "system",
+  systemDarkTheme: "studio-dark",
+  systemLightTheme: "paper",
   accent: null,
   uiScale: 1,
   density: "comfortable",
@@ -123,7 +163,11 @@ export const useSettings = create<SettingsState>()(
   ),
 );
 
-export function resolveTheme(setting: ThemeSetting, prefersDark: boolean): ThemeId {
+export function resolveTheme(
+  setting: ThemeSetting,
+  prefersDark: boolean,
+  system: { dark: ThemeId; light: ThemeId } = { dark: "studio-dark", light: "paper" },
+): ThemeId {
   if (setting !== "system") return setting;
-  return prefersDark ? "studio-dark" : "paper";
+  return prefersDark ? system.dark : system.light;
 }

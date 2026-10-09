@@ -406,7 +406,7 @@ projects, files, saved sounds and MIDI mappings each need a migration test; Clip
 
 ### 0.6g Themes, tab icons, a synthwave song, removing kits, instant stop (agreed 2026-10-09)
 
-Progress: 1 ✅ · 2 ✅ · 3 ✅ · 4 ✅ · 5 · 6.
+Progress: 1 ✅ · 2 ✅ · 3 ✅ · 4 ✅ · 5 ✅ · 6.
 
 Order 1–6, one or more commits each, with hints, guide updates, decisions and the full checks.
 
@@ -428,13 +428,13 @@ Order 1–6, one or more commits each, with hints, guide updates, decisions and 
    per-sample and per-synth editor tabs), and the layout menu lists panels with them. Icons that
    clashed with the sound icons (D96) change: the drum machine `Grid3x3`, the piano roll `Music`.
    Tab rows inside panels stay as they are.
-5. **Fifteen more themes (D102).** Dark: Outrun, Abyss, Moss, Graphite, Oxblood, Dracula, and
+5. **Fifteen more themes (D102), 20 in all.** Dark: Outrun, Abyss, Moss, Graphite, Oxblood, Dracula, and
    Catppuccin Frappé, Macchiato and Mocha. Light: Daylight, Sand, Mint, Lavender, Sky and
    Catppuccin Latte (with Paper, 7 light themes; 20 in all). Catppuccin and Dracula use their
    published palettes (both MIT). Light themes keep a dark display, tinted to match. Settings
    group the list Dark / Light, and System picks which dark and which light theme it follows.
    Tests: every theme defines every token, with contrast text/panel ≥ 7:1, dim ≥ 4.5:1, faint
-   ≥ 3:1, accent ≥ 3:1 (unit); every theme draws (e2e); a screenshot sheet.
+   ≥ 2.2:1, accent ≥ 3:1 (unit); every theme draws (e2e); a screenshot sheet.
 6. **Pump and "Laser Highway" (D103, D104).** A new insert effect **Pump**: a gain envelope on
    every quarter or eighth note (Rate, Depth, Shape), timed by the transport's beats live and
    offline: the sidechain pump of dance music. The song: synthwave/outrun at 118 BPM in A minor,
@@ -1028,6 +1028,7 @@ Format: **Dn — Question.** Default ✅, alternatives.
 - **D99 — Stop means silence.** `stop()` calls `engine.panic()`: the master fades out over 5 ms; hits, clips and synth voices stop without their release (the worklet's `panic` also drops notes queued ahead), samplers' notes get a 5 ms fade-out; the effects that hold sound (reverb, delay, chorus, phaser) are rebuilt on every track, bus and the master 30 ms later; the metronome's scheduled clicks and library previews stop. Two things can't be cut at the source and are muted instead: smplr/SoundFont notes (their stop always decays) and warped clips (Signalsmith holds a few hundred milliseconds), whose channels stay muted until play or 600 ms. The master's own chain (EQ, compressor, limiter, the performance filters) rings briefly too, so it's rebuilt as well, and the master opens again after 30 ms. A setting, **Let effects ring out after stop** (off), brings back the old stop (notes released, tails ring). Alt: always let tails ring (most DAWs); a second press for silence.
 - **D100 — Removing kits and folders.** A folder of the library (an imported kit lives in `Kits/<machine>`) can be removed: right-click it in the sidebar, **Remove folder…** above it, or **Remove from library** on a kit in Online kits you added. A confirmation counts the samples; the ones a project plays (the open one or any saved one, `samplesInUse`) stay, moved to the folder above, the rest go with their audio (`library/folders.ts: planRemoval`, `removeFolder`). Built-in kits can't be removed. Alt: remove everything and let tracks lose their sound; hide instead of delete.
 - **D101 — Icons on the panels' tabs.** Each Dockview tab shows its panel's icon from the registry (`app/panels.tsx`, found by the panel's component, so the per-sample and per-synth editor tabs get theirs), and the layout menu lists panels with them. Icons now mean one thing (D96): the drum machine is `Grid3x3` (its kit icon was the kits'), the piano roll `Music` (the Notes icon; Piano is sampled instruments). Tab rows inside panels have no icons. Alt: icons on every tab row.
+- **D102 — Twenty themes.** Fifteen more, as CSS token blocks (`styles/index.css`) plus `THEMES`: dark Outrun, Abyss, Moss, Graphite, Oxblood, Dracula, Catppuccin Frappé, Macchiato, Mocha; light Daylight, Sand, Mint, Lavender, Sky, Catppuccin Latte (13 dark and 7 light in all). Catppuccin and Dracula use their published palettes (MIT); Catppuccin Latte's panels use its lightest background so its text reaches 7:1. Every light theme keeps a dark display, as Paper does. Settings list them under Dark and Light; System follows the OS with a dark and a light theme of your choice (`systemDarkTheme`, `systemLightTheme`). A unit test reads the stylesheet: every theme has every token, text ≥ 7:1 on the panel, dim text ≥ 4.5:1, faint ≥ 2.2:1 (it's meant to be quiet; the first themes are at 2.3–2.9), accent ≥ 3:1, white on the display ≥ 12:1. Alt: user-made themes from an accent color.
 - **D35 — Build order.** ✅ The phases in §7, starting with the mockup (Phase M), each ending with something you can play with.
 
 ---

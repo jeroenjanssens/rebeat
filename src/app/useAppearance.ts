@@ -17,10 +17,14 @@ function useMedia(q: MediaQueryList) {
 
 /** Apply theme, accent, UI scale, density and motion settings to the document. */
 export function useAppearance() {
-  const { theme, accent, uiScale, density, reducedMotion } = useSettings();
+  const { theme, accent, uiScale, density, reducedMotion, systemDarkTheme, systemLightTheme } =
+    useSettings();
   const prefersDark = useMedia(darkQuery);
   const prefersReduced = useMedia(motionQuery);
-  const resolved = resolveTheme(theme, prefersDark);
+  const resolved = resolveTheme(theme, prefersDark, {
+    dark: systemDarkTheme,
+    light: systemLightTheme,
+  });
 
   useEffect(() => applyTheme(resolved, accent), [resolved, accent]);
   useEffect(() => {
