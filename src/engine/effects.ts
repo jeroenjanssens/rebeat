@@ -3,7 +3,7 @@
  * the same definitions drive track inserts, buses, the master chain and offline rendering.
  */
 import * as Tone from "tone";
-import { DELAY_TIMES, lin, toUnit } from "../model/params";
+import { DELAY_TIMES, PUMP_RATES, lin, toUnit } from "../model/params";
 import { Drive, FlatEQ } from "./tone";
 import type { Effect } from "../model/types";
 
@@ -13,6 +13,9 @@ export interface FxNode {
   /** Resolves when the effect can process audio (the reverb builds its impulse response). */
   ready: Promise<void>;
   update(fx: Effect, bpm: number): void;
+  /** Effects that follow the beat (Pump): the page step at `time`, from `posQ` for `stepQ`
+   * quarter notes of `secPerQ` seconds each. */
+  onStep?(time: number, posQ: number, stepQ: number, secPerQ: number): void;
   dispose(): void;
 }
 
@@ -31,6 +34,7 @@ type Inner = {
   nodes: Tone.ToneAudioNode[];
   set: (p: Record<string, number>, bpm: number) => void;
   ready?: Promise<void>;
+  onStep?: FxNode["onStep"];
 };
 
 const v = (p: Record<string, number>, k: string, d = 0.5) => p[k] ?? d;
@@ -187,6 +191,33 @@ function build(name: string, p: Record<string, number>): Inner {
         },
       };
     }
+    case "Pump": {
+      // the gain dips on every beat of its rate and comes back over `release` of the beat
+      const g = new Tone.Gain(1);
+      const param = (g.input as GainNode).gain;
+      let q = p;
+      return {
+        nodes: [g],
+        set: (next) => (q = next),
+        onStep(time, posQ, stepQ, secPerQ) {
+          const rate = PUMP_RATES[Math.round(v(q, "rate") * (PUMP_RATES.length - 1))];
+          const every = { "1/2": 2, "1/4": 1, "1/8": 0.5 }[rate] ?? 1;
+          const floor = 1 - v(q, "depth", 0.6);
+          const back = lin(0.1, 1)(v(q, "release")) * every * secPerQ;
+          // the beats within this step (several when the step is longer than the rate)
+          for (
+            let b = Math.ceil(posQ / every - 1e-6) * every;
+            b < posQ + stepQ - 1e-6;
+            b += every
+          ) {
+            const t = time + (b - posQ) * secPerQ;
+            param.cancelScheduledValues(t);
+            param.setTargetAtTime(floor, t, 0.002);
+            param.setTargetAtTime(1, t + 0.01, back / 3);
+          }
+        },
+      };
+    }
     case "AutoPan": {
       const a = new Tone.AutoPanner({ frequency: 1 }).start();
       a.wet.value = 1;
@@ -233,6 +264,7 @@ export function createFx(fx: Effect, bpm: number): FxNode {
       wet.gain.rampTo(mix, 0.02);
       dry.gain.rampTo(1 - mix, 0.02);
     },
+    onStep: inner.onStep,
     dispose() {
       for (const n of [input, output, dry, wet, ...inner.nodes]) n.dispose();
     },
@@ -294,6 +326,11 @@ export class FxChain {
     if (!all && !this.last.some((fx) => !fx.bypass && HOLDS_SOUND.has(fx.name))) return;
     this.key = "";
     this.sync(this.last, this.lastBpm);
+  }
+
+  /** A page step for the effects that follow the beat (Pump, D104). */
+  step(time: number, posQ: number, stepQ: number, secPerQ: number) {
+    for (const n of this.nodes) n.onStep?.(time, posQ, stepQ, secPerQ);
   }
 
   /** Resolves when every effect can process audio (reverb impulse responses are built). */

@@ -12,6 +12,7 @@ import { useSettings } from "../state/settings";
 import { isAudible, useStore } from "../state/store";
 import {
   audioNow,
+  effectsStep,
   initEngine,
   panic,
   startClip,
@@ -257,6 +258,7 @@ export function playPageStep(
 ) {
   const qPage = STEP_SIZE_QUARTERS[pattern.stepSize];
   const secPerQ = 60 / project.bpm;
+  effectsStep(time, pageStep * qPage, qPage, secPerQ);
   for (const track of project.tracks) {
     const lane = pattern.lanes[track.id];
     if (!lane) continue;

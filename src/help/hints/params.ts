@@ -306,6 +306,11 @@ const hints: Hints = {
     text: "Automatically moves the sound left and right in the stereo field at a set rate.",
     guide: "mixing-effects",
   },
+  "fx.Pump": {
+    title: "Pump",
+    text: "Ducks the sound on every beat and lets it swell back, like a sidechain to the kick: the breathing pads and basses of synthwave and house. It follows the song's beat, also in exports; when the song stops it does nothing.",
+    guide: "mixing-effects",
+  },
   "fx.Limiter": {
     title: "Limiter",
     text: "Hard peak limiter: no signal gets above the Ceiling level. Part of the master chain by default.",
@@ -626,6 +631,30 @@ const hints: Hints = {
 
   // ─── AutoPan params ──────────────────────────────────────────────────────
 
+  "fx.Pump.rate": {
+    title: "Rate",
+    text: "How often it ducks: every half note, every beat (1/4, the four-on-the-floor kick) or every eighth note.",
+    keys: "Drag or scroll · Shift = fine · Double-click = reset · Right-click: MIDI learn",
+    guide: "mixing-effects",
+  },
+  "fx.Pump.depth": {
+    title: "Depth",
+    text: "How far the sound dips on each beat. 0% = no pumping; 100% = silent for an instant.",
+    keys: "Drag or scroll · Shift = fine · Double-click = reset · Right-click: MIDI learn",
+    guide: "mixing-effects",
+  },
+  "fx.Pump.release": {
+    title: "Release",
+    text: "How long the sound takes to come back, as a share of the time between beats. Short = a quick duck; long = a slow swell.",
+    keys: "Drag or scroll · Shift = fine · Double-click = reset · Right-click: MIDI learn",
+    guide: "mixing-effects",
+  },
+  "fx.Pump.mix": {
+    title: "Mix",
+    text: "Blends the steady and the pumping sound.",
+    keys: "Drag or scroll · Shift = fine · Double-click = reset · Right-click: MIDI learn",
+    guide: "mixing-effects",
+  },
   "fx.AutoPan.rate": {
     title: "Rate",
     text: "How fast the sound moves left and right. Slow rates give a gentle sweep; faster rates are more dramatic.",

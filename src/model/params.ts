@@ -149,6 +149,9 @@ export const MIX_PARAMS: ParamDef[] = [
 const rate = (lo: number, hi: number) => (v: number) => `${expo(lo, hi)(v).toFixed(2)}Hz`;
 const MIX = (d: number): ParamDef => ({ id: "mix", label: "Mix", default: d, format: pct });
 
+/** How often Pump ducks: every half note, quarter or eighth. */
+export const PUMP_RATES = ["1/2", "1/4", "1/8"];
+
 export const DELAY_TIMES = ["1/32", "1/16", "1/8T", "1/8", "1/8.", "1/4", "1/4.", "1/2"];
 
 /** Effect names where space is tight (a mixer strip's FX button). */
@@ -164,6 +167,7 @@ export const EFFECT_SHORT: Record<string, string> = {
   Phaser: "Phas",
   Tremolo: "Trem",
   AutoPan: "Pan",
+  Pump: "Pump",
   Limiter: "Lim",
 };
 
@@ -263,6 +267,24 @@ export const EFFECT_PARAMS: Record<string, ParamDef[]> = {
   AutoPan: [
     { id: "rate", label: "Rate", default: 0.4, format: rate(0.05, 10) },
     { id: "depth", label: "Depth", default: 0.8, format: pct },
+    MIX(1),
+  ],
+  // ducks on every beat, like a sidechain to the kick (D104)
+  Pump: [
+    {
+      id: "rate",
+      label: "Rate",
+      default: 0.5,
+      steps: 3,
+      format: (v) => PUMP_RATES[Math.round(v * (PUMP_RATES.length - 1))],
+    },
+    { id: "depth", label: "Depth", default: 0.6, format: pct },
+    {
+      id: "release",
+      label: "Release",
+      default: 0.5,
+      format: (v) => `${Math.round(lin(10, 100)(v))}%`,
+    },
     MIX(1),
   ],
   Limiter: [{ id: "ceiling", label: "Ceiling", default: 0.95, format: db(-24, 0) }],

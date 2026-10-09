@@ -45,6 +45,11 @@ export class BusChannel {
     this.fx.flush();
   }
 
+  /** A page step, for effects that follow the beat (Pump, D104). */
+  step(time: number, posQ: number, stepQ: number, secPerQ: number) {
+    this.fx.step(time, posQ, stepQ, secPerQ);
+  }
+
   update(bus: Bus, bpm: number) {
     this.fx.sync(bus.effects, bpm);
     this.fader.gain.rampTo(bus.mute ? 0 : faderGain(bus.volume), 0.02);
@@ -119,6 +124,11 @@ export class TrackChannel {
   /** Drop the sound its effects still hold (reverb and delay tails), for stop (D99). */
   flush() {
     this.fx.flush();
+  }
+
+  /** A page step, for effects that follow the beat (Pump, D104). */
+  step(time: number, posQ: number, stepQ: number, secPerQ: number) {
+    this.fx.step(time, posQ, stepQ, secPerQ);
   }
 
   update(track: Track, audible: boolean, bpm: number) {

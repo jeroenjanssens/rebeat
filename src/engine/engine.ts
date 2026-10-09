@@ -703,6 +703,17 @@ export function stopAll() {
   for (const v of S.synths.values()) v.releaseAll(t);
 }
 
+/**
+ * A page step for the effects that follow the beat (Pump, D104), on every track, bus and the
+ * master: from `posQ` quarter notes into the page, `stepQ` long, at `time`. Called by
+ * `playPageStep`, so it's the same live and offline.
+ */
+export function effectsStep(time: number, posQ: number, stepQ: number, secPerQ: number) {
+  for (const ch of S.channels.values()) ch.step(time, posQ, stepQ, secPerQ);
+  for (const b of S.buses.values()) b.step(time, posQ, stepQ, secPerQ);
+  S.master?.fx.step(time, posQ, stepQ, secPerQ);
+}
+
 /** How long stop takes to fade the master out (and back in): instant, without a click. */
 const FADE = 0.005;
 /** Tracks whose notes can't be cut short (smplr lets them decay): muted until then. */
