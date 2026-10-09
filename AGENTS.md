@@ -3,14 +3,16 @@
 This file is the fast way in. It explains what Rebeat is, how the code is organized, how the
 pieces talk to each other, how to verify a change, and the gotchas that cost time before.
 `PLAN.md` is the long-form record: the product spec (§1–§3), the original architecture (§4),
-and every design decision (§6, D1–D92). When this file and the code disagree, the code wins.
+and every design decision (§6, D1–D97). When this file and the code disagree, the code wins.
 Please fix this file in the same change.
 
 Status (2026-10-09): every phase of the original roadmap is built, plus several feature batches
 (PLAN.md §0.6b–§0.6e). The latest batch was the complete synth: an AudioWorklet engine,
 version 2 patches, macros, Basic and Advanced editors, factory synths voiced again, and two demo
-songs. What's left: tests with real hardware (mic, MIDI, Launchpad/Push), signing the desktop
-release, the license (D6), and the "later" items in PLAN.md §0.7.
+songs. Next up: **step tracks** (PLAN.md §0.6f, D93–D97), which replace the drum / instrument /
+audio track kinds with one kind of track that has a sound and a mode (Hits, Notes, Clip). Also
+left: tests with real hardware (mic, MIDI, Launchpad/Push), signing the desktop release, the
+license (D6), and the "later" items in PLAN.md §0.7.
 
 ---
 
@@ -503,8 +505,9 @@ likely to need:
 | Synth: macros, Advanced editor, workflow          | D85–D87                   |
 | Synth: factory voicing, demo songs, slides        | D88–D89                   |
 | Presets vs. copies, library editing               | D90–D91                   |
+| Step tracks: modes, sounds, library, icons, edit  | D93–D97                   |
 
-Feature batches and their acceptance criteria are in PLAN.md §0.6b–§0.6e. Known limitations are
+Feature batches and their acceptance criteria are in PLAN.md §0.6b–§0.6f. Known limitations are
 in §0.7.
 
 ## 10. Working conventions

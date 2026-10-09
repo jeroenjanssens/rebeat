@@ -1,6 +1,6 @@
 # Rebeat — Product & Technical Plan
 
-> **Status (2026-10-07):** All phases of §7 are implemented (M, G, 0–10). Repo: `github.com/jeroenjanssens/rebeat` (private). §0 describes the current code; §0.7 lists known limitations and what is left for later.
+> **Status (2026-10-09):** All phases of §7 are implemented (M, G, 0–10), plus the batches in §0.6b–§0.6e. Next: step tracks (§0.6f). Repo: `github.com/jeroenjanssens/rebeat` (private). §0 describes the current code; §0.7 lists known limitations and what is left for later.
 > Every open question in §6 has a **default**. All defaults were accepted when Phase M was started, except where §6 records a different choice. To change one, refer to it by number (e.g. "D7: B").
 
 ---
@@ -12,7 +12,7 @@
 
 ### 0.1 Where we are
 
-- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D83), and the build order is in §7.
+- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D97), and the build order is in §7.
 - Every phase in §7 is built, tested (unit + Playwright e2e) and pushed. The mockup (Phase M) became the app: its components, model and store were kept and extended; `src/mock/` was replaced by the real engine.
 - The desktop app (Phase 10) runs and packages locally (unsigned); signing/notarization need certificates (see `.github/workflows/desktop.yml`).
 
@@ -21,7 +21,7 @@
 - macOS; Node 25, pnpm 12, `just` 1.45. Use `pnpm` for JS dependencies (`pnpm-workspace.yaml` allows only Electron's install script). For any Python tooling, use `uv` (never `pip`).
 - `just dev` (Vite on http://localhost:5173), `just check` (tsc for app + Electron, eslint, vitest), `just e2e` (Playwright, Chromium), `just build`, `just preview`, `just desktop` (Electron against the dev server), `just desktop-build` (package into `release/`), `just e2e-desktop`, `just fmt`, `just clean`.
 - CI: `.github/workflows/ci.yml` (check, build, e2e on every push), `.github/workflows/desktop.yml` (manual or `v*` tags: macOS/Windows/Linux builds).
-- In dev builds `window.__rebeat` exposes `{ engine, transport, store }` for debugging and e2e tests.
+- In dev builds `window.__rebeat` exposes the engine, transport, store and more (`hints`, `commands()`, `dock`, `perf`, `library`, `renderPatch`, `synths`, `previews()`) for debugging and e2e tests; see AGENTS.md §7.
 
 ### 0.3 Code map
 
@@ -38,8 +38,8 @@ src/
                          noteOps (piano roll), timing (polyrhythm), tempo (tap), midiFile (SMF export)
   state/                 store (project + undo + UI), settings (persisted), actions (steps, function buttons),
                          input (pads, step entry, live recording, cursor), trackActions, effectActions, clipActions
-  engine/                context (native AudioContext + Tone), engine (scoped graph: channels, voices, clips, synth/ (AudioWorklet synth: core DSP, worklet, node),
-                         metering, scratch), channel (strips, buses), effects (factory + chains), instruments (voices:
+  engine/                context (native AudioContext + Tone), engine (scoped graph: channels, voices, clips,
+                         metering, scratch), synth/ (AudioWorklet synth: core DSP, worklet, node), channel (strips, buses), effects (factory + chains), instruments (voices:
                          synth patches, sampler with zones, smplr, SoundFonts), transport (lookahead scheduler, playPageStep), ticker (worker),
                          kits (offline-synthesized 808/909 + vox), samples (buffers, peaks), metronome, looper,
                          liveInput (monitoring), recorder (PCM worklet), stretch (Signalsmith warp), perf (DJ filter,
@@ -53,7 +53,8 @@ src/
                          drop (samples from drags: library, online, files), sort, synths (factory patches),
                          instruments (the catalog) + instrumentNames, userInstruments (Your instruments,
                          SoundFonts, multi-samples), downloads (which streamed instruments are cached)
-  model/synth            SynthPatch (data), makePatch, sanitizePatch, withKnobs
+  model/synth            SynthPatch v2 (data), makePatch, upgradePatch, sanitizePatch, macros; synthV1 (old patches,
+                         read only), patchParams (the synth editor's knob table), randomize
   storage/               db (Dexie; v3 adds instruments), projects (autosave, crash recovery), rebeatFile (.rebeat zip)
   panels/                drum-machine/, library/, inspector/, mixer/, master-scope/, piano-roll/, sample-editor/,
                          performance/, guide/, synth-editor/ (the knob table: model/patchParams.ts)
@@ -63,8 +64,9 @@ src/
   components/            glide (smooth resets), soundIcons, FormatPicker, Encoder, Fader, VMeter, LevelMeter, Scope, PeaksCanvas, EffectEditor, Dialog, Menu,
                          Toast, DragValue, MiniFader, InlineEdit, portal, useScratch, useSamplesVersion
   render/                raf (shared loop + load), useCanvas, theme (tokens), thumbnail
-  templates/             builder (pattern/chord helpers), templates (Empty, 808 starter, Loop station), examples
-                         (Night Drive + 5 classics; read-only, ids "example:…", forked on first edit in storage/projects)
+  templates/             builder (pattern/chord helpers), index (Empty, 808 starter, Loop station), examples
+                         (read-only, ids "example:…", forked on first edit in storage/projects): nightDrive, the
+                         classics, showcase (Neon Horizon, Late Night Café), synthSongs (Hyperdrive, Liquid Ladder)
 public/worklets/         recorder.js (PCM capture), scratch.js (scratch voice): plain JS for AudioWorklet scopes
 electron/                main.cts, preload.cts, build/ (entitlements, icon); compiled to electron/dist
 e2e/, e2e-desktop/       Playwright suites (web uses a synthetic mic via window.__REBEAT_TEST_MIC__)
@@ -83,7 +85,7 @@ Key implementation patterns:
 
 - Commits and GitHub actions are authored by **Jeroen Janssens only**: no Claude author or co-author lines.
 - Ask before outward-facing actions (creating repos, publishing releases).
-- Each change ends with `just check` + `just e2e` passing; visual changes are checked in a real browser (screenshots).
+- Each change ends with the full checks passing (prettier, tsc, eslint, vitest, `playwright test --workers=4`; see AGENTS.md §2); visual changes are checked in a real browser (screenshots).
 - Match the existing code style: TypeScript, Prettier (print width 100), small focused modules, comments only where they explain *why*.
 - Schema changes bump `SCHEMA_VERSION` in `model/schema.ts` and add a migration plus a test.
 
@@ -93,9 +95,8 @@ Key implementation patterns:
 
 ### 0.6 Next steps
 
-0. The complete synth in §0.6e ✅ (A–I).
-
-
+0. Step tracks (§0.6f): one kind of track with three modes, sounds in three families, the library
+   and icons to match.
 1. Try the app with real hardware: a microphone and audio interface (calibration, monitoring), a MIDI keyboard/controller (learn), and a Launchpad or Push (the Push color palette is approximate).
 2. Desktop releases: add signing certificates and notarization secrets, then tag `v0.1.0` to produce draft releases.
 3. Decide D6 (license) before making the repository public.
@@ -228,7 +229,7 @@ with tests, explain-mode hints, guide updates and the full checks:
    for any instrument track (sampler included). .rebeat files carry what they need.
 9. **Exports include sampled instruments** where smplr can load them offline (from the cache).
 
-### 0.6e The complete synth (agreed 2026-10-08)
+### 0.6e The complete synth (agreed and done 2026-10-08) ✅
 
 Progress: A ✅ · B ✅ · C ✅ · D ✅ · E ✅ · F ✅ · G ✅ · H ✅ · I ✅.
 
@@ -308,6 +309,98 @@ Basic first, then the last used view; factory synths voiced again in place; patc
 upgraded on read; clicking a wave plays it as heard; note letters with octaves on Cs;
 `.rbsynth` preset files.
 
+### 0.6f Step tracks (agreed 2026-10-09)
+
+Progress: 0 · 1 ✅ · 2 · 3 · 4 · 5 · 6 · 7 · 8 · 9 · 10.
+
+The words for sounds didn't line up: "drum", "instrument" and "audio" were track kinds, "instrument"
+also meant a sampled instrument (and, in the library, synths too), a "synth track" was an
+instrument track with a synth, and a "sampler" was a sample on an instrument track. Two questions
+were folded into one kind: *how a track plays* and *what makes its sound*. Other apps keep them
+apart (FL Studio's channels with a generator, Elektron machines, Ableton's MIDI/Audio tracks with
+devices). Rebeat now does too (D93–D97):
+
+- **Every track is a step track**, with a **sound** and a **mode**: **Hits** (one pitch per step,
+  pads, choke), **Notes** (chords, piano roll, arpeggiator, keyboard) or **Clip** (a sample across
+  the page: warp, scratch, recording, overdub layers). The mode is per track and can be switched
+  any time without losing anything.
+- **Sounds** come in three families: **Sample** (one-shot or loop is an attribute), **Synth** and
+  **Sampled instrument** (streamed, General MIDI/SoundFont, or your own multi-sample).
+- **Which sound plays in which mode:**
+
+  | Sound              | Hits                                      | Notes                     | Clip      |
+  | ------------------ | ----------------------------------------- | ------------------------- | --------- |
+  | Sample             | today's drum track                        | chromatic from a root note | today's audio track |
+  | Synth              | new: one note per step at the hit note + step pitch, macros as SOUND knobs | as today | — |
+  | Sampled instrument | new: a fixed note, as above               | as today                  | — |
+
+  A new step track's mode follows its sound: one-shot → Hits, loop → Clip, synth or sampled
+  instrument → Notes.
+- **Vocabulary** in the UI, guide and hints: step track, mode (Hits / Notes / Clip), sound (Sample,
+  Synth, Sampled instrument), one-shot, loop, kit, **Your sounds** (was Your instruments).
+  "Instrument" only appears in "Sampled instrument"; "drum" only in kit names and sound categories;
+  "sampler" and "audio track" go away.
+
+Steps, one or more commits each, every one with the full checks, hints and guide updates:
+
+0. **Safety net.** Before the model changes, record the offline-rendered level of every example
+   song and template (a unit or e2e test with stored values); after every later step they must
+   still match within a small tolerance.
+1. **Decisions** D93–D97 in §6 (D76 superseded), and the missing D78.
+2. **Accessors.** `trackMode(t)`, `soundOf(t)`, `sampleOf(t)` and friends that read the current
+   shape; all ~200 reads of `track.kind` (and of `sampleId`/`instrument`) go through them. No
+   behavior change, so step 3 is small.
+3. **Schema v7.** The stored shape behind the helpers:
+   `Track { mode: "hits" | "notes" | "clip", sound?: Sound, hitNote?, … }` replaces `kind`,
+   `sampleId` and `instrument`; `Sound` is `{ type: "sample", sampleId, rootNote? }`,
+   `{ type: "synth", preset, patch?, name?, from? }` or `{ type: "instrument", source: "smplr" |
+   "sf2" | "multi", preset, sampleId?, zones?, rootNote?, name?, from? }`. Lanes keep their steps
+   and get optional clip settings (`clip?: { active, launchMode }`), so switching between Clip and
+   the other modes keeps both. Migration: drum → hits + sample; audio → clip + sample; instrument
+   → notes + synth / sample (sampler with its root note) / multi (sampler with zones) / smplr / sf2.
+   The sampler's `sound.decay` (ADSR) becomes `sound.envDecay` in params, step locks and MIDI
+   mapping targets, so every SOUND id means one thing in every mode and a mode switch only adds
+   defaults. Saved sounds (`InstrumentRecord`), `.rebeat` and `.rbsynth` files convert on read.
+   Unit tests per case.
+4. **Modes.** `setMode(track, mode)` replaces `convertTrack` (D76): `on` is shared, Hits reads
+   `pitch`, Notes reads `notes` (made from `hitNote + pitch` on the first switch, as now), Clip
+   reads the lane's clip settings. Round-trip tests (Hits → Notes → Clip → Hits loses nothing). The
+   engine dispatches by mode and sound (`trigger`, `holdNote`, `playOnce`, `trackSynth`, the
+   channel filter); new: synths and sampled instruments in Hits play one note per step at
+   `hitNote + pitch` for the step's gate. `playPageStep` unit tests for every cell of the table.
+5. **Step tracks in the UI.** "+ Step track" opens a menu (Hits: a drum sound · Notes: a synth ·
+   Clip: record or drop audio). Dropping a sound on a step track replaces it and keeps the mode if
+   the sound has it, else switches to the sound's default; on the empty area it adds a step track
+   in the sound's default mode (D32 otherwise unchanged). Track menu: **Play as: Hits · Notes ·
+   Clip** (Clip only for samples, explained otherwise), **Edit sound…**, **Save to Your sounds**
+   (every step track, samples too). The display gets a Hits/Notes/Clip switch and the sound's
+   icon. SOUND knobs come from `soundDefs(track)` by sound and mode (synths show macros in Hits
+   too). Pad view: Hits tracks are pads, Notes tracks the keyboard. The piano roll edits any Notes
+   track. Record-arm: Clip records audio, Notes as today, Hits records without arming.
+6. **Library.** Sidebar: All · Favorites · Used in project · Your sounds · Recordings; INSTRUMENTS
+   (Synths by group, Pianos & keys, Orchestral, Mallets, Double bass, General MIDI); SAMPLES (All
+   samples, your folders); KITS (built-in, Online kits, link sources). Type filter: All · Synths ·
+   Sampled instruments · One-shots · Loops. Your sounds holds saved and forked synths, SoundFonts,
+   multi-samples and saved sample sounds (a sample with its knobs and effects); the DB table keeps
+   its name. Used in project groups by sound family.
+7. **Icons.** One per sound family, everywhere (library, track rows, pickers, Inspector), and one
+   per mode. Candidates (lucide): one-shot `AudioWaveform`, loop `Repeat`, synth a non-wave icon
+   (e.g. `SlidersVertical`), sampled instrument `Piano`, kit `Drum`, Your sounds `User`, recording
+   `Mic`; Hits `CircleDot`, Notes `Music`, Clip `RectangleHorizontal`. A screenshot sheet in both
+   themes first, to choose.
+8. **MIDI, controllers, export, performance.** MIDI notes 36 and up play Hits tracks as pads (synth
+   ones too); the selected Notes track plays notes. Launchpad/Push layouts by mode. MIDI file
+   export: Hits on channel 10, Notes on the melodic channels. Looper, live input, scratch and
+   stems check for Clip.
+9. **Templates and examples.** The builder becomes `hitsTrack`, `notesTrack`, `clipTrack`; examples
+   and templates are rewritten with it and still match step 0.
+10. **Docs.** Guide chapters and hints in the new vocabulary, explain-mode tests pass, AGENTS.md and
+    §0 updated.
+
+Risks: the change touches most of the code (the accessors and the safety net keep it safe); old
+projects, files, saved sounds and MIDI mappings each need a migration test; Clip lanes now carry
+128 steps per page (a small JSON cost); about 22 e2e specs use the old kinds.
+
 ### 0.7 Known limitations and later work
 
 - Offline renders (export, resampling) repitch instead of time-stretching warped clips. Sampled instruments are included (rendering waits for their samples), but the first render of one that was never downloaded needs the network.
@@ -372,7 +465,7 @@ These terms are used consistently throughout the plan and later in the code.
 ### 3.2 Projects
 
 - Home/project browser: new, open, recent, duplicate, rename, delete, templates ("Empty", "808 starter", "Loop station").
-- **Example songs** (D69): Night Drive plus five drum-machine classics (Blue Monday, Billie Jean, Planet Rock, Sweet Dreams, Around the World) and two instrument showcases (`templates/showcase.ts`): Neon Horizon (factory synths) and Late Night Café (sampled instruments). Examples are read-only: the first change copies the example into your own project and carries on there.
+- **Example songs** (D69): Night Drive plus five drum-machine classics (Blue Monday, Billie Jean, Planet Rock, Sweet Dreams, Around the World), two instrument showcases (`templates/showcase.ts`): Neon Horizon (factory synths) and Late Night Café (sampled instruments), and two advanced-synth songs (`templates/synthSongs.ts`, D89): Hyperdrive and Liquid Ladder. Examples are read-only: the first change copies the example into your own project and carries on there.
 - **Autosave** to browser storage (debounced) and crash recovery.
 - **Export / import** a project as a single `.rebeat` file (a zip with `project.json` plus the audio it uses), so projects can be moved between machines.
 - On Chromium browsers, optionally "Save to folder" through the File System Access API.
@@ -865,8 +958,9 @@ Format: **Dn — Question.** Default ✅, alternatives.
 - **D73 — Play mode in the project.** `Project.playMode` (schema v5; older projects open in Song, the new default). `setPlayMode` saves it without an undo step and keeps it through undo/redo of other edits; switching it in an example doesn't make a copy. Alt: UI state (reset to the default on every start).
 - **D74 — Sample sources from links.** Audio files and zips import straight away; strudel.json files and GitHub repositories (strudel.json at the given ref, `HEAD` by default; else the repo's audio files via the GitHub trees API, grouped by folder) become sources listed under Online kits with the same browse/preview/search/drag/add tools as the tidal kits, saved in the settings (`sampleSources`). `library/sources.ts` parses (unit-tested); `onlineImport.ts` fetches. Sites must allow cross-origin downloads (GitHub does). Alt: import every sound straight into a folder.
 - **D75 — Velocity of note steps.** Notes carry their own velocity, so `stepVelocity`/`setStepVelocity` (model/types) treat a note step's velocity as its loudest note's and scale the notes to keep a chord's balance. Every editor (lane, STEP encoder, Shift+drag, digits, accent) goes through them. Alt: multiply step × note velocity.
-- **D76 — Converting keeps the sample.** Drum/audio → instrument makes a keyboard sampler of the track's sample (root C4; the drum Tune becomes transpose) so existing hits sound the same; sampler → drum hands the sample back; synth → drum returns to the sample the track had. Alt: root note from pitch analysis.
+- **D76 — Converting keeps the sample.** *(Superseded by D93: converting becomes switching a step track's mode.)* Drum/audio → instrument makes a keyboard sampler of the track's sample (root C4; the drum Tune becomes transpose) so existing hits sound the same; sampler → drum hands the sample back; synth → drum returns to the sample the track had. Alt: root note from pitch analysis.
 - **D77 — Audio export formats.** WAV via our own encoder; MP3 and OGG Vorbis via `wasm-media-encoders` (MIT; its LAME build is LGPL), imported lazily with its .wasm files as separate assets (precached by the service worker). Samples export as heard (rendered settings) or as the stored file; the song Export dialog shares the format picker. Alt: Opus/WebM via MediaRecorder, no dependency.
+- **D78 — One library for everything you can play.** Samples, built-in kit sounds, online kits and instruments (factory synths, sampled instruments, your own) are items of one library browser (`panels/library/items.ts` normalizes them), with one icon per kind of sound shared by the library, track rows and pickers (`components/soundIcons.tsx`). Instruments preview a short phrase in their range, can be favorited, dragged onto tracks and found in Used in project; streamed ones show whether they're cached. Alt: a separate instrument browser next to the sample library. (Its grouping and icons are revised by D95–D96.)
 - **D79 — Synth patches.** A synth is data (`model/synth.ts`): two oscillators with unison, sub, noise, FM, a 12/24 dB filter with key tracking and an envelope, amp envelope, one LFO (pitch/filter/amp/pan, free or synced), drive, glide. `engine/synth.ts` plays any patch with native nodes (a small graph per poly note, one running voice for mono), live and offline. The SOUND knobs override a patch's envelope, glide and detune once moved (`withKnobs`); Cutoff/Reso stay on the channel filter. Alt: Tone.js synth classes per preset (not editable as data).
 - **D80 — Factory synths.** 37 patches (`library/synths.ts`) in the style of well-known songs and synths, grouped Bass/Leads/Pads/Keys/Plucks & stabs/FX; ids are stable (the first ten were the old presets). Loudness is balanced to about −22 dB RMS for a test phrase; an e2e test renders each one and checks it's audible, doesn't clip and stays within 6 dB of the others. Alt: import third-party patch banks (no portable format).
 - **D81 — Synth editor and your instruments.** A panel edits the selected track's synth from one table of patch knobs (`model/patchParams.ts`, which also feeds the explain-mode hints). Editing a factory synth copies its patch onto the track (`instrument.patch`); built-ins never change, revert drops the copy. **Save to library** (editor, or any instrument track's menu) stores instrument + SOUND knobs + effects in the `instruments` table (DB v3) as Your instruments; dropping one applies all of it (replacing the track's effects, undoable). Tracks keep a full copy, so projects stay self-contained; `from` links them back for Used in project. Alt: an expandable Inspector section; references instead of copies.
@@ -881,6 +975,11 @@ Format: **Dn — Question.** Default ✅, alternatives.
 - **D90 — Presets stay presets; one synth editor per track.** The first patch edit of a factory synth (`editPatch`, any route: editor, MIDI-learned knob, randomize, A/B, paste) names the track's sound "<preset> copy" (then "copy 2"…) and links it to a new entry in Your instruments (`copyOf: <preset id>`), written after the commit; later edits of a track playing that copy update the entry (debounced). Instruments you saved yourself aren't updated. The conversion of old projects doesn't fork (`fork = false`). Revert goes back to the preset; the copy stays. Undoing the first edit also goes back, the copy stays too. Synth editor tabs: `synth-editor:<trackId>` (like sample editors), titled "<track> · synth" and renamed with the track; the plain "synth-editor" panel still follows the selected track. Library rows preview a click 250 ms later, so a double-click (open in its editor) stays silent. Alt: read-only presets with an explicit copy button.
 - **D91 — Editing library synths without a track.** Double-clicking a library synth opens a synth editor tab on the library sound (`library/libraryEdit.ts`): a track that isn't in the project (`detachedTracks`, so saves can find it) with its own undo history (100 steps, same-key merging as the store), playing through the preview output. Any change to a factory synth forks it into "<name> copy" in Your instruments (the D90 hook); changes to yours save to their entry (debounced). Re-opening finds the entry by what it saves to; a forked factory entry no longer counts as the factory synth, so that opens fresh. No MIDI learn or scopes there (they need a track); Import is for tracks. Sampled instruments have no editor: double-click explains that, the Inspector opens only for a track that plays them. Alt: always open on a (new) track.
 - **D92 — Offline synths get their notes up front.** Port messages to a worklet can arrive after an offline render has gone past them (notes went missing from exports under load; waiting for a reply didn't help, as offline contexts may not deliver messages before rendering). So in an OfflineAudioContext the synth node is made only when the render starts (`settled()`, called by `renderPatch` and `renderProject` via `scopeSettled`), with every message so far in its `processorOptions`, handled in the processor's constructor. Live synths are unchanged. With all notes in, Neon Horizon got louder: its master is 2 dB lower.
+- **D93 — Step tracks: one kind of track, three modes.** Every track is a **step track** with a sound and a mode, **Hits**, **Notes** or **Clip** (§0.6f), instead of the drum / instrument / audio kinds, which mixed how a track plays with what makes its sound. The mode is per track, chosen from the sound when the track is made (one-shot → Hits, loop → Clip, synth or sampled instrument → Notes) and switchable without losing data: steps keep both their hit pitch and their notes, lanes keep both steps and clip settings. Clip is for samples only. Synths and sampled instruments can play Hits: one note per step at the track's hit note plus the step's pitch. "Step track" is the name everywhere (UI, guide, hints). Supersedes D76 (converting becomes switching the mode). Alt: two track types, sequenced and audio (Ableton-style); kit tracks holding many pads (Drum Rack-style); renaming only.
+- **D94 — Sounds in three families, schema v7.** A step track's `sound` is a **Sample** (`{ type: "sample", sampleId, rootNote? }`; one-shot or loop is the sample's attribute), a **Synth** (`{ type: "synth", preset, patch?, … }`) or a **Sampled instrument** (`{ type: "instrument", source: "smplr" | "sf2" | "multi", … }`). "Sampler" is gone: it's a sample in Notes mode, and a sampler with zones is a multi-sample instrument. SOUND param ids mean one thing in every mode (the sampler's ADSR decay becomes `sound.envDecay`, also in locks and MIDI mappings), so a track's params hold every mode's knobs and switching only adds defaults. Old projects, `.rebeat`/`.rbsynth` files and saved sounds convert on read. Alt: keep `kind` and add a mode beside it.
+- **D95 — The library by what you pick.** Sidebar groups INSTRUMENTS (synths by group, sampled instruments by family), SAMPLES (all, your folders) and KITS (built-in, online, link sources), under All · Favorites · Used in project · **Your sounds** · Recordings; a type filter (All · Synths · Sampled instruments · One-shots · Loops). Your sounds (was Your instruments) holds saved and forked synths, SoundFonts, multi-samples and saved sample sounds; Save to Your sounds works on every step track. Alt: one flat list with tags only.
+- **D96 — Icons.** One icon per sound family (one-shot, loop, synth, sampled instrument, plus kit, Your sounds and recording) and one per mode (Hits, Notes, Clip), the same in the library, on step tracks, in pickers and in the Inspector. The synth icon isn't a waveform, so it can't be mixed up with samples. Chosen from a screenshot sheet in both themes. Alt: icons per track kind.
+- **D97 — Editing a sound.** One rule: Edit sound… (track menu, Inspector), double-clicking the display or a library item opens that sound's editor: samples the sample editor, synths the synth editor, sampled instruments the Inspector's Sound section (no editor of their own for now). The Inspector shows one Sound section for every step track: icon, name, Replace…, Edit…, Save to Your sounds and the mode switch. Alt: an instrument editor for sampled instruments (zones, envelope) now.
 - **D35 — Build order.** ✅ The phases in §7, starting with the mockup (Phase M), each ending with something you can play with.
 
 ---
