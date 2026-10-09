@@ -482,10 +482,10 @@ onPatchEdit` hook, debounced `saveSoundSoon`).
   0.25 dB, peaks within 1 dB). It's the safety net for changes that shouldn't change the sound.
   It runs on the saved v6 projects too (`src/model/fixtures/v6/`), so migrations are covered.
   Renders are nearly deterministic: seeded kits, probabilities (each render seeds Math.random)
-  and offline synths (each worklet processor gets a seed, D98). On CI they're skipped (slow, and a refactoring net) unless `GOLDEN=1`.
-  Re-record
-  with `GOLDEN_UPDATE=1 pnpm playwright test golden` only when a change is meant to sound
-  different, and say so in the commit.
+  and offline synths (each worklet processor gets a seed, D98). On CI they're skipped (slow,
+  and a refactoring net) unless `GOLDEN=1`. Re-record with
+  `GOLDEN_UPDATE=1 pnpm playwright test golden` only when a change is meant to sound different,
+  and say so in the commit.
 - **Flakiness**:
   - Audio tests measure real output: `masterLevel` polled over 0.8–1.5 s.
   - Under heavy parallel load the first sound or a page change can come late. Prefer
