@@ -13,10 +13,12 @@ export type SynthMessage =
   | { type: "releaseAll"; at: number }
   | { type: "control"; name: keyof Controls; value: number }
   | { type: "monitor"; on: boolean }
-  | { type: "macros"; id: number; values: number[] | null; at: number };
+  | { type: "macros"; id: number; values: number[] | null; at: number }
+  /** Answered with "pong" once every message before it is handled. */
+  | { type: "ping"; n: number };
 
 /** What the worklet sends back: the newest voice's modulation, about 30 times a second. */
-export type SynthReport = { type: "mod"; values: number[] | null };
+export type SynthReport = { type: "mod"; values: number[] | null } | { type: "pong"; n: number };
 
 class SynthProcessor extends AudioWorkletProcessor {
   private core = new SynthCore(sampleRate, upgradePatch(null));
@@ -48,6 +50,9 @@ class SynthProcessor extends AudioWorkletProcessor {
         return;
       case "macros":
         return this.core.lockMacros(m.id, m.values, frame(m.at));
+      case "ping":
+        this.port.postMessage({ type: "pong", n: m.n } satisfies SynthReport);
+        return;
       case "monitor":
         this.monitor = m.on;
     }

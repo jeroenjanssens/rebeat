@@ -31,6 +31,7 @@ A dot next to a sample means it's used in the open project. Selecting a track sh
 - **Drag** a sample onto a track to replace its sound, or onto the drop zone under the tracks for a new track. Loops become audio tracks; one-shots drum tracks.
 - **Right-click** a sample for: Audition, Add as new track, Use on (the selected track), Open in sample editor, **Export…**, Add to favorites, Rename, Tags, Folder, which tracks use it, and Delete.
 - **Double-click** a sample to open it in the [sample editor](#sample-editor) (or right-click → **Open in sample editor**). Built-in sounds can't change, so Rebeat edits a copy in your library.
+- A double-click opens without previewing (a single click previews, a moment later).
 - **Double-click** an instrument to open it in its editor (or right-click → **Open in …**): a synth in the [synth editor](#instruments-the-synth-editor), a single-sample sampler in the sample editor, other instruments in the Inspector. The editor works on a track that plays it (the selected one first), or a new track with it.
 - **Export…** saves a sample as a file: as heard (with the sample editor's settings) in WAV, MP3 or OGG, or the original file as it was imported.
 - Drag a sample onto a folder on the left to move it there.

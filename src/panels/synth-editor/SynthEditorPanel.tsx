@@ -29,9 +29,11 @@ import {
   soundHint,
 } from "../../library/synthTrack";
 import { useSettings } from "../../state/settings";
+import { dock } from "../../app/shell";
+import { synthEditorTitle } from "../../app/openers";
 import { EnvelopeView, H, LfoView, W } from "./pictures";
 import { factorySynth } from "../../library/synths";
-import { saveInstrument } from "../../library/userInstruments";
+import { saveInstrument, useUserInstruments } from "../../library/userInstruments";
 import {
   INIT_PATCH,
   applyMacros,
@@ -110,13 +112,31 @@ const LFO_SHAPES: [LfoShape, string][] = [
 const emptySlot = () => ({ source: null, dest: null, amount: 0, via: null });
 
 /** Shape the selected track's synth (D81, D83): edits a copy on the track; built-ins never change. */
-export function SynthEditorPanel() {
-  const track = useSelectedTrack();
+export function SynthEditorPanel({ params }: { params?: Record<string, unknown> }) {
+  const selected = useSelectedTrack();
+  // a tab of its own track (openSynthEditor), or the one that follows the selection
+  const own = params?.trackId as string | undefined;
+  const owned = useStore((s) => (own ? s.project.tracks.find((t) => t.id === own) : undefined));
+  const track = own ? owned : selected;
+  const name = track?.name;
+  useEffect(() => {
+    if (own && name) dock.api?.getPanel(`synth-editor:${own}`)?.api.setTitle(synthEditorTitle(own));
+  }, [own, name]);
   const src = track?.kind === "instrument" ? (track.instrument ?? defaultInstrument(track)) : null;
+  if (own && !track)
+    return (
+      <div className="flex h-full items-center justify-center p-6 text-center text-[12px] text-faint">
+        This track isn't in the project (any more).
+      </div>
+    );
   if (!track || !src || src.source !== "synth")
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center text-[12px] text-faint">
-        <p>Select an instrument track that plays a synth to shape its sound here.</p>
+        <p>
+          {own
+            ? `${track?.name} doesn't play a synth now.`
+            : "Select an instrument track that plays a synth to shape its sound here."}
+        </p>
         {track?.kind === "instrument" && (
           <button
             className="tool-btn border border-line"
@@ -127,7 +147,7 @@ export function SynthEditorPanel() {
         )}
       </div>
     );
-  return <Editor track={track} />;
+  return <Editor key={track.id} track={track} />;
 }
 
 function Editor({ track }: { track: Track }) {
@@ -142,6 +162,10 @@ function Editor({ track }: { track: Track }) {
   const factory = factorySynth(src.preset);
   const defaults = factory?.patch ?? INIT_PATCH;
   const edited = !!src.patch;
+  // your copy of a factory synth (made by the first edit, D90), kept in Your instruments
+  const copy = useUserInstruments((s) =>
+    src.from ? s.list.find((r) => `user:${r.id}` === src.from && r.copyOf) : undefined,
+  );
   const [saving, setSaving] = useState<string | null>(null);
   const root = useRef<HTMLDivElement>(null);
   // the keyboard's lowest C: two octaves around the track's range
@@ -498,6 +522,11 @@ function Editor({ track }: { track: Track }) {
           ))}
         </select>
         {edited && !src.from && <span className="text-[10.5px] text-lit">edited</span>}
+        {copy && factory && (
+          <span className="text-[10.5px] text-faint" data-testid="synth-copy-note">
+            your copy of {factory.name}, in Your instruments
+          </span>
+        )}
         <span className="flex-1" />
         <div className="segmented" data-hint="synth.ab" data-testid="synth-ab">
           {(["A", "B"] as const).map((s) => (
@@ -531,7 +560,7 @@ function Editor({ track }: { track: Track }) {
             </button>
           ))}
         </div>
-        {edited && !src.from && factory && (
+        {edited && (!src.from || copy) && factory && (
           <button
             className="tool-btn"
             title={`Back to the factory “${factory.name}”`}

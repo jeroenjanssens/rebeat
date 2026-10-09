@@ -54,6 +54,11 @@ export interface InstrumentRecord {
     params: Record<string, number>;
     effects: Effect[];
   };
+  /**
+   * Made by editing this factory synth (its id): your copy, kept up to date as you go on
+   * shaping it in the synth editor.
+   */
+  copyOf?: string;
 }
 
 export interface MetaRecord {

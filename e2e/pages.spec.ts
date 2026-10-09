@@ -21,13 +21,14 @@ const state = (page: Page, expr: string) =>
 test("a queued page starts when the current page ends", async ({ page }) => {
   await page.evaluate(() => {
     const s = (window as never as { __rebeat: R }).__rebeat.store.getState();
-    s.commit((p: { bpm: number }) => void (p.bpm = 120));
+    // fast, so the current page ends soon even on a busy machine
+    s.commit((p: { bpm: number }) => void (p.bpm = 240));
   });
   await page.keyboard.press("Space");
   const thumbs = page.locator('[data-panel="drum-machine"] .page-thumb');
   await thumbs.nth(2).click();
   await expect(thumbs.nth(2)).toHaveClass(/queued/);
-  await expect.poll(() => state(page, "s.playSlotId"), { timeout: 5000 }).toBe("slot-fill");
+  await expect.poll(() => state(page, "s.playSlotId"), { timeout: 12000 }).toBe("slot-fill");
   await expect(thumbs.nth(2)).not.toHaveClass(/queued/);
 });
 

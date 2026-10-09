@@ -114,6 +114,11 @@ export function scopeReady(scope: EngineScope) {
   ]);
 }
 
+/** Resolves when every synth in a scope has the notes sent to it (before an offline render). */
+export function scopeSettled(scope: EngineScope) {
+  return Promise.all([...scope.synths.values()].map((v) => v.synth?.settled()));
+}
+
 /** Wait (up to 30 s) until an instrument has its samples, or failed to get them. */
 async function untilLoaded(v: InstrumentVoice) {
   const end = performance.now() + 30_000;

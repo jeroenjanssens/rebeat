@@ -16,7 +16,7 @@ A new instrument track plays a built-in synth: **Mono · Acid Bass** for bass tr
 
 ## The synth editor
 
-The **synth editor** shapes the synth of the selected instrument track. Open it with **Edit synth…** in the Inspector, or right-click the track's name → **Edit synth…**.
+The **synth editor** shapes the synth of an instrument track. Open it with **Edit synth…** in the Inspector, right-click the track's name → **Edit synth…**, or double-click a synth in the library. Each synth track gets its own editor tab (named after the track), so you can have several open side by side or as tabs.
 
 It has two views (switch at the top right; it remembers the one you used last):
 
@@ -52,7 +52,7 @@ To try things out:
 - The **copy** button on an oscillator, filter, envelope or LFO copies its settings; **paste** appears on the others of its kind.
 - **⋯ → Export .rbsynth…** saves the synth (with its macros and effects) as a file to share; **⋯ → Import .rbsynth…** adds one to Your instruments and puts it on the track. Dropping a `.rbsynth` file on the library imports it too.
 
-Editing a factory synth edits a copy on the track; the factory synth itself never changes (the revert button brings it back). **Save to library** stores the synth with the track's SOUND knobs and effects under **Your instruments** in the library; drop it on any track, in any project. Right-click any instrument track → **Save sound** does the same for samplers and sampled instruments.
+Factory synths never change: your first edit turns the track's sound into your own copy, "Reese Bass copy" (copy 2, 3… for more), which also appears in **Your instruments** and keeps up with your edits there. The revert button takes the track back to the factory synth (the copy stays in Your instruments). **Save to library** stores the synth with the track's SOUND knobs and effects under **Your instruments** in the library; drop it on any track, in any project. Right-click any instrument track → **Save sound** does the same for samplers and sampled instruments.
 
 ### Macros
 

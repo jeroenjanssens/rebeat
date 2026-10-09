@@ -5,7 +5,7 @@
 import { renderOffline } from "./offline";
 import type { Project } from "../model/project";
 import type { PageSlot, Pattern } from "../model/types";
-import { newScope, reconcile, scopeReady, withScope } from "./engine";
+import { newScope, reconcile, scopeReady, scopeSettled, withScope } from "./engine";
 import { pageDuration, playPageStep, stepDuration } from "./transport";
 
 export interface RenderOptions {
@@ -73,6 +73,8 @@ export async function renderProject(project: Project, opts: RenderOptions): Prom
           }
         }
       });
+      // the synths' notes travel as messages: render once they've all arrived
+      await scopeSettled(scope);
     },
     duration + tail,
     2,

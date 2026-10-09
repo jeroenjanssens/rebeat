@@ -13,7 +13,11 @@ type T = {
     preset: string;
     name?: string;
     from?: string;
-    patch?: { version: number; osc: { retrigger: boolean }[]; filters: { cutoff: number }[] };
+    patch?: {
+      version: number;
+      osc: { retrigger: boolean; shape: number }[];
+      filters: { cutoff: number }[];
+    };
   };
 };
 type W = {
@@ -51,7 +55,12 @@ test("shape a synth, save it to the library and use it on another track", async 
       (window as never as W).__rebeat.synths.find((s) => s.id === "acid")!.patch.osc[0].retrigger,
   );
   expect(factory).toBe(false);
-  await expect(editor.getByText("edited")).toBeVisible();
+  // the preset isn't overridden: the track now plays your own copy
+  expect(bass.instrument?.name).toBe("Mono · Acid Bass copy");
+  expect(bass.instrument?.from).toMatch(/^user:/);
+  await expect(editor.getByTestId("synth-copy-note")).toContainText(
+    "your copy of Mono · Acid Bass",
+  );
 
   // a knob
   const cutoff = editor.locator('[data-hint="synth.filters.cutoff"] svg').first();
@@ -106,6 +115,44 @@ test("shape a synth, save it to the library and use it on another track", async 
     page.getByTestId("library-list").locator("[data-instrument]", { hasText: "My Acid" }),
   ).toHaveCount(1);
   expect(errors).toEqual([]);
+});
+
+test("the copy in Your instruments keeps up with your edits", async ({ page }) => {
+  await row(page, "BASS").locator('[data-hint="dm.track.name"]').click({ button: "right" });
+  await page.locator(".menu").getByRole("button", { name: "Edit synth…" }).click();
+  const editor = page.getByTestId("synth-editor");
+  await editor.getByTestId("synth-view").getByRole("button", { name: "Advanced" }).click();
+  await editor.locator('[data-hint="synth.osc.retrigger"]').first().click();
+  await editor.locator('[data-section="Oscillator 1"] [aria-label="Pulse"]').click();
+  await page.waitForTimeout(1000);
+  await page.getByTestId("library").locator('[data-hint="library.location"]').click();
+  await page
+    .locator(".menu")
+    .getByRole("button", { name: "Your instruments", exact: true })
+    .click();
+  const copy = page
+    .getByTestId("library-list")
+    .locator("[data-instrument]", { hasText: "Mono · Acid Bass copy" });
+  await expect(copy).toHaveCount(1);
+  await copy.dragTo(row(page, "CHORDS"));
+  await expect
+    .poll(async () => (await track(page, "Chords")).instrument?.patch?.osc[0].retrigger)
+    .toBe(true);
+  expect((await track(page, "Chords")).instrument?.patch?.osc[0].shape).toBe(3);
+  // a second copy of the same preset gets its own name
+  await page.evaluate(() => {
+    const s = (window as never as W).__rebeat.store.getState() as unknown as {
+      commit(fn: (p: { tracks: T[] }) => void): void;
+    };
+    s.commit((p) => {
+      const t = p.tracks.find((x) => x.name === "Bass")!;
+      t.instrument = { source: "synth", preset: "acid" };
+    });
+  });
+  await editor.locator('[data-hint="synth.osc.retrigger"]').first().click();
+  await expect
+    .poll(async () => (await track(page, "Bass")).instrument?.name)
+    .toBe("Mono · Acid Bass copy 2");
 });
 
 test("revert brings the factory synth back", async ({ page }) => {

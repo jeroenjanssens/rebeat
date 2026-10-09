@@ -31,18 +31,34 @@ if (import.meta.env.DEV || import.meta.env.MODE === "test") {
     import("./library/library"),
     import("./engine/synth/node"),
     import("./library/synths"),
-  ]).then(([engine, transport, store, hints, commands, shell, perf, library, synth, synths]) => {
-    (window as unknown as Record<string, unknown>).__rebeat = {
+    import("./library/audition"),
+  ]).then(
+    ([
       engine,
       transport,
-      store: store.useStore,
-      hints: hints.HINTS,
-      commands: commands.allCommands,
-      dock: shell.dock,
-      perf: perf.usePerf,
-      library: library.useLibrary,
-      renderPatch: synth.renderPatch,
-      synths: synths.FACTORY_SYNTHS,
-    };
-  });
+      store,
+      hints,
+      commands,
+      shell,
+      perf,
+      library,
+      synth,
+      synths,
+      audition,
+    ]) => {
+      (window as unknown as Record<string, unknown>).__rebeat = {
+        engine,
+        transport,
+        store: store.useStore,
+        hints: hints.HINTS,
+        commands: commands.allCommands,
+        dock: shell.dock,
+        perf: perf.usePerf,
+        library: library.useLibrary,
+        renderPatch: synth.renderPatch,
+        synths: synths.FACTORY_SYNTHS,
+        previews: audition.previewCount,
+      };
+    },
+  );
 }

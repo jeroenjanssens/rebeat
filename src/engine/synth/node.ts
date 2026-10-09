@@ -35,6 +35,11 @@ export interface WorkletSynth {
   /** The controls last sent (mod wheel, aftertouch, pitch bend). */
   controls: Controls;
   ready(): boolean;
+  /**
+   * Resolves once the worklet has every message sent so far: before an offline render starts,
+   * so no note arrives after the rendering went past it.
+   */
+  settled(): Promise<void>;
   dispose(): void;
 }
 
@@ -48,6 +53,8 @@ export function workletSynth(dest: Tone.Gain | { input: AudioNode }): WorkletSyn
   let next = 1;
   let mod: number[] | null = null;
   let last: { id: number; end: number } | null = null;
+  const pongs = new Map<number, () => void>();
+  let pings = 0;
   const controls: Controls = { modwheel: 0, aftertouch: 0, pitchbend: 0 };
   const send = (m: SynthMessage) => (node ? node.port.postMessage(m) : pending.push(m));
   void loadSynthWorklet(ctx).then(() => {
@@ -60,6 +67,7 @@ export function workletSynth(dest: Tone.Gain | { input: AudioNode }): WorkletSyn
     node.connect(out);
     node.port.onmessage = (e: MessageEvent<SynthReport>) => {
       if (e.data.type === "mod") mod = e.data.values;
+      if (e.data.type === "pong") pongs.get(e.data.n)?.();
     };
     for (const m of pending) node.port.postMessage(m);
     pending = [];
@@ -100,6 +108,19 @@ export function workletSynth(dest: Tone.Gain | { input: AudioNode }): WorkletSyn
       send({ type: "monitor", on });
     },
     modulation: () => mod,
+    async settled() {
+      const end = performance.now() + 5000;
+      while (!node && !disposed && performance.now() < end)
+        await new Promise((r) => setTimeout(r, 2));
+      if (!node) return;
+      const n = ++pings;
+      // (a timeout too, in case a browser holds the messages until rendering starts)
+      await Promise.race([
+        new Promise<void>((r) => pongs.set(n, r)),
+        new Promise((r) => setTimeout(r, 3000)),
+      ]);
+      pongs.delete(n);
+    },
     controls,
     ready: () => !!node,
     dispose() {
@@ -128,5 +149,6 @@ export async function renderPatch(
   // wait for the node, then schedule
   while (!s.ready()) await new Promise((r) => setTimeout(r, 1));
   for (const [note, start, end, velocity = 0.8] of notes) s.hold(note, velocity, start)(end);
+  await s.settled();
   return ctx.startRendering();
 }

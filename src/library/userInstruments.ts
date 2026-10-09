@@ -4,6 +4,9 @@
  * copy of the sound, so projects stay self-contained.
  */
 import { create } from "zustand";
+import { onPatchEdit } from "./synthTrack";
+import { factorySynth } from "./synths";
+import { useStore } from "../state/store";
 import { defaultInstrument } from "../engine/instruments";
 import { uid } from "../model/id";
 import { SOUND_PARAMS, defaultParams } from "../model/params";
@@ -15,6 +18,81 @@ import { sha256 } from "./library";
 import { zonesFor } from "./sources";
 
 export const useUserInstruments = create<{ list: InstrumentRecord[] }>()(() => ({ list: [] }));
+
+/** "Reese Bass copy", or "Reese Bass copy 2" when that's taken. */
+function copyName(base: string) {
+  const taken = new Set(useUserInstruments.getState().list.map((r) => r.name));
+  const name = `${base} copy`;
+  if (!taken.has(name)) return name;
+  let n = 2;
+  while (taken.has(`${name} ${n}`)) n++;
+  return `${name} ${n}`;
+}
+
+/** A track's sound as stored in Your instruments. */
+function soundOf(track: Track, name: string): InstrumentRecord["sound"] {
+  const params = Object.fromEntries(
+    Object.entries(track.params).filter(([k]) => k.startsWith("sound.")),
+  );
+  const { from: _from, ...instrument } = JSON.parse(
+    JSON.stringify(track.instrument ?? defaultInstrument(track)),
+  ) as InstrumentSource;
+  return {
+    instrument: { ...instrument, name },
+    params,
+    effects: JSON.parse(JSON.stringify(track.effects)),
+  };
+}
+
+const saving = new Map<string, ReturnType<typeof setTimeout>>();
+
+/** Store the track's sound in its copy (after the edit is committed; edits in a row: once). */
+function saveCopySoon(id: string, trackId: string, delay: number, copyOf?: string) {
+  clearTimeout(saving.get(id));
+  saving.set(
+    id,
+    setTimeout(async () => {
+      saving.delete(id);
+      const track = useStore.getState().project.tracks.find((t) => t.id === trackId);
+      if (!track?.instrument || track.instrument.from !== `user:${id}`) return;
+      const old = await db.instruments.get(id);
+      const name = track.instrument.name ?? old?.name ?? "Synth";
+      await db.instruments.put({
+        id,
+        name,
+        createdAt: old?.createdAt ?? Date.now(),
+        sound: soundOf(track, name),
+        copyOf: old?.copyOf ?? copyOf,
+      });
+      await loadUserInstruments();
+    }, delay),
+  );
+}
+
+// factory synths never change (D90): the first edit makes the track's sound a copy of its own
+onPatchEdit((t, event) => {
+  const src = t.instrument!;
+  if (event === "fork") {
+    const factory = factorySynth(src.preset);
+    const id = uid("ins");
+    const name = copyName(factory?.name ?? "Synth");
+    src.name = name;
+    src.from = `user:${id}`;
+    t.source = name;
+    useUserInstruments.setState((s) => ({
+      list: [
+        ...s.list,
+        { id, name, createdAt: Date.now(), sound: soundOf(t, name), copyOf: src.preset },
+      ],
+    }));
+    saveCopySoon(id, t.id, 0, src.preset);
+    return;
+  }
+  // later edits keep the copy up to date (only copies made this way, not instruments you saved)
+  const id = src.from?.startsWith("user:") ? src.from.slice(5) : null;
+  const rec = id && useUserInstruments.getState().list.find((r) => r.id === id);
+  if (rec && rec.copyOf) saveCopySoon(rec.id, t.id, 600);
+});
 
 export async function loadUserInstruments() {
   const list = await db.instruments.orderBy("createdAt").toArray();

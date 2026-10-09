@@ -64,3 +64,51 @@ test("double-clicking a built-in sound edits a copy in the sample editor", async
   await expect(page.getByTestId("sample-editor")).toBeVisible();
   await expect(page.getByText("editing a copy in your library").first()).toBeVisible();
 });
+
+test("a double-click only opens the editor; a single click previews", async ({ page }) => {
+  await library(page).getByRole("button", { name: "All samples" }).click();
+  await page.locator(".menu").getByRole("button", { name: "909 kit" }).click();
+  const kick = library(page).locator("[data-sample]", { hasText: "909 Kick" });
+  const previews = () =>
+    page.evaluate(() =>
+      (window as never as { __rebeat: { previews(): number } }).__rebeat.previews(),
+    );
+  await kick.dblclick();
+  await expect(page.getByTestId("sample-editor")).toBeVisible();
+  await page.waitForTimeout(500);
+  expect(await previews()).toBe(0);
+  await library(page).locator("[data-sample]", { hasText: "909 Snare" }).click();
+  await expect.poll(previews).toBe(1);
+  // instruments too
+  await goTo(page, "Synths");
+  const reese = library(page).locator("[data-instrument]", { hasText: "Reese Bass" });
+  await reese.dblclick();
+  await expect(page.getByTestId("synth-editor")).toBeVisible();
+  await page.waitForTimeout(500);
+  expect(await previews()).toBe(1);
+});
+
+test("each synth track gets its own synth editor tab", async ({ page }) => {
+  await goTo(page, "Synths");
+  await library(page).locator("[data-instrument]", { hasText: "Reese Bass" }).dblclick();
+  await library(page).locator("[data-instrument]", { hasText: "Supersaw" }).dblclick();
+  const editors = page.getByTestId("synth-editor");
+  await expect(page.locator(".dv-tab", { hasText: "Reese Bass · synth" })).toHaveCount(1);
+  await expect(page.locator(".dv-tab", { hasText: "Supersaw · synth" })).toHaveCount(1);
+  // switch back: the first tab still edits its own track
+  await page.locator(".dv-tab", { hasText: "Reese Bass · synth" }).click();
+  await expect(editors.locator(":visible").getByTestId("synth-start").first()).toBeVisible();
+  const visible = page.locator('[data-testid="synth-editor"]:visible');
+  await expect(visible).toHaveCount(1);
+  await expect(visible.locator(".label").first()).toHaveText("Reese Bass");
+  // renaming the track renames its tab
+  await page.evaluate(() => {
+    const s = (window as never as W).__rebeat.store.getState() as unknown as {
+      commit(fn: (p: { tracks: T[] }) => void): void;
+      selectedTrackId: string;
+    };
+    const id = s.selectedTrackId;
+    s.commit((p) => void (p.tracks.find((t) => t.id === id)!.name = "Low End"));
+  });
+  await expect(page.locator(".dv-tab", { hasText: "Low End · synth" })).toHaveCount(1);
+});

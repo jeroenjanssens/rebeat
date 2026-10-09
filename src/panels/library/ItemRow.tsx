@@ -23,6 +23,17 @@ import {
 } from "../../state/trackActions";
 import type { Item } from "./items";
 
+/**
+ * A click previews the sound, but only once it's clear it wasn't the first half of a
+ * double-click (which opens the editor instead, silently).
+ */
+let pending: ReturnType<typeof setTimeout> | null = null;
+const cancelPlay = () => {
+  if (pending) clearTimeout(pending);
+  pending = null;
+};
+const DOUBLE_CLICK_MS = 250;
+
 function fmtDur(s: number) {
   return s >= 60
     ? `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`
@@ -213,6 +224,14 @@ function InstrumentRow({
   onPlay: () => void;
 }) {
   const downloaded = useDownloads((s) => s.done.includes(c.source.preset));
+  const playSoon = (clicks: number) => {
+    cancelPlay();
+    if (clicks > 1) return;
+    pending = setTimeout(() => {
+      pending = null;
+      onPlay();
+    }, DOUBLE_CLICK_MS);
+  };
   const busy = useDownloads((s) => s.busy.includes(c.source.preset));
   const kind = c.source.source === "synth" ? "synth" : "instrument";
   return (
@@ -226,11 +245,14 @@ function InstrumentRow({
         e.dataTransfer.setData("text/plain", item.name);
         e.dataTransfer.effectAllowed = "copy";
       }}
-      onClick={() => {
+      onClick={(e) => {
         onSelect();
-        onPlay();
+        playSoon(e.detail);
       }}
-      onDoubleClick={() => openInstrument(c)}
+      onDoubleClick={() => {
+        cancelPlay();
+        openInstrument(c);
+      }}
       onContextMenu={(e) => {
         onSelect();
         contextMenu(e, instrumentMenu(item, c, track, onPlay, downloaded));
@@ -302,6 +324,14 @@ export function ItemRow({
   onPlay: () => void;
   setRenaming: (on: boolean) => void;
 }) {
+  const playSoon = (clicks: number) => {
+    cancelPlay();
+    if (clicks > 1) return;
+    pending = setTimeout(() => {
+      pending = null;
+      onPlay();
+    }, DOUBLE_CLICK_MS);
+  };
   if (item.instrument)
     return (
       <InstrumentRow
@@ -325,11 +355,14 @@ export function ItemRow({
         e.dataTransfer.setData("text/plain", item.name);
         e.dataTransfer.effectAllowed = "copy";
       }}
-      onClick={() => {
+      onClick={(e) => {
         onSelect();
-        onPlay();
+        playSoon(e.detail);
       }}
-      onDoubleClick={() => void openSample(item.id, item.name)}
+      onDoubleClick={() => {
+        cancelPlay();
+        void openSample(item.id, item.name);
+      }}
       onContextMenu={(e) => {
         onSelect();
         contextMenu(

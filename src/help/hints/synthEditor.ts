@@ -49,7 +49,7 @@ const hints: Hints = {
   ),
   "synth.revert": hint(
     "Back to the factory sound",
-    "Undo every edit and play the factory synth again.",
+    "Play the factory synth on this track again. Your copy stays in Your instruments.",
   ),
   "synth.save": hint(
     "Save to library",

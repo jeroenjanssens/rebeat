@@ -50,17 +50,33 @@ export function openGuide(anchor?: string) {
   });
 }
 
-/** The synth editor for a track (selecting it). */
+/** The synth editor's tab title for a track. */
+export const synthEditorTitle = (trackId: string) =>
+  `${useStore.getState().project.tracks.find((t) => t.id === trackId)?.name ?? "Synth"} · synth`;
+
+/**
+ * One synth editor tab per track (selecting it), reused when it's already open, like the sample
+ * editor's tabs. New tabs join the other synth editors, else the piano roll or mixer.
+ */
 export function openSynthEditor(trackId: string) {
   useStore.getState().setUi({ selectedTrackId: trackId });
   const api = dock.api;
   if (!api) return;
-  if (api.getPanel("synth-editor")) return focusPanel("synth-editor");
-  // next to the sample editor and piano roll, below the drum machine
-  const anchor = api.getPanel("piano-roll") ?? api.getPanel("mixer");
-  openPanel(
-    api,
-    "synth-editor",
-    anchor ? { referencePanel: anchor.id, direction: "within" } : { direction: "below" },
-  );
+  const id = `synth-editor:${trackId}`;
+  const existing = api.getPanel(id);
+  if (existing) return existing.api.setActive();
+  const anchor =
+    api.panels.find((p) => p.id.startsWith("synth-editor")) ??
+    api.getPanel("piano-roll") ??
+    api.getPanel("mixer");
+  api.addPanel({
+    id,
+    component: "synth-editor",
+    title: synthEditorTitle(trackId),
+    params: { trackId },
+    minimumHeight: 200,
+    position: anchor
+      ? { referencePanel: anchor.id, direction: "within" as const }
+      : { direction: "below" as const },
+  });
 }

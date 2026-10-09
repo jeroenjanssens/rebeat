@@ -11,6 +11,9 @@ import type { CatalogInstrument } from "./instruments";
 import { loadSample } from "./library";
 
 let current: { src: AudioBufferSourceNode; gain: GainNode } | null = null;
+let starts = 0;
+/** How many previews have started (for tests). */
+export const previewCount = () => starts;
 let out: GainNode | null = null;
 
 export function stopAudition() {
@@ -48,6 +51,7 @@ export function auditionBuffer(buffer: AudioBuffer, opts: { sync?: boolean; bpm?
     if (playing) when = nextBeatTime() ?? when;
   }
   src.start(when);
+  starts++;
   src.onended = () => {
     gain.disconnect();
     if (current?.src === src) current = null;
@@ -110,6 +114,7 @@ async function ready(v: InstrumentVoice) {
 /** Play a short phrase in the instrument's range: an arpeggio and a chord (or a line for mono). */
 export async function previewInstrument(c: CatalogInstrument) {
   stopAudition();
+  starts++;
   const v = previewVoice(c);
   if (!(await ready(v)) || preview?.voice !== v) return;
   const root = c.low ? 36 : 60;

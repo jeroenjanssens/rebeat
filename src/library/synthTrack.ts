@@ -57,15 +57,27 @@ export function soundDefs(t: Track, kindDefs: ParamDef[]): ParamDef[] {
 }
 
 /**
- * Change a synth track's patch (in a store recipe). The first edit copies the factory synth onto
- * the track; an older (version 1) patch is upgraded.
+ * What happens around an edit, set by the app (userInstruments.ts): "fork" when an edit turns a
+ * factory synth into the track's own named copy (in Your instruments), "edit" for edits after.
  */
-export function editPatch(t: Track, fn: (p: SynthPatch) => void) {
+type PatchHook = (t: Track, event: "fork" | "edit") => void;
+let patchHook: PatchHook | null = null;
+export const onPatchEdit = (fn: PatchHook) => void (patchHook = fn);
+
+/**
+ * Change a synth track's patch (in a store recipe). Factory synths never change: the first edit
+ * makes the track's own copy of the patch (D90: with its own name, as one of Your instruments,
+ * unless `fork` is false, as in the conversion of old projects). An older (version 1) patch is
+ * upgraded.
+ */
+export function editPatch(t: Track, fn: (p: SynthPatch) => void, fork = true) {
   const src = t.instrument ?? defaultInstrument(t);
   if (src.source !== "synth") return;
   if (!t.instrument) t.instrument = { ...src };
+  const factory = !t.instrument.patch && !t.instrument.from;
   if (t.instrument.patch?.version !== 2) t.instrument.patch = clone(patchOf(src));
   fn(t.instrument.patch as SynthPatch);
+  if (fork) patchHook?.(t, factory ? "fork" : "edit");
 }
 
 /** Set one patch value; macros that move it keep their place (setThroughMacros). */
@@ -107,28 +119,32 @@ export function convertSynthKnobs(t: Track): boolean {
   const knobs = movedKnobs(p);
   const cutoff = (p["sound.cutoff"] ?? 1) < 0.995;
   if (!knobs.length && !cutoff) return false;
-  editPatch(t, (patch) => {
-    const next = withKnobs(patch, p);
-    Object.assign(patch, next);
-    if (cutoff && !patch.filters[1].on) {
-      // the channel filter on top (12 dB low-pass) becomes filter 2; its Q is in dB
-      const q = Math.max(0.5, Math.pow(10, qOf(p["sound.reso"] ?? 0.2) / 20));
-      patch.filters[1] = {
-        on: true,
-        model: "svf",
-        type: "lp",
-        cutoff: Math.min(20000, hz(p["sound.cutoff"] ?? 1)),
-        reso: Math.min(0.95, Math.max(0, (2 - 1 / q) / 1.96)),
-        drive: 0,
-        keytrack: 0,
-        env: 0,
-        velocity: 0,
-      };
-      patch.routing = "serial";
-      p["sound.cutoff"] = 1;
-      p["sound.reso"] = 0.2;
-    }
-  });
+  editPatch(
+    t,
+    (patch) => {
+      const next = withKnobs(patch, p);
+      Object.assign(patch, next);
+      if (cutoff && !patch.filters[1].on) {
+        // the channel filter on top (12 dB low-pass) becomes filter 2; its Q is in dB
+        const q = Math.max(0.5, Math.pow(10, qOf(p["sound.reso"] ?? 0.2) / 20));
+        patch.filters[1] = {
+          on: true,
+          model: "svf",
+          type: "lp",
+          cutoff: Math.min(20000, hz(p["sound.cutoff"] ?? 1)),
+          reso: Math.min(0.95, Math.max(0, (2 - 1 / q) / 1.96)),
+          drive: 0,
+          keytrack: 0,
+          env: 0,
+          velocity: 0,
+        };
+        patch.routing = "serial";
+        p["sound.cutoff"] = 1;
+        p["sound.reso"] = 0.2;
+      }
+    },
+    false,
+  );
   for (const k of knobs) p[k] = SOUND_KNOB_DEFAULTS[k];
   return true;
 }
