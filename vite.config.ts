@@ -5,6 +5,9 @@ import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
+  // GitHub Pages serves the site under /rebeat/ (BASE=/rebeat/ in pages.yml); the desktop app and
+  // local builds use the root
+  base: process.env.BASE ?? "/",
   plugins: [
     react(),
     tailwindcss(),
@@ -31,7 +34,7 @@ export default defineConfig({
       workbox: {
         globPatterns: ["**/*.{js,css,html,svg,png,woff2,wasm}"],
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
-        navigateFallbackDenylist: [/^\/popout\.html/],
+        navigateFallbackDenylist: [/\/popout\.html/],
         runtimeCaching: [
           {
             // online kits and sampled instruments: keep what was downloaded once

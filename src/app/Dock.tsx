@@ -150,7 +150,7 @@ export function Dock() {
       defaultTabComponent={Tab}
       rightHeaderActionsComponent={HeaderActions}
       onReady={onReady}
-      popoutUrl="/popout.html"
+      popoutUrl={`${import.meta.env.BASE_URL}popout.html`}
     />
   );
 }
