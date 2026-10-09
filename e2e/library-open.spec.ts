@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openApp } from "./helpers";
 
-type T = { id: string; name: string; kind: string; instrument?: { preset: string } };
+type T = { id: string; name: string; mode: string; sound?: { preset: string } };
 type W = {
   __rebeat: {
     store: { getState(): { project: { tracks: T[] }; selectedTrackId: string } };
@@ -37,7 +37,7 @@ test("double-clicking a synth edits the library sound itself, without adding a t
   await key.hover();
   await page.mouse.down();
   await page.mouse.up();
-  // the first change makes your copy, in Your instruments; still no track
+  // the first change makes your copy, in Your sounds; still no track
   await editor.getByTestId("synth-view").getByRole("button", { name: "Advanced" }).click();
   await editor.locator('[data-hint="synth.osc.retrigger"]').first().click();
   await expect(editor.getByTestId("synth-library-note")).toContainText("saved as you go");
@@ -45,7 +45,7 @@ test("double-clicking a synth edits the library sound itself, without adding a t
   expect((await state(page)).tracks.length).toBe(before);
   await editor.locator('[data-section="Oscillator 1"] [aria-label="Pulse"]').click();
   await page.waitForTimeout(900);
-  await goTo(page, "Your instruments");
+  await goTo(page, "Your sounds");
   const copy = library(page).locator("[data-instrument]", { hasText: "Reese Bass copy" });
   await expect(copy).toHaveCount(1);
   // it keeps your edits: put it on a track to check
@@ -62,7 +62,7 @@ test("double-clicking a synth edits the library sound itself, without adding a t
                     project: {
                       tracks: {
                         name: string;
-                        instrument?: { patch?: { osc: { shape: number }[] } };
+                        sound?: { patch?: { osc: { shape: number }[] } };
                       }[];
                     };
                   };
@@ -71,7 +71,7 @@ test("double-clicking a synth edits the library sound itself, without adding a t
             }
           ).__rebeat.store
             .getState()
-            .project.tracks.find((t) => t.name === "Chords")?.instrument?.patch?.osc[0].shape,
+            .project.tracks.find((t) => t.name === "Chords")?.sound?.patch?.osc[0].shape,
       ),
     )
     .toBe(3);

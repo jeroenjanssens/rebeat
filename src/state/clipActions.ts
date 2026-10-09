@@ -1,4 +1,6 @@
 /** Audio clip and overdub layer operations (merge, double, halve, layer → track). */
+import { sampleOf } from "../model/tracks";
+import { clipOf } from "../model/types";
 import { audioContext } from "../engine/context";
 import { getBuffer, sampleInfo } from "../engine/samples";
 import { loadSample, saveRecording } from "../library/library";
@@ -28,7 +30,7 @@ export const removeLastLayer = (trackId: string) => update(trackId, (t) => void 
 
 export const clearClip = (trackId: string) =>
   update(trackId, (t) => {
-    t.sampleId = undefined;
+    delete t.sound;
     t.layers = [];
     t.source = "No clip";
   });
@@ -36,7 +38,7 @@ export const clearClip = (trackId: string) =>
 /** Mix the clip and its unmuted layers into one new sample. */
 export async function mergeLayers(trackId: string) {
   const t = track(trackId);
-  const main = getBuffer(t?.sampleId);
+  const main = getBuffer(t && sampleOf(t));
   if (!t || !main) return;
   const sr = main.sampleRate;
   const nch = Math.max(main.numberOfChannels, 2);
@@ -56,13 +58,13 @@ export async function mergeLayers(trackId: string) {
   let peak = 0;
   for (const c of out) for (const v of c) peak = Math.max(peak, Math.abs(v));
   if (peak > 1) for (const c of out) for (let i = 0; i < c.length; i++) c[i] /= peak;
-  const id = await saveRecording(out, sr, `${t.name} merged`, sampleInfo(t.sampleId)?.bpm);
-  if (id) update(trackId, (x) => ((x.sampleId = id), (x.layers = [])));
+  const id = await saveRecording(out, sr, `${t.name} merged`, sampleInfo(sampleOf(t))?.bpm);
+  if (id) update(trackId, (x) => ((x.sound = { source: "sample", sampleId: id }), (x.layers = [])));
 }
 
 async function resample(trackId: string, factor: 2 | 0.5) {
   const t = track(trackId);
-  const b = getBuffer(t?.sampleId);
+  const b = getBuffer(t && sampleOf(t));
   if (!t || !b) return;
   const n = Math.round(b.length * factor);
   const out = Array.from({ length: b.numberOfChannels }, (_, c) => {
@@ -75,16 +77,16 @@ async function resample(trackId: string, factor: 2 | 0.5) {
     out,
     b.sampleRate,
     `${t.name} ${factor === 2 ? "×2" : "÷2"}`,
-    sampleInfo(t.sampleId)?.bpm,
+    sampleInfo(sampleOf(t))?.bpm,
   );
-  if (id) update(trackId, (x) => void (x.sampleId = id));
+  if (id) update(trackId, (x) => void (x.sound = { source: "sample", sampleId: id }));
 }
 
 /** Double the loop length (the loop repeats), or keep the first half. */
 export const doubleClip = (trackId: string) => resample(trackId, 2);
 export const halveClip = (trackId: string) => resample(trackId, 0.5);
 
-/** Move an overdub layer onto its own audio track. */
+/** Move an overdub layer onto its own Clip track. */
 export function layerToTrack(trackId: string, layerId: string) {
   const s = get();
   const t = track(trackId);
@@ -95,16 +97,14 @@ export function layerToTrack(trackId: string, layerId: string) {
   s.commit((p) => {
     const src = p.tracks.find((x) => x.id === trackId)!;
     src.layers = src.layers?.filter((l) => l.id !== layerId);
-    const nt = makeTrack("audio", t.category, `${t.name} L`, "Layer");
-    nt.sampleId = layer.sampleId;
+    const nt = makeTrack("clip", t.category, `${t.name} L`, "Layer", [], {
+      source: "sample",
+      sampleId: layer.sampleId,
+    });
     addTrack(p, nt, index);
     for (const pattern of Object.values(p.patterns)) {
       const from = pattern.lanes[trackId];
-      const lane = pattern.lanes[nt.id];
-      if (from?.kind === "clip" && lane.kind === "clip") {
-        lane.active = from.active;
-        lane.launchMode = from.launchMode;
-      }
+      if (from) pattern.lanes[nt.id].clip = { ...clipOf(from) };
     }
   });
 }

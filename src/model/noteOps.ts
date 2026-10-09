@@ -1,5 +1,5 @@
 /** Note editing on an instrument lane (pure; use inside an immer recipe). */
-import type { Note, StepLane } from "./types";
+import type { Note, Lane } from "./types";
 
 export interface NoteRef {
   step: number;
@@ -17,18 +17,18 @@ export function parseNoteKey(k: string): NoteRef {
   return { step, pitch };
 }
 
-export function listNotes(lane: StepLane, length: number): PlacedNote[] {
+export function listNotes(lane: Lane, length: number): PlacedNote[] {
   const out: PlacedNote[] = [];
   for (let step = 0; step < length; step++)
     for (const note of lane.steps[step].notes ?? []) out.push({ step, pitch: note.pitch, note });
   return out;
 }
 
-export function getNote(lane: StepLane, r: NoteRef): Note | undefined {
+export function getNote(lane: Lane, r: NoteRef): Note | undefined {
   return lane.steps[r.step]?.notes?.find((n) => n.pitch === r.pitch);
 }
 
-export function addNote(lane: StepLane, step: number, note: Note) {
+export function addNote(lane: Lane, step: number, note: Note) {
   const s = lane.steps[step];
   s.notes = [...(s.notes ?? []).filter((n) => n.pitch !== note.pitch), note].sort(
     (a, b) => a.pitch - b.pitch,
@@ -37,7 +37,7 @@ export function addNote(lane: StepLane, step: number, note: Note) {
   s.velocity = Math.max(...s.notes.map((n) => n.velocity));
 }
 
-export function removeNote(lane: StepLane, r: NoteRef): Note | undefined {
+export function removeNote(lane: Lane, r: NoteRef): Note | undefined {
   const s = lane.steps[r.step];
   const n = s?.notes?.find((x) => x.pitch === r.pitch);
   if (!n) return undefined;
@@ -51,7 +51,7 @@ export function removeNote(lane: StepLane, r: NoteRef): Note | undefined {
  * pitches 0..127); returns the new positions.
  */
 export function moveNotes(
-  lane: StepLane,
+  lane: Lane,
   refs: NoteRef[],
   dStep: number,
   dPitch: number,
@@ -71,7 +71,7 @@ export function moveNotes(
   });
 }
 
-export function resizeNotes(lane: StepLane, refs: NoteRef[], length: (old: number) => number) {
+export function resizeNotes(lane: Lane, refs: NoteRef[], length: (old: number) => number) {
   for (const r of refs) {
     const n = getNote(lane, r);
     if (n) n.length = Math.max(1, Math.min(128, length(n.length)));

@@ -8,7 +8,7 @@ type T = {
   name: string;
   effects: { name: string }[];
   params: Record<string, number>;
-  instrument?: {
+  sound?: {
     source: string;
     preset: string;
     name?: string;
@@ -46,9 +46,9 @@ test("shape a synth, save it to the library and use it on another track", async 
   // the first edit copies the factory synth onto the track
   await editor.locator('[data-hint="synth.osc.retrigger"]').first().click();
   let bass = await track(page, "Bass");
-  expect(bass.instrument?.preset).toBe("acid");
-  expect(bass.instrument?.patch?.version).toBe(2);
-  expect(bass.instrument?.patch?.osc[0].retrigger).toBe(true);
+  expect(bass.sound?.preset).toBe("acid");
+  expect(bass.sound?.patch?.version).toBe(2);
+  expect(bass.sound?.patch?.osc[0].retrigger).toBe(true);
   // the factory synth didn't change
   const factory = await page.evaluate(
     () =>
@@ -56,8 +56,8 @@ test("shape a synth, save it to the library and use it on another track", async 
   );
   expect(factory).toBe(false);
   // the preset isn't overridden: the track now plays your own copy
-  expect(bass.instrument?.name).toBe("Mono · Acid Bass copy");
-  expect(bass.instrument?.from).toMatch(/^user:/);
+  expect(bass.sound?.name).toBe("Mono · Acid Bass copy");
+  expect(bass.sound?.from).toMatch(/^user:/);
   await expect(editor.getByTestId("synth-copy-note")).toContainText(
     "your copy of Mono · Acid Bass",
   );
@@ -71,7 +71,7 @@ test("shape a synth, save it to the library and use it on another track", async 
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 - 40, { steps: 5 });
   await page.mouse.up();
   bass = await track(page, "Bass");
-  expect(bass.instrument!.patch!.filters[0].cutoff).toBeGreaterThan(200);
+  expect(bass.sound!.patch!.filters[0].cutoff).toBeGreaterThan(200);
 
   // play it from the keyboard
   await editor.click({ position: { x: 5, y: 5 } });
@@ -81,24 +81,21 @@ test("shape a synth, save it to the library and use it on another track", async 
   await editor.getByTestId("synth-save").click();
   await editor.getByTestId("synth-save-name").fill("My Acid");
   await editor.getByTestId("synth-save-ok").click();
-  await expect(page.getByText("Saved “My Acid” to Your instruments").first()).toBeVisible();
+  await expect(page.getByText("Saved “My Acid” to Your sounds").first()).toBeVisible();
   bass = await track(page, "Bass");
-  expect(bass.instrument?.name).toBe("My Acid");
+  expect(bass.sound?.name).toBe("My Acid");
 
   // it's in the library; drag it onto the chords
   await page.getByTestId("library").locator('[data-hint="library.location"]').click();
-  await page
-    .locator(".menu")
-    .getByRole("button", { name: "Your instruments", exact: true })
-    .click();
+  await page.locator(".menu").getByRole("button", { name: "Your sounds", exact: true }).click();
   const mine = page
     .getByTestId("library-list")
     .locator("[data-instrument]", { hasText: "My Acid" });
   await expect(mine).toHaveCount(1);
   await mine.dragTo(row(page, "CHORDS"));
-  await expect.poll(async () => (await track(page, "Chords")).instrument?.name).toBe("My Acid");
+  await expect.poll(async () => (await track(page, "Chords")).sound?.name).toBe("My Acid");
   const chords = await track(page, "Chords");
-  expect(chords.instrument?.patch?.osc[0].retrigger).toBe(true);
+  expect(chords.sound?.patch?.osc[0].retrigger).toBe(true);
   // the sound comes with the effects it was saved with
   expect(chords.effects.map((e) => e.name)).toEqual(bass.effects.map((e) => e.name));
 
@@ -107,17 +104,14 @@ test("shape a synth, save it to the library and use it on another track", async 
   await page.getByTestId("audio-overlay").click();
   await waitForProject(page);
   await page.getByTestId("library").locator('[data-hint="library.location"]').click();
-  await page
-    .locator(".menu")
-    .getByRole("button", { name: "Your instruments", exact: true })
-    .click();
+  await page.locator(".menu").getByRole("button", { name: "Your sounds", exact: true }).click();
   await expect(
     page.getByTestId("library-list").locator("[data-instrument]", { hasText: "My Acid" }),
   ).toHaveCount(1);
   expect(errors).toEqual([]);
 });
 
-test("the copy in Your instruments keeps up with your edits", async ({ page }) => {
+test("the copy in Your sounds keeps up with your edits", async ({ page }) => {
   await row(page, "BASS").locator('[data-hint="dm.track.name"]').click({ button: "right" });
   await page.locator(".menu").getByRole("button", { name: "Edit synth…" }).click();
   const editor = page.getByTestId("synth-editor");
@@ -126,19 +120,16 @@ test("the copy in Your instruments keeps up with your edits", async ({ page }) =
   await editor.locator('[data-section="Oscillator 1"] [aria-label="Pulse"]').click();
   await page.waitForTimeout(1000);
   await page.getByTestId("library").locator('[data-hint="library.location"]').click();
-  await page
-    .locator(".menu")
-    .getByRole("button", { name: "Your instruments", exact: true })
-    .click();
+  await page.locator(".menu").getByRole("button", { name: "Your sounds", exact: true }).click();
   const copy = page
     .getByTestId("library-list")
     .locator("[data-instrument]", { hasText: "Mono · Acid Bass copy" });
   await expect(copy).toHaveCount(1);
   await copy.dragTo(row(page, "CHORDS"));
   await expect
-    .poll(async () => (await track(page, "Chords")).instrument?.patch?.osc[0].retrigger)
+    .poll(async () => (await track(page, "Chords")).sound?.patch?.osc[0].retrigger)
     .toBe(true);
-  expect((await track(page, "Chords")).instrument?.patch?.osc[0].shape).toBe(3);
+  expect((await track(page, "Chords")).sound?.patch?.osc[0].shape).toBe(3);
   // a second copy of the same preset gets its own name
   await page.evaluate(() => {
     const s = (window as never as W).__rebeat.store.getState() as unknown as {
@@ -146,12 +137,12 @@ test("the copy in Your instruments keeps up with your edits", async ({ page }) =
     };
     s.commit((p) => {
       const t = p.tracks.find((x) => x.name === "Bass")!;
-      t.instrument = { source: "synth", preset: "acid" };
+      t.sound = { source: "synth", preset: "acid" };
     });
   });
   await editor.locator('[data-hint="synth.osc.retrigger"]').first().click();
   await expect
-    .poll(async () => (await track(page, "Bass")).instrument?.name)
+    .poll(async () => (await track(page, "Bass")).sound?.name)
     .toBe("Mono · Acid Bass copy 2");
 });
 
@@ -163,20 +154,20 @@ test("revert brings the factory synth back", async ({ page }) => {
     .locator('[data-hint="synth.voice.mode"]')
     .getByRole("button", { name: "Poly" })
     .click();
-  expect((await track(page, "Bass")).instrument?.patch).toBeTruthy();
+  expect((await track(page, "Bass")).sound?.patch).toBeTruthy();
   await editor.locator('[data-hint="synth.revert"]').click();
-  await expect.poll(async () => (await track(page, "Bass")).instrument?.patch).toBeUndefined();
+  await expect.poll(async () => (await track(page, "Bass")).sound?.patch).toBeUndefined();
   // and Start from swaps the synth
   await editor.getByTestId("synth-start").selectOption("reese");
-  expect((await track(page, "Bass")).instrument?.preset).toBe("reese");
+  expect((await track(page, "Bass")).sound?.preset).toBe("reese");
 });
 
 test("any instrument track's sound can be saved from its menu", async ({ page }) => {
   await row(page, "CHORDS").locator('[data-hint="dm.track.name"]').click({ button: "right" });
   await page.getByTestId("save-sound-name").fill("Night Pad");
   await page.getByTestId("save-sound-name").press("Enter");
-  await expect(page.getByText("Saved “Night Pad” to Your instruments").first()).toBeVisible();
-  expect((await track(page, "Chords")).instrument?.from).toMatch(/^user:/);
+  await expect(page.getByText("Saved “Night Pad” to Your sounds").first()).toBeVisible();
+  expect((await track(page, "Chords")).sound?.from).toMatch(/^user:/);
 });
 
 test("the editor's keyboard holds notes until you let go", async ({ page }) => {

@@ -3,6 +3,7 @@
  * right = high-pass), tape stop, beat repeat, reverb/delay throws, a crossfader and mute groups.
  * Runtime only: nothing here is saved in the project except the mute groups and crossfader sides.
  */
+import { sampleOf } from "../model/tracks";
 import * as Tone from "tone";
 import { create } from "zustand";
 import { useStore } from "../state/store";
@@ -171,12 +172,13 @@ export function setPerfControl(name: string, v: number, continuous: boolean) {
 let jogTimer = 0;
 let jogging: Track | null = null;
 
-/** A MIDI jog wheel (relative CC, learned as "perf:jog") scratches the selected audio track. */
+/** A MIDI jog wheel (relative CC, learned as "perf:jog") scratches the selected Clip track. */
 function jog(v: number) {
   const s = useStore.getState();
+  const clip = (t: Track) => t.mode === "clip" && !!sampleOf(t);
   const track =
-    s.project.tracks.find((t) => t.id === s.selectedTrackId && t.kind === "audio" && t.sampleId) ??
-    s.project.tracks.find((t) => t.kind === "audio" && t.sampleId);
+    s.project.tracks.find((t) => t.id === s.selectedTrackId && clip(t)) ??
+    s.project.tracks.find(clip);
   if (!track) return;
   const raw = Math.round(v * 127);
   const ticks = raw < 64 ? raw : raw - 128;

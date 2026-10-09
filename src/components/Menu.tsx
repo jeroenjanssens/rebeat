@@ -51,10 +51,10 @@ export function MenuHost() {
   useLayoutEffect(() => {
     if (!open || !ref.current) return;
     const r = ref.current.getBoundingClientRect();
-    setPos({
-      x: Math.max(4, Math.min(open.x, window.innerWidth - r.width - 4)),
-      y: Math.max(4, open.y + r.height > window.innerHeight - 4 ? open.y - r.height : open.y),
-    });
+    const h = window.innerHeight;
+    // below the pointer, else above it, else from the top (taller menus scroll)
+    const y = open.y + r.height <= h - 4 ? open.y : open.y - r.height >= 4 ? open.y - r.height : 4;
+    setPos({ x: Math.max(4, Math.min(open.x, window.innerWidth - r.width - 4)), y });
   }, [open]);
 
   useEffect(() => {
@@ -78,7 +78,13 @@ export function MenuHost() {
     <div
       ref={ref}
       className="menu"
-      style={{ left: pos.x, top: pos.y, minWidth: Math.max(180, open.minWidth ?? 0) }}
+      style={{
+        left: pos.x,
+        top: pos.y,
+        minWidth: Math.max(180, open.minWidth ?? 0),
+        maxHeight: "calc(100vh - 8px)",
+        overflowY: "auto",
+      }}
       onContextMenu={(e) => e.preventDefault()}
     >
       {open.items.map((item, i) => {

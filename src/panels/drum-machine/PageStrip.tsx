@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { clipOf } from "../../model/types";
 import {
   DndContext,
   PointerSensor,
@@ -57,8 +58,8 @@ function Thumbnail({ pattern, tracks }: { pattern: Pattern; tracks: Track[] }) {
         const lane = pattern.lanes[t.id];
         const y = 2 + r * rh;
         if (!lane) return;
-        if (lane.kind === "clip") {
-          ctx.fillStyle = lane.active ? alpha(t.color, 0.75) : alpha(t.color, 0.12);
+        if (t.mode === "clip") {
+          ctx.fillStyle = clipOf(lane).active ? alpha(t.color, 0.75) : alpha(t.color, 0.12);
           ctx.fillRect(2, y + rh * 0.2, w - 4, Math.max(1, rh * 0.6));
           return;
         }

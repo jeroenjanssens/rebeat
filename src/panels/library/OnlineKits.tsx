@@ -238,7 +238,7 @@ export function OnlineKits() {
                         onClick={() =>
                           run(`inst:${key}:${name}`, async () => {
                             const c = await importPitched(kit, name);
-                            toast(`Added ${c.name} to Your instruments`);
+                            toast(`Added ${c.name} to Your sounds`);
                           })
                         }
                         data-testid="online-add-instrument"

@@ -2,8 +2,8 @@
  * What the library list shows (D78): library samples, built-in kit sounds and instruments,
  * normalized to one kind of item.
  */
+import { voiceSound } from "../../library/synthTrack";
 import { useMemo } from "react";
-import { defaultInstrument } from "../../engine/instruments";
 import { KIT_SOUNDS, kitSounds, type KitSound } from "../../engine/kits";
 import { CATALOG, catalogId, type CatalogInstrument, type Family } from "../../library/instruments";
 import { useSettings } from "../../state/settings";
@@ -86,10 +86,10 @@ export function useUsedIds() {
     () =>
       new Set(
         tracks.flatMap((t) => [
-          t.sampleId,
-          t.instrument?.sampleId,
+          t.sound?.sampleId,
+          ...(t.sound?.zones ?? []).map((z) => z.sampleId),
           ...(t.layers ?? []).map((l) => l.sampleId),
-          t.kind === "instrument" ? catalogId(t.instrument ?? defaultInstrument(t)) : null,
+          t.mode !== "clip" ? catalogId(voiceSound(t)) : null,
         ]),
       ),
     [tracks],

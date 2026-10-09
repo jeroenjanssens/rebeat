@@ -53,10 +53,10 @@ test("writes steps from keyboard pads in the pad view (step entry)", async ({ pa
   await expect.poll(() => dm(page).locator(".pad.on").count()).not.toBe(before);
 });
 
-test("converts a track type from its context menu", async ({ page }) => {
+test("plays a step track as notes from its context menu", async ({ page }) => {
   const header = page.locator("[data-track-row] >> text=KICK").first();
   await header.click({ button: "right" });
-  await page.locator(".menu").getByRole("button", { name: "Instrument", exact: true }).click();
+  await page.locator(".menu").getByRole("button", { name: "Notes", exact: true }).click();
   await expect(page.locator("[data-track-row]").first().locator(".note").first()).toBeVisible();
 });
 

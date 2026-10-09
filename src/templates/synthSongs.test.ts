@@ -3,7 +3,7 @@ import { SynthCore } from "../engine/synth/core";
 import { effectivePatch, trackPatch } from "../library/synthTrack";
 import type { Project } from "../model/project";
 import { sanitizePatch, type ModSlot, type SynthPatch } from "../model/synth";
-import type { StepLane, Track } from "../model/types";
+import type { Lane, Track } from "../model/types";
 import { SYNTH_SONGS } from "./synthSongs";
 
 const SR = 44100;
@@ -11,8 +11,8 @@ const SR = 44100;
 /** Every step of a track across the song's pages. */
 const steps = (p: Project, t: Track) =>
   Object.values(p.patterns).flatMap((pt) => {
-    const lane = pt.lanes[t.id] as StepLane | undefined;
-    return lane?.kind === "steps" ? lane.steps.slice(0, pt.stepCount).filter((s) => s.on) : [];
+    const lane = pt.lanes[t.id] as Lane | undefined;
+    return lane ? lane.steps.slice(0, pt.stepCount).filter((s) => s.on) : [];
   });
 
 const slots = (patch: SynthPatch, dest: string) =>
@@ -42,13 +42,12 @@ describe.each([
 ])("%s", (_, make) => {
   const p = make();
   it("plays only synths (and built-in drums), pages of at most 32 steps", () => {
-    for (const t of p.tracks)
-      if (t.kind === "instrument") expect(t.instrument?.source, t.name).toBe("synth");
+    for (const t of p.tracks) if (t.mode === "notes") expect(t.sound?.source, t.name).toBe("synth");
     for (const pt of Object.values(p.patterns)) expect(pt.stepCount).toBeLessThanOrEqual(32);
   });
 
   it("every synth sounds, cleanly, at the notes it plays", () => {
-    for (const t of p.tracks.filter((x) => x.kind === "instrument")) {
+    for (const t of p.tracks.filter((x) => x.mode === "notes")) {
       const pitch = steps(p, t).find((s) => s.notes?.length)!.notes![0].pitch;
       const { peak, finite } = render(t, pitch);
       expect(finite, t.name).toBe(true);
@@ -61,7 +60,7 @@ describe.each([
 describe("the songs use what they show off", () => {
   it("Hyperdrive: sync, PWM, ring, a wide supersaw, pitch envelopes, Brightness locks", () => {
     const p = SYNTH_SONGS.hyperdrive();
-    const patches = p.tracks.filter((t) => t.kind === "instrument").map((t) => trackPatch(t));
+    const patches = p.tracks.filter((t) => t.mode === "notes").map((t) => trackPatch(t));
     expect(patches.some((x) => x.osc[1].sync && from(slots(x, "osc2.pitch"), "env3"))).toBe(true);
     expect(patches.some((x) => x.osc[1].shape === 3 && from(slots(x, "osc2.pw"), "lfo2"))).toBe(
       true,
@@ -75,7 +74,7 @@ describe("the songs use what they show off", () => {
     const saw = p.tracks.find((t) => t.name === "Supersaw")!;
     const build = Object.values(p.patterns).filter((pt) => pt.name.startsWith("Build"));
     const locks = build.flatMap((pt) =>
-      (pt.lanes[saw.id] as StepLane).steps.flatMap((s) => s.locks?.["sound.macro1"] ?? []),
+      (pt.lanes[saw.id] as Lane).steps.flatMap((s) => s.locks?.["sound.macro1"] ?? []),
     );
     expect(locks.length).toBeGreaterThan(16);
     expect(locks).toEqual([...locks].sort((a, b) => a - b));
@@ -105,7 +104,7 @@ describe("the songs use what they show off", () => {
     expect(pad.osc[0].drift).toBeGreaterThan(0.2);
     for (const name of ["Kick", "Snare", "Perc"]) {
       const t = p.tracks.find((x) => x.name === name)!;
-      expect(t.kind, name).toBe("instrument");
+      expect(t.sound?.source, name).toBe("synth");
       expect(from(slots(trackPatch(t), "pitch"), "env3"), name).toBe(true);
     }
   });

@@ -3,7 +3,7 @@ import { openApp } from "./helpers";
 
 test.beforeEach(async ({ page }) => openApp(page));
 
-type T = { name: string; sampleId?: string; layers?: unknown[] };
+type T = { name: string; sound?: { sampleId?: string }; layers?: unknown[] };
 const tracks = (page: Page) =>
   page.evaluate(() => {
     const s = (
@@ -31,7 +31,7 @@ test("records a loop on the armed track, then an overdub layer", async ({ page }
   });
   await page.keyboard.press("r");
   await expect
-    .poll(async () => (await tracks(page)).find((t) => t.name === "Loop 1")?.sampleId, {
+    .poll(async () => (await tracks(page)).find((t) => t.name === "Loop 1")?.sound?.sampleId, {
       timeout: 15000,
     })
     .toBeTruthy();

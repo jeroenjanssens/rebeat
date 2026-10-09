@@ -35,7 +35,7 @@ import { makeEffect } from "../../model/effects";
 import { pitchClassName } from "../../model/notes";
 import { EFFECT_TYPES } from "../../model/params";
 import { slotPattern } from "../../model/project";
-import { STEP_SIZE_QUARTERS, type Effect, type StepLane } from "../../model/types";
+import { STEP_SIZE_QUARTERS, type Effect, type Lane } from "../../model/types";
 import type { PanelProps } from "../../app/panels";
 import { token } from "../../render/theme";
 import { useCanvas } from "../../render/useCanvas";
@@ -119,8 +119,8 @@ function SampleEditor({ sampleId }: { sampleId: string }) {
     () =>
       tracks.filter(
         (t) =>
-          t.sampleId === sampleId ||
-          t.instrument?.sampleId === sampleId ||
+          t.sound?.sampleId === sampleId ||
+          t.sound?.zones?.some((z) => z.sampleId === sampleId) ||
           t.layers?.some((l) => l.sampleId === sampleId),
       ),
     [tracks, sampleId],
@@ -871,8 +871,8 @@ function SliceTab({
         const pat = slotPattern(p, st.editSlotId);
         if (pat.stepCount < needed) pat.stepCount = needed;
         created.forEach((trackId, i) => {
-          const lane = pat.lanes[trackId] as StepLane;
-          if (lane?.kind === "steps" && steps[i] < 128) lane.steps[steps[i]].on = true;
+          const lane = pat.lanes[trackId] as Lane;
+          if (lane && steps[i] < 128) lane.steps[steps[i]].on = true;
         });
       });
       toast(`${ids.length} slices → ${ids.length} tracks`);

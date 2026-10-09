@@ -1,4 +1,5 @@
 import type { Project } from "../model/project";
+import { clipOf } from "../model/types";
 import { alpha } from "./theme";
 
 /** A small picture of a project's first page, for the project browser. */
@@ -21,8 +22,8 @@ export function projectThumbnail(project: Project, w = 240, h = 120): string {
     const lane = pattern.lanes[t.id];
     const y = 4 + r * rh;
     if (!lane) return;
-    if (lane.kind === "clip") {
-      ctx.fillStyle = alpha(t.color, lane.active ? 0.7 : 0.15);
+    if (t.mode === "clip") {
+      ctx.fillStyle = alpha(t.color, clipOf(lane).active ? 0.7 : 0.15);
       ctx.fillRect(4, y + rh * 0.2, w - 8, rh * 0.6);
       return;
     }

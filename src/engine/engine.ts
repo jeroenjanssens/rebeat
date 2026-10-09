@@ -15,6 +15,7 @@ import { warper } from "./stretch";
 import type { StretchNode } from "signalsmith-stretch";
 import { createInstrument, instrumentKey, type InstrumentVoice } from "./instruments";
 import { macroValues } from "../library/synthTrack";
+import { hitNoteOf, player, sampleOf } from "../model/tracks";
 
 export interface TriggerOptions {
   /** Audio time; default = now. */
@@ -23,9 +24,9 @@ export interface TriggerOptions {
   /** Step duration in seconds (for ratchets, gate and note lengths). */
   stepDur?: number;
   notes?: Note[];
-  /** Per-step pitch offset in semitones (drum tracks). */
+  /** Per-step pitch offset in semitones (Hits mode). */
   pitch?: number;
-  /** Page transpose in semitones (instrument tracks). */
+  /** Page transpose in semitones (Notes mode). */
   transpose?: number;
   /** Parameter locks for this step ("sound.tune" → value). */
   locks?: Record<string, number>;
@@ -246,7 +247,12 @@ export function reconcile(project: Project = useStore.getState().project) {
     if (last && last.track === t && last.audible === audible && last.bpm === bpm) continue;
     S.lastTracks.set(t.id, { track: t, audible, bpm });
     channel(t.id).update(t, audible, bpm);
-    if (t.kind === "instrument") updateSynth(t, bpm);
+    if (player(t) === "voice") updateSynth(t, bpm);
+    else if (S.synths.has(t.id)) {
+      // switched to playing hits of its sample, or a clip: the voice isn't needed any more
+      S.synths.get(t.id)!.dispose();
+      S.synths.delete(t.id);
+    }
   }
   for (const b of project.buses) bus(b.id).update(b, bpm);
   const m = ensureMaster();
@@ -314,7 +320,7 @@ function stopVoice(v: Voice, time: number) {
 }
 
 function playDrum(track: Track, velocity: number, time: number, o: TriggerOptions) {
-  const buffer = getBuffer(track.sampleId);
+  const buffer = getBuffer(sampleOf(track));
   if (!buffer) return;
   const ctx = raw();
   const p = o.locks ? { ...track.params, ...o.locks } : track.params;
@@ -378,13 +384,13 @@ function playNotes(track: Track, velocity: number, time: number, o: TriggerOptio
 }
 
 /**
- * Clicking a wave (A1): hear the track once, as it plays it. Drum tracks: a hit; instrument
- * tracks: a note at the root; audio tracks: the clip from its start (again: stop). Returns how long
- * it sounds in seconds (0 when nothing has a playhead), for the playhead on the wave.
+ * Clicking a wave (A1): hear the track once, as it plays it. Hits: a hit; Notes: a note at the
+ * root; Clip: the clip from its start (again: stop). Returns how long it sounds in seconds (0 when
+ * nothing has a playhead), for the playhead on the wave.
  */
 export function playOnce(track: Track): number {
   const t = audioNow() + 0.01;
-  if (track.kind === "audio") {
+  if (player(track) === "clip") {
     if (S.clips.has(track.id)) {
       stopClip(track.id);
       return 0;
@@ -394,17 +400,16 @@ export function playOnce(track: Track): number {
     startClip(track, t, 3600, true);
     return 0;
   }
-  if (track.kind === "instrument") {
-    // a sampler plays its sample at its own pitch
-    const sampler = track.instrument?.source === "sampler" ? track.instrument : null;
-    const pitch = sampler ? (sampler.rootNote ?? 60) : track.category === "bass" ? 36 : 60;
-    const buffer = sampler && !sampler.zones?.length ? getBuffer(sampler.sampleId) : undefined;
+  if (player(track) === "voice") {
+    // a sample plays at its own pitch (its root note)
+    const pitch = hitNoteOf(track);
+    const buffer = getBuffer(sampleOf(track));
     const length = buffer ? Math.max(1, buffer.duration / 0.125) : 4;
-    trigger(track, 0.8, { time: t, notes: [{ pitch, length, velocity: 0.8 }], stepDur: 0.125 });
+    playNotes(track, 0.8, t, { notes: [{ pitch, length, velocity: 0.8 }], stepDur: 0.125 });
     return buffer?.duration ?? 0;
   }
   trigger(track, 0.8, { time: t });
-  const buffer = getBuffer(track.sampleId);
+  const buffer = getBuffer(sampleOf(track));
   if (!buffer) return 0;
   const p = track.params;
   const rate = Math.pow(2, toUnit.semis(24)(p["sound.tune"] ?? 0.5) / 12);
@@ -412,14 +417,14 @@ export function playOnce(track: Track): number {
   return Math.min((buffer.duration - start) / rate, toUnit.drumDecay(p["sound.decay"] ?? 1));
 }
 
-/** The synth of an instrument track (live engine), if it plays one. */
+/** The synth of a track (live engine), if it plays one. */
 export function trackSynth(track: Track) {
-  return track.kind === "instrument" ? instrument(track).synth : undefined;
+  return player(track) === "voice" ? instrument(track).synth : undefined;
 }
 
-/** Start a note on an instrument track that sounds until released (on-screen and MIDI keys). */
+/** Start a note on a track's voice that sounds until released (on-screen and MIDI keys). */
 export function holdNote(track: Track, pitch: number, velocity: number): () => void {
-  if (track.kind !== "instrument") return () => {};
+  if (player(track) !== "voice") return () => {};
   const shift = track.transpose ?? 0;
   const v = instrument(track);
   const t = audioNow();
@@ -436,6 +441,17 @@ export function holdNote(track: Track, pitch: number, velocity: number): () => v
   };
 }
 
+/**
+ * A hit on a voice (a synth or sampled instrument in Hits mode, D93): one note at the track's hit
+ * note plus the step's pitch, as long as the step's gate. Transposes (the track's and the
+ * page's) are for notes: they don't move hits, so the track's is taken back out.
+ */
+function hitOptions(track: Track, velocity: number, o: TriggerOptions): TriggerOptions {
+  const pitch = hitNoteOf(track) + (o.pitch ?? 0);
+  const length = Math.max(0.1, o.gate ?? 1);
+  return { ...o, transpose: -(track.transpose ?? 0), notes: [{ pitch, length, velocity }] };
+}
+
 /** Play a track's sound (a step, a pad hit, an audition). */
 export function trigger(track: Track, velocity: number, o: TriggerOptions = {}) {
   const time = Math.max(audioNow(), o.time ?? audioNow());
@@ -444,8 +460,11 @@ export function trigger(track: Track, velocity: number, o: TriggerOptions = {}) 
     const t = time + (r > 1 && o.stepDur ? (o.stepDur / r) * i : 0);
     const v = i === 0 ? velocity : velocity * 0.85;
     const opts = r > 1 && o.stepDur ? { ...o, stepDur: o.stepDur / r } : o;
-    if (track.kind === "instrument") playNotes(track, v, t, opts);
-    else if (track.kind === "drum") playDrum(track, v, t, opts);
+    const who = player(track);
+    if (who === "drum") playDrum(track, v, t, opts);
+    else if (who === "voice" && track.mode === "hits")
+      playNotes(track, v, t, hitOptions(track, v, opts));
+    else if (who === "voice") playNotes(track, v, t, opts);
   }
 }
 
@@ -453,11 +472,12 @@ export function trigger(track: Track, velocity: number, o: TriggerOptions = {}) 
 
 export function startClip(track: Track, time: number, pageDur: number, oneshot: boolean) {
   stopClip(track.id, time);
-  const buffer = getBuffer(track.sampleId);
-  if (!buffer || !track.sampleId) return;
+  const sampleId = sampleOf(track);
+  const buffer = getBuffer(sampleId);
+  if (!buffer || !sampleId) return;
   const p = track.params;
   const bpm = useStore.getState().project.bpm;
-  const clipBpm = sampleInfo(track.sampleId)?.bpm;
+  const clipBpm = sampleInfo(sampleId)?.bpm;
   const pitch = toUnit.semis(12)(p["sound.pitch"] ?? 0.5);
   // warp: follow the song tempo; without a known tempo the clip plays at its own speed
   const ratio = (p["sound.warp"] ?? 1) >= 0.5 && clipBpm ? bpm / clipBpm : 1;
@@ -482,7 +502,7 @@ export function startClip(track: Track, time: number, pageDur: number, oneshot: 
   const gains: GainNode[] = [];
   // offline renders repitch: the stretch nodes belong to the live engine
   if (S.live && (Math.abs(ratio - 1) > 0.002 || Math.abs(pitch) > 0.01)) {
-    warp = warper(track.id, track.sampleId, dest);
+    warp = warper(track.id, sampleId, dest);
     if (warp) {
       warp.schedule({
         output: t,
@@ -595,13 +615,14 @@ let scratchModule: Promise<void> | null = null;
 
 /** Grab the platter: the scratch voice takes over from the clip at its current position. */
 export async function scratchBegin(track: Track) {
-  const buffer = getBuffer(track.sampleId);
-  if (!buffer || !track.sampleId) return;
+  const sampleId = sampleOf(track);
+  const buffer = getBuffer(sampleId);
+  if (!buffer || !sampleId) return;
   const ctx = raw();
   scratchModule ??= ctx.audioWorklet.addModule(`${import.meta.env.BASE_URL}worklets/scratch.js`);
   await scratchModule;
   let s = scratches.get(track.id);
-  if (!s || s.sampleId !== track.sampleId) {
+  if (!s || s.sampleId !== sampleId) {
     s?.node.disconnect();
     const node = new AudioWorkletNode(ctx, "rebeat-scratch", {
       numberOfInputs: 0,
@@ -615,7 +636,7 @@ export async function scratchBegin(track: Track) {
       bufferRate: buffer.sampleRate,
     });
     Tone.connect(node, channel(track.id).input);
-    const entry: Scratch = { node, pos: 0, duration: buffer.duration, sampleId: track.sampleId };
+    const entry: Scratch = { node, pos: 0, duration: buffer.duration, sampleId };
     node.port.onmessage = (e) => (entry.pos = e.data.pos);
     s = entry;
     scratches.set(track.id, s);

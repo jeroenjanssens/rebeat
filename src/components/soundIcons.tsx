@@ -18,11 +18,11 @@ export const SOUND_KIND_LABEL: Record<SoundKind, string> = {
   synth: "Synth",
 };
 
-/** What a track plays: drum tracks one-shots, audio tracks loops, instrument tracks by source. */
+/** What a track plays: a sample (a loop in Clip mode, else a one-shot), a synth or an instrument. */
 export function trackSoundKind(track: Track): SoundKind {
-  if (track.kind === "drum") return "oneshot";
-  if (track.kind === "audio") return "loop";
-  return (track.instrument?.source ?? "synth") === "synth" ? "synth" : "instrument";
+  const src = track.sound?.source ?? (track.mode === "notes" ? "synth" : "sample");
+  if (src === "sample") return track.mode === "clip" ? "loop" : "oneshot";
+  return src === "synth" ? "synth" : "instrument";
 }
 
 export function SoundIcon({ kind, size = 12 }: { kind: SoundKind; size?: number }) {

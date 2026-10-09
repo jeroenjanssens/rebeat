@@ -9,7 +9,7 @@ const connected = new Map<string, AudioNode>();
 function sync() {
   const { project } = useStore.getState();
   const monitor = useSettings.getState().monitorWhileArmed;
-  const armed = monitor ? project.tracks.filter((t) => t.kind === "audio" && t.arm) : [];
+  const armed = monitor ? project.tracks.filter((t) => t.mode === "clip" && t.arm) : [];
   const want = new Set(armed.map((t) => t.id));
   const src = micSource();
   for (const [id, node] of connected)

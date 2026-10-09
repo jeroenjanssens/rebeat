@@ -5,8 +5,8 @@ import { factorySynth } from "./synths";
 
 describe(".rbsynth files", () => {
   it("carry the patch, where the macros are and the effects", () => {
-    const t = makeTrack("instrument", "keys", "Lead", "Synth");
-    t.instrument = { source: "synth", preset: "acid" };
+    const t = makeTrack("notes", "keys", "Lead", "Synth");
+    t.sound = { source: "synth", preset: "acid" };
     t.params["sound.macro2"] = 0.9;
     t.effects = [{ id: "fx1", name: "Chorus", params: {}, bypass: false } as never];
     const back = parseSynthFile(JSON.stringify(synthFile(t, "My acid")));

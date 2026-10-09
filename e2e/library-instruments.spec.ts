@@ -11,8 +11,8 @@ type W = {
           tracks: {
             id: string;
             name: string;
-            kind: string;
-            instrument?: { source: string; preset: string };
+            mode: string;
+            sound?: { source: string; preset: string };
             params: Record<string, number>;
           }[];
         };
@@ -42,15 +42,14 @@ test("the library lists synths and sampled instruments with their source", async
   ).toHaveCount(1);
 });
 
-test("dragging a synth onto a drum track makes it an instrument track playing it", async ({
-  page,
-}) => {
+test("dragging a synth onto a Hits track plays it as hits (D93)", async ({ page }) => {
   await go(page, "Synths");
   const sub = list(page).locator('[data-instrument="synth:sub"]');
   await sub.dragTo(page.locator('[data-panel="drum-machine"] [data-track-row]').first());
-  await expect.poll(async () => (await tracks(page))[0].kind).toBe("instrument");
+  await expect.poll(async () => (await tracks(page))[0].sound?.source).toBe("synth");
   const kick = (await tracks(page))[0];
-  expect(kick.instrument).toEqual({ source: "synth", preset: "sub" });
+  expect(kick.mode).toBe("hits");
+  expect(kick.sound).toEqual({ source: "synth", preset: "sub" });
   // what you heard in the library: the filter open
   expect(kick.params["sound.cutoff"]).toBe(1);
 });
@@ -64,7 +63,7 @@ test("Enter adds an instrument track; favorites and search include instruments",
   const before = (await tracks(page)).length;
   await list(page).press("Enter");
   await expect.poll(async () => (await tracks(page)).length).toBe(before + 1);
-  expect((await tracks(page)).at(-1)!.instrument).toEqual({ source: "smplr", preset: "piano" });
+  expect((await tracks(page)).at(-1)!.sound).toEqual({ source: "smplr", preset: "piano" });
 
   await piano.hover();
   await piano.getByTitle("Favorite").click();

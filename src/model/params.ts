@@ -15,7 +15,8 @@
  * When passing a hint in the step encoder bank:
  *   hint={`param.step.${def.id}`}
  */
-import { setStepVelocity, stepVelocity, type Step, type TrackKind } from "./types";
+import { setStepVelocity, stepVelocity, type Step, type TrackMode } from "./types";
+import type { Player } from "./tracks";
 import { notesLabel } from "./notes";
 
 /** An encoder parameter. Values are stored normalized (0..1). */
@@ -94,9 +95,11 @@ const SOUND_DRUM: ParamDef[] = [
   { id: "gain", label: "Gain", bipolar: true, default: 0.5, format: db(-12, 12) },
 ];
 
-const SOUND_INSTRUMENT: ParamDef[] = [
+// voices: samples in Notes mode and sampled instruments (synths show their macros instead)
+const SOUND_VOICE: ParamDef[] = [
   { id: "attack", label: "Attack", default: 0.05, format: ms(1, 4000) },
-  { id: "decay", label: "Decay", default: 0.4, format: ms(1, 4000) },
+  // not "decay": that's the one-shot decay of hits, and a track keeps every mode's knobs (D94)
+  { id: "envDecay", label: "Decay", default: 0.4, format: ms(1, 4000) },
   { id: "sustain", label: "Sustain", default: 0.7, format: pct },
   { id: "release", label: "Release", default: 0.35, format: ms(1, 8000) },
   // open: synths and sampled instruments have their own tone; this is a filter on top
@@ -123,10 +126,11 @@ const SOUND_AUDIO: ParamDef[] = [
   { id: "fadeout", label: "Fade out", default: 0, format: ms(1, 2000) },
 ];
 
-export const SOUND_PARAMS: Record<TrackKind, ParamDef[]> = {
+/** The SOUND knobs by what plays the track (`player`); synth tracks show their macros. */
+export const SOUND_PARAMS: Record<Player, ParamDef[]> = {
   drum: SOUND_DRUM,
-  instrument: SOUND_INSTRUMENT,
-  audio: SOUND_AUDIO,
+  voice: SOUND_VOICE,
+  clip: SOUND_AUDIO,
 };
 
 export const MIX_PARAMS: ParamDef[] = [
@@ -256,7 +260,7 @@ export interface StepParamDef extends ParamDef {
   set: (s: Step, v: number) => void;
 }
 
-export function stepParams(kind: TrackKind, flats: boolean): StepParamDef[] {
+export function stepParams(mode: TrackMode, flats: boolean): StepParamDef[] {
   return [
     {
       id: "velocity",
@@ -295,7 +299,7 @@ export function stepParams(kind: TrackKind, flats: boolean): StepParamDef[] {
       get: (s) => (s.ratchet - 1) / 7,
       set: (s, v) => (s.ratchet = Math.round(v * 7) + 1),
     },
-    kind === "instrument"
+    mode === "notes"
       ? {
           id: "note",
           label: "Note",
@@ -322,7 +326,7 @@ export function stepParams(kind: TrackKind, flats: boolean): StepParamDef[] {
           get: (s) => (s.pitch + 12) / 24,
           set: (s, v) => (s.pitch = Math.round(v * 24) - 12),
         },
-    kind === "instrument"
+    mode === "notes"
       ? {
           id: "length",
           label: "Length",

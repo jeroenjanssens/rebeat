@@ -3,6 +3,7 @@
  * bar, records one loop (page length or 1/2/4/8 bars), compensates the recording latency, and
  * plays the loop right away. Recording again adds an overdub layer.
  */
+import { sampleOf } from "../model/tracks";
 import { openMic } from "../audio-io/mic";
 import { toast } from "../components/Toast";
 import { saveRecording } from "../library/library";
@@ -19,7 +20,7 @@ import { uid } from "../model/id";
 const get = () => useStore.getState();
 
 function armedAudioTrack() {
-  return get().project.tracks.find((t) => t.kind === "audio" && t.arm);
+  return get().project.tracks.find((t) => t.mode === "clip" && t.arm);
 }
 
 let busy = false;
@@ -35,7 +36,7 @@ async function startLoopRecording() {
     const free =
       !s.playing &&
       useSettings.getState().freeFirstLoop &&
-      !project.tracks.some((t) => t.kind === "audio" && t.sampleId);
+      !project.tracks.some((t) => t.mode === "clip" && sampleOf(t));
     if (free) return await freeLoop(track.id, mic);
     if (!get().playing) play();
     const start =
@@ -94,18 +95,15 @@ async function finish(
   get().commit((p) => {
     const t = p.tracks.find((x) => x.id === trackId);
     if (!t) return;
-    if (!t.sampleId) {
-      t.sampleId = id;
+    if (!sampleOf(t)) {
+      t.sound = { source: "sample", sampleId: id };
       t.source = "Recording";
     } else {
       // overdub: a separate layer that can be muted, undone or merged later
       t.layers = [...(t.layers ?? []), { id: uid("layer"), sampleId: id, gain: 1, mute: false }];
     }
     const lane = slotPattern(p, playSlot).lanes[trackId];
-    if (lane?.kind === "clip") {
-      lane.active = true;
-      lane.launchMode = "loop";
-    }
+    if (lane) lane.clip = { active: true, launchMode: "loop" };
   });
   const updated = get().project.tracks.find((t) => t.id === trackId)!;
   if (get().playing) {

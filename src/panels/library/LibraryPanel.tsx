@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useRef, useState, type CSSProperties } from "react";
+import { sampleOf } from "../../model/tracks";
 import { FolderInput, Link2, Upload, Volume2 } from "lucide-react";
 import { toast } from "../../components/Toast";
 import { kitSounds } from "../../engine/kits";
@@ -82,7 +83,7 @@ function FamilyHeader({ items, family }: { items: Item[]; family: Family }) {
       className="shrink-0 border-b border-line px-2.5 py-1.5 text-[10.5px] leading-snug text-faint"
       data-testid="family-header"
     >
-      {family === "Your instruments" && !items.length
+      {family === "Your sounds" && !items.length
         ? "Synths and sounds you save to the library appear here."
         : (collections.length ? collections : [COLLECTIONS.factory as Collection]).map((c, i) => (
             <span key={c.name}>
@@ -143,7 +144,7 @@ export function LibraryPanel() {
 
   // selecting a track shows its sample in the library
   useEffect(() => {
-    const id = track?.sampleId;
+    const id = track && sampleOf(track);
     if (!id) return;
     const inLib = samples.some((s) => s.id === id);
     if (!inLib && !id.startsWith("kit:")) return;
@@ -153,7 +154,7 @@ export function LibraryPanel() {
         ?.querySelector(`[data-sample="${CSS.escape(id)}"]`)
         ?.scrollIntoView({ block: "nearest" }),
     );
-  }, [track?.sampleId, samples]);
+  }, [track, samples]);
 
   const play = (item: Item) =>
     item.instrument
@@ -173,12 +174,12 @@ export function LibraryPanel() {
     const fonts = all.filter((f) => /\.(sf2|rbsynth)$/i.test(f.name));
     for (const f of fonts)
       await (/\.sf2$/i.test(f.name) ? importSoundfont(f) : importSynth(f).then(() => 1)).then(
-        (n) => toast(`Added ${n} instrument${n > 1 ? "s" : ""} from ${f.name} to Your instruments`),
+        (n) => toast(`Added ${n} instrument${n > 1 ? "s" : ""} from ${f.name} to Your sounds`),
         (e) => toast(`Couldn't read ${f.name}: ${e instanceof Error ? e.message : e}`, "error"),
       );
     const files = all.filter((f) => !fonts.includes(f));
     if (fonts.length && !files.length)
-      return setLoc({ kind: "instruments", family: "Your instruments" });
+      return setLoc({ kind: "instruments", family: "Your sounds" });
     if (!files.length) return;
     const ids = await importFiles(files, folder);
     toast(

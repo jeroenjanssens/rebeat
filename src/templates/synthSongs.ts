@@ -12,17 +12,18 @@
 import { makeEffect } from "../model/effects";
 import { makeTrack, type Project } from "../model/project";
 import { makePatch, type PatchSpec } from "../model/synth";
-import type { Effect, Pattern, SoundCategory, StepLane, Track } from "../model/types";
+import type { Effect, Pattern, SoundCategory, Lane, Track } from "../model/types";
 import {
   chord,
   drum,
-  drumTrack,
   emptyProject,
+  hitsTrack,
   note,
   notes,
+  notesTrack,
   page,
   splitLongPages,
-  synthTrack,
+  synth,
 } from "./builder";
 
 type NoteList = [number, number[], number, boolean?][];
@@ -35,9 +36,8 @@ function patchTrack(
   spec: PatchSpec,
   effects: Effect[] = [],
 ): Track {
-  const t = makeTrack("instrument", category, name, label, effects);
-  t.instrument = { source: "synth", preset: "init", patch: makePatch(spec), name: label };
-  return t;
+  const sound = { source: "synth", preset: "init", patch: makePatch(spec), name: label } as const;
+  return makeTrack("notes", category, name, label, effects, sound);
 }
 
 /**
@@ -45,7 +45,7 @@ function patchTrack(
  * each playing `pitch` for `length` steps.
  */
 function hits(pattern: Pattern, track: Track, code: string, pitch: number, length = 1) {
-  const lane = pattern.lanes[track.id] as StepLane;
+  const lane = pattern.lanes[track.id] as Lane;
   [...code.replace(/\s/g, "")].forEach((ch, i) => {
     if (ch === ".") return;
     const velocity = ch === "X" ? 1 : ch === "o" ? 0.45 : 0.8;
@@ -59,7 +59,7 @@ function hits(pattern: Pattern, track: Track, code: string, pitch: number, lengt
 
 /** Parameter locks on a track's steps: step → { "sound.macro1": 0.8 }. */
 function lock(pattern: Pattern, track: Track, steps: [number, Record<string, number>][]) {
-  const lane = pattern.lanes[track.id] as StepLane;
+  const lane = pattern.lanes[track.id] as Lane;
   for (const [i, locks] of steps) lane.steps[i].locks = { ...lane.steps[i].locks, ...locks };
 }
 
@@ -81,21 +81,25 @@ const DRIVE = ["Em", "C", "G", "D"];
 function hyperdrive(): Project {
   const p = emptyProject("Hyperdrive", 124);
   p.key = { root: 4, scale: "minor" };
-  const kick = drumTrack("Kick", "kit:909:kick", "909 Kick", "kick", [makeEffect("Compressor")]);
-  const clap = drumTrack("Clap", "kit:909:clap", "909 Clap", "snare");
+  const kick = hitsTrack("Kick", "kit:909:kick", "909 Kick", "kick", [makeEffect("Compressor")]);
+  const clap = hitsTrack("Clap", "kit:909:clap", "909 Clap", "snare");
   clap.params["mix.sendA"] = 0.35;
-  const hat = drumTrack("Cl Hat", "kit:909:chh", "909 Closed Hat", "hat");
+  const hat = hitsTrack("Cl Hat", "kit:909:chh", "909 Closed Hat", "hat");
   hat.volume = 0.5;
-  const ohat = drumTrack("Op Hat", "kit:909:ohh", "909 Open Hat", "hat");
+  const ohat = hitsTrack("Op Hat", "kit:909:ohh", "909 Open Hat", "hat");
   ohat.volume = 0.45;
-  const bass = synthTrack("Bass", "moroder-bass", "Moroder Bass", "bass");
+  const bass = notesTrack("Bass", synth("moroder-bass"), "Moroder Bass", "bass");
   bass.volume = 0.75;
   // hard sync, swept by the mod envelope on every note (the factory Numan lead)
-  const lead = synthTrack("Sync Lead", "numan-lead", "Numan Lead", "keys", [makeEffect("Delay")]);
+  const lead = notesTrack("Sync Lead", synth("numan-lead"), "Numan Lead", "keys", [
+    makeEffect("Delay"),
+  ]);
   lead.params["mix.sendA"] = 0.25;
   lead.volume = 0.7;
   // pulse width modulation (the factory Juno strings)
-  const pad = synthTrack("Strings", "juno-strings", "Juno Strings", "keys", [makeEffect("Chorus")]);
+  const pad = notesTrack("Strings", synth("juno-strings"), "Juno Strings", "keys", [
+    makeEffect("Chorus"),
+  ]);
   pad.params["mix.sendA"] = 0.4;
   pad.volume = 0.55;
   const bells = patchTrack(
@@ -118,11 +122,11 @@ function hyperdrive(): Project {
   bells.params["mix.sendA"] = 0.5;
   bells.volume = 0.6;
   // a wide stereo-unison supersaw (the factory one: 7 voices, 90% wide)
-  const saw = synthTrack("Supersaw", "supersaw", "Supersaw", "keys");
+  const saw = notesTrack("Supersaw", synth("supersaw"), "Supersaw", "keys");
   saw.params["mix.sendA"] = 0.3;
   saw.volume = 0.6;
   // pitch-envelope zaps (the factory laser)
-  const zap = synthTrack("Zap", "laser", "Laser Zap", "fx");
+  const zap = notesTrack("Zap", synth("laser"), "Laser Zap", "fx");
   zap.volume = 0.45;
   const toms = patchTrack("Toms", "Synth Toms", "tom", {
     osc: [{ shape: 0, retrigger: true, phase: 0.25, drift: 0 }],
@@ -423,7 +427,7 @@ function liquidLadder(): Project {
     [15, "A", 2],
   ];
   const acidBar = (pt: Pattern, at: number, transpose = 0) => {
-    const lane = pt.lanes[acid.id] as StepLane;
+    const lane = pt.lanes[acid.id] as Lane;
     for (const [i, name, octave, accent, slide] of LINE) {
       const s = lane.steps[at + i];
       const velocity = accent ? 1 : 0.55;
@@ -447,7 +451,7 @@ function liquidLadder(): Project {
     hits(pt, hat, bars("oxXx oxXx oxXx oxXo", 4), note("C", 5));
   };
   const blips = (pt: Pattern) => {
-    const lane = pt.lanes[perc.id] as StepLane;
+    const lane = pt.lanes[perc.id] as Lane;
     const tune = [note("E", 5), note("A", 5), note("C", 6), note("G", 5)];
     [3, 6, 9, 14].forEach((i, k) => {
       for (let bar = 0; bar < 4; bar++) {
@@ -498,7 +502,7 @@ function liquidLadder(): Project {
       { length: 64 },
       (_, i) =>
         [i, { "sound.macro7": Math.min(1, 0.15 + i / 64) }] as [number, Record<string, number>],
-    ).filter(([i]) => (brk.lanes[acid.id] as StepLane).steps[i].on),
+    ).filter(([i]) => (brk.lanes[acid.id] as Lane).steps[i].on),
   );
 
   const peak = page(p, "Peak", 64, 2);

@@ -12,7 +12,7 @@ type W = {
     };
     store: {
       getState(): {
-        project: { tracks: { id: string; name: string; kind: string }[] };
+        project: { tracks: { id: string; name: string; mode: string }[] };
         setUi(p: object): void;
         commit(fn: (p: { tracks: { name: string; instrument?: unknown }[] }) => void): void;
       };

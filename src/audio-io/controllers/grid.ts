@@ -37,7 +37,7 @@ export function gridColors(
     for (let c = 0; c < 8; c++) {
       const step = view.stepOffset + c;
       const lane = track && pattern.lanes[track.id];
-      if (!track || !lane || lane.kind !== "steps") {
+      if (!track || !lane || track.mode === "clip") {
         row.push([0, 0, 0]);
         continue;
       }

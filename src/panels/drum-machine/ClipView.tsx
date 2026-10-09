@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react";
 import * as engine from "../../engine/engine";
 import { samplePeaks } from "../../engine/samples";
-import type { ClipLane, Track } from "../../model/types";
+import { clipOf, type Lane, type Track } from "../../model/types";
+import { sampleOf } from "../../model/tracks";
 import { contextMenu, type MenuItem } from "../../components/Menu";
 import { useStore } from "../../state/store";
 import {
@@ -20,7 +21,7 @@ import { useSamplesVersion } from "../../components/useSamplesVersion";
 
 interface Props {
   track: Track;
-  lane: ClipLane;
+  lane: Lane;
   width: number;
   height: number;
 }
@@ -28,8 +29,8 @@ interface Props {
 function clipMenu(track: Track): MenuItem[] {
   const layers = track.layers ?? [];
   return [
-    { label: "Double length", disabled: !track.sampleId, onSelect: () => doubleClip(track.id) },
-    { label: "Halve length", disabled: !track.sampleId, onSelect: () => halveClip(track.id) },
+    { label: "Double length", disabled: !sampleOf(track), onSelect: () => doubleClip(track.id) },
+    { label: "Halve length", disabled: !sampleOf(track), onSelect: () => halveClip(track.id) },
     { separator: true },
     ...layers.map((l, i) => ({
       label: `Layer ${i + 1}`,
@@ -47,7 +48,7 @@ function clipMenu(track: Track): MenuItem[] {
           { separator: true },
         ]
       : []),
-    { label: "Clear clip", disabled: !track.sampleId, onSelect: () => clearClip(track.id) },
+    { label: "Clear clip", disabled: !sampleOf(track), onSelect: () => clearClip(track.id) },
   ];
 }
 
@@ -95,11 +96,11 @@ export function ClipView({ track, lane, width, height }: Props) {
       ctx.roundRect(0, 0, w, h, 5);
       ctx.fillStyle = token("pad-bg");
       ctx.fill();
-      ctx.fillStyle = alpha(track.color, lane.active ? 0.14 : 0.05);
+      ctx.fillStyle = alpha(track.color, clipOf(lane).active ? 0.14 : 0.05);
       ctx.fill();
-      const peaks = samplePeaks(track.sampleId);
-      ctx.fillStyle = lane.active ? track.color : token("text-faint");
-      ctx.globalAlpha = lane.active ? 0.9 : 0.6;
+      const peaks = samplePeaks(sampleOf(track));
+      ctx.fillStyle = clipOf(lane).active ? track.color : token("text-faint");
+      ctx.globalAlpha = clipOf(lane).active ? 0.9 : 0.6;
       const mid = h / 2;
       for (let x = 0; x < w; x += 2) {
         const p = peaks[Math.floor((x / w) * (peaks.length - 1))];
@@ -108,7 +109,7 @@ export function ClipView({ track, lane, width, height }: Props) {
       }
       ctx.globalAlpha = 1;
     },
-    [track.color, track.sampleId, lane.active, samples],
+    [track.color, track.sound, lane, samples],
   );
 
   useEffect(
@@ -146,7 +147,7 @@ export function ClipView({ track, lane, width, height }: Props) {
           +{layers.filter((l) => !l.mute).length}/{layers.length} layers
         </span>
       )}
-      {!track.sampleId && !looper && (
+      {!sampleOf(track) && !looper && (
         <span className="label absolute inset-0 flex items-center justify-center !text-[9px]">
           {track.arm
             ? "Armed: press Rec to record a loop"

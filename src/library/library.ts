@@ -320,8 +320,8 @@ export async function saveVersion(
 export function replaceInProject(from: string, to: string) {
   useStore.getState().commit((p) => {
     for (const t of p.tracks) {
-      if (t.sampleId === from) t.sampleId = to;
-      if (t.instrument?.sampleId === from) t.instrument.sampleId = to;
+      if (t.sound?.sampleId === from) t.sound.sampleId = to;
+      for (const z of t.sound?.zones ?? []) if (z.sampleId === from) z.sampleId = to;
       for (const l of t.layers ?? []) if (l.sampleId === from) l.sampleId = to;
     }
   });
@@ -377,8 +377,8 @@ export function usageOf(id: string) {
     .getState()
     .project.tracks.filter(
       (t) =>
-        t.sampleId === id ||
-        t.instrument?.sampleId === id ||
+        t.sound?.sampleId === id ||
+        t.sound?.zones?.some((z) => z.sampleId === id) ||
         t.layers?.some((l) => l.sampleId === id),
     );
 }

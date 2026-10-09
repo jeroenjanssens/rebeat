@@ -8,6 +8,7 @@ import { chordInKey, snapToKey } from "../model/notes";
 import { pageKey, slotPattern } from "../model/project";
 import { STEP_SIZE_QUARTERS, setStepVelocity, type Step, type Track } from "../model/types";
 import { laneLen, switchStep, toggleSelectedSteps } from "./actions";
+import { stepped } from "../model/tracks";
 import { useStore } from "./store";
 
 const get = () => useStore.getState();
@@ -23,7 +24,7 @@ function writeStep(trackId: string, index: number, fn: (s: Step) => void, key: s
   get().commit((p) => {
     const s = get();
     const lane = slotPattern(p, s.playing ? s.playSlotId : s.editSlotId).lanes[trackId];
-    if (lane?.kind === "steps") fn(lane.steps[index]);
+    if (lane && stepped(p, trackId)) fn(lane.steps[index]);
   }, key);
 }
 
@@ -45,14 +46,14 @@ let chordWindow = { at: 0, index: -1, trackId: "" };
 /** A pad or note was played by the user (mouse, touch, keyboard or MIDI). */
 export function padInput(track: Track, velocity: number, notes?: number[]) {
   const s = get();
-  if (track.kind === "audio") return;
+  if (track.mode === "clip") return;
 
   if (s.playing && s.recording) {
     const pos = position();
     const slot = s.project.slots.find((x) => x.id === s.playSlotId)!;
     const pattern = s.project.patterns[slot.patternId];
     const lane = pattern.lanes[track.id];
-    if (lane?.kind !== "steps") return;
+    if (!lane) return;
     const len = lane.stepCountOverride ?? pattern.stepCount;
     // what you hear is behind the audio clock by the output latency
     const ctx = audioContext();
@@ -118,11 +119,10 @@ export function moveCursor(dx: number, dy: number) {
     return;
   }
   ti = Math.min(tracks.length - 1, Math.max(0, ti + dy));
-  // skip audio tracks: they have no steps
-  while (pattern.lanes[tracks[ti].id]?.kind !== "steps" && ti > 0 && ti < tracks.length - 1)
-    ti += dy || 1;
+  // skip Clip tracks: their steps don't play
+  while (tracks[ti].mode === "clip" && ti > 0 && ti < tracks.length - 1) ti += dy || 1;
   const trackId = tracks[ti].id;
-  if (pattern.lanes[trackId]?.kind !== "steps") return;
+  if (tracks[ti].mode === "clip" || !pattern.lanes[trackId]) return;
   const len = laneLen(trackId);
   const index = (((c.index + dx) % len) + len) % len;
   s.setUi({ cursor: { trackId, index }, selectedTrackId: trackId });
@@ -134,7 +134,7 @@ export function cursorToggle() {
   if (!c) return moveCursor(0, 0);
   const s = get();
   const lane = slotPattern(s.project, s.editSlotId).lanes[c.trackId];
-  if (lane?.kind !== "steps") return;
+  if (!lane || !stepped(s.project, c.trackId)) return;
   const on = !lane.steps[c.index].on;
   writeStep(
     c.trackId,
@@ -159,7 +159,7 @@ export function velocityDigit(d: number) {
       for (const k of keys) {
         const [t, i] = k.split(":");
         const lane = pattern.lanes[t];
-        if (lane?.kind === "steps") setStepVelocity(lane.steps[Number(i)], v);
+        if (lane && stepped(p, t)) setStepVelocity(lane.steps[Number(i)], v);
       }
     }, "vel-digit");
     return;

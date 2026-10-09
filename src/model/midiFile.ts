@@ -68,7 +68,7 @@ function trackEvents(track: Track, patterns: Pattern[], channel: number): Ev[] {
   for (const pattern of patterns) {
     const stepTicks = STEP_SIZE_QUARTERS[pattern.stepSize] * PPQ;
     const lane = pattern.lanes[track.id];
-    if (lane?.kind === "steps") {
+    if (lane && track.mode !== "clip") {
       const len = lane.stepCountOverride ?? pattern.stepCount;
       const laneTicks = STEP_SIZE_QUARTERS[lane.stepSizeOverride ?? pattern.stepSize] * PPQ;
       const count = Math.floor((pattern.stepCount * stepTicks) / laneTicks);
@@ -77,7 +77,7 @@ function trackEvents(track: Track, patterns: Pattern[], channel: number): Ev[] {
         if (!s.on) continue;
         const at = Math.round(offset + (i + s.nudge) * laneTicks);
         const notes =
-          track.kind === "instrument"
+          track.mode === "notes"
             ? (s.notes ?? []).map((n) => ({
                 pitch: n.pitch + (track.transpose ?? 0) + (pattern.transpose ?? 0),
                 len: n.length,
@@ -117,10 +117,10 @@ export function exportMidi(project: Project, range: "song" | "page", slotId?: st
   ]);
   let melodic = 0;
   const tracks = project.tracks
-    .filter((t) => t.kind !== "audio")
+    .filter((t) => t.mode !== "clip")
     .map((t) => {
-      // drums on channel 10; instruments get their own channels (skipping 10)
-      const ch = t.kind === "drum" ? 9 : MELODIC_CHANNELS[melodic++ % MELODIC_CHANNELS.length];
+      // hits on channel 10 (the drums); notes get their own channels (skipping 10)
+      const ch = t.mode === "hits" ? 9 : MELODIC_CHANNELS[melodic++ % MELODIC_CHANNELS.length];
       return trackChunk(trackEvents(t, patterns, ch));
     });
   const header = [

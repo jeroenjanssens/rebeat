@@ -68,7 +68,7 @@ function entries(folders: string[]): Entry[] {
     { loc: { kind: "online" }, icon: Globe, label: "Online kits" },
     ...FAMILIES.map((family, i): Entry => ({
       loc: { kind: "instruments", family },
-      icon: family === "Synths" ? Waves : family === "Your instruments" ? User : Piano,
+      icon: family === "Synths" ? Waves : family === "Your sounds" ? User : Piano,
       label: family,
       group: i === 0 ? "Instruments" : undefined,
     })),

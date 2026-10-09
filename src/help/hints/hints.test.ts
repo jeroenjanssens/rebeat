@@ -2,7 +2,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { EFFECT_PARAMS, MIX_PARAMS, SOUND_PARAMS, stepParams } from "../../model/params";
-import type { TrackKind } from "../../model/types";
+import type { Player } from "../../model/tracks";
 import { CHAPTERS } from "../guide";
 import { HINTS } from "./index";
 
@@ -38,13 +38,15 @@ describe("explain-mode hints", () => {
   });
 
   it("exist for every knob parameter and effect", () => {
-    const kinds = Object.keys(SOUND_PARAMS) as TrackKind[];
+    const kinds = Object.keys(SOUND_PARAMS) as Player[];
     const ids = [
       ...kinds.flatMap((k) => SOUND_PARAMS[k].map((d) => `param.sound.${d.id}`)),
       // a synth track's macros (soundHint)
       "param.sound.macro",
       ...MIX_PARAMS.map((d) => `param.mix.${d.id}`),
-      ...kinds.flatMap((k) => stepParams(k, true).map((d) => `param.step.${d.id}`)),
+      ...(["hits", "notes"] as const).flatMap((m) =>
+        stepParams(m, true).map((d) => `param.step.${d.id}`),
+      ),
       ...Object.entries(EFFECT_PARAMS).flatMap(([fx, defs]) => [
         `fx.${fx}`,
         ...defs.map((d) => `fx.${fx}.${d.id}`),

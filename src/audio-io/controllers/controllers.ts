@@ -1,8 +1,8 @@
 /** Connected grid controllers: they mirror the drum machine and edit it from their pads. */
+import { stepped } from "../../model/tracks";
 import { create } from "zustand";
 import { onStep } from "../../engine/transport";
 import * as transport from "../../engine/transport";
-import { SOUND_PARAMS } from "../../model/params";
 import { soundDefs } from "../../library/synthTrack";
 import { slotPattern } from "../../model/project";
 import { setStep } from "../../state/actions";
@@ -54,7 +54,7 @@ function handle(c: Connected, m: { type: string; number: number; value: number }
     if (!target) return true;
     const pattern = slotPattern(s.project, s.editSlotId);
     const lane = pattern.lanes[target.trackId];
-    if (lane?.kind !== "steps") return true;
+    if (!lane || !stepped(s.project, target.trackId)) return true;
     setStep(target.trackId, target.step, !lane.steps[target.step].on, `ctl-${performance.now()}`);
     s.setUi({ selectedTrackId: target.trackId });
     return true;
@@ -65,7 +65,7 @@ function handle(c: Connected, m: { type: string; number: number; value: number }
   if (enc !== undefined) {
     // encoders turn the selected track's sound parameters
     const track = s.project.tracks.find((t) => t.id === s.selectedTrackId);
-    const def = track && soundDefs(track, SOUND_PARAMS[track.kind])[enc];
+    const def = track && soundDefs(track)[enc];
     if (track && def) {
       const key = `sound.${def.id}`;
       const v = Math.min(

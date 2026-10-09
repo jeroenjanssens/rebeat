@@ -17,7 +17,7 @@ async function stripLevels(page: import("@playwright/test").Page, setup: string,
       sink.gain.value = 0;
       sink.connect(ctx.destination);
       const ch = new TrackChannel(sink);
-      const track = makeTrack("drum", "perc", "t", "t");
+      const track = makeTrack("hits", "perc", "t", "t");
       new Function("track", "makeEffect", setup)(track, makeEffect);
       ch.update(track, true, 120);
       const split = ctx.createChannelSplitter(2);

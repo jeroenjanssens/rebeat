@@ -12,7 +12,7 @@ type T = {
   id: string;
   name: string;
   params: Record<string, number>;
-  instrument?: { preset: string; from?: string; name?: string; patch?: Patch };
+  sound?: { preset: string; from?: string; name?: string; patch?: Patch };
 };
 type W = {
   __rebeat: {
@@ -58,17 +58,11 @@ test("A/B compares two versions of the sound", async ({ page }) => {
   const original = (await factory(page)).osc[0].retrigger;
   await ab.getByRole("button", { name: "B" }).click();
   await editor.locator('[data-hint="synth.osc.retrigger"]').first().click();
-  await expect
-    .poll(async () => (await bass(page)).instrument?.patch?.osc[0].retrigger)
-    .toBe(!original);
+  await expect.poll(async () => (await bass(page)).sound?.patch?.osc[0].retrigger).toBe(!original);
   await ab.getByRole("button", { name: "A" }).click();
-  await expect
-    .poll(async () => (await bass(page)).instrument?.patch?.osc[0].retrigger)
-    .toBe(original);
+  await expect.poll(async () => (await bass(page)).sound?.patch?.osc[0].retrigger).toBe(original);
   await ab.getByRole("button", { name: "B" }).click();
-  await expect
-    .poll(async () => (await bass(page)).instrument?.patch?.osc[0].retrigger)
-    .toBe(!original);
+  await expect.poll(async () => (await bass(page)).sound?.patch?.osc[0].retrigger).toBe(!original);
 });
 
 test("randomize, only the sections you leave on, and init", async ({ page }) => {
@@ -81,8 +75,8 @@ test("randomize, only the sections you leave on, and init", async ({ page }) => 
     await r.getByRole("button", { name: g, exact: true }).click();
   await r.getByLabel("Randomize amount").fill("1");
   await r.getByRole("button", { name: "Randomize" }).click();
-  await expect.poll(async () => (await bass(page)).instrument?.patch).toBeTruthy();
-  const after = (await bass(page)).instrument!.patch!;
+  await expect.poll(async () => (await bass(page)).sound?.patch).toBeTruthy();
+  const after = (await bass(page)).sound!.patch!;
   expect(after.osc[0].shape).toBe(before.osc[0].shape);
   expect(after.output.volume).toBe(before.output.volume);
   expect(after.filters[0].reso).not.toBe(before.filters[0].reso);
@@ -95,8 +89,8 @@ test("randomize, only the sections you leave on, and init", async ({ page }) => 
   await page.keyboard.press("Escape");
   // init: a plain saw
   await menu(page, "Init patch");
-  await expect.poll(async () => (await bass(page)).instrument?.patch?.filters[0].cutoff).toBe(8000);
-  expect((await bass(page)).instrument?.patch?.osc[0].shape).toBe(2);
+  await expect.poll(async () => (await bass(page)).sound?.patch?.filters[0].cutoff).toBe(8000);
+  expect((await bass(page)).sound?.patch?.osc[0].shape).toBe(2);
 });
 
 test("copy a block's settings to another of its kind", async ({ page }) => {
@@ -106,8 +100,8 @@ test("copy a block's settings to another of its kind", async ({ page }) => {
     editor.locator('[data-section="Oscillator 1"] [data-hint="synth.paste"]'),
   ).toHaveCount(0);
   await editor.locator('[data-section="Oscillator 2"] [data-hint="synth.paste"]').click();
-  await expect.poll(async () => (await bass(page)).instrument?.patch?.osc[1].on).toBe(true);
-  const p = (await bass(page)).instrument!.patch!;
+  await expect.poll(async () => (await bass(page)).sound?.patch?.osc[1].on).toBe(true);
+  const p = (await bass(page)).sound!.patch!;
   expect(p.osc[1].shape).toBe(p.osc[0].shape);
   expect(p.osc[1].level).toBe(p.osc[0].level);
   // filters only paste on filters
@@ -132,15 +126,15 @@ test("export a synth as .rbsynth and import it, also into the library", async ({
   expect(data).toMatchObject({ format: "rebeat-synth", version: 1, name: "Mono · Acid Bass" });
   expect(data.macros[0]).toBe(0.9);
 
-  // the editor's Import puts it on the track (and in Your instruments)
+  // the editor's Import puts it on the track (and in Your sounds)
   const [path] = fixtureFiles({
     "Squelch.rbsynth": Buffer.from(JSON.stringify({ ...data, name: "Squelch" })),
   });
   const chooser = page.waitForEvent("filechooser");
   await menu(page, "Import .rbsynth…");
   await (await chooser).setFiles(path);
-  await expect.poll(async () => (await bass(page)).instrument?.name).toBe("Squelch");
-  expect((await bass(page)).instrument?.from).toMatch(/^user:/);
+  await expect.poll(async () => (await bass(page)).sound?.name).toBe("Squelch");
+  expect((await bass(page)).sound?.from).toMatch(/^user:/);
   expect((await bass(page)).params["sound.macro1"]).toBe(0.9);
 
   // the library's import takes them too

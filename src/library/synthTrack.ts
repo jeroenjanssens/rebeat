@@ -4,7 +4,8 @@
  */
 import { factorySynth, FACTORY_SYNTHS } from "./synths";
 import { paramOf } from "../model/patchParams";
-import type { ParamDef } from "../model/params";
+import { SOUND_PARAMS, type ParamDef } from "../model/params";
+import { player } from "../model/tracks";
 import {
   SOUND_KNOB_DEFAULTS,
   movedKnobs,
@@ -14,26 +15,30 @@ import {
   withMacroValues,
   type SynthPatch,
 } from "../model/synth";
-import type { InstrumentSource, Track } from "../model/types";
+import type { Sound, Track } from "../model/types";
 
 /** Patches are plain JSON; this also copies out of immer drafts. */
 const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x)) as T;
 
-export function defaultInstrument(track: Track): InstrumentSource {
+/** The synth a voice plays when the track has no sound yet: a bass or a pad. */
+export function defaultSynth(track: Pick<Track, "category">): Sound {
   return { source: "synth", preset: track.category === "bass" ? "acid" : "warm-pad" };
 }
 
-/** The patch a synth source plays: its own, or its factory synth's. */
-export function patchOf(src: InstrumentSource): SynthPatch {
+/** What a track's instrument voice plays (Notes, or Hits of a synth or sampled instrument). */
+export const voiceSound = (t: Track): Sound => t.sound ?? defaultSynth(t);
+
+/** The patch a synth plays: its own, or its factory synth's. */
+export function patchOf(src: Sound): SynthPatch {
   // patches saved before version 2 are upgraded as they're read
   if (src.patch) return upgradePatch(src.patch);
-  return factorySynth(src.preset)?.patch ?? FACTORY_SYNTHS[0].patch;
+  return factorySynth(src.preset ?? "")?.patch ?? FACTORY_SYNTHS[0].patch;
 }
 
-export const isSynthTrack = (t: Track) =>
-  t.kind === "instrument" && (t.instrument ?? defaultInstrument(t)).source === "synth";
+/** A track that plays a synth, in Notes or Hits mode (its SOUND knobs are the macros). */
+export const isSynthTrack = (t: Track) => t.mode !== "clip" && voiceSound(t).source === "synth";
 
-export const trackPatch = (t: Track) => patchOf(t.instrument ?? defaultInstrument(t));
+export const trackPatch = (t: Track) => patchOf(voiceSound(t));
 
 export const macroKey = (i: number) => `sound.macro${i + 1}`;
 
@@ -45,9 +50,9 @@ export const macroValues = (t: Track, patch = trackPatch(t)) =>
 export const effectivePatch = (t: Track, patch = trackPatch(t)) =>
   withMacroValues(patch, macroValues(t, patch));
 
-/** The SOUND knobs of a track: a synth's 8 macros, or the kind's own knobs. */
-export function soundDefs(t: Track, kindDefs: ParamDef[]): ParamDef[] {
-  if (!isSynthTrack(t)) return kindDefs;
+/** The SOUND knobs of a track: a synth's 8 macros, else the knobs of what plays it (D94). */
+export function soundDefs(t: Track): ParamDef[] {
+  if (!isSynthTrack(t)) return SOUND_PARAMS[player(t)];
   return trackPatch(t).macros.map((m, i) => ({
     id: `macro${i + 1}`,
     label: m.name || `Macro ${i + 1}`,
@@ -58,7 +63,7 @@ export function soundDefs(t: Track, kindDefs: ParamDef[]): ParamDef[] {
 
 /**
  * What happens around an edit, set by the app (userInstruments.ts): "fork" when an edit turns a
- * factory synth into the track's own named copy (in Your instruments), "edit" for edits after.
+ * factory synth into the track's own named copy (in Your sounds), "edit" for edits after.
  */
 /**
  * Tracks that aren't in the project: library sounds open in the synth editor (libraryEdit.ts),
@@ -72,17 +77,17 @@ export const onPatchEdit = (fn: PatchHook) => void (patchHook = fn);
 
 /**
  * Change a synth track's patch (in a store recipe). Factory synths never change: the first edit
- * makes the track's own copy of the patch (D90: with its own name, as one of Your instruments,
+ * makes the track's own copy of the patch (D90: with its own name, as one of Your sounds,
  * unless `fork` is false, as in the conversion of old projects). An older (version 1) patch is
  * upgraded.
  */
 export function editPatch(t: Track, fn: (p: SynthPatch) => void, fork = true) {
-  const src = t.instrument ?? defaultInstrument(t);
+  const src = voiceSound(t);
   if (src.source !== "synth") return;
-  if (!t.instrument) t.instrument = { ...src };
-  const factory = !t.instrument.patch && !t.instrument.from;
-  if (t.instrument.patch?.version !== 2) t.instrument.patch = clone(patchOf(src));
-  fn(t.instrument.patch as SynthPatch);
+  if (!t.sound) t.sound = { ...src };
+  const factory = !t.sound.patch && !t.sound.from;
+  if (t.sound.patch?.version !== 2) t.sound.patch = clone(patchOf(src));
+  fn(t.sound.patch as SynthPatch);
   if (fork) patchHook?.(t, factory ? "fork" : "edit");
 }
 

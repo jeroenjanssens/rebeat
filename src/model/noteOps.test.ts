@@ -1,9 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { addNote, listNotes, moveNotes, removeNote, resizeNotes } from "./noteOps";
-import { MAX_STEPS, emptyStep, type StepLane } from "./types";
+import { MAX_STEPS, emptyStep, type Lane } from "./types";
 
-const lane = (): StepLane => ({
-  kind: "steps",
+const lane = (): Lane => ({
   steps: Array.from({ length: MAX_STEPS }, emptyStep),
 });
 

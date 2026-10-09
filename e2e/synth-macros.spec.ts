@@ -9,7 +9,7 @@ type T = {
   id: string;
   name: string;
   params: Record<string, number>;
-  instrument?: { preset: string; patch?: Patch };
+  sound?: { preset: string; patch?: Patch };
 };
 type W = {
   __midi: (d: number[]) => void;
@@ -82,7 +82,7 @@ test("Basic shows the macros, which are the synth track's SOUND knobs", async ({
     .poll(async () => (await bass(page)).params["sound.macro1"])
     .toBeGreaterThan(rest + 0.01);
   // turning a macro doesn't edit the factory synth
-  expect((await bass(page)).instrument?.patch).toBeUndefined();
+  expect((await bass(page)).sound?.patch).toBeUndefined();
 
   // the editor remembers the view you used last
   await editor.getByTestId("synth-view").getByRole("button", { name: "Advanced" }).click();
@@ -157,15 +157,15 @@ test("Advanced: rename a macro and give it another target", async ({ page }) => 
   await editor.getByTestId("synth-view").getByRole("button", { name: "Advanced" }).click();
   const macros = editor.getByTestId("macro-editor");
   await macros.getByLabel("Macro 1 name").fill("Shine");
-  await expect.poll(async () => (await bass(page)).instrument?.patch?.macros[0].name).toBe("Shine");
+  await expect.poll(async () => (await bass(page)).sound?.patch?.macros[0].name).toBe("Shine");
   const drive = macros.locator('[data-macro="7"]');
-  const before = (await bass(page)).instrument!.patch!;
+  const before = (await bass(page)).sound!.patch!;
   const count = before.macros[7].targets.length;
   await drive.locator('[data-hint="synth.macro.add"]').selectOption("filters.0.reso");
   await expect
-    .poll(async () => (await bass(page)).instrument?.patch?.macros[7].targets.length)
+    .poll(async () => (await bass(page)).sound?.patch?.macros[7].targets.length)
     .toBe(count + 1);
-  const t = (await bass(page)).instrument!.patch!.macros[7].targets.at(-1)!;
+  const t = (await bass(page)).sound!.patch!.macros[7].targets.at(-1)!;
   expect(t.path).toBe("filters.0.reso");
   expect(t.max).toBeGreaterThan(t.min);
   // the new name is on the SOUND knob
@@ -193,10 +193,10 @@ test("any synth editor knob can be MIDI learned", async ({ page }) => {
     .toContainEqual(expect.stringMatching(/:synth:filters\.0\.cutoff$/));
   await page.evaluate(() => (window as never as W).__midi([0xb0, 21, 127]));
   await expect
-    .poll(async () => (await bass(page)).instrument?.patch?.filters[0].cutoff)
+    .poll(async () => (await bass(page)).sound?.patch?.filters[0].cutoff)
     .toBeGreaterThan(15000);
   await page.evaluate(() => (window as never as W).__midi([0xb0, 21, 0]));
   await expect
-    .poll(async () => (await bass(page)).instrument?.patch?.filters[0].cutoff)
+    .poll(async () => (await bass(page)).sound?.patch?.filters[0].cutoff)
     .toBeLessThan(30);
 });

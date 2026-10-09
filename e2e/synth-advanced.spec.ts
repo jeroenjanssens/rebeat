@@ -10,7 +10,7 @@ type W = {
   __rebeat: {
     store: {
       getState(): {
-        project: { tracks: { id: string; name: string; instrument?: { patch?: Patch } }[] };
+        project: { tracks: { id: string; name: string; sound?: { patch?: Patch } }[] };
         setUi(p: object): void;
       };
     };
@@ -23,7 +23,7 @@ const patch = (page: Page) =>
     () =>
       (window as never as W).__rebeat.store
         .getState()
-        .project.tracks.find((t) => t.name === "Bass")!.instrument?.patch,
+        .project.tracks.find((t) => t.name === "Bass")!.sound?.patch,
   );
 
 async function openAdvanced(page: Page) {

@@ -1,4 +1,5 @@
 import type { MenuItem } from "../../components/Menu";
+import { stepped } from "../../model/tracks";
 import { CONDITIONS } from "../../model/params";
 import { slotPattern } from "../../model/project";
 import type { Step } from "../../model/types";
@@ -10,12 +11,12 @@ export function stepMenu(trackId: string, index: number): MenuItem[] {
   const s = useStore.getState();
   const pattern = slotPattern(s.project, s.editSlotId);
   const lane = pattern.lanes[trackId];
-  if (lane?.kind !== "steps") return [];
+  if (!lane || !stepped(s.project, trackId)) return [];
   const keys = menuTargets(trackId, index);
   const steps = keys.flatMap((k): Step[] => {
     const [t, i] = k.split(":");
     const l = pattern.lanes[t];
-    return l?.kind === "steps" ? [l.steps[Number(i)]] : [];
+    return l && stepped(s.project, t) ? [l.steps[Number(i)]] : [];
   });
   const all = (fn: (x: Step) => boolean) => steps.every(fn);
   const many = keys.length > 1;

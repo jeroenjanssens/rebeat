@@ -456,7 +456,7 @@ const hints: Hints = {
   },
   "dm.track.savesound": {
     title: "Save sound to library",
-    text: "Store this track's sound (synth, sampler or instrument, with its SOUND knobs and effects) under Your instruments, to use it on other tracks and in other projects.",
+    text: "Store this track's sound (synth, sampler or instrument, with its SOUND knobs and effects) under Your sounds, to use it on other tracks and in other projects.",
     guide: "instruments-the-synth-editor",
   },
   "dm.sound.kind": {

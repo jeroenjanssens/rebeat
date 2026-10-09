@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { droppedInstrument, droppedSamples, isSampleDrag } from "../../library/drop";
-import { sampleName } from "../../library/library";
 import {
   addInstrumentTrack,
   addSampleTracks,
   playInstrumentOn,
   replaceSound,
-  setInstrument,
+  setSound,
   soundLabel,
 } from "../../state/trackActions";
 import { useSortable } from "@dnd-kit/sortable";
@@ -26,15 +25,17 @@ import { toUnit } from "../../model/params";
 import { keyUsesFlats } from "../../model/notes";
 import {
   clearLane,
-  convertTrack,
   deleteTrack,
   duplicateTrack,
   pageKey,
+  setMode,
   randomizeLane,
   reverseLane,
   rotateLane,
 } from "../../model/project";
-import { STEP_SIZES, type Lane, type Pattern, type Track } from "../../model/types";
+import { STEP_SIZES, clipOf, type Lane, type Pattern, type Track } from "../../model/types";
+import { canClip, player } from "../../model/tracks";
+import { isSynthTrack } from "../../library/synthTrack";
 import { applyHeld, fnClick } from "../../state/actions";
 import { useStore } from "../../state/store";
 import { ClipView } from "./ClipView";
@@ -118,8 +119,8 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
   const flats = useStore((s) => keyUsesFlats(pageKey(s.project, pattern)));
   const cursorIndex = useStore((s) => (s.cursor?.trackId === track.id ? s.cursor.index : -1));
   const compact = geo.sizeClass === "compact";
-  const length =
-    lane.kind === "steps" ? (lane.stepCountOverride ?? pattern.stepCount) : pattern.stepCount;
+  const length = lane.stepCountOverride ?? pattern.stepCount;
+  const clip = track.mode === "clip";
 
   // playhead + trigger flashes, straight on the DOM (no React re-render per step)
   useEffect(() => {
@@ -127,7 +128,7 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
     return onStep((e) => {
       head?.classList.remove("head");
       head = null;
-      if (e.pageStep < 0 || e.patternId !== pattern.id || lane.kind !== "steps") return;
+      if (e.pageStep < 0 || e.patternId !== pattern.id || clip) return;
       const i = e.laneSteps.get(track.id) ?? e.pageStep % length;
       const el = stepsRef.current?.querySelector(`[data-i="${i}"]`);
       if (!el) return;
@@ -139,7 +140,7 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
         el.classList.add("trig");
       }
     });
-  }, [pattern.id, length, lane.kind, track.id]);
+  }, [pattern.id, length, clip, track.id]);
 
   const update = (fn: (t: Track) => void, key?: string) =>
     commit((p) => {
@@ -154,7 +155,7 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
     });
 
   const menuItems = (): MenuItem[] => {
-    const steps = lane.kind === "steps";
+    const steps = !clip;
     return [
       {
         label: "Duplicate",
@@ -162,12 +163,14 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
         onSelect: () => commit((p) => void duplicateTrack(p, track.id)),
       },
       { label: "Delete", onSelect: () => commit((p) => deleteTrack(p, track.id)) },
-      ...(track.kind === "instrument" && (track.instrument?.source ?? "synth") === "synth"
+      ...(isSynthTrack(track)
         ? [{ label: "Edit synth…", onSelect: () => openSynthEditor(track.id) }]
         : []),
-      ...(track.kind === "instrument"
+      ...(track.sound || track.mode === "notes"
+        ? [{ render: (close: () => void) => <SaveSound track={track} close={close} /> }]
+        : []),
+      ...(track.mode === "notes"
         ? [
-            { render: (close: () => void) => <SaveSound track={track} close={close} /> },
             {
               label: "Open in piano roll",
               onSelect: () => {
@@ -202,6 +205,17 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
         ),
       },
       { render: (close: () => void) => <SoundPicker track={track} close={close} /> },
+      chips(
+        "Play as",
+        (["hits", "notes", "clip"] as const)
+          .filter((m) => m !== "clip" || canClip(track.sound))
+          .map((m) => ({
+            label: m[0].toUpperCase() + m.slice(1),
+            active: track.mode === m,
+            onClick: () => commit((p) => setMode(p, track.id, m)),
+          })),
+      ),
+
       { separator: true },
       {
         label: "Copy steps",
@@ -225,28 +239,28 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
         label: "Clear steps",
         shortcut: "CLEAR",
         disabled: !steps,
-        onSelect: () => updateLane((l) => l.kind === "steps" && clearLane(l)),
+        onSelect: () => updateLane((l) => clearLane(l)),
       },
       {
         label: "Shift left",
         disabled: !steps,
-        onSelect: () => updateLane((l) => l.kind === "steps" && rotateLane(l, length, -1)),
+        onSelect: () => updateLane((l) => rotateLane(l, length, -1)),
       },
       {
         label: "Shift right",
         disabled: !steps,
-        onSelect: () => updateLane((l) => l.kind === "steps" && rotateLane(l, length, 1)),
+        onSelect: () => updateLane((l) => rotateLane(l, length, 1)),
       },
       {
         label: "Reverse",
         disabled: !steps,
-        onSelect: () => updateLane((l) => l.kind === "steps" && reverseLane(l, length)),
+        onSelect: () => updateLane((l) => reverseLane(l, length)),
       },
       {
         label: "Randomize",
         shortcut: "RAND",
         disabled: !steps,
-        onSelect: () => updateLane((l) => l.kind === "steps" && randomizeLane(l, length)),
+        onSelect: () => updateLane((l) => randomizeLane(l, length)),
       },
       {
         label: "Euclidean…",
@@ -255,14 +269,14 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
         onSelect: () => setUi({ selectedTrackId: track.id, euclidOpen: true }),
       },
       { separator: true },
-      ...(steps && lane.kind === "steps"
+      ...(steps
         ? [
             chips(
               "Track length on this page",
               [undefined, 3, 5, 6, 7, 12].map((n) => ({
                 label: n === undefined ? "Page" : String(n),
                 active: lane.stepCountOverride === n,
-                onClick: () => updateLane((l) => l.kind === "steps" && (l.stepCountOverride = n)),
+                onClick: () => updateLane((l) => (l.stepCountOverride = n)),
               })),
             ),
             chips(
@@ -270,7 +284,7 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
               [undefined, ...STEP_SIZES].map((sz) => ({
                 label: sz ?? "Page",
                 active: lane.stepSizeOverride === sz,
-                onClick: () => updateLane((l) => l.kind === "steps" && (l.stepSizeOverride = sz)),
+                onClick: () => updateLane((l) => (l.stepSizeOverride = sz)),
               })),
             ),
             chips(
@@ -278,13 +292,14 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
               [undefined, 0.5, 0.54, 0.58, 0.62, 0.66].map((v) => ({
                 label: v === undefined ? "Page" : `${Math.round(v * 100)}%`,
                 active: lane.swingOverride === v,
-                onClick: () => updateLane((l) => l.kind === "steps" && (l.swingOverride = v)),
+                onClick: () => updateLane((l) => (l.swingOverride = v)),
               })),
             ),
             { separator: true },
           ]
         : []),
-      ...(track.kind === "drum"
+      // choke groups cut one-shot hits of samples
+      ...(player(track) === "drum"
         ? [
             chips(
               "Choke group",
@@ -296,14 +311,6 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
             ),
           ]
         : []),
-      chips(
-        "Convert to",
-        (["drum", "instrument", "audio"] as const).map((k) => ({
-          label: k[0].toUpperCase() + k.slice(1),
-          active: track.kind === k,
-          onClick: () => commit((p) => convertTrack(p, track.id, k, sampleName)),
-        })),
-      ),
     ];
   };
 
@@ -421,12 +428,10 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
               />
               <TrackButton
                 label="●"
-                title={
-                  track.kind === "drum" ? "Record-arm (audio/instrument tracks)" : "Record-arm"
-                }
+                title={track.mode === "hits" ? "Record-arm (Notes and Clip tracks)" : "Record-arm"}
                 lit={track.arm}
                 color="#ef4444"
-                disabled={track.kind === "drum"}
+                disabled={track.mode === "hits"}
                 hint="dm.track.arm"
                 onClick={() => update((t) => (t.arm = !t.arm))}
               />
@@ -455,7 +460,7 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
 
         {/* ---- steps / clip ---- */}
         <div ref={stepsRef} className="flex items-center py-1 pl-1">
-          {lane.kind === "steps" ? (
+          {!clip ? (
             <StepsArea
               track={track}
               lane={lane}
@@ -477,11 +482,15 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
               <div className="absolute right-1 top-1 flex items-center gap-1">
                 <button
                   className="tool-btn !h-[16px] !min-w-[16px] bg-panel/80 !p-0"
-                  data-active={lane.active}
-                  title={lane.active ? "Clip active on this page" : "Clip inactive on this page"}
+                  data-active={clipOf(lane).active}
+                  title={
+                    clipOf(lane).active ? "Clip active on this page" : "Clip inactive on this page"
+                  }
                   data-hint="dm.track.clip-active"
                   data-testid="clip-active"
-                  onClick={() => updateLane((l) => l.kind === "clip" && (l.active = !l.active))}
+                  onClick={() =>
+                    updateLane((l) => (l.clip = { ...clipOf(l), active: !clipOf(l).active }))
+                  }
                 >
                   <Power size={10} />
                 </button>
@@ -501,16 +510,15 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
                 <button
                   className="label rounded bg-panel/80 px-1 !text-[8.5px] hover:!text-ink"
                   onClick={() =>
-                    updateLane(
-                      (l) =>
-                        l.kind === "clip" &&
-                        (l.launchMode = l.launchMode === "loop" ? "oneshot" : "loop"),
-                    )
+                    updateLane((l) => {
+                      const c = clipOf(l);
+                      l.clip = { ...c, launchMode: c.launchMode === "loop" ? "oneshot" : "loop" };
+                    })
                   }
                   title="Launch mode"
                   data-hint="dm.track.clip-launch"
                 >
-                  {lane.launchMode === "loop" ? "Loop" : "1-shot"}
+                  {clipOf(lane).launchMode === "loop" ? "Loop" : "1-shot"}
                 </button>
               </div>
             </div>
@@ -543,7 +551,7 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
           </button>
         </div>
       </div>
-      {jogOpen && lane.kind === "clip" && (
+      {jogOpen && clip && (
         <div className="flex w-max min-w-full">
           <div className="sticky left-0 bg-panel" style={{ width: geo.headerW }} />
           <ScratchStrip track={track} width={Math.max(240, geo.stepsW)} />
@@ -582,7 +590,7 @@ function TrackButton(props: {
   );
 }
 
-/** Save an instrument track's sound to the library, named in place (D81). */
+/** Save a step track's sound to Your sounds, named in place (D81, D95). */
 function SaveSound({ track, close }: { track: Track; close: () => void }) {
   const [name, setName] = useState(soundLabel(track));
   return (
@@ -592,8 +600,8 @@ function SaveSound({ track, close }: { track: Track; close: () => void }) {
         e.preventDefault();
         if (!name.trim()) return;
         void saveInstrument(track, name.trim()).then((entry) => {
-          setInstrument(track.id, entry.source);
-          toast(`Saved “${name.trim()}” to Your instruments`);
+          setSound(track.id, entry.source);
+          toast(`Saved “${name.trim()}” to Your sounds`);
         });
         close();
       }}

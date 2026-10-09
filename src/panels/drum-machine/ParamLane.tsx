@@ -5,7 +5,7 @@ import {
   setStepVelocity,
   stepVelocity,
   type Step,
-  type StepLane,
+  type Lane,
   type Track,
 } from "../../model/types";
 import { editSteps } from "../../state/actions";
@@ -36,7 +36,7 @@ export function ParamLane({
   field,
 }: {
   track: Track;
-  lane: StepLane;
+  lane: Lane;
   length: number;
   geo: Geometry;
   field: Field;

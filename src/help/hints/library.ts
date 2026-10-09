@@ -117,7 +117,7 @@ const hints: Hints = {
   },
   "library.online.instrument": {
     title: "Pitched instrument",
-    text: "Samples of one instrument at different notes. Add instrument downloads them and makes a multi-sample instrument under Your instruments: each note plays from the nearest sample.",
+    text: "Samples of one instrument at different notes. Add instrument downloads them and makes a multi-sample instrument under Your sounds: each note plays from the nearest sample.",
     guide: "library-instruments",
   },
   "library.online.search": {

@@ -5,7 +5,17 @@
  */
 import { makeEffect } from "../model/effects";
 import type { Project } from "../model/project";
-import { chord, drum, drumTrack, emptyProject, note, notes, page, synthTrack } from "./builder";
+import {
+  chord,
+  drum,
+  emptyProject,
+  hitsTrack,
+  note,
+  notes,
+  notesTrack,
+  page,
+  synth,
+} from "./builder";
 import { demoProject } from "./nightDrive";
 import { SHOWCASE } from "./showcase";
 import { SYNTH_SONGS } from "./synthSongs";
@@ -47,15 +57,15 @@ function pads(list: [string, number][], octave = 4) {
 function blueMonday(): Project {
   const p = emptyProject("Blue Monday", 130);
   p.key = { root: 2, scale: "minor" };
-  const kick = drumTrack("Kick", k909("kick"), "909 Kick", "kick", [makeEffect("Compressor")]);
-  const snare = drumTrack("Snare", k909("snare"), "909 Snare", "snare");
-  const chh = drumTrack("Cl Hat", k909("chh"), "909 Closed Hat", "hat");
-  const ohh = drumTrack("Op Hat", k909("ohh"), "909 Open Hat", "hat");
-  const bass = synthTrack("Bass", "sub", "Mono · Sub Bass", "bass");
-  const seq = synthTrack("Sequence", "pluck", "Poly · Pluck", "keys", [
+  const kick = hitsTrack("Kick", k909("kick"), "909 Kick", "kick", [makeEffect("Compressor")]);
+  const snare = hitsTrack("Snare", k909("snare"), "909 Snare", "snare");
+  const chh = hitsTrack("Cl Hat", k909("chh"), "909 Closed Hat", "hat");
+  const ohh = hitsTrack("Op Hat", k909("ohh"), "909 Open Hat", "hat");
+  const bass = notesTrack("Bass", synth("sub"), "Mono · Sub Bass", "bass");
+  const seq = notesTrack("Sequence", synth("pluck"), "Poly · Pluck", "keys", [
     makeEffect("Delay", { mix: 0.2 }),
   ]);
-  const pad = synthTrack("Strings", "warm-pad", "Poly · Warm Pad", "keys");
+  const pad = notesTrack("Strings", synth("warm-pad"), "Poly · Warm Pad", "keys");
   pad.params["mix.sendA"] = 0.45;
   pad.volume = 0.6;
   chh.params["sound.choke"] = ohh.params["sound.choke"] = 1 / 8;
@@ -114,15 +124,15 @@ function billieJean(): Project {
   const p = emptyProject("Billie Jean", 117);
   p.key = { root: 6, scale: "minor" };
   p.swing = 0.52;
-  const kick = drumTrack("Kick", k909("kick"), "909 Kick", "kick");
-  const snare = drumTrack("Snare", k808("snare"), "808 Snare", "snare");
-  const chh = drumTrack("Cl Hat", k909("chh"), "909 Closed Hat", "hat");
-  const shaker = drumTrack("Shaker", k808("chh"), "808 Closed Hat", "perc");
+  const kick = hitsTrack("Kick", k909("kick"), "909 Kick", "kick");
+  const snare = hitsTrack("Snare", k808("snare"), "808 Snare", "snare");
+  const chh = hitsTrack("Cl Hat", k909("chh"), "909 Closed Hat", "hat");
+  const shaker = hitsTrack("Shaker", k808("chh"), "808 Closed Hat", "perc");
   shaker.volume = 0.55;
-  const bass = synthTrack("Bass", "acid", "Mono · Acid Bass", "bass");
+  const bass = notesTrack("Bass", synth("acid"), "Mono · Acid Bass", "bass");
   bass.params["sound.cutoff"] = 0.45;
   convertSynthKnobs(bass);
-  const stabs = synthTrack("Synth", "keys", "Poly · Keys", "keys", [makeEffect("Chorus")]);
+  const stabs = notesTrack("Synth", synth("keys"), "Poly · Keys", "keys", [makeEffect("Chorus")]);
   stabs.params["mix.sendA"] = 0.3;
   p.tracks = [kick, snare, chh, shaker, bass, stabs];
 
@@ -162,14 +172,14 @@ function billieJean(): Project {
 function planetRock(): Project {
   const p = emptyProject("Planet Rock", 127);
   p.key = { root: 4, scale: "minor" };
-  const kick = drumTrack("Kick", k808("kick"), "808 Kick", "kick");
-  const snare = drumTrack("Snare", k808("snare"), "808 Snare", "snare");
-  const clap = drumTrack("Clap", k808("clap"), "808 Clap", "clap");
-  const chh = drumTrack("Cl Hat", k808("chh"), "808 Closed Hat", "hat");
-  const cow = drumTrack("Cowbell", k808("cowbell"), "808 Cowbell", "perc");
-  const tom = drumTrack("Tom", k808("tom"), "808 Tom", "tom");
-  const bass = synthTrack("Bass", "sub", "Mono · Sub Bass", "bass");
-  const stab = synthTrack("Stabs", "fm-bell", "FM · Bell", "keys", [
+  const kick = hitsTrack("Kick", k808("kick"), "808 Kick", "kick");
+  const snare = hitsTrack("Snare", k808("snare"), "808 Snare", "snare");
+  const clap = hitsTrack("Clap", k808("clap"), "808 Clap", "clap");
+  const chh = hitsTrack("Cl Hat", k808("chh"), "808 Closed Hat", "hat");
+  const cow = hitsTrack("Cowbell", k808("cowbell"), "808 Cowbell", "perc");
+  const tom = hitsTrack("Tom", k808("tom"), "808 Tom", "tom");
+  const bass = notesTrack("Bass", synth("sub"), "Mono · Sub Bass", "bass");
+  const stab = notesTrack("Stabs", synth("fm-bell"), "FM · Bell", "keys", [
     makeEffect("Reverb", { mix: 0.25 }),
   ]);
   cow.volume = 0.6;
@@ -216,14 +226,14 @@ function planetRock(): Project {
 function sweetDreams(): Project {
   const p = emptyProject("Sweet Dreams", 126);
   p.key = { root: 0, scale: "minor" };
-  const kick = drumTrack("Kick", k909("kick"), "909 Kick", "kick");
-  const snare = drumTrack("Snare", k909("snare"), "909 Snare", "snare");
-  const clap = drumTrack("Clap", k909("clap"), "909 Clap", "clap");
-  const chh = drumTrack("Cl Hat", k909("chh"), "909 Closed Hat", "hat");
-  const bass = synthTrack("Bass Seq", "acid", "Mono · Acid Bass", "bass", [
+  const kick = hitsTrack("Kick", k909("kick"), "909 Kick", "kick");
+  const snare = hitsTrack("Snare", k909("snare"), "909 Snare", "snare");
+  const clap = hitsTrack("Clap", k909("clap"), "909 Clap", "clap");
+  const chh = hitsTrack("Cl Hat", k909("chh"), "909 Closed Hat", "hat");
+  const bass = notesTrack("Bass Seq", synth("acid"), "Mono · Acid Bass", "bass", [
     makeEffect("Delay", { mix: 0.15 }),
   ]);
-  const strings = synthTrack("Strings", "warm-pad", "Poly · Warm Pad", "keys");
+  const strings = notesTrack("Strings", synth("warm-pad"), "Poly · Warm Pad", "keys");
   strings.params["mix.sendA"] = 0.4;
   strings.volume = 0.75;
   // the intro is bass and strings alone: give them a little more level
@@ -264,14 +274,14 @@ function sweetDreams(): Project {
 function aroundTheWorld(): Project {
   const p = emptyProject("Around the World", 121);
   p.key = { root: 4, scale: "dorian" };
-  const kick = drumTrack("Kick", k909("kick"), "909 Kick", "kick", [makeEffect("Compressor")]);
-  const clap = drumTrack("Clap", k909("clap"), "909 Clap", "clap");
-  const chh = drumTrack("Cl Hat", k909("chh"), "909 Closed Hat", "hat");
-  const ohh = drumTrack("Op Hat", k909("ohh"), "909 Open Hat", "hat");
-  const bass = synthTrack("Bass", "acid", "Mono · Acid Bass", "bass", [
+  const kick = hitsTrack("Kick", k909("kick"), "909 Kick", "kick", [makeEffect("Compressor")]);
+  const clap = hitsTrack("Clap", k909("clap"), "909 Clap", "clap");
+  const chh = hitsTrack("Cl Hat", k909("chh"), "909 Closed Hat", "hat");
+  const ohh = hitsTrack("Op Hat", k909("ohh"), "909 Open Hat", "hat");
+  const bass = notesTrack("Bass", synth("acid"), "Mono · Acid Bass", "bass", [
     makeEffect("Filter", { cutoff: 0.55, depth: 0.25 }),
   ]);
-  const chords = synthTrack("Chords", "fm-epiano", "FM · E-Piano", "keys");
+  const chords = notesTrack("Chords", synth("fm-epiano"), "FM · E-Piano", "keys");
   chords.params["mix.sendB"] = 0.25;
   chh.params["sound.choke"] = ohh.params["sound.choke"] = 1 / 8;
   p.tracks = [kick, clap, chh, ohh, bass, chords];

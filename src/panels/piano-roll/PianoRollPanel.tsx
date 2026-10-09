@@ -16,7 +16,7 @@ import {
 } from "../../model/noteOps";
 import { inKey, keyName, keyUsesFlats, noteName, snapToKey } from "../../model/notes";
 import { pageKey, slotPattern, type Project } from "../../model/project";
-import { STEP_SIZE_QUARTERS, type Note, type StepLane, type Track } from "../../model/types";
+import { STEP_SIZE_QUARTERS, type Note, type Lane, type Track } from "../../model/types";
 import { token } from "../../render/theme";
 import { useCanvas } from "../../render/useCanvas";
 import { useEditPattern, useSelectedTrack, useStore } from "../../state/store";
@@ -58,8 +58,8 @@ export function PianoRollPanel() {
   const track = useSelectedTrack();
   const tracks = useStore((s) => s.project.tracks);
   const setUi = useStore((s) => s.setUi);
-  if (!track || track.kind !== "instrument") {
-    const instruments = tracks.filter((t) => t.kind === "instrument");
+  if (!track || track.mode !== "notes") {
+    const instruments = tracks.filter((t) => t.mode === "notes");
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
         <div className="text-[12px] text-faint">Select an instrument track to edit its notes.</div>
@@ -84,7 +84,7 @@ export function PianoRollPanel() {
 
 function PianoRoll({ track }: { track: Track }) {
   const pattern = useEditPattern();
-  const lane = pattern.lanes[track.id] as StepLane;
+  const lane = pattern.lanes[track.id] as Lane;
   const project = useStore((s) => s.project);
   const commit = useStore((s) => s.commit);
   const scaleLock = useStore((s) => s.scaleLock);
@@ -172,10 +172,10 @@ function PianoRoll({ track }: { track: Track }) {
 
   // ---------- editing ----------
 
-  const edit = (fn: (l: StepLane, p: Project) => void, k?: string) =>
+  const edit = (fn: (l: Lane, p: Project) => void, k?: string) =>
     commit((p) => {
       const l = slotPattern(p as Project, useStore.getState().editSlotId).lanes[track.id];
-      if (l?.kind === "steps") fn(l, p as Project);
+      if (l) fn(l, p as Project);
     }, k);
 
   const at = (e: { clientX: number; clientY: number }) => {
@@ -302,7 +302,7 @@ function PianoRoll({ track }: { track: Track }) {
     const g = gesture.current;
     if (g?.kind === "draw") {
       const n = getNote(
-        useStore.getState().project.patterns[pattern.id].lanes[track.id] as StepLane,
+        useStore.getState().project.patterns[pattern.id].lanes[track.id] as Lane,
         g,
       );
       if (n) setNoteLen(n.length);

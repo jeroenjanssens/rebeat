@@ -233,11 +233,11 @@ function releaseNote(note: number) {
   else for (const release of releases) release();
 }
 
-/** Notes play the selected instrument track; on drum tracks 36… = pads 1… (MPC/Push layout). */
+/** Notes play the selected Notes track; otherwise 36… = tracks 1… as pads (MPC/Push layout). */
 function playNote(note: number, velocity: number) {
   const s = useStore.getState();
   const selected = s.project.tracks.find((t) => t.id === s.selectedTrackId);
-  if (selected?.kind === "instrument") {
+  if (selected?.mode === "notes") {
     const notes = playedNotes(note);
     releaseNote(note);
     held.set(
@@ -248,7 +248,7 @@ function playNote(note: number, velocity: number) {
     return;
   }
   const track = s.project.tracks[note - 36];
-  if (!track || track.kind === "audio" || track.mute) return;
+  if (!track || track.mode === "clip" || track.mute) return;
   trigger(track, velocity, { stepDur: 0.12 });
   padInput(track, velocity);
 }

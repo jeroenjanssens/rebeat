@@ -7,7 +7,7 @@ import * as Tone from "tone";
 import { laneStepsWithin } from "../model/timing";
 import { arpOrder } from "../model/notes";
 import type { Project } from "../model/project";
-import { STEP_SIZE_QUARTERS, type Pattern, type Step, type Track } from "../model/types";
+import { STEP_SIZE_QUARTERS, clipOf, type Pattern, type Step, type Track } from "../model/types";
 import { useSettings } from "../state/settings";
 import { isAudible, useStore } from "../state/store";
 import { audioNow, initEngine, startClip, stopAll, stopClip, trigger } from "./engine";
@@ -252,14 +252,15 @@ export function playPageStep(
     const lane = pattern.lanes[track.id];
     if (!lane) continue;
     const audible = isAudible(track.id, project);
-    if (lane.kind === "clip") {
+    if (track.mode === "clip") {
+      const clip = clipOf(lane);
       if (pageStep === 0) {
-        if (lane.active) {
+        if (clip.active) {
           startClip(
             track,
             time,
             pageDuration(pattern, project.bpm, project.swing),
-            lane.launchMode === "oneshot",
+            clip.launchMode === "oneshot",
           );
           if (audible) triggered.add(track.id);
         } else stopClip(track.id, time);
@@ -272,7 +273,9 @@ export function playPageStep(
       if (Math.random() >= step.probability) return;
       if (!conditionPasses(step.condition, cycle, fill)) return;
       triggered.add(track.id);
-      if (track.arp?.on && step.notes?.length) {
+      // Hits keep the notes a track had in Notes mode, but don't play them
+      const notes = track.mode === "notes" ? step.notes : undefined;
+      if (track.arp?.on && notes?.length) {
         arpeggiate(track, step, t, d, pattern.transpose ?? 0, project.bpm);
         return;
       }
@@ -281,7 +284,7 @@ export function playPageStep(
         time: t + step.nudge * d,
         ratchet: step.ratchet,
         stepDur: d,
-        notes: step.accent ? step.notes?.map((n) => ({ ...n, velocity: 1 })) : step.notes,
+        notes: step.accent ? notes?.map((n) => ({ ...n, velocity: 1 })) : notes,
         pitch: step.pitch,
         gate: step.gate,
         locks: step.locks,

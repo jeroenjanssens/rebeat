@@ -1,40 +1,42 @@
 /**
- * Sound sources of instrument tracks: synth patches (engine/synth.ts), a keyboard sampler (any library
- * sample across the keyboard) and sampled instruments from smplr (loaded on demand).
+ * Instrument voices: what plays a step track's notes (and the hits of a synth or sampled
+ * instrument, D93). Synth patches (engine/synth/), a sample across the keyboard or a multi-sample,
+ * sampled instruments from smplr (loaded on demand) and SoundFonts.
  */
 import * as Tone from "tone";
 import type { Smplr } from "smplr";
 import { FACTORY_SYNTHS, factorySynth } from "../library/synths";
-import { defaultInstrument, effectivePatch, patchOf } from "../library/synthTrack";
+import { effectivePatch, patchOf, voiceSound } from "../library/synthTrack";
 import { sanitizePatch } from "../model/synth";
 import { workletSynth, type WorkletSynth } from "./synth/node";
 import { markBusy, markDownloaded } from "../library/downloads";
 import { CATALOG } from "../library/instruments";
 import { toUnit } from "../model/params";
 import { noteName } from "../model/notes";
-import type { InstrumentSource, Note, Track } from "../model/types";
+import type { Note, Sound, Track } from "../model/types";
 import { getBuffer } from "./samples";
 import { db } from "../storage/db";
 
 /** The factory synths, for pickers (D80). */
 export const SYNTH_PRESETS = FACTORY_SYNTHS;
 
-export { defaultInstrument, patchOf };
+export { patchOf, voiceSound };
 
 /** Sampled instruments from the catalog (D78), for pickers. */
 export const SAMPLED_INSTRUMENTS = CATALOG.filter((c) => c.source.source === "smplr").map((c) => ({
-  id: c.source.preset,
+  id: c.source.preset!,
   name: c.name,
   family: c.family,
   group: c.group,
 }));
 
-export function instrumentName(src: InstrumentSource): string {
+export function instrumentName(src: Sound): string {
   if (src.name) return src.name;
-  if (src.source === "synth") return factorySynth(src.preset)?.name ?? "Synth";
+  if (src.source === "synth") return factorySynth(src.preset ?? "")?.name ?? "Synth";
   if (src.source === "smplr")
-    return SAMPLED_INSTRUMENTS.find((p) => p.id === src.preset)?.name ?? "Instrument";
-  return "Sampler";
+    return SAMPLED_INSTRUMENTS.find((p) => p.id === src.preset)?.name ?? "Sampled instrument";
+  if (src.source === "multi") return "Multi-sample";
+  return "Sample";
 }
 
 const midiToHz = (m: number) => 440 * Math.pow(2, (m - 69) / 12);
@@ -58,15 +60,15 @@ function envelope(track: Track) {
   const p = track.params;
   return {
     attack: toUnit.ms(1, 4000)(p["sound.attack"] ?? 0.05) / 1000,
-    decay: toUnit.ms(1, 4000)(p["sound.decay"] ?? 0.4) / 1000,
+    decay: toUnit.ms(1, 4000)(p["sound.envDecay"] ?? 0.4) / 1000,
     sustain: p["sound.sustain"] ?? 0.7,
     release: toUnit.ms(1, 8000)(p["sound.release"] ?? 0.35) / 1000,
   };
 }
 
 /** A synth playing its patch (D83), with the macros at the track's SOUND knobs. */
-function synthVoice(track: Track, src: InstrumentSource, dest: Tone.Gain): InstrumentVoice {
-  const effective = (t: Track) => sanitizePatch(effectivePatch(t, patchOf(t.instrument ?? src)));
+function synthVoice(track: Track, src: Sound, dest: Tone.Gain): InstrumentVoice {
+  const effective = (t: Track) => sanitizePatch(effectivePatch(t, patchOf(t.sound ?? src)));
   const synth = workletSynth(dest);
   synth.setPatch(effective(track), 120);
   return {
@@ -82,8 +84,8 @@ function synthVoice(track: Track, src: InstrumentSource, dest: Tone.Gain): Instr
   };
 }
 
-/** A keyboard sampler: one sample, or several at their notes (multi-sample, D82). */
-function samplerVoice(src: InstrumentSource, dest: Tone.InputNode): InstrumentVoice {
+/** A sample across the keyboard, or several at their notes (a multi-sample, D82). */
+function samplerVoice(src: Sound, dest: Tone.InputNode): InstrumentVoice {
   let sampler: Tone.Sampler | null = null;
   const zones = src.zones?.length
     ? src.zones
@@ -136,13 +138,13 @@ function samplerVoice(src: InstrumentSource, dest: Tone.InputNode): InstrumentVo
   };
 }
 
-const samplerKey = (src: InstrumentSource) =>
+const samplerKey = (src: Sound) =>
   src.zones?.length
     ? `sampler:${src.zones.map((z) => `${z.note}=${z.sampleId}`).join(",")}`
     : `sampler:${src.sampleId}:${src.rootNote ?? 60}`;
 
 /** A SoundFont (.sf2) you imported: one of its instruments, played by smplr (D82). */
-function sf2Voice(src: InstrumentSource, dest: Tone.Gain): InstrumentVoice {
+function sf2Voice(src: Sound, dest: Tone.Gain): InstrumentVoice {
   const destination = dest.input as unknown as AudioNode;
   let inst: (Smplr & { loadInstrument(n: string): Promise<void> }) | null = null;
   let state: "ready" | "loading" | "error" = "loading";
@@ -161,7 +163,7 @@ function sf2Voice(src: InstrumentSource, dest: Tone.Gain): InstrumentVoice {
       volume: 90,
     }) as unknown as typeof inst;
     await inst!.ready;
-    await inst!.loadInstrument(src.preset);
+    await inst!.loadInstrument(src.preset ?? "");
   })().then(
     () => (state = "ready"),
     () => (state = "error"),
@@ -212,32 +214,33 @@ function makeSmplr(m: SmplrModule, ctx: BaseAudioContext, preset: string, destin
   return m.Soundfont(c, { ...opts, instrument: preset.replace(/^sf:/, "") });
 }
 
-function smplrVoice(src: InstrumentSource, dest: Tone.Gain): InstrumentVoice {
+function smplrVoice(src: Sound, dest: Tone.Gain): InstrumentVoice {
+  const preset = src.preset ?? "";
   // smplr wants a native node; the channel input is a Tone.Gain around one
   const destination = dest.input as unknown as AudioNode;
   let inst: Smplr | null = null;
   let disposed = false;
   let state: "ready" | "loading" | "error" = "loading";
-  markBusy(src.preset, true);
+  markBusy(preset, true);
   // smplr (and its samples) load on first use
   import("smplr")
     .then((m) => {
       if (disposed) return;
-      inst = makeSmplr(m, destination.context, src.preset, destination) as Smplr;
+      inst = makeSmplr(m, destination.context, preset, destination) as Smplr;
       return inst.ready;
     })
     .then(
       () => {
         state = "ready";
-        markDownloaded(src.preset);
+        markDownloaded(preset);
       },
       () => {
         state = "error";
-        markBusy(src.preset, false);
+        markBusy(preset, false);
       },
     );
   return {
-    key: `smplr:${src.preset}`,
+    key: `smplr:${preset}`,
     state: () => state,
     play(notes, time, step) {
       if (state !== "ready" || !inst) return;
@@ -281,16 +284,16 @@ export async function prefetchInstrument(preset: string): Promise<void> {
 }
 
 export function instrumentKey(track: Track): string {
-  const src = track.instrument ?? defaultInstrument(track);
-  if (src.source === "sampler") return samplerKey(src);
+  const src = voiceSound(track);
+  if (src.source === "sample" || src.source === "multi") return samplerKey(src);
   if (src.source === "sf2") return `sf2:${src.sampleId}:${src.preset}`;
   if (src.source === "synth") return "synth";
   return `${src.source}:${src.preset}`;
 }
 
 export function createInstrument(track: Track, dest: Tone.Gain): InstrumentVoice {
-  const src = track.instrument ?? defaultInstrument(track);
-  if (src.source === "sampler") return samplerVoice(src, dest);
+  const src = voiceSound(track);
+  if (src.source === "sample" || src.source === "multi") return samplerVoice(src, dest);
   if (src.source === "smplr") return smplrVoice(src, dest);
   if (src.source === "sf2") return sf2Voice(src, dest);
   return synthVoice(track, src, dest);

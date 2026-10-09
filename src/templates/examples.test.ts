@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { sampleOf } from "../model/tracks";
 import { KIT_SOUNDS } from "../engine/kits";
 import { SYNTH_PRESETS } from "../engine/instruments";
 import { CATALOG } from "../library/instruments";
@@ -12,18 +13,18 @@ describe("example songs", () => {
     expect(p.tracks.length).toBeGreaterThan(3);
     expect(p.slots.length).toBeGreaterThan(1);
     for (const t of p.tracks) {
-      if (t.sampleId) expect(KIT_SOUNDS.some((k) => k.id === t.sampleId)).toBe(true);
-      if (t.instrument?.source === "synth")
-        expect(SYNTH_PRESETS.some((s) => s.id === t.instrument!.preset)).toBe(true);
-      if (t.instrument?.source === "smplr")
+      const sample = sampleOf(t);
+      if (sample) expect(KIT_SOUNDS.some((k) => k.id === sample)).toBe(true);
+      if (t.sound?.source === "synth")
+        expect(SYNTH_PRESETS.some((s) => s.id === t.sound!.preset)).toBe(true);
+      if (t.sound?.source === "smplr")
         expect(
-          CATALOG.some((c) => c.id === `smplr:${t.instrument!.preset}`),
+          CATALOG.some((c) => c.id === `smplr:${t.sound!.preset}`),
           t.name,
         ).toBe(true);
     }
     for (const pattern of Object.values(p.patterns))
       for (const lane of Object.values(pattern.lanes)) {
-        if (lane.kind !== "steps") continue;
         // nothing written past the end of the page (a sign of a mistyped step string)
         lane.steps.forEach((s, i) => s.on && expect(i).toBeLessThan(pattern.stepCount));
       }
@@ -35,7 +36,7 @@ describe("example songs", () => {
       const p = e.create();
       const first = p.patterns[p.slots[0].patternId];
       const on = Object.values(first.lanes).some((l) =>
-        l.kind === "steps" ? l.steps.some((s) => s.on) : l.active,
+        l.clip ? l.clip.active : l.steps.some((s) => s.on),
       );
       expect(on, e.name).toBe(true);
     }
@@ -60,7 +61,7 @@ describe("splitting long pages", () => {
       const pattern = p.patterns[slot.patternId];
       for (let r = 0; r < slot.repeats; r++) {
         for (const [trackId, lane] of Object.entries(pattern.lanes)) {
-          if (lane.kind !== "steps") continue;
+          if (lane.clip) continue;
           lane.steps.forEach((s, i) => {
             if (!s.on || i >= pattern.stepCount) return;
             const { on: _on, ...rest } = s;
@@ -88,9 +89,9 @@ describe("splitting long pages", () => {
   });
 
   it("plays the parts in order, repeats as linked copies", async () => {
-    const { emptyProject, drumTrack, page, drum, splitLongPages } = await import("./builder");
+    const { emptyProject, hitsTrack, page, drum, splitLongPages } = await import("./builder");
     const p = emptyProject("t", 120);
-    const kick = drumTrack("Kick", "kit:909:kick", "909 Kick", "kick");
+    const kick = hitsTrack("Kick", "kit:909:kick", "909 Kick", "kick");
     p.tracks = [kick];
     const long = page(p, "Verse", 64, 2);
     drum(long, kick, "x".padEnd(32, ".") + "x".padEnd(32, "."));

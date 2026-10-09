@@ -8,14 +8,15 @@ import type { Pattern, Track } from "../model/types";
 import {
   chord,
   drum,
-  drumTrack,
   emptyProject,
+  hitsTrack,
   note,
   notes,
+  notesTrack,
   page,
-  sampledTrack,
+  sampled,
   splitLongPages,
-  synthTrack,
+  synth,
 } from "./builder";
 
 type NoteList = [number, number[], number, boolean?][];
@@ -71,26 +72,26 @@ const pads = (pattern: Pattern, pad: Track, prog = NEON) =>
 function neonHorizon(): Project {
   const p = emptyProject("Neon Horizon", 100);
   p.key = { root: 9, scale: "minor" };
-  const kick = drumTrack("Kick", "kit:909:kick", "909 Kick", "kick", [makeEffect("Compressor")]);
-  const snare = drumTrack("Snare", "kit:909:snare", "909 Snare", "snare");
+  const kick = hitsTrack("Kick", "kit:909:kick", "909 Kick", "kick", [makeEffect("Compressor")]);
+  const snare = hitsTrack("Snare", "kit:909:snare", "909 Snare", "snare");
   snare.params["mix.sendA"] = 0.45;
-  const hat = drumTrack("Cl Hat", "kit:808:chh", "808 Closed Hat", "hat");
+  const hat = hitsTrack("Cl Hat", "kit:808:chh", "808 Closed Hat", "hat");
   hat.volume = 0.6;
-  const bass = synthTrack("Bass", "moroder-bass", "Moroder Bass", "bass");
-  const arp = synthTrack("Arp", "upside-down-arp", "Upside Down Arp", "keys", [
+  const bass = notesTrack("Bass", synth("moroder-bass"), "Moroder Bass", "bass");
+  const arp = notesTrack("Arp", synth("upside-down-arp"), "Upside Down Arp", "keys", [
     makeEffect("Delay", { mix: 0.25 }),
   ]);
   arp.volume = 0.55;
-  const pad = synthTrack("Pad", "juno-strings", "Juno Strings", "keys");
+  const pad = notesTrack("Pad", synth("juno-strings"), "Juno Strings", "keys");
   pad.params["mix.sendA"] = 0.5;
   pad.volume = 0.65;
-  const brass = synthTrack("Brass", "jump-brass", "Jump Brass", "keys");
+  const brass = notesTrack("Brass", synth("jump-brass"), "Jump Brass", "keys");
   brass.volume = 0.6;
-  const lead = synthTrack("Lead", "axel-lead", "Axel Lead", "keys", [
+  const lead = notesTrack("Lead", synth("axel-lead"), "Axel Lead", "keys", [
     makeEffect("Delay", { mix: 0.3 }),
   ]);
   lead.params["mix.sendA"] = 0.3;
-  const riser = synthTrack("Riser", "noise-riser", "Noise Riser", "fx");
+  const riser = notesTrack("Riser", synth("noise-riser"), "Noise Riser", "fx");
   riser.volume = 0.6;
   p.tracks = [kick, snare, hat, bass, arp, pad, brass, lead, riser];
   // 2 dB of headroom after the master limiter: the chorus is dense
@@ -226,27 +227,41 @@ function lateNightCafe(): Project {
   const p = emptyProject("Late Night Café", 84);
   p.key = { root: 0, scale: "major" };
   p.swing = 0.6;
-  const kick = drumTrack("Kick", "kit:808:kick", "808 Kick", "kick");
+  const kick = hitsTrack("Kick", "kit:808:kick", "808 Kick", "kick");
   kick.volume = 1;
-  const snare = drumTrack("Snare", "kit:808:snare", "808 Snare", "snare", [
+  const snare = hitsTrack("Snare", "kit:808:snare", "808 Snare", "snare", [
     makeEffect("Filter", { cutoff: 0.55 }),
   ]);
   snare.params["mix.sendA"] = 0.3;
-  const hat = drumTrack("Hat", "kit:808:chh", "808 Closed Hat", "hat");
+  const hat = hitsTrack("Hat", "kit:808:chh", "808 Closed Hat", "hat");
   hat.volume = 0.55;
-  const piano = sampledTrack("Piano", "piano", "Grand Piano", "keys");
+  const piano = notesTrack("Piano", sampled("piano"), "Grand Piano", "keys");
   piano.params["mix.sendA"] = 0.25;
-  const bass = sampledTrack("Upright", "smolken:Pizzicato", "Double Bass · Pizzicato", "bass");
+  const bass = notesTrack(
+    "Upright",
+    sampled("smolken:Pizzicato"),
+    "Double Bass · Pizzicato",
+    "bass",
+  );
   bass.volume = 0.55;
-  const vibes = sampledTrack("Vibes", "mallet:Vibraphone - Hard Mallets", "Vibraphone", "keys", [
-    makeEffect("Delay", { mix: 0.2 }),
-  ]);
+  const vibes = notesTrack(
+    "Vibes",
+    sampled("mallet:Vibraphone - Hard Mallets"),
+    "Vibraphone",
+    "keys",
+    [makeEffect("Delay", { mix: 0.2 })],
+  );
   vibes.params["mix.sendA"] = 0.35;
   vibes.volume = 0.9;
-  const strings = sampledTrack("Strings", "sf:string_ensemble_1", "String Ensemble 1", "keys");
+  const strings = notesTrack(
+    "Strings",
+    sampled("sf:string_ensemble_1"),
+    "String Ensemble 1",
+    "keys",
+  );
   strings.params["mix.sendA"] = 0.5;
   strings.volume = 0.75;
-  const keys = sampledTrack("E-Piano", "sf:electric_piano_1", "Electric Piano 1", "keys", [
+  const keys = notesTrack("E-Piano", sampled("sf:electric_piano_1"), "Electric Piano 1", "keys", [
     makeEffect("Chorus"),
   ]);
   keys.volume = 1;

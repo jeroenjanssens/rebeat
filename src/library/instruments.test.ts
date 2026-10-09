@@ -9,7 +9,7 @@ describe("instrument catalog", () => {
   });
 
   it("fills every built-in family, with a license for each collection", () => {
-    for (const f of FAMILIES.filter((f) => f !== "Your instruments"))
+    for (const f of FAMILIES.filter((f) => f !== "Your sounds"))
       expect(
         CATALOG.some((c) => c.family === f),
         f,

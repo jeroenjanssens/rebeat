@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { slotPattern } from "../model/project";
-import { setStepVelocity, stepVelocity, type StepLane } from "../model/types";
+import { setStepVelocity, stepVelocity, type Lane } from "../model/types";
 import { demoProject } from "../templates/nightDrive";
 
 const trigger = vi.fn();
@@ -23,15 +23,14 @@ function setup() {
   const p = demoProject();
   const pattern = slotPattern(p, p.slots[1].id);
   const drum = p.tracks[0];
-  const inst = p.tracks.find((t) => t.kind === "instrument")!;
+  const inst = p.tracks.find((t) => t.mode === "notes")!;
   for (const t of p.tracks) {
     const lane = pattern.lanes[t.id];
-    if (lane?.kind === "steps")
-      for (const s of lane.steps) Object.assign(s, { on: false, accent: false });
-    if (lane?.kind === "clip") lane.active = false;
+    if (lane) for (const s of lane.steps) Object.assign(s, { on: false, accent: false });
+    if (lane && t.mode === "clip") lane.clip = { active: false, launchMode: "loop" };
   }
-  const dStep = (pattern.lanes[drum.id] as StepLane).steps[0];
-  const iStep = (pattern.lanes[inst.id] as StepLane).steps[0];
+  const dStep = (pattern.lanes[drum.id] as Lane).steps[0];
+  const iStep = (pattern.lanes[inst.id] as Lane).steps[0];
   dStep.on = true;
   iStep.on = true;
   iStep.notes = [

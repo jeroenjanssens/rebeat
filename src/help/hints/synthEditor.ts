@@ -49,11 +49,11 @@ const hints: Hints = {
   ),
   "synth.revert": hint(
     "Back to the factory sound",
-    "Play the factory synth on this track again. Your copy stays in Your instruments.",
+    "Play the factory synth on this track again. Your copy stays in Your sounds.",
   ),
   "synth.save": hint(
     "Save to library",
-    "Store this synth, with the track's SOUND knobs and effects, under Your instruments. Drop it on any track, in any project, to get exactly this sound.",
+    "Store this synth, with the track's SOUND knobs and effects, under Your sounds. Drop it on any track, in any project, to get exactly this sound.",
   ),
   "synth.wave.view": hint(
     "Waveform",

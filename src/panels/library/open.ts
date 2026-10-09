@@ -15,8 +15,7 @@ import { useStore } from "../../state/store";
 /** Which editor an instrument opens in. */
 export function editorOf(c: CatalogInstrument): "synth" | "sample" | "inspector" {
   if (c.source.source === "synth") return "synth";
-  if (c.source.source === "sampler" && c.source.sampleId && !c.source.zones?.length)
-    return "sample";
+  if (c.source.source === "sample" && c.source.sampleId) return "sample";
   return "inspector";
 }
 
@@ -29,8 +28,8 @@ export const editorLabel = (c: CatalogInstrument) =>
 
 /** Whether a track plays this library instrument (as it is in the library, or edited from it). */
 function plays(t: Track, c: CatalogInstrument) {
-  const i = t.instrument;
-  if (t.kind !== "instrument" || !i) return false;
+  const i = t.sound;
+  if (t.mode === "clip" || !i) return false;
   if (c.id.startsWith("user:")) return i.from === c.id;
   return !i.from && i.source === c.source.source && i.preset === c.source.preset;
 }

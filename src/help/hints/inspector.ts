@@ -39,9 +39,24 @@ const hints: Hints = {
     text: "Open the synth editor to shape this track's synth: oscillators, filter, envelopes, LFO.",
     guide: "instruments-the-synth-editor",
   },
-  "inspector.instrument.source": {
-    title: "Sound source",
-    text: "Choose between a built-in Synth (with presets), a Sampler (plays any sample across the keyboard), or a sampled Instrument (grand piano, strings, guitar and more).",
+  "inspector.mode": {
+    title: "Play as",
+    text: "How this step track plays its sound. Hits: one hit per step at the step's pitch (drums, but a synth can play hits too). Notes: notes and chords, with the piano roll and the arpeggiator. Clip: its sample across the page, for loops and recordings (samples only). Switching keeps everything, so you can switch back.",
+    guide: "instruments-sound-sources",
+  },
+  "inspector.sound.family": {
+    title: "Sound",
+    text: "What makes the sound: a Sample (one audio file), a Synth (shape it in the synth editor) or a Sampled instrument (piano, strings, General MIDI, your SoundFonts and multi-samples). The track keeps its mode where the new sound can play it.",
+    guide: "instruments-sound-sources",
+  },
+  "inspector.sound.hitnote": {
+    title: "Hit note",
+    text: "In Hits mode a synth or sampled instrument plays this note on every hit, moved by the step's pitch. Set it to where the sound sits best: low for a synth kick, high for a zap.",
+    guide: "instruments-sound-sources",
+  },
+  "inspector.sound.save": {
+    title: "Save to Your sounds",
+    text: "Keep this sound, with its SOUND knobs and effects, in the library under Your sounds, so you can use it in any project.",
     guide: "instruments-sound-sources",
   },
   "inspector.instrument.synth.preset": {

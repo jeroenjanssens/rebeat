@@ -103,7 +103,7 @@ const fromMap = (name: string, json: unknown, url: string, source: string) => {
   return collection(name, sounds, source, pitched);
 };
 
-/** Add a link source's pitched instrument to Your instruments, downloading its samples. */
+/** Add a link source's pitched instrument to Your sounds, downloading its samples. */
 export async function importPitched(kit: OnlineKit, name: string): Promise<CatalogInstrument> {
   const zones = kit.instruments?.[name] ?? [];
   const sounds: OnlineSound[] = zones.map((z, i) => ({

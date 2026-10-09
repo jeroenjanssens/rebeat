@@ -3,7 +3,7 @@
  * track menu and the Inspector. Factory synths are part of Rebeat; sampled instruments stream
  * from smplr's hosts, each collection with its own license.
  */
-import type { Effect, InstrumentSource } from "../model/types";
+import type { Effect, Sound } from "../model/types";
 import { GM_NAMES, MALLET_NAMES, SMOLKEN_NAMES, VCSL_NAMES } from "./instrumentNames";
 import { FACTORY_SYNTHS } from "./synths";
 
@@ -14,7 +14,7 @@ export type Family =
   | "Mallets"
   | "Orchestral"
   | "Double bass"
-  | "Your instruments";
+  | "Your sounds";
 
 export const FAMILIES: Family[] = [
   "Synths",
@@ -23,7 +23,7 @@ export const FAMILIES: Family[] = [
   "Mallets",
   "Orchestral",
   "Double bass",
-  "Your instruments",
+  "Your sounds",
 ];
 
 export interface Collection {
@@ -59,7 +59,7 @@ export const COLLECTIONS = {
     license: "CC0 1.0 (public domain)",
     url: "https://github.com/sfzinstruments/dsmolken.double-bass",
   },
-  user: { name: "Your instruments", license: "Yours" },
+  user: { name: "Your sounds", license: "Yours" },
 } satisfies Record<string, Collection>;
 
 export interface CatalogInstrument {
@@ -71,7 +71,7 @@ export interface CatalogInstrument {
   group: string;
   /** What it's in the style of, or other details. */
   note?: string;
-  source: InstrumentSource;
+  source: Sound;
   /** Downloaded the first time it's played. */
   streamed: boolean;
   collection: Collection;
@@ -199,10 +199,10 @@ export const CATALOG: CatalogInstrument[] = [
   })),
 ];
 
-/** The catalog id of what a source plays ("synth:acid", "smplr:piano"), or null for samplers. */
-export function catalogId(src: InstrumentSource): string | null {
+/** The catalog id of a sound ("synth:acid", "smplr:piano", "user:…"), or null for samples. */
+export function catalogId(src: Sound): string | null {
   if (src.from) return src.from;
-  if (src.source === "sampler") return null;
+  if (src.source === "sample" || src.source === "multi") return null;
   return `${src.source}:${src.preset}`;
 }
 

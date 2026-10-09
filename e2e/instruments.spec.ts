@@ -5,7 +5,7 @@ test.beforeEach(async ({ page }) => openApp(page));
 
 type S = {
   project: {
-    tracks: { id: string; name: string; instrument?: { preset: string }; arp?: { on: boolean } }[];
+    tracks: { id: string; name: string; sound?: { preset: string }; arp?: { on: boolean } }[];
     patterns: Record<
       string,
       { lanes: Record<string, { steps: { notes?: { pitch: number }[] }[] }> }
@@ -48,7 +48,7 @@ test("changes the synth preset and turns on the arpeggiator", async ({ page }) =
   await insp.getByTestId("arp-toggle").click();
   const s = await getState(page);
   const bass = s.project.tracks.find((t) => t.name === "Bass")!;
-  expect(bass.instrument?.preset).toBe("sub");
+  expect(bass.sound?.preset).toBe("sub");
   expect(bass.arp?.on).toBe(true);
   await expect(page.locator("[data-track-row]", { hasText: "BASS" })).toBeVisible();
 });
@@ -73,7 +73,7 @@ test("chord mode enters a chord from one key in the pad view", async ({ page }) 
 test("the velocity lane sets the notes' velocities on an instrument track", async ({ page }) => {
   type S = {
     project: {
-      tracks: { id: string; kind: string }[];
+      tracks: { id: string; mode: string }[];
       slots: { id: string; patternId: string }[];
       patterns: Record<
         string,
@@ -87,7 +87,7 @@ test("the velocity lane sets the notes' velocities on an instrument track", asyn
     const s = (
       window as never as { __rebeat: { store: { getState(): S } } }
     ).__rebeat.store.getState();
-    const bass = s.project.tracks.find((t) => t.kind === "instrument")!;
+    const bass = s.project.tracks.find((t) => t.mode === "notes")!;
     s.setUi({
       selectedTrackId: bass.id,
       lanes: { velocity: true },
@@ -108,7 +108,7 @@ test("the velocity lane sets the notes' velocities on an instrument track", asyn
     const s = (
       window as never as { __rebeat: { store: { getState(): S } } }
     ).__rebeat.store.getState();
-    const bass = s.project.tracks.find((t) => t.kind === "instrument")!;
+    const bass = s.project.tracks.find((t) => t.mode === "notes")!;
     const slot = s.project.slots.find((x) => x.id === s.editSlotId)!;
     return s.project.patterns[slot.patternId].lanes[bass.id].steps
       .filter((x) => x.on && x.notes?.length)
@@ -161,7 +161,7 @@ test("the piano roll's note menu acts on all selected notes", async ({ page }) =
   await expect(notes).toHaveCount(0);
 });
 
-test("the track menu shows and changes an instrument track's sound", async ({ page }) => {
+test("the track menu shows and changes a step track's sound", async ({ page }) => {
   const name = page
     .locator("[data-track-row]", { hasText: "BASS" })
     .locator('[data-hint="dm.track.name"]');
@@ -174,20 +174,26 @@ test("the track menu shows and changes an instrument track's sound", async ({ pa
     picker.getByTestId("sound-kind").getByRole("button", { name: "Synth" }),
   ).toHaveAttribute("data-active", "true");
   await picker.locator("[data-sound]", { hasText: "Mono · Sub Bass" }).click();
-  expect((await bass()).instrument).toEqual({ source: "synth", preset: "sub" });
+  expect((await bass()).sound).toEqual({ source: "synth", preset: "sub" });
 
   await name.click({ button: "right" });
   await expect(picker.getByTestId("current-sound")).toHaveText("Mono · Sub Bass");
-  await picker.getByTestId("sound-kind").getByRole("button", { name: "Sampler" }).click();
+  await picker
+    .getByTestId("sound-kind")
+    .getByRole("button", { name: "Sample", exact: true })
+    .click();
   await picker.getByTestId("sound-search").fill("909 kick");
   await picker.locator("[data-sound]").first().click();
-  expect((await bass()).instrument).toMatchObject({ source: "sampler", sampleId: "kit:909:kick" });
+  expect((await bass()).sound).toMatchObject({ source: "sample", sampleId: "kit:909:kick" });
 
   await name.click({ button: "right" });
-  await expect(picker.getByTestId("current-sound")).toHaveText("Sampler · 909 Kick");
-  await picker.getByTestId("sound-kind").getByRole("button", { name: "Instrument" }).click();
+  await expect(picker.getByTestId("current-sound")).toHaveText("909 Kick");
+  await picker
+    .getByTestId("sound-kind")
+    .getByRole("button", { name: "Sampled instrument" })
+    .click();
   await picker.locator(`[data-sound="smplr:piano"]`).click();
-  expect((await bass()).instrument).toEqual({ source: "smplr", preset: "piano" });
+  expect((await bass()).sound).toEqual({ source: "smplr", preset: "piano" });
   await expect(
     page.locator('[data-panel="drum-machine"]').getByText("Grand Piano").first(),
   ).toBeVisible();

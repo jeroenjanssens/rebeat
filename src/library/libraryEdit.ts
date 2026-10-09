@@ -35,14 +35,10 @@ const voices = new Map<string, { voice: InstrumentVoice; out: Tone.Gain }>();
 
 /** The library sound (catalog id) as a track that isn't in the project. */
 function trackOf(c: CatalogInstrument): Track {
-  const t = makeTrack("instrument", c.low ? "bass" : "keys", c.name, c.name);
-  t.instrument = JSON.parse(JSON.stringify(c.source));
+  const sound = JSON.parse(JSON.stringify(c.source));
+  const t = makeTrack("notes", c.low ? "bass" : "keys", c.name, c.name, [], sound);
   for (const k of Object.keys(t.params)) if (k.startsWith("sound.")) delete t.params[k];
-  Object.assign(
-    t.params,
-    prefixed("sound", defaultParams(SOUND_PARAMS.instrument)),
-    c.params ?? {},
-  );
+  Object.assign(t.params, prefixed("sound", defaultParams(SOUND_PARAMS.voice)), c.params ?? {});
   t.effects = JSON.parse(JSON.stringify(c.effects ?? []));
   convertSynthKnobs(t);
   return t;
@@ -56,7 +52,7 @@ function trackOf(c: CatalogInstrument): Track {
 export function startLibraryEdit(c: CatalogInstrument): string {
   const entries = useLibraryEdits.getState().entries;
   const found = Object.entries(entries).find(([, e]) => {
-    const i = e.track.instrument;
+    const i = e.track.sound;
     return c.id.startsWith("user:") ? i?.from === c.id : !i?.from && i?.preset === c.source.preset;
   });
   if (found) return found[0];
@@ -82,7 +78,7 @@ export function updateLibrarySound(key: string, fn: (t: Track) => void, undoKey?
   const next = produce(e.track, (t) => {
     fn(t as Track);
     // any change to a factory synth (also just its macros) makes it yours
-    if (!t.instrument?.from) editPatch(t as Track, () => {});
+    if (!t.sound?.from) editPatch(t as Track, () => {});
   });
   if (next === e.track) return;
   const now = performance.now();
@@ -98,7 +94,7 @@ export function updateLibrarySound(key: string, fn: (t: Track) => void, undoKey?
 }
 
 function save(t: Track) {
-  const from = t.instrument?.from;
+  const from = t.sound?.from;
   if (from?.startsWith("user:")) saveSoundSoon(from.slice(5), t.id, 600);
 }
 
@@ -109,11 +105,11 @@ export function undoLibrarySound(key: string, redo = false) {
   const prev = stack.at(-1);
   if (!prev) return;
   // the copy made by the first change stays: undo doesn't turn it back into the factory synth
-  const now = e.track.instrument;
+  const now = e.track.sound;
   const track: Track =
-    prev.instrument?.from || !now?.from
+    prev.sound?.from || !now?.from
       ? prev
-      : { ...prev, instrument: { ...prev.instrument!, from: now.from, name: now.name } };
+      : { ...prev, sound: { ...prev.sound!, from: now.from, name: now.name } };
   set(key, {
     track,
     past: redo ? [...e.past, e.track] : e.past.slice(0, -1),

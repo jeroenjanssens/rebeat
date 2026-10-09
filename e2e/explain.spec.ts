@@ -81,14 +81,14 @@ test("every hint on screen has an entry and a real command", async ({ page }) =>
       __rebeat: {
         store: {
           getState(): {
-            project: { tracks: { id: string; kind: string }[] };
+            project: { tracks: { id: string; mode: string }[] };
             setUi(p: object): void;
           };
         };
       };
     };
     const s = w.__rebeat.store.getState();
-    s.setUi({ selectedTrackId: s.project.tracks.find((t) => t.kind === "instrument")!.id });
+    s.setUi({ selectedTrackId: s.project.tracks.find((t) => t.mode === "notes")!.id });
   });
   await run("panel.synth-editor");
   await page.getByTestId("synth-editor").waitFor();

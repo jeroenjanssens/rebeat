@@ -7,16 +7,16 @@ import {
   MAX_STEPS,
   emptyStep,
   laneLength,
-  type ClipLane,
   type Lane,
   type PageSlot,
   type Pattern,
+  type Sound,
   type SoundCategory,
   type Step,
-  type StepLane,
   type Track,
-  type TrackKind,
+  type TrackMode,
 } from "./types";
+import { canClip, hitNoteOf, player } from "./tracks";
 
 export interface Project {
   name: string;
@@ -71,23 +71,26 @@ function deepClone<T>(value: T): T {
 
 // ---------- construction ----------
 
-export function emptyLane(kind: TrackKind): Lane {
-  if (kind === "audio")
-    return { kind: "clip", active: false, launchMode: "loop" } satisfies ClipLane;
-  return { kind: "steps", steps: Array.from({ length: MAX_STEPS }, emptyStep) } satisfies StepLane;
+export function emptyLane(mode: TrackMode): Lane {
+  const lane: Lane = { steps: Array.from({ length: MAX_STEPS }, emptyStep) };
+  // a new Clip track waits for a recording or a sample
+  if (mode === "clip") lane.clip = { active: false, launchMode: "loop" };
+  return lane;
 }
 
 export function makeTrack(
-  kind: TrackKind,
+  mode: TrackMode,
   category: SoundCategory,
   name: string,
   source: string,
   effects: Track["effects"] = [],
+  sound?: Sound,
 ): Track {
-  return {
+  const track: Track = {
     id: uid("trk"),
     name,
-    kind,
+    mode,
+    ...(sound ? { sound } : {}),
     category,
     color: CATEGORY_COLOR[category],
     source,
@@ -95,12 +98,11 @@ export function makeTrack(
     solo: false,
     arm: false,
     volume: 0.8,
-    params: {
-      ...prefixed("sound", defaultParams(SOUND_PARAMS[kind])),
-      ...prefixed("mix", defaultParams(MIX_PARAMS.filter((p) => p.id !== "volume"))),
-    },
+    params: prefixed("mix", defaultParams(MIX_PARAMS.filter((p) => p.id !== "volume"))),
     effects,
   };
+  Object.assign(track.params, prefixed("sound", defaultParams(SOUND_PARAMS[player(track)])));
+  return track;
 }
 
 export function prefixed(prefix: string, values: Record<string, number>): Record<string, number> {
@@ -115,7 +117,7 @@ export function makePattern(project: Project, name: string, stepCount = 16): Pat
     linkColor: LINK_COLORS.find((c) => !used.has(c)) ?? LINK_COLORS[0],
     stepCount,
     stepSize: "1/16",
-    lanes: Object.fromEntries(project.tracks.map((t) => [t.id, emptyLane(t.kind)])),
+    lanes: Object.fromEntries(project.tracks.map((t) => [t.id, emptyLane(t.mode)])),
   };
 }
 
@@ -199,7 +201,7 @@ export function doublePattern(pattern: Pattern) {
   const n = pattern.stepCount;
   if (n * 2 > MAX_STEPS) return;
   for (const lane of Object.values(pattern.lanes)) {
-    if (lane.kind !== "steps" || lane.stepCountOverride) continue;
+    if (lane.stepCountOverride) continue;
     for (let i = 0; i < n; i++) lane.steps[n + i] = deepClone(lane.steps[i]);
   }
   pattern.stepCount = n * 2;
@@ -211,26 +213,21 @@ export function halvePattern(pattern: Pattern) {
 
 // ---------- lane operations ----------
 
-export function rotateLane(lane: StepLane, length: number, by: number) {
+export function rotateLane(lane: Lane, length: number, by: number) {
   const window = lane.steps.slice(0, length);
   for (let i = 0; i < length; i++) lane.steps[i] = window[(i - by + length * 8) % length];
 }
 
-export function reverseLane(lane: StepLane, length: number) {
+export function reverseLane(lane: Lane, length: number) {
   const window = lane.steps.slice(0, length).reverse();
   for (let i = 0; i < length; i++) lane.steps[i] = window[i];
 }
 
-export function clearLane(lane: StepLane) {
+export function clearLane(lane: Lane) {
   for (let i = 0; i < lane.steps.length; i++) lane.steps[i] = emptyStep();
 }
 
-export function randomizeLane(
-  lane: StepLane,
-  length: number,
-  density = 0.35,
-  velocityOnly = false,
-) {
+export function randomizeLane(lane: Lane, length: number, density = 0.35, velocityOnly = false) {
   for (let i = 0; i < length; i++) {
     const s = lane.steps[i];
     if (!velocityOnly) s.on = Math.random() < density;
@@ -248,7 +245,7 @@ export function euclid(pulses: number, length: number, rotation = 0): boolean[] 
   return out;
 }
 
-export function applyPattern(lane: StepLane, hits: boolean[]) {
+export function applyPattern(lane: Lane, hits: boolean[]) {
   hits.forEach((on, i) => (lane.steps[i].on = on));
 }
 
@@ -258,7 +255,7 @@ export { laneLength };
 
 export function addTrack(project: Project, track: Track, index = project.tracks.length) {
   project.tracks.splice(index, 0, track);
-  for (const p of Object.values(project.patterns)) p.lanes[track.id] = emptyLane(track.kind);
+  for (const p of Object.values(project.patterns)) p.lanes[track.id] = emptyLane(track.mode);
 }
 
 export function duplicateTrack(project: Project, trackId: string): string {
@@ -276,61 +273,35 @@ export function deleteTrack(project: Project, trackId: string) {
 }
 
 export function stepAt(pattern: Pattern, trackId: string, index: number): Step | undefined {
-  const lane = pattern.lanes[trackId];
-  return lane?.kind === "steps" ? lane.steps[index] : undefined;
+  return pattern.lanes[trackId]?.steps[index];
 }
 
 /**
- * Change a track's type. Step data carries over between drum and instrument tracks, and so does
- * the sample (D76): a drum or audio track becomes a keyboard sampler of its sample (rooted at C4,
- * with its tune as transpose, so it sounds the same); a sampler gives its sample back.
- * `nameOf` names a sample for the track's source label.
+ * Switch how a step track plays (D93). Nothing is lost: steps keep their hit pitch and their
+ * notes, lanes keep their clip settings, and the track keeps every mode's SOUND knobs. The first
+ * switch to Notes writes notes for steps that have none (the hit note plus the step's pitch), and
+ * a sample's Tune becomes the transpose, so the hits sound as before (as D76 did). Clip mode is
+ * for samples only.
  */
-export function convertTrack(
-  project: Project,
-  trackId: string,
-  kind: TrackKind,
-  nameOf: (sampleId: string) => string = (id) => id,
-) {
+export function setMode(project: Project, trackId: string, mode: TrackMode) {
   const track = project.tracks.find((t) => t.id === trackId);
-  if (!track || track.kind === kind) return;
-  const from = track.kind;
-  const tune = Math.round(toUnit.semis(24)(track.params["sound.tune"] ?? 0.5));
-  track.kind = kind;
-  for (const key of Object.keys(track.params))
-    if (key.startsWith("sound.")) delete track.params[key];
-  Object.assign(track.params, prefixed("sound", defaultParams(SOUND_PARAMS[kind])));
-  if (kind === "instrument") {
-    const sampleId = track.sampleId;
-    if (sampleId) {
-      track.instrument = { source: "sampler", preset: "sampler", sampleId, rootNote: 60 };
-      track.source = `Sampler · ${nameOf(sampleId)}`;
-      if (tune) track.transpose = tune;
-    } else track.source = ""; // the default synth (labels come from soundLabel)
-  } else if (from === "instrument") {
-    const sampler = track.instrument?.source === "sampler" ? track.instrument.sampleId : undefined;
-    // a sampler hands its sample over; a synth goes back to the sample the track had before
-    if (sampler) track.sampleId = sampler;
-    if (track.transpose && kind === "drum")
-      track.params["sound.tune"] = Math.min(1, Math.max(0, 0.5 + track.transpose / 48));
-    delete track.instrument;
-    delete track.transpose;
-    delete track.arp;
-    track.source = track.sampleId ? nameOf(track.sampleId) : "";
+  if (!track || track.mode === mode || (mode === "clip" && !canClip(track.sound))) return;
+  const from = track.mode;
+  const root = hitNoteOf(track);
+  track.mode = mode;
+  for (const [k, v] of Object.entries(defaultParams(SOUND_PARAMS[player(track)])))
+    track.params[`sound.${k}`] ??= v;
+  if (mode === "notes" && from === "hits" && track.sound?.source === "sample" && !track.transpose) {
+    const tune = Math.round(toUnit.semis(24)(track.params["sound.tune"] ?? 0.5));
+    if (tune) track.transpose = tune;
   }
   for (const p of Object.values(project.patterns)) {
-    const lane = p.lanes[trackId];
-    if (!lane) continue;
-    if (lane.kind === "steps" && kind !== "audio") {
-      for (const s of lane.steps) {
-        if (kind === "instrument" && from === "drum" && s.on) {
-          s.notes = [{ pitch: 60 + s.pitch, length: 1, velocity: s.velocity }];
-        }
-        if (kind === "drum") {
-          delete s.notes;
-        }
-      }
-    } else p.lanes[trackId] = emptyLane(kind);
+    const lane = (p.lanes[trackId] ??= emptyLane(mode));
+    if (mode === "notes")
+      for (const s of lane.steps)
+        if (s.on && !s.notes?.length)
+          s.notes = [{ pitch: root + s.pitch, length: 1, velocity: s.velocity }];
+    if (mode === "clip") lane.clip ??= { active: true, launchMode: "loop" };
   }
 }
 

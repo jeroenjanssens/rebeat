@@ -91,7 +91,7 @@ function useKeyboardPads(track: Track, root: React.RefObject<HTMLElement | null>
         const key = keyName(e);
         if (!key) return false;
         const velocity = s.accentMode ? 1 : e.shiftKey ? 1 : 0.8;
-        if (track.kind === "instrument") {
+        if (track.mode === "notes") {
           if (key === "Z" || key === "X") {
             if (down && !e.repeat)
               s.setUi({
@@ -115,7 +115,7 @@ function useKeyboardPads(track: Track, root: React.RefObject<HTMLElement | null>
         if (i < 0) return false;
         if (down && !e.repeat) {
           const t = s.project.tracks[i];
-          if (t && t.kind !== "audio") {
+          if (t && t.mode !== "clip") {
             s.setUi({ selectedTrackId: t.id });
             if (!t.mute)
               playPad(
@@ -174,7 +174,7 @@ function DrumPads({ size }: { size: SizeClass }) {
             onPointerDown={(e) => {
               if (applyHeld({ trackId: t.id })) return;
               setUi({ selectedTrackId: t.id });
-              if (!t.mute && t.kind !== "audio") hit(e, t);
+              if (!t.mute && t.mode !== "clip") hit(e, t);
             }}
             onPointerUp={stopRepeat}
             onPointerLeave={stopRepeat}
@@ -280,8 +280,7 @@ export function PadView({ sizeClass, width }: { sizeClass: SizeClass; width: num
   const { commit, selectedSteps, setUi } = useStore();
   const stepsRef = useRef<HTMLDivElement>(null);
   const lane = pattern.lanes[track.id];
-  const length =
-    lane?.kind === "steps" ? (lane.stepCountOverride ?? pattern.stepCount) : pattern.stepCount;
+  const length = lane?.stepCountOverride ?? pattern.stepCount;
   const paint = useRef<{ on: boolean; key: string } | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const keyboardPads = useStore((s) => s.keyboardPads);
@@ -327,7 +326,7 @@ export function PadView({ sizeClass, width }: { sizeClass: SizeClass; width: num
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2">
           <span className="label">
-            {track.kind === "instrument" ? `Notes · ${track.name}` : "Pads · one per track"}
+            {track.mode === "notes" ? `Notes · ${track.name}` : "Pads · one per track"}
           </span>
           <button
             className="tool-btn !h-5 ml-auto border border-line !text-[10px]"
@@ -339,12 +338,12 @@ export function PadView({ sizeClass, width }: { sizeClass: SizeClass; width: num
             <Keyboard size={11} /> Keys
           </button>
         </div>
-        {track.kind === "instrument" ? (
+        {track.mode === "notes" ? (
           <NotePads track={track} size={sizeClass} />
         ) : (
           <DrumPads size={sizeClass} />
         )}
-        {track.kind === "instrument" && (
+        {track.mode === "notes" && (
           <button
             className="tool-btn self-start border border-line"
             data-hint="dm.pads.back"
@@ -363,7 +362,7 @@ export function PadView({ sizeClass, width }: { sizeClass: SizeClass; width: num
             <Scope trackId={track.id} color={track.color} />
           </div>
         </div>
-        {lane?.kind === "steps" ? (
+        {lane && track.mode !== "clip" ? (
           <div
             ref={stepsRef}
             className="flex touch-none flex-col gap-2 rounded-lg border border-line bg-surface/50 p-3"
@@ -417,7 +416,7 @@ export function PadView({ sizeClass, width }: { sizeClass: SizeClass; width: num
             Audio tracks play a clip; switch to the grid to see its waveform.
           </div>
         )}
-        {lane?.kind === "steps" && (
+        {lane && track.mode !== "clip" && (
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="label mr-1">Steps (track)</span>
             {STEP_COUNT_PRESETS.map((n) => (
@@ -429,7 +428,6 @@ export function PadView({ sizeClass, width }: { sizeClass: SizeClass; width: num
                 onClick={() =>
                   commit((p) => {
                     const l = p.patterns[pattern.id].lanes[track.id];
-                    if (l.kind !== "steps") return;
                     l.stepCountOverride = n === pattern.stepCount ? undefined : n;
                   })
                 }

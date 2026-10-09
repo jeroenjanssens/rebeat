@@ -1,14 +1,15 @@
 import { useMemo, useState } from "react";
 import { AudioWaveform, Library, Search } from "lucide-react";
 import { focusPanel, openSampleEditor } from "../../app/openers";
-import { SAMPLED_INSTRUMENTS, SYNTH_PRESETS, defaultInstrument } from "../../engine/instruments";
+import { SAMPLED_INSTRUMENTS, SYNTH_PRESETS } from "../../engine/instruments";
 import { KITS, KIT_SOUNDS, kitSounds } from "../../engine/kits";
 import { SoundIcon, type SoundKind } from "../../components/soundIcons";
 import { isBuiltIn, useLibrary } from "../../library/library";
-import type { InstrumentSource, Track } from "../../model/types";
-import { replaceSound, setInstrument, soundLabel } from "../../state/trackActions";
+import { soundFamily, type SoundFamily, type Track } from "../../model/types";
+import { sampleOf } from "../../model/tracks";
+import { replaceSound, setSound, soundLabel } from "../../state/trackActions";
 
-interface Sound {
+interface Choice {
   /** A sample id, or "synth:<preset>" / "smplr:<instrument>". */
   id: string;
   name: string;
@@ -16,80 +17,78 @@ interface Sound {
   kind: SoundKind;
 }
 
-type Kind = InstrumentSource["source"];
-const KINDS: [Kind, string][] = [
+const FAMILIES: [SoundFamily, string][] = [
+  ["sample", "Sample"],
   ["synth", "Synth"],
-  ["sampler", "Sampler"],
-  ["smplr", "Instrument"],
+  ["instrument", "Sampled instrument"],
 ];
 
 /**
- * The sound of a track in its menu: what it plays now, and a searchable list to replace it.
- * Instrument tracks choose a synth preset, a sample (keyboard sampler) or a sampled instrument.
+ * The sound of a step track in its menu: what it plays now, and a searchable list to replace it
+ * with a sample, a synth or a sampled instrument (D94; Clip tracks play samples only). The mode
+ * stays where the new sound has it (D93).
  */
 export function SoundPicker({ track, close }: { track: Track; close: () => void }) {
   const samples = useLibrary((s) => s.samples);
   const [query, setQuery] = useState("");
-  const inst = track.kind === "instrument" ? (track.instrument ?? defaultInstrument(track)) : null;
-  const [kind, setKind] = useState<Kind>(inst?.source ?? "sampler");
+  const clip = track.mode === "clip";
+  const [family, setFamily] = useState<SoundFamily>(
+    track.sound ? soundFamily(track.sound) : track.mode === "notes" ? "synth" : "sample",
+  );
   // the sample it plays (for the library and editor buttons)
-  const sample = inst ? (inst.source === "sampler" ? inst.sampleId : undefined) : track.sampleId;
-  const current = !inst
-    ? track.sampleId
-    : inst.source === "sampler"
-      ? inst.sampleId
-      : `${inst.source}:${inst.preset}`;
+  const sample = sampleOf(track);
+  const src = track.sound;
+  const current = !src || src.source === "sample" ? src?.sampleId : `${src.source}:${src.preset}`;
 
   const sounds = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const match = (s: Sound) => !q || `${s.name} ${s.group}`.toLowerCase().includes(q);
-    if (inst && kind === "synth")
+    const match = (s: Choice) => !q || `${s.name} ${s.group}`.toLowerCase().includes(q);
+    if (!clip && family === "synth")
       return SYNTH_PRESETS.map((p) => ({
         id: `synth:${p.id}`,
         name: p.name,
         group: p.group,
         kind: "synth" as const,
       })).filter(match);
-    if (inst && kind === "smplr")
+    if (!clip && family === "instrument")
       return SAMPLED_INSTRUMENTS.map((p) => ({
         id: `smplr:${p.id}`,
         name: p.name,
         group: p.family === p.group ? p.family : `${p.family} · ${p.group}`,
         kind: "instrument" as const,
       })).filter(match);
-    const own: Sound[] = [...samples]
+    const own: Choice[] = [...samples]
       .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
-      .map((s): Sound => ({
+      .map((s): Choice => ({
         id: s.id,
         name: s.name,
         group: "Library",
         kind: s.bpm ? "loop" : "oneshot",
       }));
-    // audio tracks play loops; drum tracks and samplers the kits
-    const builtIn: Sound[] =
-      track.kind === "audio"
-        ? KIT_SOUNDS.filter((k) => k.bpm).map((k): Sound => ({
+    // Clip tracks play loops; Hits and Notes the kits
+    const builtIn: Choice[] = clip
+      ? KIT_SOUNDS.filter((k) => k.bpm).map((k): Choice => ({
+          id: k.id,
+          name: k.name,
+          group: "Loops",
+          kind: "loop",
+        }))
+      : KITS.flatMap((kit) =>
+          kitSounds(kit).map((k): Choice => ({
             id: k.id,
             name: k.name,
-            group: "Loops",
-            kind: "loop",
-          }))
-        : KITS.flatMap((kit) =>
-            kitSounds(kit).map((k): Sound => ({
-              id: k.id,
-              name: k.name,
-              group: `${kit} kit`,
-              kind: "oneshot",
-            })),
-          );
+            group: `${kit} kit`,
+            kind: "oneshot",
+          })),
+        );
     return [...own, ...builtIn].filter(match);
-  }, [samples, track.kind, query, kind, inst]);
+  }, [samples, clip, query, family]);
 
   const pick = (id: string) => {
     if (id !== current) {
       const [prefix, preset] = id.split(/:(.*)/);
-      if (inst && (prefix === "synth" || prefix === "smplr"))
-        setInstrument(track.id, { source: prefix, preset });
+      if (family !== "sample" && (prefix === "synth" || prefix === "smplr"))
+        setSound(track.id, { source: prefix, preset });
       else replaceSound(track.id, id);
     }
     close();
@@ -130,10 +129,10 @@ export function SoundPicker({ track, close }: { track: Track; close: () => void 
           </>
         )}
       </div>
-      {inst && (
+      {!clip && (
         <div className="segmented self-start" data-hint="dm.sound.kind" data-testid="sound-kind">
-          {KINDS.map(([k, label]) => (
-            <button key={k} data-active={kind === k} onClick={() => setKind(k)}>
+          {FAMILIES.map(([f, label]) => (
+            <button key={f} data-active={family === f} onClick={() => setFamily(f)}>
               {label}
             </button>
           ))}
@@ -144,7 +143,7 @@ export function SoundPicker({ track, close }: { track: Track; close: () => void 
         <input
           autoFocus
           className="min-w-0 flex-1 bg-transparent text-[12px] outline-none placeholder:text-faint"
-          placeholder={inst && kind !== "sampler" ? "Find…" : "Replace with…"}
+          placeholder={family !== "sample" ? "Find…" : "Replace with…"}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => {

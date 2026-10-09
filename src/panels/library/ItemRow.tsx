@@ -46,7 +46,7 @@ async function instrumentFromFolder(folder: string) {
   const name = folder.split("/").pop()!;
   try {
     await makeMultiSample(name, samples.slice(0, 128));
-    toast(`Made “${name}” from ${Math.min(128, samples.length)} samples (in Your instruments)`);
+    toast(`Made “${name}” from ${Math.min(128, samples.length)} samples (in Your sounds)`);
   } catch (e) {
     toast(`Couldn't make an instrument: ${e instanceof Error ? e.message : e}`, "error");
   }
@@ -140,7 +140,7 @@ export const toggleInstrumentFavorite = (id: string) => {
 };
 
 export const makeOffline = (c: CatalogInstrument) =>
-  prefetchInstrument(c.source.preset).then(
+  prefetchInstrument(c.source.preset ?? "").then(
     () => toast(`${c.name} is available offline`),
     () => toast(`Couldn't download ${c.name}`, "error"),
   );
@@ -223,7 +223,7 @@ function InstrumentRow({
   onSelect: () => void;
   onPlay: () => void;
 }) {
-  const downloaded = useDownloads((s) => s.done.includes(c.source.preset));
+  const downloaded = useDownloads((s) => s.done.includes(c.source.preset ?? ""));
   const playSoon = (clicks: number) => {
     cancelPlay();
     if (clicks > 1) return;
@@ -232,7 +232,7 @@ function InstrumentRow({
       onPlay();
     }, DOUBLE_CLICK_MS);
   };
-  const busy = useDownloads((s) => s.busy.includes(c.source.preset));
+  const busy = useDownloads((s) => s.busy.includes(c.source.preset ?? ""));
   const kind = c.source.source === "synth" ? "synth" : "instrument";
   return (
     <div

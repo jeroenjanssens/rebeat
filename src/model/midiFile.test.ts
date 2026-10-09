@@ -9,7 +9,7 @@ describe("MIDI export", () => {
     expect(String.fromCharCode(...bytes.slice(0, 4))).toBe("MThd");
     expect(bytes[9]).toBe(1); // format 1
     const tracks = (bytes[10] << 8) | bytes[11];
-    expect(tracks).toBe(p.tracks.filter((t) => t.kind !== "audio").length + 1);
+    expect(tracks).toBe(p.tracks.filter((t) => t.mode !== "clip").length + 1);
     // the kick plays GM note 36 on channel 10 (0x99)
     const kickOn = [...bytes].findIndex((b, i) => b === 0x99 && bytes[i + 1] === 36);
     expect(kickOn).toBeGreaterThan(0);

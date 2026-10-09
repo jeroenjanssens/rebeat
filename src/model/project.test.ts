@@ -12,21 +12,21 @@ import {
 } from "./notes";
 import {
   cloneSlot,
-  convertTrack,
   copySlot,
   deleteSlot,
   doublePattern,
   euclid,
   linkCount,
+  setMode,
   slotPattern,
   unlinkSlot,
   type Project,
 } from "./project";
-import type { StepLane } from "./types";
+import type { Lane } from "./types";
 
 const firstDrumLane = (p: Project, slotId: string) => {
   const pattern = slotPattern(p, slotId);
-  return pattern.lanes[p.tracks[0].id] as StepLane;
+  return pattern.lanes[p.tracks[0].id] as Lane;
 };
 
 describe("pages", () => {
@@ -88,71 +88,63 @@ describe("helpers", () => {
   });
 });
 
-describe("convertTrack", () => {
-  it("keeps the sample: a drum track becomes a sampler of it, and back", () => {
+describe("setMode (D93)", () => {
+  const laneOf = (p: Project, trackId: string, page = 1) =>
+    Object.values(p.patterns)[page].lanes[trackId];
+
+  it("Hits → Notes writes notes for the hits, and the sample's Tune becomes the transpose", () => {
     const p = demoProject();
     const kick = p.tracks[0];
     kick.params["sound.tune"] = 0.5 + 3 / 48; // +3 semitones
-    convertTrack(p, kick.id, "instrument", (id) => `name of ${id}`);
-    expect(kick.instrument).toEqual({
-      source: "sampler",
-      preset: "sampler",
-      sampleId: "kit:909:kick",
-      rootNote: 60,
-    });
-    expect(kick.source).toBe("Sampler · name of kit:909:kick");
+    setMode(p, kick.id, "notes");
+    expect(kick.mode).toBe("notes");
+    expect(kick.sound).toEqual({ source: "sample", sampleId: "kit:909:kick" });
     expect(kick.transpose).toBe(3);
-    convertTrack(p, kick.id, "drum", (id) => `name of ${id}`);
-    expect(kick.sampleId).toBe("kit:909:kick");
-    expect(kick.instrument).toBeUndefined();
-    expect(kick.transpose).toBeUndefined();
-    expect(kick.source).toBe("name of kit:909:kick");
+    // the sample's root (C4) plus the step's pitch
+    expect(laneOf(p, kick.id).steps[0].notes).toEqual([{ pitch: 60, length: 1, velocity: 1 }]);
+    // the voice's knobs are added, the hits' are kept
+    expect(kick.params["sound.envDecay"]).toBeDefined();
     expect(kick.params["sound.tune"]).toBeCloseTo(0.5 + 3 / 48);
   });
 
-  it("a sampler hands its own sample to the drum track", () => {
-    const p = demoProject();
-    const bass = p.tracks.find((t) => t.kind === "instrument")!;
-    bass.instrument = { source: "sampler", preset: "sampler", sampleId: "lib:abc", rootNote: 48 };
-    convertTrack(p, bass.id, "drum");
-    expect(bass.sampleId).toBe("lib:abc");
-  });
-
-  it("a synth track without a sample becomes a drum track without one", () => {
-    const p = demoProject();
-    const bass = p.tracks.find((t) => t.kind === "instrument")!;
-    convertTrack(p, bass.id, "drum");
-    expect(bass.sampleId).toBeUndefined();
-    expect(bass.instrument).toBeUndefined();
-  });
-
-  it("an audio track's clip sample becomes the sampler's", () => {
-    const p = demoProject();
-    const vox = p.tracks.find((t) => t.kind === "audio")!;
-    convertTrack(p, vox.id, "instrument");
-    expect(vox.instrument?.sampleId).toBe("demo:vox-hook");
-    const lane = Object.values(p.patterns)[0].lanes[vox.id];
-    expect(lane.kind).toBe("steps");
-  });
-
-  it("turns drum hits into notes and back", () => {
+  it("loses nothing on a round trip: Hits → Notes → Clip → Hits", () => {
     const p = demoProject();
     const kick = p.tracks[0];
-    convertTrack(p, kick.id, "instrument");
-    const lane = Object.values(p.patterns)[1].lanes[kick.id];
-    expect(kick.kind).toBe("instrument");
-    expect(lane.kind === "steps" && lane.steps[0].notes).toEqual([
-      { pitch: 60, length: 1, velocity: 1 },
-    ]);
-    convertTrack(p, kick.id, "drum");
-    expect(lane.kind === "steps" && lane.steps[0].notes).toBeUndefined();
-    expect(kick.params["sound.tune"]).toBe(0.5);
+    const before = structuredClone(laneOf(p, kick.id).steps);
+    const params = { ...kick.params };
+    setMode(p, kick.id, "notes");
+    laneOf(p, kick.id).steps[0].notes![0].pitch = 67;
+    setMode(p, kick.id, "clip");
+    expect(laneOf(p, kick.id).clip).toEqual({ active: true, launchMode: "loop" });
+    setMode(p, kick.id, "hits");
+    const after = laneOf(p, kick.id).steps;
+    expect(after.map((s) => [s.on, s.pitch, s.velocity])).toEqual(
+      before.map((s) => [s.on, s.pitch, s.velocity]),
+    );
+    for (const [k, v] of Object.entries(params)) expect(kick.params[k]).toBe(v);
+    // and the notes are still there for the next time it plays notes
+    setMode(p, kick.id, "notes");
+    expect(laneOf(p, kick.id).steps[0].notes![0].pitch).toBe(67);
   });
 
-  it("gives audio tracks a clip lane", () => {
+  it("a synth plays hits at its hit note; only samples play clips", () => {
     const p = demoProject();
-    convertTrack(p, p.tracks[0].id, "audio");
-    expect(Object.values(p.patterns)[0].lanes[p.tracks[0].id].kind).toBe("clip");
+    const bass = p.tracks.find((t) => t.mode === "notes")!;
+    setMode(p, bass.id, "hits");
+    expect(bass.mode).toBe("hits");
+    expect(bass.sound?.source).toBe("synth");
+    setMode(p, bass.id, "clip");
+    expect(bass.mode).toBe("hits");
+  });
+
+  it("a Clip track plays notes of its sample", () => {
+    const p = demoProject();
+    const vox = p.tracks.find((t) => t.mode === "clip")!;
+    setMode(p, vox.id, "notes");
+    expect(vox.sound).toEqual({ source: "sample", sampleId: "demo:vox-hook" });
+    // its clip settings wait for the next time it plays as a clip
+    const drop = Object.values(p.patterns).find((x) => x.name === "Drop")!;
+    expect(drop.lanes[vox.id].clip?.launchMode).toBe("oneshot");
   });
 });
 

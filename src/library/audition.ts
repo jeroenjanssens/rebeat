@@ -95,9 +95,8 @@ function previewVoice(c: CatalogInstrument): InstrumentVoice {
   gain.connect(out);
   // samplers play library samples: make sure they're decoded
   for (const z of c.source.zones ?? []) void loadSample(z.sampleId);
-  if (c.source.source === "sampler" && c.source.sampleId) void loadSample(c.source.sampleId);
-  const track = makeTrack("instrument", c.low ? "bass" : "keys", c.name, c.name);
-  track.instrument = c.source;
+  if (c.source.source === "sample" && c.source.sampleId) void loadSample(c.source.sampleId);
+  const track = makeTrack("notes", c.low ? "bass" : "keys", c.name, c.name, [], c.source);
   Object.assign(track.params, c.params ?? {});
   const voice = createInstrument(track, gain);
   voice.update(track, useStore.getState().project.bpm);

@@ -13,7 +13,8 @@ import {
   slotPattern,
   type Project,
 } from "../model/project";
-import { emptyStep, setStepVelocity, type Step, type StepLane, type Track } from "../model/types";
+import { emptyStep, setStepVelocity, type Lane, type Step, type Track } from "../model/types";
+import { hitNoteOf, stepped } from "../model/tracks";
 import { stepKey, useStore, type FnKey } from "./store";
 
 const get = () => useStore.getState();
@@ -24,16 +25,16 @@ function editPattern(p: Draft<Project>) {
   return slotPattern(p as Project, get().editSlotId);
 }
 
-function stepLane(p: Draft<Project>, trackId: string): StepLane | null {
+function stepLane(p: Draft<Project>, trackId: string): Lane | null {
   const lane = editPattern(p).lanes[trackId];
-  return lane?.kind === "steps" ? lane : null;
+  return lane && stepped(p as Project, trackId) ? lane : null;
 }
 
 export function laneLen(trackId: string): number {
   const s = get();
   const pattern = slotPattern(s.project, s.editSlotId);
   const lane = pattern.lanes[trackId];
-  return lane?.kind === "steps" ? (lane.stepCountOverride ?? pattern.stepCount) : pattern.stepCount;
+  return lane?.stepCountOverride ?? pattern.stepCount;
 }
 
 function shiftActive() {
@@ -83,8 +84,8 @@ export function editSteps(keys: string[], fn: (s: Draft<Step>, track: Track) => 
 /** Turn a step on or off; an instrument step that's turned on gets a note to play. */
 export function switchStep(s: Draft<Step>, track: Track, on: boolean) {
   s.on = on;
-  if (on && track.kind === "instrument" && !s.notes?.length)
-    s.notes = [{ pitch: track.category === "bass" ? 36 : 60, length: 1, velocity: s.velocity }];
+  if (on && track.mode === "notes" && !s.notes?.length)
+    s.notes = [{ pitch: hitNoteOf(track), length: 1, velocity: s.velocity }];
 }
 
 /** The steps a step menu acts on: the whole selection if the step is part of it. */
@@ -106,7 +107,7 @@ export function toggleSelectedSteps(): boolean {
   const allOn = keys.every((k) => {
     const [t, i] = k.split(":");
     const lane = pattern.lanes[t];
-    return lane?.kind === "steps" && lane.steps[Number(i)].on;
+    return !!lane && stepped(s.project, t) && lane.steps[Number(i)].on;
   });
   editSteps(keys, (st, track) => switchStep(st, track, !allOn), `sel-${performance.now()}`);
   return true;
@@ -160,8 +161,8 @@ export function applyHeld(target: {
       s.commit((p) => void (shiftActive() ? cloneSlot : copySlot)(p as Project, slotId));
     else if (key === "clear")
       s.commit((p) => {
-        for (const lane of Object.values(slotPattern(p as Project, slotId).lanes))
-          if (lane.kind === "steps") clearLane(lane);
+        for (const [id, lane] of Object.entries(slotPattern(p as Project, slotId).lanes))
+          if (stepped(p as Project, id)) clearLane(lane);
       });
     else return false;
     return true;
@@ -221,7 +222,7 @@ function copySteps(trackId: string) {
   const s = get();
   const pattern = slotPattern(s.project, s.editSlotId);
   const lane = pattern.lanes[trackId];
-  if (lane?.kind !== "steps") return;
+  if (!lane || !stepped(s.project, trackId)) return;
   const sel = selectedIndices(trackId);
   const indices = sel.length ? sel : Array.from({ length: laneLen(trackId) }, (_, i) => i);
   s.setUi({ clipboard: indices.map((i) => structuredClone(lane.steps[i])) });
@@ -271,8 +272,8 @@ export function fnClick(key: FnKey) {
     case "clear":
       s.commit((p) => {
         if (shift) {
-          for (const lane of Object.values(editPattern(p).lanes))
-            if (lane.kind === "steps") clearLane(lane);
+          for (const [id, lane] of Object.entries(editPattern(p).lanes))
+            if (stepped(p as Project, id)) clearLane(lane);
           return;
         }
         const lane = stepLane(p, trackId);

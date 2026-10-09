@@ -120,7 +120,7 @@ export const useStore = create<State>()((set, get) => ({
   projectId: "",
   saveStatus: "saved",
   loadProject: (p, id) => {
-    const firstStepTrack = p.tracks.find((t) => t.kind !== "audio") ?? p.tracks[0];
+    const firstStepTrack = p.tracks.find((t) => t.mode !== "clip") ?? p.tracks[0];
     set({
       project: p,
       projectId: id,

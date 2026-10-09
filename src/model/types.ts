@@ -1,5 +1,9 @@
 import type { SynthPatch } from "./synth";
-export type TrackKind = "drum" | "instrument" | "audio";
+/**
+ * How a step track plays (D93): single hits on its steps, notes and chords, or its sample as a
+ * clip across the page.
+ */
+export type TrackMode = "hits" | "notes" | "clip";
 
 export type SoundCategory =
   "kick" | "snare" | "clap" | "hat" | "perc" | "tom" | "bass" | "keys" | "vocal" | "fx";
@@ -12,14 +16,14 @@ export interface Step {
   probability: number; // 0..1
   nudge: number; // -0.5..0.5 of a step
   ratchet: number; // 1..8
-  pitch: number; // semitones, drum tracks
-  gate: number; // 0..1 of a step (drum) / unused for notes
+  pitch: number; // semitones, in Hits mode
+  gate: number; // 0..1 of a step, in Hits mode (notes have their own length)
   accent: boolean;
   condition?: string; // e.g. "1:2", "FILL"
   locked?: boolean; // legacy flag (mockup demo)
   /** Parameter locks: this step's own values for the track's sound parameters ("sound.tune"…). */
   locks?: Record<string, number>;
-  /** Instrument tracks: the notes starting on this step (a chord when several). */
+  /** Notes mode: the notes starting on this step (a chord when several). Kept in Hits mode. */
   notes?: Note[];
 }
 
@@ -31,43 +35,51 @@ export interface Note {
   slide?: boolean;
 }
 
-export interface StepLane {
-  kind: "steps";
+/**
+ * A track's part on one page. Every lane has steps (Hits and Notes) and may have clip settings
+ * (Clip), so switching a track's mode keeps both (D93).
+ */
+export interface Lane {
   steps: Step[]; // always MAX_STEPS long; steps beyond the count are kept, just hidden
   stepCountOverride?: number;
   /** The track's own step size on this page (polyrhythms); default = the page's. */
   stepSizeOverride?: StepSize;
   /** The track's own swing (0.5..0.75); default = page/global swing. */
   swingOverride?: number;
+  /** Clip mode: whether the clip plays on this page, and how. */
+  clip?: ClipSettings;
 }
 
-export interface ClipLane {
-  kind: "clip";
+export interface ClipSettings {
   active: boolean;
   launchMode: "loop" | "oneshot";
 }
 
-export type Lane = StepLane | ClipLane;
+/** Clip settings of a lane (a lane without them plays its clip, looped). */
+export const clipOf = (lane: Lane): ClipSettings =>
+  lane.clip ?? { active: true, launchMode: "loop" };
 
 export interface Track {
   id: string;
   name: string;
-  kind: TrackKind;
+  /** How the track plays: Hits, Notes or Clip (D93). */
+  mode: TrackMode;
   category: SoundCategory;
   color: string;
-  source: string; // sample or instrument preset name, for display
-  sampleId?: string;
+  source: string; // the sound's name, for display
+  /** What makes its sound (D94); none = silent (an empty Clip track). */
+  sound?: Sound;
+  /** Hits mode with a synth or sampled instrument: the note each hit plays (plus the step's pitch). */
+  hitNote?: number;
   mute: boolean;
   solo: boolean;
   arm: boolean;
   volume: number; // 0..1 fader position
   params: Record<string, number>; // encoder values keyed by parameter id
   effects: Effect[];
-  /** Instrument tracks: the sound source (synth preset, keyboard sampler or sampled instrument). */
-  instrument?: InstrumentSource;
-  /** Audio tracks: overdub layers recorded on top of the clip. */
+  /** Clip mode: overdub layers recorded on top of the clip. */
   layers?: ClipLayer[];
-  /** Instrument tracks: transpose in semitones. */
+  /** Notes mode: transpose in semitones. */
   transpose?: number;
   arp?: Arpeggiator;
 }
@@ -89,22 +101,34 @@ export interface Effect {
   bypass?: boolean;
 }
 
-export interface InstrumentSource {
-  source: "synth" | "sampler" | "smplr" | "sf2";
+/**
+ * What makes a step track's sound (D94), in three families: a sample (`sample`), a synth
+ * (`synth`), or a sampled instrument (`smplr`: streamed, `sf2`: a SoundFont, `multi`: your own
+ * multi-sample).
+ */
+export type SoundSource = "sample" | "synth" | "smplr" | "sf2" | "multi";
+export type SoundFamily = "sample" | "synth" | "instrument";
+
+export interface Sound {
+  source: SoundSource;
   /** Synth preset id, smplr instrument name, or the instrument inside a SoundFont. */
-  preset: string;
+  preset?: string;
   /** Synths: the track's own (edited) patch; without one, the factory synth `preset` (D79). */
   patch?: SynthPatch;
   /** The sound's name when it isn't a factory one (edited or from your library). */
   name?: string;
-  /** The library instrument it came from ("user:<id>"), for Used in project. */
+  /** The library sound it came from ("user:<id>"), for Used in project. */
   from?: string;
-  /** Keyboard sampler: the sample and the note it was recorded at. SoundFonts: the .sf2 file. */
+  /** Samples: the sample. SoundFonts: the .sf2 file. */
   sampleId?: string;
+  /** Samples and multi-samples in Notes mode: the note that plays them at their own pitch. */
   rootNote?: number;
-  /** Multi-sample sampler (D82): samples at their notes; each note plays from the nearest. */
+  /** Multi-samples (D82): samples at their notes; each note plays from the nearest. */
   zones?: { note: number; sampleId: string }[];
 }
+
+export const soundFamily = (s: Sound): SoundFamily =>
+  s.source === "sample" ? "sample" : s.source === "synth" ? "synth" : "instrument";
 
 export interface ClipLayer {
   id: string;
@@ -149,8 +173,8 @@ export const STEP_SIZE_QUARTERS: Record<StepSize, number> = {
 };
 
 /**
- * A step's velocity (D75). Notes carry their own velocity, so on note steps (instrument tracks)
- * it's the loudest note's; on drum steps it's the step's.
+ * A step's velocity (D75). Notes carry their own velocity, so on note steps it's the loudest
+ * note's; on hits it's the step's.
  */
 export function stepVelocity(s: Step): number {
   return s.notes?.length ? Math.max(...s.notes.map((n) => n.velocity)) : s.velocity;
@@ -176,6 +200,6 @@ export function emptyStep(): Step {
   };
 }
 
-export function laneLength(lane: StepLane, pattern: Pattern): number {
+export function laneLength(lane: Lane, pattern: Pattern): number {
   return lane.stepCountOverride ?? pattern.stepCount;
 }

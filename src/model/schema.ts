@@ -6,10 +6,19 @@ import { defaultBuses, defaultMaster, defaultPerf } from "./effects";
 import { uid } from "./id";
 import { EFFECT_PARAMS, MIX_PARAMS, SOUND_PARAMS, defaultParams } from "./params";
 import { emptyLane, type Project } from "./project";
-import { MAX_STEPS, emptyStep, type Effect, type Lane, type Step, type Track } from "./types";
-import { convertSynthKnobs, isSynthTrack } from "../library/synthTrack";
+import { player } from "./tracks";
+import {
+  MAX_STEPS,
+  emptyStep,
+  type Effect,
+  type Lane,
+  type Sound,
+  type Step,
+  type Track,
+} from "./types";
+import { convertSynthKnobs, defaultSynth } from "../library/synthTrack";
 
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 
 export interface SerializedProject {
   format: "rebeat-project";
@@ -67,10 +76,14 @@ const migrations: Record<number, Migration> = {
   // 5 → 6: a synth track's SOUND knobs are its macros; moved ones become patch edits (D85)
   5: (p) => {
     const synths = new Set<string>();
-    for (const t of (p.tracks as Track[]) ?? []) {
-      if (!t.params || !isSynthTrack(t)) continue;
-      synths.add(t.id);
-      convertSynthKnobs(t);
+    for (const t of (p.tracks as Json[]) ?? []) {
+      const src = t.instrument as Json | undefined;
+      if (!t.params || t.kind !== "instrument" || (src?.source ?? "synth") !== "synth") continue;
+      synths.add(t.id as string);
+      // the conversion works on step tracks (version 7), so these change shape now; the rest of
+      // the project follows in 6 → 7. It reads the old knob names, so they aren't renamed.
+      toStepTrack(t, false);
+      convertSynthKnobs(t as unknown as Track);
     }
     // step locks on the old knobs (synths never played them)
     for (const pattern of Object.values((p.patterns as Record<string, Json>) ?? {}))
@@ -84,7 +97,75 @@ const migrations: Record<number, Migration> = {
       }
     return p;
   },
+  // 6 → 7: step tracks (D93, D94). Track kinds become modes (drum → Hits, instrument → Notes,
+  // audio → Clip), sample ids and instrument sources become the track's sound, every lane has
+  // steps (clip lanes keep their settings beside them), and the ADSR decay of voices is renamed
+  // (`sound.decay` is the decay of hits), in params, step locks and MIDI mappings
+  6: (p) => {
+    const renamed = new Set<string>();
+    for (const t of (p.tracks as Json[]) ?? []) {
+      if (t.kind === "instrument") renamed.add(t.id as string);
+      if (t.kind) toStepTrack(t);
+    }
+    for (const pattern of Object.values((p.patterns as Record<string, Json>) ?? {}))
+      for (const [id, raw] of Object.entries((pattern.lanes as Record<string, Json>) ?? {})) {
+        const lane = raw as Json;
+        if (lane.kind === "clip") {
+          lane.clip = { active: lane.active, launchMode: lane.launchMode };
+          lane.steps = Array.from({ length: MAX_STEPS }, emptyStep);
+          delete lane.active;
+          delete lane.launchMode;
+        }
+        delete lane.kind;
+        if (renamed.has(id))
+          for (const s of (lane.steps as Step[]) ?? []) if (s?.locks) renameDecay(s.locks);
+      }
+    for (const m of (p.midiMappings as { target: string }[]) ?? []) {
+      const [, id, param] = m.target.split(":");
+      if (m.target.startsWith("track:") && renamed.has(id) && param === "sound.decay")
+        m.target = `track:${id}:sound.envDecay`;
+    }
+    return p;
+  },
 };
+
+/** The ADSR decay of a voice's SOUND knobs, renamed in version 7. */
+function renameDecay(values: Record<string, number>) {
+  if (!("sound.decay" in values)) return;
+  values["sound.envDecay"] = values["sound.decay"];
+  delete values["sound.decay"];
+}
+
+/** A version 6 instrument source as a sound (D94): samplers become samples or multi-samples. */
+export function soundFromV6(src: Json): Sound {
+  const { source, ...rest } = src as unknown as Omit<Sound, "source"> & { source: string };
+  if (source !== "sampler") return { source, ...rest } as Sound;
+  const { name, from, zones, sampleId, rootNote } = rest;
+  const extra = { ...(name ? { name } : {}), ...(from ? { from } : {}) };
+  if (zones?.length) return { source: "multi", zones, ...(rootNote ? { rootNote } : {}), ...extra };
+  return { source: "sample", sampleId, rootNote: rootNote ?? 60, ...extra };
+}
+
+/** A version 6 track (drum, instrument or audio) as a step track (version 7), in place. */
+function toStepTrack(t: Json, rename = true) {
+  const kind = t.kind;
+  const sampleId = t.sampleId as string | undefined;
+  const instrument = t.instrument as Json | undefined;
+  delete t.kind;
+  delete t.sampleId;
+  delete t.instrument;
+  if (kind === "instrument") {
+    t.mode = "notes";
+    // without a source, instrument tracks played a default synth (by category)
+    t.sound = instrument
+      ? soundFromV6(instrument)
+      : defaultSynth({ category: t.category as Track["category"] });
+    if (rename && t.params) renameDecay(t.params as Record<string, number>);
+  } else {
+    t.mode = kind === "audio" ? "clip" : "hits";
+    if (sampleId) t.sound = { source: "sample", sampleId } satisfies Sound;
+  }
+}
 
 export function serializeProject(project: Project): SerializedProject {
   return { format: "rebeat-project", schemaVersion: SCHEMA_VERSION, project };
@@ -111,9 +192,10 @@ export function normalizeProject(p: Project): Project {
   p.patterns ??= {};
   p.slots ??= [];
   for (const t of p.tracks) {
+    if (!["hits", "notes", "clip"].includes(t.mode)) t.mode = "hits";
     t.params = {
       ...Object.fromEntries(
-        Object.entries(defaultParams(SOUND_PARAMS[t.kind])).map(([k, v]) => [`sound.${k}`, v]),
+        Object.entries(defaultParams(SOUND_PARAMS[player(t)])).map(([k, v]) => [`sound.${k}`, v]),
       ),
       ...Object.fromEntries(
         Object.entries(defaultParams(MIX_PARAMS.filter((d) => d.id !== "volume"))).map(([k, v]) => [
@@ -140,17 +222,14 @@ export function normalizeProject(p: Project): Project {
     pattern.lanes ??= {};
     for (const t of p.tracks) {
       const lane: Lane | undefined = pattern.lanes[t.id];
-      const wantSteps = t.kind !== "audio";
-      if (!lane || (lane.kind === "steps") !== wantSteps) {
-        pattern.lanes[t.id] = emptyLane(t.kind);
+      if (!lane) {
+        pattern.lanes[t.id] = emptyLane(t.mode);
         continue;
       }
-      if (lane.kind === "steps") {
-        const steps: Step[] = lane.steps ?? [];
-        for (let i = 0; i < MAX_STEPS; i++) steps[i] = { ...emptyStep(), ...steps[i] };
-        steps.length = MAX_STEPS;
-        lane.steps = steps;
-      }
+      const steps: Step[] = lane.steps ?? [];
+      for (let i = 0; i < MAX_STEPS; i++) steps[i] = { ...emptyStep(), ...steps[i] };
+      steps.length = MAX_STEPS;
+      lane.steps = steps;
     }
     for (const id of Object.keys(pattern.lanes))
       if (!p.tracks.some((t) => t.id === id)) delete pattern.lanes[id];
@@ -178,10 +257,10 @@ export function deserializeProject(data: unknown): Project {
 export function projectSampleIds(p: Project): string[] {
   const ids = new Set<string>();
   for (const t of p.tracks) {
-    if (t.sampleId) ids.add(t.sampleId);
     for (const l of t.layers ?? []) ids.add(l.sampleId);
-    if (t.instrument?.sampleId) ids.add(t.instrument.sampleId);
-    for (const z of t.instrument?.zones ?? []) ids.add(z.sampleId);
+    // samples, and SoundFont files (sf2:…)
+    if (t.sound?.sampleId) ids.add(t.sound.sampleId);
+    for (const z of t.sound?.zones ?? []) ids.add(z.sampleId);
   }
   return [...ids];
 }

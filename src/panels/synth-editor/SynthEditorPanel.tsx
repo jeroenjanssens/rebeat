@@ -18,7 +18,7 @@ import { Encoder } from "../../components/Encoder";
 import { Keyboard } from "../../components/Keyboard";
 import { toast } from "../../components/Toast";
 import * as engine from "../../engine/engine";
-import { SYNTH_PRESETS, defaultInstrument, patchOf } from "../../engine/instruments";
+import { SYNTH_PRESETS, patchOf, voiceSound } from "../../engine/instruments";
 import { Scope } from "../../components/Scope";
 import {
   editPatch,
@@ -59,7 +59,7 @@ import {
 } from "../../model/synth";
 import type { Track } from "../../model/types";
 import { useSelectedTrack, useStore } from "../../state/store";
-import { playInstrumentOn, setInstrument, soundLabel } from "../../state/trackActions";
+import { playInstrumentOn, setSound, soundLabel } from "../../state/trackActions";
 
 type ClipKind = "osc" | "filter" | "env" | "lfo";
 /** A copied block (oscillator, filter, envelope, LFO), to paste on another of its kind. */
@@ -167,10 +167,10 @@ const libraryTarget = (key: string, track: Track): EditTarget => ({
   },
 });
 
-/** A library sound in the synth editor (no track, D91): saved to Your instruments as you go. */
+/** A library sound in the synth editor (no track, D91): saved to Your sounds as you go. */
 function LibrarySoundEditor({ libraryKey }: { libraryKey: string }) {
   const track = useLibraryEdits((s) => s.entries[libraryKey]?.track);
-  const name = track?.instrument?.name ?? track?.name;
+  const name = track?.sound?.name ?? track?.name;
   useEffect(() => {
     if (name) dock.api?.getPanel(`synth-editor:lib:${libraryKey}`)?.api.setTitle(`${name} · synth`);
   }, [libraryKey, name]);
@@ -201,7 +201,7 @@ function TrackSynthEditor({ own }: { own?: string }) {
   useEffect(() => {
     if (own && name) dock.api?.getPanel(`synth-editor:${own}`)?.api.setTitle(synthEditorTitle(own));
   }, [own, name]);
-  const src = track?.kind === "instrument" ? (track.instrument ?? defaultInstrument(track)) : null;
+  const src = track && track.mode !== "clip" ? voiceSound(track) : null;
   if (own && !track)
     return (
       <div className="flex h-full items-center justify-center p-6 text-center text-[12px] text-faint">
@@ -214,12 +214,12 @@ function TrackSynthEditor({ own }: { own?: string }) {
         <p>
           {own
             ? `${track?.name} doesn't play a synth now.`
-            : "Select an instrument track that plays a synth to shape its sound here."}
+            : "Select a step track that plays a synth to shape its sound here."}
         </p>
-        {track?.kind === "instrument" && (
+        {track && track.mode !== "clip" && (
           <button
             className="tool-btn border border-line"
-            onClick={() => setInstrument(track.id, { source: "synth", preset: "init" })}
+            onClick={() => setSound(track.id, { source: "synth", preset: "init" })}
           >
             Make {track.name} a synth
           </button>
@@ -230,17 +230,17 @@ function TrackSynthEditor({ own }: { own?: string }) {
 }
 
 function Editor({ track, target }: { track: Track; target: EditTarget }) {
-  const src = track.instrument ?? defaultInstrument(track);
+  const src = voiceSound(track);
   const patch = patchOf(src);
   // what you hear: the macros where the track's SOUND knobs have them
   const values = macroValues(track, patch);
   const shown = applyMacros(withMacroValues(patch, values));
   const view = useSettings((s) => s.synthView);
   const bpm = useStore((s) => s.project.bpm);
-  const factory = factorySynth(src.preset);
+  const factory = factorySynth(src.preset ?? "");
   const defaults = factory?.patch ?? INIT_PATCH;
   const edited = !!src.patch;
-  // your copy of a factory synth (made by the first edit, D90), kept in Your instruments
+  // your copy of a factory synth (made by the first edit, D90), kept in Your sounds
   const copy = useUserInstruments((s) =>
     src.from ? s.list.find((r) => `user:${r.id}` === src.from && r.copyOf) : undefined,
   );
@@ -314,7 +314,7 @@ function Editor({ track, target }: { track: Track; target: EditTarget }) {
           try {
             const entry = await importSynth(f);
             playInstrumentOn(track.id, entry);
-            toast(`Imported “${entry.name}” into Your instruments`);
+            toast(`Imported “${entry.name}” into Your sounds`);
           } catch (e) {
             toast(`Couldn't read ${f.name}: ${e instanceof Error ? e.message : e}`, "error");
           }
@@ -563,8 +563,8 @@ function Editor({ track, target }: { track: Track; target: EditTarget }) {
       name,
     );
     // the track now plays the saved instrument
-    setInstrument(track.id, entry.source);
-    toast(`Saved “${name}” to Your instruments`);
+    setSound(track.id, entry.source);
+    toast(`Saved “${name}” to Your sounds`);
     setSaving(null);
   };
 
@@ -591,7 +591,7 @@ function Editor({ track, target }: { track: Track; target: EditTarget }) {
             <span className="label !text-ink">{name}</span>
             <span className="text-[10.5px] text-faint" data-testid="synth-library-note">
               {src.from
-                ? "in Your instruments: saved as you go"
+                ? "in Your sounds: saved as you go"
                 : "a factory synth: your first change makes your own copy"}
             </span>
           </>
@@ -602,7 +602,7 @@ function Editor({ track, target }: { track: Track; target: EditTarget }) {
           <select
             className="input !h-6 max-w-[220px]"
             value={src.from ? "" : src.preset}
-            onChange={(e) => setInstrument(track.id, { source: "synth", preset: e.target.value })}
+            onChange={(e) => setSound(track.id, { source: "synth", preset: e.target.value })}
             title="Start from a factory synth"
             data-hint="synth.start"
             data-testid="synth-start"
@@ -624,7 +624,7 @@ function Editor({ track, target }: { track: Track; target: EditTarget }) {
         )}
         {!target.library && copy && factory && (
           <span className="text-[10.5px] text-faint" data-testid="synth-copy-note">
-            your copy of {factory.name}, in Your instruments
+            your copy of {factory.name}, in Your sounds
           </span>
         )}
         <span className="flex-1" />
@@ -665,7 +665,7 @@ function Editor({ track, target }: { track: Track; target: EditTarget }) {
             className="tool-btn"
             title={`Back to the factory “${factory.name}”`}
             data-hint="synth.revert"
-            onClick={() => setInstrument(track.id, { source: "synth", preset: src.preset })}
+            onClick={() => setSound(track.id, { source: "synth", preset: src.preset })}
           >
             <RotateCcw size={13} />
           </button>

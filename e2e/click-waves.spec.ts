@@ -8,7 +8,7 @@ type W = {
     engine: { masterLevel(): number[]; clipPosition(id: string): number | null };
     store: {
       getState(): {
-        project: { tracks: { id: string; name: string; kind: string }[] };
+        project: { tracks: { id: string; name: string; mode: string }[] };
         setUi(p: object): void;
         commit(fn: (p: never) => void): void;
       };
@@ -54,7 +54,7 @@ test("clicking an audio clip plays it once; clicking again stops it", async ({ p
     () =>
       (window as never as W).__rebeat.store
         .getState()
-        .project.tracks.find((t) => t.kind === "audio")!.id,
+        .project.tracks.find((t) => t.mode === "clip")!.id,
   );
   const pos = () =>
     page.evaluate((id) => (window as never as W).__rebeat.engine.clipPosition(id), vox);
@@ -79,16 +79,16 @@ test("clicking the synth editor's wave plays a note", async ({ page }) => {
   expect(await peak(page)).toBeGreaterThan(0.02);
 });
 
-test("a sampler's waveform plays it at its root note", async ({ page }) => {
-  // the kick, converted to an instrument track: a sampler of its sample
+test("a sample in Notes mode plays at its root note when its wave is clicked", async ({ page }) => {
+  // the kick, played as notes: its sample across the keyboard
   await page
     .locator("[data-track-row]")
     .first()
     .locator('[data-hint="dm.track.name"]')
     .click({ button: "right" });
-  await page.locator(".menu").getByRole("button", { name: "Instrument", exact: true }).click();
-  await page.getByTestId("sampler-wave").click();
-  await expect(page.getByTestId("sampler-wave").getByTestId("playhead")).toHaveCount(1);
+  await page.locator(".menu").getByRole("button", { name: "Notes", exact: true }).click();
+  await page.getByTestId("inspector-wave").click();
+  await expect(page.getByTestId("inspector-wave").getByTestId("playhead")).toHaveCount(1);
   expect(await peak(page)).toBeGreaterThan(0.05);
 });
 

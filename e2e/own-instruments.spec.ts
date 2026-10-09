@@ -8,7 +8,7 @@ test.beforeEach(async ({ page }) => openApp(page));
 
 type T = {
   name: string;
-  instrument?: { source: string; preset: string; sampleId?: string; zones?: { note: number }[] };
+  sound?: { source: string; preset: string; sampleId?: string; zones?: { note: number }[] };
   id: string;
 };
 type W = {
@@ -25,10 +25,7 @@ const track = (page: Page, name: string) =>
   );
 const yours = async (page: Page) => {
   await page.getByTestId("library").locator('[data-hint="library.location"]').click();
-  await page
-    .locator(".menu")
-    .getByRole("button", { name: "Your instruments", exact: true })
-    .click();
+  await page.locator(".menu").getByRole("button", { name: "Your sounds", exact: true }).click();
   return page.getByTestId("library-list").locator("[data-instrument]");
 };
 async function importFiles(page: Page, files: string[]) {
@@ -46,9 +43,9 @@ test("a SoundFont becomes an instrument that plays and travels with the project"
   await expect(items).toHaveCount(1);
   await expect(items.first()).toContainText("Test");
   await items.first().dragTo(page.locator("[data-track-row]", { hasText: "BASS" }));
-  await expect.poll(async () => (await track(page, "Bass")).instrument?.source).toBe("sf2");
+  await expect.poll(async () => (await track(page, "Bass")).sound?.source).toBe("sf2");
   const bass = await track(page, "Bass");
-  expect(bass.instrument?.preset).toBe("Test Sine");
+  expect(bass.sound?.preset).toBe("Test Sine");
   await expect
     .poll(
       () =>
@@ -81,8 +78,8 @@ test("a folder of samples named by note becomes a multi-sample instrument", asyn
   await items
     .filter({ hasText: "Harp" })
     .dragTo(page.locator("[data-track-row]", { hasText: "CHORDS" }));
-  await expect.poll(async () => (await track(page, "Chords")).instrument?.zones?.length).toBe(3);
-  expect((await track(page, "Chords")).instrument!.zones!.map((z) => z.note)).toEqual([60, 64, 67]);
+  await expect.poll(async () => (await track(page, "Chords")).sound?.zones?.length).toBe(3);
+  expect((await track(page, "Chords")).sound!.zones!.map((z) => z.note)).toEqual([60, 64, 67]);
 });
 
 test("a pitched entry in a strudel.json becomes an instrument", async ({ page }) => {
@@ -108,7 +105,7 @@ test("a pitched entry in a strudel.json becomes an instrument", async ({ page })
   await expect(kit.locator("[data-online-instrument]")).toHaveCount(1);
   await expect(kit.locator("[data-online-sound]")).toHaveCount(1);
   await kit.getByTestId("online-add-instrument").click();
-  await expect(page.getByText("Added keys piano to Your instruments").first()).toBeVisible();
+  await expect(page.getByText("Added keys piano to Your sounds").first()).toBeVisible();
   const items = await yours(page);
   await expect(items.filter({ hasText: "keys piano" })).toHaveCount(1);
 });
@@ -118,7 +115,7 @@ test("exports include sampled instruments", async ({ page }) => {
   await importFiles(page, fixtureFiles({ "Test.sf2": soundfont() }));
   const items = page.getByTestId("library-list").locator("[data-instrument]");
   await items.first().dragTo(page.locator("[data-track-row]", { hasText: "BASS" }));
-  await expect.poll(async () => (await track(page, "Bass")).instrument?.source).toBe("sf2");
+  await expect.poll(async () => (await track(page, "Bass")).sound?.source).toBe("sf2");
   await page.keyboard.press("ControlOrMeta+E");
   await page.locator('[data-hint="app.export.source"]').selectOption({ label: "Track: Bass" });
   const download = page.waitForEvent("download");

@@ -1,7 +1,7 @@
 /** Helpers for writing templates and example songs as code. */
 import { defaultBuses, defaultMaster, defaultPerf } from "../model/effects";
 import { makePattern, makeTrack, type Project } from "../model/project";
-import type { Effect, Pattern, SoundCategory, StepLane, StepSize, Track } from "../model/types";
+import type { Effect, Lane, Pattern, Sound, SoundCategory, StepSize, Track } from "../model/types";
 
 export function emptyProject(name: string, bpm: number): Project {
   return {
@@ -23,44 +23,44 @@ export function emptyProject(name: string, bpm: number): Project {
   };
 }
 
-/** A drum track playing a built-in kit sound, e.g. drumTrack("Kick", "kit:808:kick", "808 Kick", "kick"). */
-export function drumTrack(
+/** A step track playing hits of a sample, e.g. hitsTrack("Kick", "kit:808:kick", "808 Kick", "kick"). */
+export function hitsTrack(
   name: string,
   sampleId: string,
   source: string,
   category: SoundCategory,
   effects: Effect[] = [],
 ) {
-  const t = makeTrack("drum", category, name, source, effects);
-  t.sampleId = sampleId;
-  return t;
+  return makeTrack("hits", category, name, source, effects, { source: "sample", sampleId });
 }
 
-/** An instrument track with a synth preset (see engine/instruments.ts). */
-export function synthTrack(
+/** A step track playing notes of a sound: `synth(preset)`, `sampled(preset)` or any other. */
+export function notesTrack(
   name: string,
-  preset: string,
+  sound: Sound,
   source: string,
   category: SoundCategory,
   effects: Effect[] = [],
 ) {
-  const t = makeTrack("instrument", category, name, source, effects);
-  t.instrument = { source: "synth", preset };
-  return t;
+  return makeTrack("notes", category, name, source, effects, sound);
 }
 
-/** An instrument track with a sampled instrument (smplr preset, see library/instruments.ts). */
-export function sampledTrack(
+/** A step track playing a sample as a clip across the page (looped). */
+export function clipTrack(
   name: string,
-  preset: string,
+  sampleId: string,
   source: string,
   category: SoundCategory,
   effects: Effect[] = [],
 ) {
-  const t = makeTrack("instrument", category, name, source, effects);
-  t.instrument = { source: "smplr", preset };
-  return t;
+  return makeTrack("clip", category, name, source, effects, { source: "sample", sampleId });
 }
+
+/** A factory synth (see library/synths.ts). */
+export const synth = (preset: string): Sound => ({ source: "synth", preset });
+
+/** A sampled instrument (smplr preset, see library/instruments.ts). */
+export const sampled = (preset: string): Sound => ({ source: "smplr", preset });
 
 /** Add a page (after the tracks exist) and put it in the song order. */
 export function page(
@@ -83,7 +83,7 @@ export function page(
  * Spaces are ignored (use them to group beats).
  */
 export function drum(pattern: Pattern, track: Track, code: string) {
-  const lane = pattern.lanes[track.id] as StepLane;
+  const lane = pattern.lanes[track.id] as Lane;
   [...code.replace(/\s/g, "")].forEach((ch, i) => {
     if (ch === ".") return;
     const s = lane.steps[i];
@@ -108,7 +108,7 @@ export function notes(
   list: [number, number[], number, boolean?][],
   velocity = 0.75,
 ) {
-  const lane = pattern.lanes[track.id] as StepLane;
+  const lane = pattern.lanes[track.id] as Lane;
   for (const [i, n, length, slide] of list) {
     const s = lane.steps[i];
     s.on = true;
@@ -169,7 +169,7 @@ export function splitLongPages(p: Project, max = 32) {
       part.stepSize = pattern.stepSize;
       for (const [trackId, lane] of Object.entries(pattern.lanes)) {
         const target = part.lanes[trackId];
-        if (lane.kind !== "steps" || target?.kind !== "steps") continue;
+        if (!target) continue;
         for (let i = 0; i < max; i++) target.steps[i] = structuredClone(lane.steps[k * max + i]);
       }
       p.patterns[part.id] = part;

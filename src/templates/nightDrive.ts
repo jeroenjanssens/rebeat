@@ -1,38 +1,33 @@
 import { TRACK_PALETTE } from "../model/colors";
 import { defaultBuses, defaultMaster, defaultPerf, makeEffect } from "../model/effects";
-import { makePattern, makeTrack, type Project } from "../model/project";
-import type { StepLane } from "../model/types";
-import { drum, notes } from "./builder";
+import { makePattern, type Project } from "../model/project";
+import type { Lane } from "../model/types";
+import { clipTrack, drum, hitsTrack, notes, notesTrack, synth } from "./builder";
 
 export function demoProject(): Project {
-  const kick = makeTrack("drum", "kick", "Kick", "909 Kick", [makeEffect("Compressor")]);
-  const snare = makeTrack("drum", "snare", "Snare", "909 Snare", [makeEffect("Distortion")]);
-  const clap = makeTrack("drum", "clap", "Clap", "909 Clap");
-  const hat = makeTrack("drum", "hat", "Cl Hat", "909 Closed Hat");
-  const ohat = makeTrack("drum", "hat", "Op Hat", "909 Open Hat");
+  const kick = hitsTrack("Kick", "kit:909:kick", "909 Kick", "kick", [makeEffect("Compressor")]);
+  const snare = hitsTrack("Snare", "kit:909:snare", "909 Snare", "snare", [
+    makeEffect("Distortion"),
+  ]);
+  const clap = hitsTrack("Clap", "kit:909:clap", "909 Clap", "clap");
+  const hat = hitsTrack("Cl Hat", "kit:909:chh", "909 Closed Hat", "hat");
+  const ohat = hitsTrack("Op Hat", "kit:909:ohh", "909 Open Hat", "hat");
   ohat.color = TRACK_PALETTE[4];
   ohat.params["sound.choke"] = 1 / 8;
   hat.params["sound.choke"] = 1 / 8;
-  const perc = makeTrack("drum", "perc", "Rim", "909 Rim");
-  const bass = makeTrack("instrument", "bass", "Bass", "Mono Bass · Acid", [
+  const perc = hitsTrack("Rim", "kit:909:rim", "909 Rim", "perc");
+  const bass = notesTrack("Bass", synth("acid"), "Mono Bass · Acid", "bass", [
     makeEffect("Filter"),
     makeEffect("Distortion"),
   ]);
-  const chords = makeTrack("instrument", "keys", "Chords", "Poly · Warm Pad", [
+  const chords = notesTrack("Chords", synth("warm-pad"), "Poly · Warm Pad", "keys", [
     makeEffect("Delay"),
     makeEffect("Reverb"),
   ]);
-  const vox = makeTrack("audio", "vocal", "Vox", "Vox hook 112", [
+  const vox = clipTrack("Vox", "demo:vox-hook", "Vox hook 112", "vocal", [
     makeEffect("Compressor"),
     makeEffect("Delay"),
   ]);
-  kick.sampleId = "kit:909:kick";
-  snare.sampleId = "kit:909:snare";
-  clap.sampleId = "kit:909:clap";
-  hat.sampleId = "kit:909:chh";
-  ohat.sampleId = "kit:909:ohh";
-  perc.sampleId = "kit:909:rim";
-  vox.sampleId = "demo:vox-hook";
   vox.params["mix.sendA"] = 0.35;
   chords.params["mix.sendA"] = 0.5;
   chords.volume = 0.62;
@@ -72,7 +67,7 @@ export function demoProject(): Project {
   drum(verse, hat, "xoxo xoxl xoxo xrxo");
   drum(verse, ohat, "..x. ..x. ..x. ..c.");
   drum(verse, perc, "x..x .x");
-  (verse.lanes[perc.id] as StepLane).stepCountOverride = 6;
+  (verse.lanes[perc.id] as Lane).stepCountOverride = 6;
   notes(verse, bass, [
     [0, [36], 1],
     [2, [36], 1],
@@ -88,7 +83,7 @@ export function demoProject(): Project {
     [8, [56, 60, 63], 4],
     [12, [58, 62, 65], 3],
   ]);
-  verse.lanes[vox.id] = { kind: "clip", active: true, launchMode: "loop" };
+  verse.lanes[vox.id].clip = { active: true, launchMode: "loop" };
   verse.swing = 0.56;
 
   const fill = makePattern(project, "Fill", 8);
@@ -131,7 +126,7 @@ export function demoProject(): Project {
     [16, [56, 60, 63], 8],
     [24, [55, 58, 62], 8],
   ]);
-  drop.lanes[vox.id] = { kind: "clip", active: true, launchMode: "oneshot" };
+  drop.lanes[vox.id].clip = { active: true, launchMode: "oneshot" };
 
   project.slots = [
     { id: "slot-intro", patternId: intro.id, repeats: 1 },

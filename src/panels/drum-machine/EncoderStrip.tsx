@@ -1,17 +1,12 @@
 import { useState } from "react";
+import { player, sampleOf } from "../../model/tracks";
 import * as engine from "../../engine/engine";
 import { Playhead } from "../../components/Playhead";
 import { soundLabel } from "../../state/trackActions";
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from "lucide-react";
 import { Encoder } from "../../components/Encoder";
 import { samplePeaks } from "../../engine/samples";
-import {
-  EFFECT_PARAMS,
-  MIX_PARAMS,
-  SOUND_PARAMS,
-  stepParams,
-  type ParamDef,
-} from "../../model/params";
+import { EFFECT_PARAMS, MIX_PARAMS, stepParams, type ParamDef } from "../../model/params";
 import type { Track } from "../../model/types";
 import { token } from "../../render/theme";
 import { useCanvas } from "../../render/useCanvas";
@@ -68,12 +63,12 @@ function useEncoderSlots(track: Track): { slots: Slot[]; note?: string; locking?
   const lockIndices =
     bank === "sound" && Object.keys(selected).length ? selectedIndices(track.id) : [];
   const lockLane = pattern.lanes[track.id];
-  if (lockIndices.length && lockLane?.kind === "steps") {
+  if (lockIndices.length && lockLane && track.mode !== "clip") {
     const first = lockLane.steps[lockIndices[0]];
     return {
       note: `Locks on ${lockIndices.length} step${lockIndices.length > 1 ? "s" : ""} (Alt+click a knob to clear it)`,
       locking: true,
-      slots: soundDefs(track, SOUND_PARAMS[track.kind]).map((def) => {
+      slots: soundDefs(track).map((def) => {
         const key = `sound.${def.id}`;
         return {
           def,
@@ -102,7 +97,7 @@ function useEncoderSlots(track: Track): { slots: Slot[]; note?: string; locking?
   }
 
   if (bank === "sound" || bank === "mix") {
-    const defs = bank === "sound" ? soundDefs(track, SOUND_PARAMS[track.kind]) : MIX_PARAMS;
+    const defs = bank === "sound" ? soundDefs(track) : MIX_PARAMS;
     return {
       slots: defs.map((def) => {
         const key = `${bank}.${def.id}`;
@@ -153,8 +148,8 @@ function useEncoderSlots(track: Track): { slots: Slot[]; note?: string; locking?
   // STEP bank: edits the selected steps of this track, relative to the first one
   const lane = pattern.lanes[track.id];
   const indices = Object.keys(selected).length ? selectedIndices(track.id) : [];
-  const defs = stepParams(track.kind, true);
-  if (lane?.kind !== "steps") return { slots: pad([]), note: "Audio tracks have no steps." };
+  const defs = stepParams(track.mode, true);
+  if (!lane || track.mode === "clip") return { slots: pad([]), note: "Clip tracks play no steps." };
   if (indices.length === 0)
     return {
       slots: defs.map((def) => ({ def, value: null, onChange: nop, hint: `param.step.${def.id}` })),
@@ -190,12 +185,12 @@ function Display({ track, width }: { track: Track; width: number }) {
       ctx.clearRect(0, 0, w, h);
       ctx.strokeStyle = track.color;
       ctx.fillStyle = track.color;
-      if (track.kind === "instrument") {
+      if (player(track) === "voice") {
         // envelope shape from the sound parameters (a synth's: its amp envelope)
         const env = isSynthTrack(track) ? applyMacros(effectivePatch(track)).envs[0] : null;
         const knob = (s: number) => Math.log(s * 1000) / Math.log(4000);
         const a = env ? knob(env.attack) : (track.params["sound.attack"] ?? 0.05);
-        const d = env ? knob(env.decay) : (track.params["sound.decay"] ?? 0.4);
+        const d = env ? knob(env.decay) : (track.params["sound.envDecay"] ?? 0.4);
         const s = env ? env.sustain : (track.params["sound.sustain"] ?? 0.7);
         const r = env
           ? Math.log(env.release * 1000) / Math.log(8000)
@@ -210,7 +205,7 @@ function Display({ track, width }: { track: Track; width: number }) {
         ctx.lineTo(w, h - 1);
         ctx.stroke();
       } else {
-        const peaks = samplePeaks(track.sampleId);
+        const peaks = samplePeaks(sampleOf(track));
         const mid = h / 2;
         for (let x = 0; x < w; x += 2) {
           const p = peaks[Math.floor((x / w) * (peaks.length - 1))];
@@ -220,7 +215,7 @@ function Display({ track, width }: { track: Track; width: number }) {
       ctx.fillStyle = token("text-faint");
       ctx.fillRect(0, h / 2, w, 0.5);
     },
-    [track.color, track.sampleId, track.kind, track.params, track.instrument, samples],
+    [track.color, track.sound, track.mode, track.params, samples],
   );
 
   return (
@@ -236,7 +231,7 @@ function Display({ track, width }: { track: Track; width: number }) {
         <span className="truncate font-semibold uppercase tracking-wider text-white/90">
           {track.name}
         </span>
-        <span className="label ml-auto !text-white/40">{track.kind}</span>
+        <span className="label ml-auto !text-white/40">{track.mode}</span>
       </div>
       <div
         className="relative my-1.5 h-[30px] cursor-pointer"

@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState, type CSSProperties } from "react";
+import { stepped } from "../../model/tracks";
 import {
   DndContext,
   PointerSensor,
@@ -14,7 +15,7 @@ import {
   setStepVelocity,
   stepVelocity,
   type SoundCategory,
-  type TrackKind,
+  type TrackMode,
 } from "../../model/types";
 import { contextMenu } from "../../components/Menu";
 import { applyHeld, editSteps, setStep, toggleSelected } from "../../state/actions";
@@ -92,13 +93,11 @@ export function TrackList({ geo }: { geo: Geometry }) {
 
   const stepOf = (trackId: string, index: number) => {
     const lane = pattern.lanes[trackId];
-    return lane?.kind === "steps" ? lane.steps[index] : null;
+    return lane && stepped(project, trackId) ? lane.steps[index] : null;
   };
   const lengthOf = (trackId: string) => {
     const lane = pattern.lanes[trackId];
-    return lane?.kind === "steps"
-      ? (lane.stepCountOverride ?? pattern.stepCount)
-      : pattern.stepCount;
+    return lane?.stepCountOverride ?? pattern.stepCount;
   };
 
   // ---------- pad gestures ----------
@@ -239,14 +238,14 @@ export function TrackList({ geo }: { geo: Geometry }) {
   // ---------- add tracks ----------
 
   const add = (
-    kind: TrackKind,
+    mode: TrackMode,
     category: SoundCategory,
     name: string,
     source: string,
     sampleId?: string,
   ) => {
-    const track = makeTrack(kind, category, name, source);
-    track.sampleId = sampleId;
+    const sound = sampleId ? ({ source: "sample", sampleId } as const) : undefined;
+    const track = makeTrack(mode, category, name, source, [], sound);
     commit((p) => addTrack(p, track));
     setUi({ selectedTrackId: track.id });
   };
@@ -323,7 +322,8 @@ export function TrackList({ geo }: { geo: Geometry }) {
                     isSelected={isSel}
                   />
                   {isSel &&
-                    selectedLane?.kind === "steps" &&
+                    selectedLane &&
+                    selected?.mode !== "clip" &&
                     (["velocity", "probability", "nudge"] as const)
                       .filter((f) => lanesVisible[f])
                       .map((f) => (
@@ -363,21 +363,21 @@ export function TrackList({ geo }: { geo: Geometry }) {
           <button
             className="tool-btn border border-line"
             data-hint="dm.track.add-drum"
-            onClick={() => add("drum", "perc", "Perc", "808 Cowbell", "kit:808:cowbell")}
+            onClick={() => add("hits", "perc", "Perc", "808 Cowbell", "kit:808:cowbell")}
           >
             + Drum
           </button>
           <button
             className="tool-btn border border-line"
             data-hint="dm.track.add-instrument"
-            onClick={() => add("instrument", "keys", "Keys", "Poly · Init")}
+            onClick={() => add("notes", "keys", "Keys", "Poly · Init")}
           >
             + Instrument
           </button>
           <button
             className="tool-btn border border-line"
             data-hint="dm.track.add-audio"
-            onClick={() => add("audio", "vocal", "Audio", "No clip")}
+            onClick={() => add("clip", "vocal", "Audio", "No clip")}
           >
             + Audio
           </button>

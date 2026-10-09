@@ -1,6 +1,6 @@
 /** IndexedDB (via Dexie): projects, the sample library and audio blobs. */
 import Dexie, { type EntityTable } from "dexie";
-import type { Effect, InstrumentSource } from "../model/types";
+import type { Effect, Sound } from "../model/types";
 
 export interface ProjectRecord {
   id: string;
@@ -43,13 +43,17 @@ export interface BlobRecord {
   blob: Blob;
 }
 
-/** An instrument you saved to the library (D81): a sound with its knobs and effects. */
+/** One of Your sounds (D81, D95): a sound with its knobs and effects. */
 export interface InstrumentRecord {
   id: string;
   name: string;
   createdAt: number;
+  /** 2: the sound is a step track sound (D94); older records hold a version 6 instrument source
+   * and are converted when they're read (userInstruments.ts). */
+  version?: 2;
   sound: {
-    instrument: InstrumentSource;
+    /** The sound (the field kept its old name). */
+    instrument: Sound;
     /** The SOUND knobs ("sound.cutoff" → value). */
     params: Record<string, number>;
     effects: Effect[];

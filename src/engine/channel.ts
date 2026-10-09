@@ -2,6 +2,7 @@
  * A track's channel strip: sound filter + drive, EQ, width, pan, fader, mute — then a tap for
  * the scope/meter (after effects and fader, so a muted track shows nothing) and the master bus.
  */
+import { player } from "../model/tracks";
 import * as Tone from "tone";
 import { toUnit } from "../model/params";
 import type { Track } from "../model/types";
@@ -114,7 +115,8 @@ export class TrackChannel {
     this.fx.sync(track.effects, bpm);
     const p = track.params;
     const now = Tone.now();
-    if (track.kind !== "instrument") {
+    // voices set the filter with their own default resonance (updateSynth)
+    if (player(track) !== "voice") {
       this.set("cutoff", p["sound.cutoff"] ?? 1, (v) =>
         this.filter.frequency.rampTo(Math.min(20000, toUnit.hz(v)), 0.02, now),
       );

@@ -10,7 +10,7 @@ import { useSelectedTrack, useStore } from "../../state/store";
 export function EuclidPopover() {
   const open = useStore((s) => s.euclidOpen);
   const track = useSelectedTrack();
-  if (!open || !track || track.kind === "audio") return null;
+  if (!open || !track || track.mode === "clip") return null;
   return <EuclidEditor key={track.id} track={track} />;
 }
 

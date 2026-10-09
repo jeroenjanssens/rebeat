@@ -20,7 +20,7 @@ const hints: Hints = {
   },
   "param.sound.decay": {
     title: "Decay",
-    text: "For drum tracks: how long the sample plays before cutting off — 'Full' plays it to the end. For instrument tracks: how quickly the sound falls from peak to the sustain level after the attack phase.",
+    text: "How long each hit of the sample plays before it fades out — 'Full' plays it to the end.",
     keys: "Drag or scroll · Shift = fine · Double-click = reset · Right-click: MIDI learn",
     guide: "instruments-sound-sources",
   },
@@ -68,6 +68,12 @@ const hints: Hints = {
     text: "On synth tracks the SOUND knobs are the synth's 8 macros: each moves a few of its settings at once (Brightness, Bite, Attack…). Name them and choose what they move in the synth editor (Advanced → Macros). Lock them per step and map them to MIDI like any knob.",
     keys: "Drag or scroll · Shift = fine · Double-click = reset · Right-click: MIDI learn",
     guide: "instruments-macros",
+  },
+  "param.sound.envDecay": {
+    title: "Decay",
+    text: "How quickly each note falls from its peak to the sustain level after the attack.",
+    keys: "Drag or scroll · Shift = fine · Double-click = reset · Right-click: MIDI learn",
+    guide: "instruments-sound-sources",
   },
   "param.sound.attack": {
     title: "Attack",

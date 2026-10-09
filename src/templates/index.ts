@@ -1,6 +1,6 @@
 import { defaultBuses, defaultMaster, defaultPerf } from "../model/effects";
 import { makePattern, makeTrack, type Project } from "../model/project";
-import type { StepLane, Track } from "../model/types";
+import type { Lane, Track } from "../model/types";
 
 export interface Template {
   id: string;
@@ -30,13 +30,11 @@ function base(name: string, bpm: number): Project {
 }
 
 function drum(name: string, sampleId: string, source: string, category: Track["category"]) {
-  const t = makeTrack("drum", category, name, source);
-  t.sampleId = sampleId;
-  return t;
+  return makeTrack("hits", category, name, source, [], { source: "sample", sampleId });
 }
 
 function hits(p: Project, patternId: string, track: Track, code: string) {
-  const lane = p.patterns[patternId].lanes[track.id] as StepLane;
+  const lane = p.patterns[patternId].lanes[track.id] as Lane;
   [...code.replace(/\s/g, "")].forEach((c, i) => {
     if (c === ".") return;
     lane.steps[i].on = true;
@@ -95,7 +93,7 @@ function loopStation(): Project {
   const kick = drum("Kick", "kit:909:kick", "909 Kick", "kick");
   const hat = drum("Hat", "kit:909:chh", "909 Closed Hat", "hat");
   const loops = ["Loop 1", "Loop 2", "Loop 3"].map((n) => {
-    const t = makeTrack("audio", "vocal", n, "No clip");
+    const t = makeTrack("clip", "vocal", n, "No clip");
     t.arm = n === "Loop 1";
     return t;
   });

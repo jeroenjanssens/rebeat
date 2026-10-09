@@ -1,12 +1,12 @@
 import { stepNoteLength } from "../../model/notes";
-import type { StepLane, Track } from "../../model/types";
+import type { Lane, Track } from "../../model/types";
 import type { Geometry } from "./layout";
 import { StepPad } from "./StepPad";
 
 interface Props {
   flats?: boolean;
   track: Track;
-  lane: StepLane;
+  lane: Lane;
   length: number;
   geo: Geometry;
   selected: Set<number>;
@@ -23,7 +23,7 @@ export function StepsArea({
   cursor = -1,
   flats = true,
 }: Props) {
-  const instrument = track.kind === "instrument";
+  const instrument = track.mode === "notes";
 
   // note continuations (ties) for instrument tracks
   const tie = new Set<number>();

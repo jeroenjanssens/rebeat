@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { sampleOf } from "../../model/tracks";
 import { tapTempo } from "../../app/TransportBar";
 import { Encoder } from "../../components/Encoder";
 import { useGlide } from "../../components/glide";
@@ -102,7 +103,7 @@ function Pads() {
     <div ref={ref} className="grid aspect-square w-full max-w-[360px] grid-cols-4 gap-2">
       {cells.map((ti) => {
         const t = tracks[ti];
-        if (!t || t.kind === "audio")
+        if (!t || t.mode === "clip")
           return <div key={ti} className="rounded-lg border border-dashed border-line" />;
         return (
           <button
@@ -116,10 +117,9 @@ function Pads() {
               const v = Math.min(1, Math.max(0.25, 1 - (e.clientY - r.top) / r.height + 0.3));
               engine.trigger(t, v, {
                 stepDur: 0.12,
-                notes:
-                  t.kind === "instrument" ? [{ pitch: 48, length: 2, velocity: v }] : undefined,
+                notes: t.mode === "notes" ? [{ pitch: 48, length: 2, velocity: v }] : undefined,
               });
-              padInput(t, v, t.kind === "instrument" ? [48] : undefined);
+              padInput(t, v, t.mode === "notes" ? [48] : undefined);
               flash(e.currentTarget);
             }}
           >
@@ -258,7 +258,7 @@ function Mutes() {
 
 function Platter() {
   const all = useStore((s) => s.project.tracks);
-  const tracks = useMemo(() => all.filter((t) => t.kind === "audio" && t.sampleId), [all]);
+  const tracks = useMemo(() => all.filter((t) => t.mode === "clip" && sampleOf(t)), [all]);
   const [id, setId] = useState<string | null>(null);
   const track = tracks.find((t) => t.id === id) ?? tracks[0];
   if (!track)
