@@ -14,13 +14,13 @@ import { useStore } from "../../state/store";
 
 const PAN = MIX_PARAMS.find((p) => p.id === "pan")!;
 /**
- * A strip's effects in its narrow FX button: short names, at most two and how many more
- * ("Dly·Rev", "EQ·Comp +1"), or "FX" for none. The tooltip has the whole chain.
+ * A strip's effects in its narrow FX button: one or two short names ("Comp", "Dly·Rev"), or the
+ * first and how many more ("EQ +2"), or "FX" for none. The tooltip has the whole chain.
  */
 function fxLabel(effects: { name: string }[]) {
   const names = effects.map((f) => EFFECT_SHORT[f.name] ?? f.name.slice(0, 4));
   if (!names.length) return "FX";
-  return names.slice(0, 2).join("·") + (names.length > 2 ? ` +${names.length - 2}` : "");
+  return names.length > 2 ? `${names[0]} +${names.length - 1}` : names.join("·");
 }
 
 const SEND_A = MIX_PARAMS.find((p) => p.id === "sendA")!;
