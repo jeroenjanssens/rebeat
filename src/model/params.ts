@@ -126,7 +126,7 @@ const SOUND_AUDIO: ParamDef[] = [
   { id: "fadeout", label: "Fade out", default: 0, format: ms(1, 2000) },
 ];
 
-/** The SOUND knobs by what plays the track (`player`); synth tracks show their macros. */
+/** The SOUND knobs by what plays the track (`player`); tracks playing a synth show its macros. */
 export const SOUND_PARAMS: Record<Player, ParamDef[]> = {
   drum: SOUND_DRUM,
   voice: SOUND_VOICE,

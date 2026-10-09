@@ -4,8 +4,8 @@
 
 The [Inspector](panel:inspector) shows everything about the selected track:
 
-- **Sample** (drum and audio tracks): the sound's name, waveform and details. Click the waveform to hear it once; drop a sample here to replace it. The buttons show it in the library and open it in the sample editor.
-- **Instrument** (instrument tracks): the sound source, transpose and arpeggiator. See [Instrument tracks](#instruments).
+- **Sound**: how the track plays (**Hits**, **Notes** or **Clip**; see [Step tracks](#drum-machine-step-tracks)) and what: a **Sample**, a **Synth** or a **Sampled instrument**. A sample shows its name, waveform and details (click the waveform to hear it once; drop a sample on it to replace it; the buttons show it in the library and open it in the sample editor), and in Notes mode its root note. A synth has its preset and **Edit synth…**; a synth or sampled instrument playing hits has its **Hit note**. **Save to Your sounds** keeps the sound, with its knobs and effects, in the library.
+- **Notes** (Notes mode): transpose and the arpeggiator. See [Sounds, notes and the piano roll](#instruments).
 - **Sound** and **Mix**: the same parameters as the encoder banks, all at once.
 - **Effects**: the track's insert effects (below).
 - **MIDI**: controllers mapped to this track's knobs, with a button to remove each one.

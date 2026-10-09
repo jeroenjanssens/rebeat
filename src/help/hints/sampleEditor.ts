@@ -75,7 +75,7 @@ const hints: Hints = {
   },
   "editor.tab.slice": {
     title: "Slice tab",
-    text: "Place slice markers by transients or on a grid, then export each slice as its own drum track.",
+    text: "Place slice markers by transients or on a grid, then turn each slice into its own step track.",
     guide: "sample-editor-the-tabs",
   },
   "editor.tab.fx": {
@@ -306,8 +306,8 @@ const hints: Hints = {
     guide: "sample-editor-the-tabs",
   },
   "editor.slice.toTracks": {
-    title: "Slices to new drum tracks",
-    text: "Saves each slice as its own sample in the library, creates a drum track for each, and writes a pattern that plays them in the original rhythm.",
+    title: "Slices to new step tracks",
+    text: "Saves each slice as its own sample in the library, adds a step track playing hits of each, and writes a pattern that plays them in the original rhythm.",
     guide: "sample-editor-the-tabs",
   },
   // ── FX tab ────────────────────────────────────────────────────────────────

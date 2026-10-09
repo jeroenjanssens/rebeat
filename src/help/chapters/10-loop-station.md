@@ -1,10 +1,10 @@
 # The loop station {#loop-station}
 
-Audio tracks can record loops from your microphone while the beat keeps playing, like a loop pedal.
+Step tracks in Clip mode can record loops from your microphone while the beat keeps playing, like a loop pedal.
 
 ## Recording a loop
 
-1. Add an audio track (**+ Audio** under the tracks), or start from the **Loop station** template.
+1. Add a Clip track (**+ Step track → Clip** under the tracks), or start from the **Loop station** template.
 2. **Arm** it with the **●** button on its row. Your browser asks for the microphone the first time; Rebeat then keeps the microphone open for the session.
 3. Choose the loop length with **Loop** in the transport bar: the page length, or 1, 2, 4 or 8 bars.
 4. Press **Rec** ({{key:transport.record}}).
@@ -30,4 +30,4 @@ Loops remember the tempo they were recorded at. With **Warp** on (Sound bank, on
 
 ## Scratching
 
-The disc button on an audio track opens a **scratch strip**: drag the platter or the strip to move the record back and forth at the speed of your hand; let go and it jumps back to where it would be in time. **Cut** silences the sound while held, for transform and crab scratches. The Performance panel has a bigger platter.
+The disc button on a Clip track opens a **scratch strip**: drag the platter or the strip to move the record back and forth at the speed of your hand; let go and it jumps back to where it would be in time. **Cut** silences the sound while held, for transform and crab scratches. The Performance panel has a bigger platter.

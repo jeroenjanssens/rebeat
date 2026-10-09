@@ -11,7 +11,7 @@ Make them from the page's right-click menu, with COPY or DUPL + SHIFT, or by Alt
 
 ## Length and timing per page
 
-Each page has its own number of **steps** and **step size**, so a page can be half a bar, one bar or several bars, in straight or triplet steps. **×2** doubles a page and copies its steps into the new half; **÷2** (SHIFT + ×2) halves it. Pages can also have their own **swing**, **key**, and a **transpose** for instrument tracks.
+Each page has its own number of **steps** and **step size**, so a page can be half a bar, one bar or several bars, in straight or triplet steps. **×2** doubles a page and copies its steps into the new half; **÷2** (SHIFT + ×2) halves it. Pages can also have their own **swing**, **key**, and a **transpose** for the tracks that play notes.
 
 Within a page, a track can have its **own length** (it loops sooner, for polyrhythms) and its **own step size** (for example a 1/32 hi-hat over a 1/16 page): right-click the track name.
 

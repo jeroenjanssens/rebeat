@@ -11,7 +11,7 @@ const TIPS: [string, string][] = [
   ["V", "Grid ↔ pads (the keyboard plays the pads)"],
   ["Mod+K", "Command palette: every action, searchable"],
   ["Shift+/", "All keyboard shortcuts (and rebind them)"],
-  ["R", "Record: live pads, or a loop on an armed audio track"],
+  ["R", "Record: live pads, or a loop on an armed Clip track"],
 ];
 
 /** First run: what Rebeat is, a few shortcuts, and where to start. */

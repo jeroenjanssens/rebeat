@@ -7,12 +7,13 @@ and every design decision (§6, D1–D98). When this file and the code disagree,
 Please fix this file in the same change.
 
 Status (2026-10-09): every phase of the original roadmap is built, plus several feature batches
-(PLAN.md §0.6b–§0.6e). The latest batch was the complete synth: an AudioWorklet engine,
-version 2 patches, macros, Basic and Advanced editors, factory synths voiced again, and two demo
-songs. Next up: **step tracks** (PLAN.md §0.6f, D93–D97), which replace the drum / instrument /
-audio track kinds with one kind of track that has a sound and a mode (Hits, Notes, Clip). Also
-left: tests with real hardware (mic, MIDI, Launchpad/Push), signing the desktop release, the
-license (D6), and the "later" items in PLAN.md §0.7.
+(PLAN.md §0.6b–§0.6f). The latest batch is **step tracks** (§0.6f, D93–D98, on the
+`step-tracks` branch): the drum / instrument / audio track kinds became one kind of track with a
+**sound** (sample, synth, sampled instrument) and a **mode** (Hits, Notes, Clip), schema 7, a
+library ordered by what you pick, one set of icons, and an Inspector Sound section. Left: tests
+with real hardware (mic, MIDI, Launchpad/Push), signing the desktop release, the license (D6),
+and the "later" items in PLAN.md §0.7. The repository is public and `main` deploys to GitHub
+Pages.
 
 ---
 
@@ -21,10 +22,11 @@ license (D6), and the "later" items in PLAN.md §0.7.
 A browser music app (and an Electron desktop build) built around a **drum machine / step
 sequencer**, with:
 
-- **Instrument tracks**: notes and chords; synths, keyboard samplers, sampled instruments,
-  SoundFonts.
-- **Audio tracks**: clips, a loop station with overdubs, time-stretching, scratching.
-- **A sample library**: import, kits, online kits, analysis, favorites, tags.
+- **Step tracks** that play a sound (a sample, a synth or a sampled instrument) as **Hits**, as
+  **Notes** (chords, piano roll, arpeggiator) or as a **Clip** (a loop station with overdubs,
+  time-stretching, scratching).
+- **A library** of samples, synths and sampled instruments: import, kits, online kits, analysis,
+  favorites, tags, Your sounds.
 - **A non-destructive sample editor.**
 - **A full subtractive/FM synth with an editor.**
 - **A mixer** with insert effects, send buses and a master chain.
@@ -39,8 +41,11 @@ keyboard-driven, autosaving projects in IndexedDB.
 Vocabulary (PLAN.md §2):
 
 - **Project**: everything that is saved.
-- **Track**: a row in the drum machine; tracks exist on every page. Kinds: `drum`, `instrument`,
-  `audio`.
+- **Step track** (in code: `Track`): a row in the drum machine; tracks exist on every page. It has
+  a **sound** and a **mode**: `hits`, `notes` or `clip` (D93).
+- **Sound**: what makes a track's sound, in three families: a **sample**, a **synth**, or a
+  **sampled instrument** (streamed, SoundFont, multi-sample) (D94).
+- **Your sounds**: sounds saved to the library (synth copies, saved track sounds, SoundFonts…).
 - **Page**: a pattern, i.e. the step data for every track.
 - **Slot**: an entry in the song order that points at a pattern.
   - A **clone** is a slot that shares its pattern with another.
@@ -74,7 +79,8 @@ pnpm prettier --write src e2e && pnpm tsc --noEmit && pnpm eslint . && pnpm vite
   && pnpm playwright test --workers=4
 ```
 
-Expect about 170 unit tests and about 125 e2e tests (around 2 minutes). Visual changes are
+Expect about 200 unit tests and about 155 e2e tests (around 5–6 minutes, most of it the golden
+levels renders). Visual changes are
 also checked in a real browser: a throwaway Playwright spec that takes a screenshot works well
 (delete it afterwards).
 
@@ -103,8 +109,10 @@ src/
   platform/            the Platform interface; web.ts and electron.ts (files, storage, full screen);
                        nothing else touches those browser APIs directly
   model/               pure data and operations (no React, no audio):
-                       - types.ts (Track, Pattern, Step, Note, InstrumentSource…), project.ts
-                       - schema.ts (versions + migrations, now v6), params.ts (knob definitions, toUnit)
+                       - types.ts (Track, Lane, Step, Note, Sound…), project.ts (setMode…)
+                       - tracks.ts (modes and sounds: player, sampleOf, hitNoteOf, canClip…)
+                       - schema.ts (versions + migrations, now v7), params.ts (knob definitions, toUnit)
+                       - fixtures/v6/ (every example and template as schema 6 saved it, gzipped)
                        - synth.ts (patch v2, macros), synthV1.ts (old patches, read only)
                        - patchParams.ts (the synth editor's knob table), randomize.ts
                        - notes, noteOps (piano roll), timing (polyrhythms), tempo, midiFile, effects
@@ -119,7 +127,7 @@ src/
                        - channel.ts (track/bus strips), effects.ts, tone.ts (replacements for two
                          Tone nodes)
                        - transport.ts (lookahead scheduler), ticker.ts (timing worker)
-                       - instruments.ts (voices: synth, sampler, smplr, sf2), synth/ (the
+                       - instruments.ts (voices: synth, sample/multi-sample, smplr, sf2), synth/ (the
                          AudioWorklet synth: core.ts DSP, worklet.ts, node.ts)
                        - kits.ts (808/909 kits synthesized offline), samples.ts (buffers, peaks)
                        - looper, recorder, liveInput, metronome, stretch (Signalsmith), perf
@@ -132,8 +140,8 @@ src/
                        - processing (sample settings), editorOps, renderFx, encode, wav, fft
                        - audition.ts (previews), online kits (onlineKits, onlineImport, sources)
                        - synths.ts (37 factory synths), instruments.ts (catalog), userInstruments.ts
-                         (Your instruments, SoundFonts, multi-samples, preset copies)
-                       - synthTrack.ts (a synth track's patch, macros, editPatch), libraryEdit.ts
+                         (Your sounds, SoundFonts, multi-samples, preset copies)
+                       - synthTrack.ts (a track's synth: patch, macros, editPatch, soundDefs), libraryEdit.ts
                          (editing a library synth without a track), synthFile.ts + rbsynth.ts
                          (.rbsynth files), downloads, drop, sort
   storage/             db.ts (Dexie: projects, samples, blobs, meta, instruments), projects.ts
@@ -203,42 +211,49 @@ About 38k lines of TypeScript, with 31 unit test files next to the code (`*.test
   - content: `tracks: Track[]`, `patterns: Record<id, Pattern>`, `slots: PageSlot[]` (the song
     order: `{ id, patternId, repeats }`)
   - mixing and control: `buses`, `master`, `midiMappings`, `perf` (mute groups, crossfader sides)
-- `Track`:
-  - identity: `{ id, name, kind, category, color, source (display name) }`
-  - sound: `sampleId?` (drum/audio), `instrument?: InstrumentSource` (instrument tracks),
-    `layers?` (audio overdubs)
+- `Track` (a step track, D93):
+  - identity: `{ id, name, mode: "hits" | "notes" | "clip", category, color, source (display name) }`
+  - sound: `sound?: Sound` (none = silent, e.g. an empty Clip track), `hitNote?` (a voice playing
+    hits), `layers?` (Clip overdubs)
   - mix: `mute`, `solo`, `arm`, `volume` (fader position: 0.8 = 0 dB, gain = (pos/0.8)²)
   - `params: Record<string, number>`: every knob value, 0..1, keyed `"sound.<id>"` or
     `"mix.<id>"`
   - `effects: Effect[]`, plus `transpose?` and `arp?`
 - `Pattern`:
   - `{ id, name, stepCount, stepSize, swing?, keyOverride?, transpose?, linkColor }`
-  - `lanes: Record<trackId, Lane>`:
-    - `StepLane { steps: Step[128], stepCountOverride?, stepSizeOverride?, swingOverride? }`
-    - `ClipLane` for audio tracks
+  - `lanes: Record<trackId, Lane>`: `Lane { steps: Step[128], stepCountOverride?,
+stepSizeOverride?, swingOverride?, clip?: { active, launchMode } }`. Every lane has steps;
+    Clip mode reads `clip` (`clipOf(lane)` gives the default), so switching modes keeps both.
 - `Step`:
   - `{ on, velocity, probability, nudge, ratchet, pitch, gate, accent, condition? }`
   - `locks?`: parameter locks, `{ "sound.tune": 0.7, "sound.macro2": 0.9 }`
-  - `notes?: Note[]`: instrument tracks; `{ pitch (MIDI, C4 = 60), length (steps), velocity,
-slide? }`
-- `InstrumentSource`:
-  - `{ source: "synth" | "sampler" | "smplr" | "sf2", preset }`
+  - Hits read `on`, `pitch`, `gate`; Notes read `notes?: Note[]` (`{ pitch (MIDI, C4 = 60),
+length (steps), velocity, slide? }`). A step keeps both.
+- `Sound` (D94): `{ source: "sample" | "synth" | "smplr" | "sf2" | "multi", preset?, patch?, name?,
+from?, sampleId?, rootNote?, zones? }`; `soundFamily(s)` → `sample | synth | instrument`.
   - `patch?`: a synth's own patch; without one, the factory synth `preset` plays
-  - `name?`, `from?` (`"user:<id>"`: the Your instruments entry it belongs to)
-  - `sampleId?`, `rootNote?`, `zones?` (multi-sample)
-- **SOUND knobs** depend on the track kind (`SOUND_PARAMS`): drum, sampler/sampled instrument,
-  audio. **On synth tracks the SOUND knobs are the synth's 8 macros** (`sound.macro1..8`, see
-  §6.2). `library/synthTrack.ts: soundDefs(track, kindDefs)` returns the right set, and every
-  SOUND UI (encoder strip, Inspector, controllers) uses it.
-- **Schema**: `model/schema.ts`, currently `SCHEMA_VERSION = 6`.
+  - `from?` (`"user:<id>"`): the Your sounds entry it belongs to
+- **Which part of the engine plays a track**: `player(track)` (`model/tracks.ts`) → `drum`
+  (hits of a sample), `voice` (notes, and hits of a synth or sampled instrument) or `clip`.
+- **SOUND knobs** follow the player (`SOUND_PARAMS[player]`): drum, voice, clip. **When a track
+  plays a synth, the SOUND knobs are its 8 macros** (`sound.macro1..8`, see §6.2).
+  `library/synthTrack.ts: soundDefs(track)` returns the right set, and every SOUND UI (encoder
+  strip, Inspector, controllers) uses it. Every SOUND id means one thing in every mode (the
+  voices' ADSR decay is `sound.envDecay`), so a track keeps every mode's knobs.
+- **Schema**: `model/schema.ts`, currently `SCHEMA_VERSION = 7`.
   - Every change to the saved shape bumps the version and adds a migration plus a test.
   - `migrate` + `normalizeProject` run on every load.
-  - Migration 5 → 6 converted the old SOUND knobs on synth tracks into patch edits.
+  - Migration 5 → 6 converted the old SOUND knobs on synth tracks into patch edits (it changes
+    those tracks to the version 7 shape early, because `convertSynthKnobs` works on step tracks).
+  - Migration 6 → 7 made step tracks (kinds → modes, sources → sounds, `sound.decay` of voices →
+    `sound.envDecay` in params, locks and MIDI mappings). Saved sounds convert when they're read
+    (`userInstruments.ts: upgradeRecord`).
 - **Example songs** (`templates/examples.ts`) are generated in code, never stored, and open
   read-only (`"example:<id>"`). The first edit forks one into "<name> (copy)"
   (`storage/projects.ts`).
 - **Templates** are written with `templates/builder.ts`:
-  - tracks and pages: `drumTrack`, `synthTrack`, `sampledTrack`, `page`
+  - tracks and pages: `hitsTrack`, `notesTrack` (with `synth(preset)` or `sampled(preset)`),
+    `clipTrack`, `page`
   - content: `drum` (step strings `x X o p r < > c l .`), `notes`, `chord`, `note`
   - `splitLongPages`: pages of at most 32 steps.
 
@@ -248,8 +263,10 @@ slide? }`
 
 - Entry points:
   - `transport.play/stop/toggle`
-  - `engine.trigger(track, velocity, options)`: drums via `playDrum` (one AudioBufferSourceNode
-    per hit, choke groups); instruments via `playNotes` → `InstrumentVoice.play`
+  - `engine.trigger(track, velocity, options)` by `player(track)`: hits of a sample via
+    `playDrum` (one AudioBufferSourceNode per hit, choke groups); notes via `playNotes` →
+    `InstrumentVoice.play`; hits of a voice play one note (`hitNotes`: the hit note plus the
+    step's pitch, for its gate; transposes don't move hits)
   - `engine.holdNote(track, pitch, vel)`: held notes from on-screen keys and MIDI; returns
     `release()`
   - `engine.playOnce(track)`: click a waveform to hear it
@@ -258,8 +275,8 @@ slide? }`
   - A clicked page is queued and starts when the current one ends.
   - The fill button, conditions (`1:2`, `FILL`…), beat repeat and count-in are handled here too.
 - Parameter locks:
-  - On drums they are applied per hit.
-  - On synth tracks, macro locks are sent to the worklet (`WorkletSynth.lockMacros(values, time,
+  - On hits of a sample they are applied per hit.
+  - On tracks that play a synth, macro locks are sent to the worklet (`WorkletSynth.lockMacros(values, time,
 end)`) and released at the note's end, unless a newer lock started.
 
 ### 6.2 The synth (D79–D92; the biggest recent area)
@@ -299,7 +316,8 @@ Helpers:
   - stolen voices continue from their current level
   - a note stack for mono and legato, glide
   - 303 slides (`slideTo`: the previous note's note-off is dropped and the voice glides)
-- `worklet.ts` wraps it as the AudioWorkletProcessor `"rebeat-synth"`, one per synth track.
+- `worklet.ts` wraps it as the AudioWorkletProcessor `"rebeat-synth"`, one per track that plays
+  a synth. Offline processors get a seed and their own seeded Math.random (D98).
 - `node.ts: workletSynth(dest)` is the main-thread side:
   - it queues messages until the node exists
   - methods: `play`, `hold`, `setPatch`, `control` (bend, mod wheel, aftertouch), `lockMacros`,
@@ -326,7 +344,7 @@ Helpers:
 - `editPatch(track, fn, fork = true)` and `setSynthParam(track, path, value)` work inside a
   store recipe.
 - Factory synths never change (D90). The first patch edit forks the track's sound into
-  "<preset> copy" (then "copy 2"…) and links it to a new Your instruments entry with
+  "<preset> copy" (then "copy 2"…) and links it to a new Your sounds entry with
   `copyOf: <presetId>`. Later edits keep that entry up to date (`userInstruments.ts:
 onPatchEdit` hook, debounced `saveSoundSoon`).
 - The conversion of old projects passes `fork = false`.
@@ -360,13 +378,18 @@ onPatchEdit` hook, debounced `saveSoundSoon`).
 
 ### 6.3 Instruments, library and storage
 
-- **Instrument voices** (`engine/instruments.ts`): synth (worklet), keyboard sampler (Tone
-  Sampler, optional zones), smplr (streamed sampled instruments, cached by the service worker),
-  sf2 (SoundFonts via smplr). `createInstrument(track, dest)` builds one.
+- **Instrument voices** (`engine/instruments.ts`): what plays notes, and hits of a synth or
+  sampled instrument. Synth (worklet), a sample or multi-sample across the keyboard (Tone
+  Sampler), smplr (streamed sampled instruments, cached by the service worker), sf2 (SoundFonts
+  via smplr). `createInstrument(track, dest)` builds one from `voiceSound(track)`.
 - **Catalog** (`library/instruments.ts`): built-in synths, about 300 sampled instruments in
-  families, and Your instruments (`userInstruments.ts`: saved sounds, SoundFont imports,
-  multi-samples from folders, preset copies). Dropping an instrument on a track applies its
-  source, SOUND knobs and effects (`trackActions.applyEntry`).
+  families, and Your sounds (`userInstruments.ts`: synth copies, saved track sounds (samples
+  too), SoundFont imports, multi-samples from folders). Dropping a sound on a track applies it,
+  its SOUND knobs and effects, keeping the track's mode where the sound can play it
+  (`trackActions.applyEntry` / `putSound`).
+- **Library panel** locations (D95): All, Favorites, Used in project, Your sounds, Recordings;
+  Instruments (by family); Samples; Kits. Mixed lists get Samples / Synths / Sampled instruments
+  headings (`items.ts: bySection`).
 - **Samples** (`library/library.ts`):
   - content-addressed (SHA-256), deduplicated on import; built-ins have ids `kit:*` and `demo:*`
   - edits are non-destructive settings on the sample, or new versions (`saveVersion`)
@@ -408,8 +431,8 @@ onPatchEdit` hook, debounced `saveSoundSoon`).
 ### 6.5 MIDI, controllers, performance, export
 
 - `audio-io/midi.ts`:
-  - notes play the selected track (drum tracks: note 36 and up are pads 1, 2, 3…) and are
-    recorded like pad hits
+  - notes play the selected Notes track; otherwise note 36 and up play tracks 1, 2, 3… as pads;
+    both are recorded like pad hits
   - CC1 = mod wheel, CC64 = sustain, pitch bend and aftertouch go to the selected synth
   - MIDI learn maps CCs and notes to targets: `track:<id>:sound.x`, `track:<id>:volume`,
     `track:<id>:fx:<fxId>:<param>`, `track:<id>:synth:<path>`, `bus:<id>`, `master:volume`,
@@ -481,13 +504,19 @@ onPatchEdit` hook, debounced `saveSoundSoon`).
   synth voices must call `scopeSettled(scope)` before rendering.
 - **Library previews don't reach the master bus**, so `masterLevel` can't see them; use
   `__rebeat.previews()`.
-- **SOUND params are kind-specific.** Never read `SOUND_PARAMS[track.kind]` for display; use
-  `soundDefs(track, …)`, because synth tracks show macros.
+- **Track kinds are gone** (D93). Ask `track.mode` how it plays and `track.sound` what; use
+  `model/tracks.ts` (`player`, `sampleOf`, `hitNoteOf`, `canClip`, `stepped`) rather than
+  re-deriving. A Clip track's lane still has steps: check the mode (`stepped(project, id)`),
+  not whether the lane has steps.
+- **SOUND params follow the player.** Never read `SOUND_PARAMS[...]` directly for display; use
+  `soundDefs(track)`, because tracks that play a synth show macros.
+- **Old saved data is version 6 or older.** Tests that need it load the fixtures
+  (`model/fixtures/v6.ts`) instead of relabeling today's projects, which are version 7.
 - **A synth's patch** is `trackPatch(track)` / `patchOf(src)` (factory or the track's own,
   upgraded). What it plays is `effectivePatch(track)` (macros at the track's values), and what
   you hear after macros is `applyMacros(effectivePatch(track))`.
 - **Patch edits go through `editPatch`/`setSynthParam`** (macro-aware, fork-aware), never
-  `track.instrument.patch.x = …` directly. Pass `fork = false` only for silent conversions.
+  `track.sound.patch.x = …` directly. Pass `fork = false` only for silent conversions.
 - **The encoder strip's knob values are 0..1 "knob" positions.** Patch values are real units;
   convert with `toKnob`/`fromKnob` (patchParams) or `toUnit` (params).
 - **Python string edits that miss their target fail silently.** An edit helper that raises on a
@@ -513,7 +542,7 @@ likely to need:
 | Samples, library, edits                           | D17–D21, D31, D74         |
 | Effects and mixing                                | D22–D24                   |
 | MIDI and controllers                              | D27, D61, D84             |
-| Instrument tracks and notes                       | D36–D42, D75              |
+| Notes (instrument tracks before D93)              | D36–D42, D75              |
 | UI (panels, themes, encoders, explain mode)       | D29–D30, D49–D58, D71–D72 |
 | Desktop and platform                              | D64–D65                   |
 | Synth: patches, factory, editor, your instruments | D79–D82                   |
@@ -521,7 +550,7 @@ likely to need:
 | Synth: macros, Advanced editor, workflow          | D85–D87                   |
 | Synth: factory voicing, demo songs, slides        | D88–D89                   |
 | Presets vs. copies, library editing               | D90–D91                   |
-| Step tracks: modes, sounds, library, icons, edit  | D93–D97                   |
+| Step tracks: modes, sounds, library, icons, edit  | D93–D98                   |
 
 Feature batches and their acceptance criteria are in PLAN.md §0.6b–§0.6f. Known limitations are
 in §0.7.

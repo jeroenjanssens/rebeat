@@ -177,8 +177,8 @@ const hints: Hints = {
   },
   "dm.track.arm": {
     title: "Record arm",
-    text: "Arm this track for recording. Arm an audio track to record a loop from the microphone; arm an instrument track to record MIDI from pads or a MIDI controller.",
-    guide: "drum-machine-audio-tracks",
+    text: "Arm this track for recording. Arm a Clip track to record a loop from the microphone; arm a Notes track to record notes from the keys or a MIDI controller. Hits record without arming.",
+    guide: "drum-machine-clip-mode",
   },
   "dm.track.fader": {
     title: "Volume",
@@ -200,7 +200,7 @@ const hints: Hints = {
   "dm.track.clip-active": {
     title: "Clip active",
     text: "Turn the audio clip on or off for this page. When off, the clip is silent on this page but keeps playing on pages where it's active.",
-    guide: "drum-machine-audio-tracks",
+    guide: "drum-machine-clip-mode",
   },
   "dm.track.scratch": {
     title: "Scratch strip",
@@ -211,22 +211,22 @@ const hints: Hints = {
     title: "Audio clip",
     text: "The waveform of this track's audio clip. Click it to hear the clip once from the start (click again to stop). Right-click for options: double or halve the clip length, manage overdub layers, merge layers, or clear the clip.",
     keys: "Right-click: clip options",
-    guide: "drum-machine-audio-tracks",
+    guide: "drum-machine-clip-mode",
   },
   "dm.track.clip-launch": {
     title: "Launch mode",
     text: "Loop: the clip loops and restarts at the top of each page. 1-shot: the clip plays once from the start then stops.",
-    guide: "drum-machine-audio-tracks",
+    guide: "drum-machine-clip-mode",
   },
   "dm.display.mode": {
     title: "Play as",
     text: "How the selected step track plays: Hits (one hit per step), Notes (notes and chords) or Clip (its sample across the page; samples only). Switching keeps the steps, the notes and the clip, so you can switch back.",
-    guide: "drum-machine-tracks",
+    guide: "drum-machine-step-tracks",
   },
   "dm.track.add": {
     title: "Add a step track",
     text: "Add a step track that plays Hits (a drum sound on each step), Notes (a synth for melodies and chords) or a Clip (record a loop or drop audio). You can change its sound and its mode later. Dropping sounds here adds step tracks too.",
-    guide: "drum-machine-tracks",
+    guide: "drum-machine-step-tracks",
   },
 
   // ─────────────────────────────────── Step pads ─────────────────────────────────────
@@ -355,7 +355,7 @@ const hints: Hints = {
   // ─────────────────────────────────── Pad view ──────────────────────────────────────
   "dm.pads.keyboard": {
     title: "Keyboard play",
-    text: "Play pads with the computer keyboard. Drum tracks: Z X C V / A S D F / Q W E R / 1 2 3 4. Instrument tracks: A W S E D F … is a piano layout; Z and X shift the octave.",
+    text: "Play pads with the computer keyboard. Hits: Z X C V / A S D F / Q W E R / 1 2 3 4, one pad per track. Notes: A W S E D F … is a piano layout; Z and X shift the octave.",
     guide: "pad-view",
   },
   "dm.pads.drum-pad": {
@@ -450,13 +450,13 @@ const hints: Hints = {
     guide: "sample-editor",
   },
   "dm.track.savesound": {
-    title: "Save sound to library",
-    text: "Store this track's sound (synth, sampler or instrument, with its SOUND knobs and effects) under Your sounds, to use it on other tracks and in other projects.",
+    title: "Save to Your sounds",
+    text: "Store this track's sound (a sample, a synth or a sampled instrument, with its SOUND knobs and effects) under Your sounds, to use it on other tracks and in other projects.",
     guide: "instruments-the-synth-editor",
   },
   "dm.sound.kind": {
-    title: "Kind of sound",
-    text: "Instrument tracks can play a built-in synth, one of your samples across the keyboard (Sampler), or a sampled instrument such as a grand piano or strings (streamed the first time you use it).",
+    title: "Sample, synth or sampled instrument",
+    text: "What makes the sound: a Sample (one audio file), a Synth (a factory synth or your own), or a Sampled instrument such as a grand piano or strings (streamed the first time you use it). The track keeps playing hits or notes.",
     guide: "instruments-sound-sources",
   },
   "dm.sound.search": {
@@ -466,7 +466,7 @@ const hints: Hints = {
   },
   "dm.sound.list": {
     title: "Replace the sound",
-    text: "Click a sound to play it on this track instead: a sample, or on instrument tracks a synth preset or sampled instrument. The track keeps its steps, effects and settings; undo brings the old sound back.",
+    text: "Click a sound to play it on this track instead: a sample, a synth or a sampled instrument. The track keeps its steps, effects and settings; undo brings the old sound back.",
     guide: "drum-machine-tracks",
   },
 };

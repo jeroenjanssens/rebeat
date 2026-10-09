@@ -1,22 +1,26 @@
-# Instrument tracks and the piano roll {#instruments}
+# Sounds, notes and the piano roll {#instruments}
 
-**Instrument tracks** play notes: basslines, chords, melodies. In the drum machine, each step shows its note (C2, E♭3…) or chord (Cm, A♭…), and long notes join neighboring pads.
+A [step track](#drum-machine-step-tracks) in **Notes** mode plays notes: basslines, chords, melodies. In the drum machine, each step shows its note (C2, E♭3…) or chord (Cm, A♭…), and long notes join neighboring pads.
 
-## Sound sources
+## Sounds {#instruments-sound-sources}
 
-A new instrument track plays a built-in synth: **Mono · Acid Bass** for bass tracks, **Poly · Warm Pad** otherwise. The drum machine's display shows what a track plays. Choose another sound by **right-clicking the track's name** (under **Sound**: Synth, Sampler or Instrument, with a searchable list), or in the [Inspector](panel:inspector) under **Instrument**, which also has the sampler's root note:
+A new Notes track plays a built-in synth: **Mono · Acid Bass** for bass tracks, **Poly · Warm Pad** otherwise. The drum machine's display shows what a track plays. Choose another sound by **right-clicking the track's name** (under **Sound**: Sample, Synth or Sampled instrument, with a searchable list), or in the [Inspector](panel:inspector)'s **Sound** section, which also has a sample's root note:
 
-| Source         | What it is                                                                                                                                                                                                                                                                                                                         |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Synth**      | 37 built-in synths in the style of well-known songs and synths: basses (303 acid, Moroder, Reese, Moog, 808, wobble…), leads (Axel F, Cars, Oxygène, chiptune, supersaw, hoover, theremin), pads, keys, plucks and stabs, and effects.                                                                                             |
-| **Sampler**    | Plays any sample across the keyboard. Drop a sample on it (or on the track) and set the **Root note**: the note the sample was recorded at.                                                                                                                                                                                        |
-| **Instrument** | About 300 sampled instruments: a grand piano and electric pianos, all 128 General MIDI instruments, mallets, orchestral and folk instruments from the Versilian Community Sample Library, and a double bass. They download the first time you use them (the status says "Loading samples…" until then) and are kept for next time. |
+| Sound                  | What it is                                                                                                                                                                                                                                                                                                                                                                     |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Sample**             | Any sample, played across the keyboard. Set its **Root note**: the note it was recorded at, so every key plays the right note.                                                                                                                                                                                                                                                 |
+| **Synth**              | 37 built-in synths in the style of well-known songs and synths: basses (303 acid, Moroder, Reese, Moog, 808, wobble…), leads (Axel F, Cars, Oxygène, chiptune, supersaw, hoover, theremin), pads, keys, plucks and stabs, and effects. Shape them in the synth editor.                                                                                                         |
+| **Sampled instrument** | About 300 sampled instruments: a grand piano and electric pianos, all 128 General MIDI instruments, mallets, orchestral and folk instruments from the Versilian Community Sample Library, and a double bass, plus your own SoundFonts and multi-samples. They download the first time you use them (the status says "Loading samples…" until then) and are kept for next time. |
+
+A synth or sampled instrument can also play **Hits**: one note per step, at the track's **hit note** (in the Inspector) plus the step's pitch, as long as the step's **Gate**. That's how you make drums with a synth: a kick with a pitch envelope, a snare of noise, a zap.
+
+Projects from before step tracks open the way they sounded: drum tracks play hits, instrument tracks play notes, audio tracks play their clip, and a keyboard sampler is a sample playing notes.
 
 **Transpose** moves all notes of the track up or down. The **Arpeggiator** plays the notes of a chord one after another: choose the order (Up, Down, Up/down, Random, Played), the rate, the number of octaves and the **Gate** (how long each note sounds).
 
 ## The synth editor
 
-The **synth editor** shapes the synth of an instrument track. Open it with **Edit synth…** in the Inspector, right-click the track's name → **Edit synth…**, Each synth track gets its own editor tab (named after the track), so you can have several open side by side or as tabs. Double-clicking a synth in the library opens the library sound itself, without a track: you play it through the preview, a synth of yours is saved as you go, and a factory synth becomes your own copy on the first change. (There, undo is the editor's own, and MIDI learn and the scopes need a track.)
+The **synth editor** shapes the synth of a step track. Open it with **Edit synth…** in the Inspector, or right-click the track's name → **Edit sound…**. Each track that plays a synth gets its own editor tab (named after the track), so you can have several open side by side or as tabs. Double-clicking a synth in the library opens the library sound itself, without a track: you play it through the preview, a synth of yours is saved as you go, and a factory synth becomes your own copy on the first change. (There, undo is the editor's own, and MIDI learn and the scopes need a track.)
 
 It has two views (switch at the top right; it remembers the one you used last):
 
@@ -50,30 +54,30 @@ To try things out:
 - **A / B** (top right) keeps two versions of the sound: B starts as a copy of A; switch to B, change things, and flip between them to compare. The track plays the side you leave it on.
 - **⋯ → Init patch** starts from a plain saw; **⋯ → Randomize** moves every knob a random distance (**Amount**), in the sections you leave on (the output level and tuning never change). Undo takes it back.
 - The **copy** button on an oscillator, filter, envelope or LFO copies its settings; **paste** appears on the others of its kind.
-- **⋯ → Export .rbsynth…** saves the synth (with its macros and effects) as a file to share; **⋯ → Import .rbsynth…** adds one to Your instruments and puts it on the track. Dropping a `.rbsynth` file on the library imports it too.
+- **⋯ → Export .rbsynth…** saves the synth (with its macros and effects) as a file to share; **⋯ → Import .rbsynth…** adds one to Your sounds and puts it on the track. Dropping a `.rbsynth` file on the library imports it too.
 
-Factory synths never change: your first edit turns the track's sound into your own copy, "Reese Bass copy" (copy 2, 3… for more), which also appears in **Your instruments** and keeps up with your edits there. The revert button takes the track back to the factory synth (the copy stays in Your instruments). **Save to library** stores the synth with the track's SOUND knobs and effects under **Your instruments** in the library; drop it on any track, in any project. Right-click any instrument track → **Save sound** does the same for samplers and sampled instruments.
+Factory synths never change: your first edit turns the track's sound into your own copy, "Reese Bass copy" (copy 2, 3… for more), which also appears in **Your sounds** and keeps up with your edits there. The revert button takes the track back to the factory synth (the copy stays in Your sounds). **Save to library** stores the synth with the track's SOUND knobs and effects under **Your sounds** in the library; drop it on any track, in any project. Right-click any step track → **Save to Your sounds** does the same for samples and sampled instruments.
 
 ### Macros
 
-A **macro** is one knob that moves several settings at once: **Brightness** opens the filters, **Bite** adds resonance and filter envelope, **Attack** and **Release** lengthen the envelopes, **Movement** brings in an LFO, and so on. Every synth has 8, and on a synth track they are its eight **SOUND knobs**: in the drum machine's encoders, the Inspector, the editor's Basic view and on a controller. Lock them per step (select steps, then turn a SOUND knob) to change the sound from note to note, or map them to MIDI.
+A **macro** is one knob that moves several settings at once: **Brightness** opens the filters, **Bite** adds resonance and filter envelope, **Attack** and **Release** lengthen the envelopes, **Movement** brings in an LFO, and so on. Every synth has 8, and on a track that plays a synth they are its eight **SOUND knobs**: in the drum machine's encoders, the Inspector, the editor's Basic view and on a controller. Lock them per step (select steps, then turn a SOUND knob) to change the sound from note to note, or map them to MIDI.
 
 Every synth starts with macros that suit it, resting where they leave its sound as it is. Some factory synths have their own: the Acid Bass's **Cutoff**, **Resonance**, **Env mod** and **Decay**, the 808 Boom's **Punch** (its pitch drop), the Numan Lead's **Sync** (the sweep of its synced oscillator), the Juno Strings' **PWM** and the Wobble Bass's **Wobble**. In **Advanced → Macros**, rename them and choose what they move: up to 4 **targets** each, with the value at 0 (**At 0**) and at 1 (**At 1**). Frequencies and times move evenly in octaves. A new target starts around the value you hear now, so adding it doesn't change the sound; and when you turn a knob that a macro moves, the macro's range follows, so the knob still works. The track keeps where its macros are; **Save to library** saves that too.
 
-Projects from before the macros keep their sound: moved SOUND knobs on synth tracks (envelope, glide, detune and the filter) were turned into edits of the track's synth when the project was first opened.
+Projects from before the macros keep their sound: moved SOUND knobs on tracks that play a synth (envelope, glide, detune and the filter) were turned into edits of the track's synth when the project was first opened.
 
 ## Entering notes
 
 - In the grid: click a pad to add a note, then set its pitch with the **Note** encoder (Step bank) and its length with **Length**.
 - From the [pad view](#pad-view): note pads in the current key, or the computer keyboard as a piano, with step entry and live recording.
-- From a MIDI keyboard: notes play the selected instrument track and are recorded like pad hits.
+- From a MIDI keyboard: notes play the selected Notes track and are recorded like pad hits.
 - **Scale lock** and **chord mode** (in the pad view) keep what you play in the key.
 
 The **key** (header bar) decides which notes are "in key" and whether notes are written with flats or sharps (E♭ in C minor, D♯ in E major).
 
 ## The piano roll
 
-The [Piano roll](panel:piano-roll) edits the notes of the selected instrument track on the page you're editing. Pitches run from top (high) to bottom (low), steps from left to right; out-of-key rows are darker and the root row is highlighted.
+The [Piano roll](panel:piano-roll) edits the notes of the selected Notes track on the page you're editing. Pitches run from top (high) to bottom (low), steps from left to right; out-of-key rows are darker and the root row is highlighted.
 
 | Do this                                              | To                                                                                        |
 | ---------------------------------------------------- | ----------------------------------------------------------------------------------------- |

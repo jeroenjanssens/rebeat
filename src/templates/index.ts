@@ -107,7 +107,12 @@ function loopStation(): Project {
 }
 
 export const TEMPLATES: Template[] = [
-  { id: "empty", name: "Empty", description: "Four drum tracks, one page", create: empty },
+  {
+    id: "empty",
+    name: "Empty",
+    description: "Four step tracks of drum hits, one page",
+    create: empty,
+  },
   {
     id: "808",
     name: "808 starter",
@@ -117,7 +122,7 @@ export const TEMPLATES: Template[] = [
   {
     id: "loops",
     name: "Loop station",
-    description: "A beat and three audio tracks for live loops",
+    description: "A beat and three Clip tracks for live loops",
     create: loopStation,
   },
 ];

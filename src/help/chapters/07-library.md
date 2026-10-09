@@ -1,6 +1,6 @@
 # The library {#library}
 
-The [Library](panel:library) holds your samples. It's shared by all projects: a sample you import once can be used everywhere.
+The [Library](panel:library) holds everything a step track can play: **samples** (one-shots and loops), **synths** and **sampled instruments**, plus the **kits** and **Your sounds**. It's shared by all projects: a sample you import once can be used everywhere.
 
 ## Importing
 
@@ -16,23 +16,28 @@ Importing the same file twice doesn't make a duplicate. Loops get their **tempo*
 ## Finding sounds
 
 - **Search** looks in names, folders and tags.
-- **Filter**: loops (with a tempo) or one-shots, short / medium / long, and tags.
+- **Filter**: synths, sampled instruments, one-shots or loops (with a tempo); short / medium / long; tags.
 - **Sort**: by name, duration or date added, each in either direction (A → Z or Z → A, shortest or longest first, newest or oldest first). The button shows the current order, e.g. **Name ↑**; it applies to every view, the built-in kits included.
-- The list on the left (or the menu at the top in a narrow library): **All samples**, **Favorites**, **Used in project**, **Recordings**, your folders, the built-in **909** and **808 kits**, and **Online kits**. **Used in project** shows every sample the tracks play, built-in kit sounds included.
+- The list on the left (or the menu at the top in a narrow library), by what you're looking for:
+  - **All** (your samples and Your sounds; a search here looks through everything, kits and instruments too), **Favorites**, **Used in project**, **Your sounds** and **Recordings**;
+  - **Instruments**: Synths, Pianos & keys, Orchestral, Mallets, Double bass and General MIDI;
+  - **Samples**: All samples and your folders;
+  - **Kits**: the built-in **909** and **808 kits**, and **Online kits**.
+- Lists that mix them show **Samples**, **Synths** and **Sampled instruments** under their own headings. **Used in project** lists everything the tracks play, built-in kit sounds included.
 
 A dot next to a sample means it's used in the open project. Selecting a track shows its sample in the library.
 
 ## Listening
 
-**Click** a sample to hear it. Use ↑ ↓ to go through the list while listening, Space to play the selected one again, Enter to add it as a new track, Esc to stop. The slider at the bottom sets the preview volume; **Sync** plays loops at the song tempo, starting on the beat.
+**Click** a sample to hear it. Use ↑ ↓ to go through the list while listening, Space to play the selected one again, Enter to add it as a new step track, Esc to stop. The slider at the bottom sets the preview volume; **Sync** plays loops at the song tempo, starting on the beat.
 
 ## Using samples
 
-- **Drag** a sample onto a track to replace its sound, or onto the drop zone under the tracks for a new track. Loops become audio tracks; one-shots drum tracks.
+- **Drag** a sample onto a step track to replace its sound (the track keeps playing hits, notes or a clip), or onto the drop zone under the tracks for a new one: loops play as a clip, one-shots as hits.
 - **Right-click** a sample for: Audition, Add as new track, Use on (the selected track), Open in sample editor, **Export…**, Add to favorites, Rename, Tags, Folder, which tracks use it, and Delete.
 - **Double-click** a sample to open it in the [sample editor](#sample-editor) (or right-click → **Open in sample editor**). Built-in sounds can't change, so Rebeat edits a copy in your library.
 - A double-click opens without previewing (a single click previews, a moment later).
-- **Double-click** an instrument to open it in its editor (or right-click → **Open in …**), without adding a track: a synth in the [synth editor](#instruments-the-synth-editor), where you shape the library sound itself (it plays through the preview; a synth of yours is saved as you go, a factory synth becomes your own copy on the first change), and a single-sample sampler in the sample editor. Sampled instruments have no editor of their own: put one on a track and shape it with the SOUND knobs in the Inspector.
+- **Double-click** an instrument to open it in its editor (or right-click → **Open in …**), without adding a track: a synth in the [synth editor](#instruments-the-synth-editor), where you shape the library sound itself (it plays through the preview; a synth of yours is saved as you go, a factory synth becomes your own copy on the first change), and a saved sample sound in the sample editor. Sampled instruments have no editor of their own: put one on a track and shape it with the SOUND knobs in the Inspector.
 - **Export…** saves a sample as a file: as heard (with the sample editor's settings) in WAV, MP3 or OGG, or the original file as it was imported.
 - Drag a sample onto a folder on the left to move it there.
 
@@ -52,22 +57,22 @@ Check the sounds' licensing before you publish music made with them.
 
 ## Instruments
 
-The library also holds everything an **instrument track** can play, under **Instruments** in the list on the left:
+Under **Instruments** in the list on the left are the synths and sampled instruments, and under **Your sounds** what you made:
 
 - **Synths**: 37 built-in synths in the style of well-known songs and synths, grouped Bass, Leads, Pads, Keys, Plucks & stabs and FX. Hover over one to see what it's in the style of.
 - **Pianos & keys**, **General MIDI** (all 128 GM sounds), **Mallets**, **Orchestral** (the Versilian Community Sample Library) and **Double bass**: sampled instruments. They download the first time you play one (a small cloud shows the ones that haven't been yet) and are kept after that. Right-click → **Make available offline** downloads one right away. The line at the top shows where the samples come from and their license.
-- **Your instruments**: synths and sounds you save, and instruments you bring:
-  - **SoundFonts**: import a `.sf2` file like a sample (the import button, or drop it on the library). Each instrument inside it becomes one of your instruments.
-  - **Synth files**: a `.rbsynth` file (exported from the [synth editor](#instruments-the-synth-editor)) imports the same way, as one of your instruments, with its macros and effects.
-  - **Multi-sample instruments**: right-click a sample → **Make instrument from "folder"** turns the samples of its folder into one instrument, each at the note in its file name ("Piano C4.wav"); without notes in the names, they're laid out a semitone apart from C3. Every note plays from the nearest sample.
-  - **Pitched sounds in a strudel.json** (a sound that maps notes to files) show as instruments in Online kits: **Add instrument** downloads them as a multi-sample instrument.
+- **Your sounds**: synths you shaped, sounds you saved from a track (**Save to Your sounds**: a sample, a synth or a sampled instrument, with its SOUND knobs and effects), and instruments you bring:
+  - **SoundFonts**: import a `.sf2` file like a sample (the import button, or drop it on the library). Each instrument inside it becomes one of Your sounds.
+  - **Synth files**: a `.rbsynth` file (exported from the [synth editor](#instruments-the-synth-editor)) imports the same way, with its macros and effects.
+  - **Multi-samples**: right-click a sample → **Make instrument from "folder"** turns the samples of its folder into one sampled instrument, each at the note in its file name ("Piano C4.wav"); without notes in the names, they're laid out a semitone apart from C3. Every note plays from the nearest sample.
+  - **Pitched sounds in a strudel.json** (a sound that maps notes to files) show as instruments in Online kits: **Add instrument** downloads them as a multi-sample.
 
 Working with instruments:
 
 - **Click** one to hear a short phrase. While it's selected, the keys **A** to **L** play it like a piano (**W E T Y U O** are the black keys); **Z** and **X** move an octave down or up (selecting another sound starts at its own octave again).
-- **Drag** it onto an instrument track to play it there, onto a drum or audio track to turn that track into an instrument track, or below the tracks for a new one. **Enter** adds it as a new track too.
+- **Drag** it onto a step track to play it there (a track of hits keeps playing hits, at its hit note; a Clip track switches to Notes), or below the tracks for a new Notes track. **Enter** adds it as a new track too.
 - The heart adds it to **Favorites**; **Used in project** lists the instruments your tracks play.
-- Searching in **All samples** finds instruments as well; the filter's **Instruments** type shows only them.
+- Searching in **All** finds instruments as well; the filter's **Synths** and **Sampled instruments** types show only them.
 
 ## Recording into the library
 

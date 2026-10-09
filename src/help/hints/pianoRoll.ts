@@ -35,7 +35,7 @@ const hints: Hints = {
   },
   "roll.trackPick": {
     title: "Select track",
-    text: "Switch the piano roll to edit this instrument track.",
+    text: "Switch the piano roll to edit this Notes track.",
     guide: "instruments-the-piano-roll",
   },
   // ── Piano keys ────────────────────────────────────────────────────────────

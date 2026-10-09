@@ -42,7 +42,7 @@ const hints: Hints = {
   "inspector.mode": {
     title: "Play as",
     text: "How this step track plays its sound. Hits: one hit per step at the step's pitch (drums, but a synth can play hits too). Notes: notes and chords, with the piano roll and the arpeggiator. Clip: its sample across the page, for loops and recordings (samples only). Switching keeps everything, so you can switch back.",
-    guide: "instruments-sound-sources",
+    guide: "drum-machine-step-tracks",
   },
   "inspector.sound.family": {
     title: "Sound",
@@ -69,15 +69,9 @@ const hints: Hints = {
     text: "Chooses a sampled instrument: piano, electric pianos, strings, choir, guitar, bass, flute and more. Samples are downloaded the first time you use each one.",
     guide: "instruments-sound-sources",
   },
-  "inspector.instrument.sampler.drop": {
-    title: "Sampler",
-    text: "Drop a sample here to play it across the full keyboard range. Set the Root note to match the original pitch of the sample; click the waveform to hear it at that note.",
-    keys: "Drop: load sample",
-    guide: "instruments-sound-sources",
-  },
   "inspector.instrument.sampler.rootnote": {
     title: "Root note",
-    text: "The pitch the sample was recorded at. Set it correctly so the sampler plays it at the right pitch when you hit the matching key.",
+    text: "The note that plays the sample at its own pitch in Notes mode. Set it to the pitch it was recorded at, so every key plays the right note.",
     guide: "instruments-sound-sources",
   },
   "inspector.instrument.transpose": {

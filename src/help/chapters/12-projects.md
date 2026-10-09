@@ -6,7 +6,7 @@ Everything you do is **saved automatically** in your browser, a moment after eac
 
 The [project browser](command:project.home) ({{key:project.home}}, or click the project name):
 
-- **New project**: start from **Empty** (four drum tracks), **808 starter** (an 808 kit with a groove and a break) or **Loop station** (a beat and three audio tracks).
+- **New project**: start from **Empty** (four step tracks of drum hits), **808 starter** (an 808 kit with a groove and a break) or **Loop station** (a beat and three Clip tracks).
 - **Examples**: the demo and the classics. Changing an example makes a copy in your projects.
 - **Your projects**: click to open; double-click the name to rename; the buttons duplicate, export and delete (right-click works too).
 - **Import .rebeat**: open a project file (or drop it on the browser).
@@ -28,7 +28,7 @@ The [project browser](command:project.home) ({{key:project.home}}, or click the 
 | **Stems**                          | One file per track, in a zip.                                                                                  |
 | **Export WAV / MP3 / OGG**         | Render and save. Rendering is faster than real time.                                                           |
 | **Export MIDI**                    | The notes and drum hits as a MIDI file, with a track per instrument (drums on channel 10, General MIDI notes). |
-| **Resample to library / to track** | Render into a new sample (in Recordings), or straight into a new audio track.                                  |
+| **Resample to library / to track** | Render into a new sample (in Recordings), or straight into a new Clip track.                                   |
 
 Sampled instruments (piano, strings…) are included: one that hasn't been downloaded yet is downloaded before rendering (so the first export needs an internet connection; **Make available offline** in the library downloads it ahead of time).
 

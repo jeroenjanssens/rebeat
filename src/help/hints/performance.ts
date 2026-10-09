@@ -34,12 +34,12 @@ const hints: Hints = {
   // ── Scratch ───────────────────────────────────────────────────────────────
   "perf.scratch.track": {
     title: "Scratch track",
-    text: "Choose which audio track to scratch. The track must have a sample loaded.",
+    text: "Choose which Clip track to scratch. The track must have a sample loaded.",
     guide: "performance-the-performance-panel",
   },
   "perf.scratch.platter": {
     title: "Platter",
-    text: "Drag around the platter to scratch the audio track. The record spins at normal speed when not touched. Right-click to map a MIDI jog wheel.",
+    text: "Drag around the platter to scratch the Clip track. The record spins at normal speed when not touched. Right-click to map a MIDI jog wheel.",
     keys: "Drag: scratch · Right-click: MIDI learn jog wheel",
     guide: "performance-the-performance-panel",
   },

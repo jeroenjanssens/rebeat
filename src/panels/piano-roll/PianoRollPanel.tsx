@@ -62,7 +62,9 @@ export function PianoRollPanel() {
     const instruments = tracks.filter((t) => t.mode === "notes");
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
-        <div className="text-[12px] text-faint">Select an instrument track to edit its notes.</div>
+        <div className="text-[12px] text-faint">
+          Select a step track that plays notes to edit them.
+        </div>
         <div className="flex flex-wrap justify-center gap-1.5">
           {instruments.map((t) => (
             <button

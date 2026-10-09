@@ -263,7 +263,7 @@ export function TransportBar() {
         data-lit={recording}
         style={recording ? { color: "#ef4444", borderColor: "#ef4444" } : undefined}
         onClick={() => setUi({ recording: !recording })}
-        title="Record (R): live pad recording and armed audio tracks"
+        title="Record (R): live pad recording and armed Clip tracks"
         data-hint="transport.record"
       >
         <Circle size={11} fill={recording ? "currentColor" : "none"} />

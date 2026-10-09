@@ -16,7 +16,7 @@ const hints: Hints = {
   },
   "transport.record": {
     title: "Record",
-    text: "While playing, pads you hit are written into the pattern. With an armed audio track it records a loop. Press again to stop recording.",
+    text: "While playing, pads you hit are written into the pattern. With an armed Clip track it records a loop. Press again to stop recording.",
     command: "transport.record",
     guide: "transport-bar",
   },
@@ -256,7 +256,7 @@ const hints: Hints = {
   },
   "app.export.resampletrack": {
     title: "Resample to track",
-    text: "Renders and immediately adds the result as a new audio track in the project.",
+    text: "Renders and immediately adds the result as a new Clip track in the project.",
     guide: "projects-exporting-audio-and-midi",
   },
 
@@ -361,7 +361,7 @@ const hints: Hints = {
   },
   "app.settings.monitor": {
     title: "Monitor while armed",
-    text: "Hear the input through armed audio tracks while recording. Turn this off if your audio interface already monitors the input directly.",
+    text: "Hear the input through armed Clip tracks while recording. Turn this off if your audio interface already monitors the input directly.",
     guide: "loop-station-monitoring-and-latency",
   },
   "app.settings.speakermode": {
@@ -403,7 +403,7 @@ const hints: Hints = {
   },
   "app.midi.input": {
     title: "MIDI input",
-    text: "Enable or disable individual MIDI input devices. Enabled inputs send notes to the selected instrument track.",
+    text: "Enable or disable individual MIDI input devices. Enabled inputs send notes to the selected Notes track, or hits to step tracks 1, 2, 3… from note 36 up.",
     guide: "performance-midi",
   },
   "app.midi.connect": {

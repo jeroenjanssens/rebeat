@@ -56,7 +56,7 @@ const hints: Hints = {
   },
   "library.kit.load": {
     title: "Load kit as tracks",
-    text: "Adds all sounds of this kit as new drum tracks in one go. Each sound becomes its own track.",
+    text: "Adds all sounds of this kit as new step tracks in one go, each playing hits of one sound.",
     guide: "library-kits",
   },
 
@@ -111,7 +111,7 @@ const hints: Hints = {
   },
   "library.instrument": {
     title: "Instrument",
-    text: "A synth or sampled instrument. Click to hear a short phrase; with it selected, the A–L keys play it like a piano (Z and X change the octave). Drag it onto a track to play it there: drum and audio tracks become instrument tracks. Double-click to open it in its editor, without adding a track: a synth in the synth editor (a factory synth becomes your own copy on the first change). Selecting another instrument starts the keys at its own octave again.",
+    text: "A synth or sampled instrument. Click to hear a short phrase; with it selected, the A–L keys play it like a piano (Z and X change the octave). Drag it onto a step track to play it there (it keeps playing hits or notes; a Clip track switches to Notes). Double-click to open it in its editor, without adding a track: a synth in the synth editor (a factory synth becomes your own copy on the first change). Selecting another sound starts the keys at its own octave again.",
     keys: "Enter: new track · Double-click: open in editor · Right-click: favorites, offline, source and license",
     guide: "library",
   },

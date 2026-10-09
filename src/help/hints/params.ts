@@ -65,7 +65,7 @@ const hints: Hints = {
 
   "param.sound.macro": {
     title: "Macro",
-    text: "On synth tracks the SOUND knobs are the synth's 8 macros: each moves a few of its settings at once (Brightness, Bite, Attack…). Name them and choose what they move in the synth editor (Advanced → Macros). Lock them per step and map them to MIDI like any knob.",
+    text: "When a step track plays a synth, its SOUND knobs are the synth's 8 macros: each moves a few of its settings at once (Brightness, Bite, Attack…). Name them and choose what they move in the synth editor (Advanced → Macros). Lock them per step and map them to MIDI like any knob.",
     keys: "Drag or scroll · Shift = fine · Double-click = reset · Right-click: MIDI learn",
     guide: "instruments-macros",
   },
@@ -106,31 +106,31 @@ const hints: Hints = {
     guide: "instruments-sound-sources",
   },
 
-  // ─── Sound params (audio track, additional / different meanings) ──────────
+  // ─── Sound params (Clip mode, additional / different meanings) ────────────
 
   "param.sound.pitch": {
     title: "Pitch",
     text: "Transposes the audio clip up or down by up to ±12 semitones without changing the tempo.",
     keys: "Drag or scroll · Shift = fine · Double-click = reset · Right-click: MIDI learn",
-    guide: "drum-machine-audio-tracks",
+    guide: "drum-machine-clip-mode",
   },
   "param.sound.warp": {
     title: "Warp",
     text: "When on, time-stretches the loop to match the song tempo so it stays in sync as you change the BPM.",
     keys: "Drag or scroll · Shift = fine · Double-click = reset · Right-click: MIDI learn",
-    guide: "drum-machine-audio-tracks",
+    guide: "drum-machine-clip-mode",
   },
   "param.sound.fadein": {
     title: "Fade in",
     text: "Volume ramp at the very start of the clip. Avoids clicks and softens the entry.",
     keys: "Drag or scroll · Shift = fine · Double-click = reset · Right-click: MIDI learn",
-    guide: "drum-machine-audio-tracks",
+    guide: "drum-machine-clip-mode",
   },
   "param.sound.fadeout": {
     title: "Fade out",
     text: "Volume ramp at the very end of the clip. Smooths out a hard stop.",
     keys: "Drag or scroll · Shift = fine · Double-click = reset · Right-click: MIDI learn",
-    guide: "drum-machine-audio-tracks",
+    guide: "drum-machine-clip-mode",
   },
 
   // ─── Mix params ───────────────────────────────────────────────────────────
@@ -214,19 +214,19 @@ const hints: Hints = {
   },
   "param.step.note": {
     title: "Note",
-    text: "The pitch of this step on an instrument track, from C2 to C7. Use the Note encoder to set melodic lines directly in the grid.",
+    text: "The note of this step in Notes mode, from C2 to C7. Use the Note encoder to set melodic lines directly in the grid.",
     keys: "Drag or scroll · Shift = fine · Double-click = reset",
     guide: "instruments-entering-notes",
   },
   "param.step.pitch": {
     title: "Pitch",
-    text: "Fine pitch offset for this step on a drum or audio track (±12 semitones). Useful for pitch-glide effects across steps.",
+    text: "The pitch of this hit in Hits mode (±12 semitones), from the sample's own pitch or the track's hit note. Useful for pitched drums and pitch-glide effects across steps.",
     keys: "Drag or scroll · Shift = fine · Double-click = reset",
     guide: "drum-machine-parameter-locks",
   },
   "param.step.length": {
     title: "Length",
-    text: "How many steps this note holds on an instrument track (1–16). Longer lengths create tied or legato notes.",
+    text: "How many steps this note holds in Notes mode (1–16). Longer lengths create tied or legato notes.",
     keys: "Drag or scroll · Shift = fine · Double-click = reset",
     guide: "instruments-entering-notes",
   },

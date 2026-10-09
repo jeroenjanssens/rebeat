@@ -4,19 +4,19 @@ The [drum machine](panel:drum-machine) is where you make patterns. From top to b
 
 ## The header bar
 
-| Control                      | What it does                                                                                                                                                                                                                                                                                                                                             |
-| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Grid / Pads**              | Switch between the track grid and the [pad view](#pad-view) ({{key:dm.view}}).                                                                                                                                                                                                                                                                           |
-| Page number and name         | The page you're editing. Click the name to rename it.                                                                                                                                                                                                                                                                                                    |
-| **Steps**                    | How many steps the page has: 8, 12, 16, 24, 32, 48, 64, or any number from 1 to 128 (type it under **Custom**). Fewer steps hide the steps at the end without deleting them, so you can grow the page again.                                                                                                                                             |
-| **Size**                     | The length of one step: 1/4, 1/8, 1/8T, 1/16 (default), 1/16T or 1/32. Steps × size is the page length.                                                                                                                                                                                                                                                  |
-| **Swing**                    | The page's own swing. It follows the song's swing until you change it (the label then reads **Swing·P**); double-click to follow the song's swing again.                                                                                                                                                                                                 |
-| **Key**                      | The key and scale used for note names, the note pads and scale lock: pick the root and scale. **Own key for this page** gives just this page a different key.                                                                                                                                                                                            |
-| Pencil / eraser / dashed box | The **Draw** ({{key:dm.draw}}), **Erase** ({{key:dm.erase}}) and **Select** ({{key:dm.select}}) tools for the pads.                                                                                                                                                                                                                                      |
-| **Q**                        | Quantize for live recording (the same setting as in the transport bar).                                                                                                                                                                                                                                                                                  |
-| − 100% +                     | Zoom the pads in and out (or Ctrl/Cmd + scroll over the pads).                                                                                                                                                                                                                                                                                           |
-| **Follow**                   | When on, the drum machine shows the page that's playing. Turn it off to edit another page while the song plays.                                                                                                                                                                                                                                          |
-| Lanes button                 | Show **velocity**, **probability** and **nudge** lanes under the selected track. Drag over their bars to set the values of the steps that are on; double-click a bar to reset it (velocity 80%, probability 100%, nudge 0), Alt+double-click to reset the whole lane. On instrument tracks, velocity is the notes' velocity (a chord keeps its balance). |
+| Control                      | What it does                                                                                                                                                                                                                                                                                                                                        |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Grid / Pads**              | Switch between the track grid and the [pad view](#pad-view) ({{key:dm.view}}).                                                                                                                                                                                                                                                                      |
+| Page number and name         | The page you're editing. Click the name to rename it.                                                                                                                                                                                                                                                                                               |
+| **Steps**                    | How many steps the page has: 8, 12, 16, 24, 32, 48, 64, or any number from 1 to 128 (type it under **Custom**). Fewer steps hide the steps at the end without deleting them, so you can grow the page again.                                                                                                                                        |
+| **Size**                     | The length of one step: 1/4, 1/8, 1/8T, 1/16 (default), 1/16T or 1/32. Steps × size is the page length.                                                                                                                                                                                                                                             |
+| **Swing**                    | The page's own swing. It follows the song's swing until you change it (the label then reads **Swing·P**); double-click to follow the song's swing again.                                                                                                                                                                                            |
+| **Key**                      | The key and scale used for note names, the note pads and scale lock: pick the root and scale. **Own key for this page** gives just this page a different key.                                                                                                                                                                                       |
+| Pencil / eraser / dashed box | The **Draw** ({{key:dm.draw}}), **Erase** ({{key:dm.erase}}) and **Select** ({{key:dm.select}}) tools for the pads.                                                                                                                                                                                                                                 |
+| **Q**                        | Quantize for live recording (the same setting as in the transport bar).                                                                                                                                                                                                                                                                             |
+| − 100% +                     | Zoom the pads in and out (or Ctrl/Cmd + scroll over the pads).                                                                                                                                                                                                                                                                                      |
+| **Follow**                   | When on, the drum machine shows the page that's playing. Turn it off to edit another page while the song plays.                                                                                                                                                                                                                                     |
+| Lanes button                 | Show **velocity**, **probability** and **nudge** lanes under the selected track. Drag over their bars to set the values of the steps that are on; double-click a bar to reset it (velocity 80%, probability 100%, nudge 0), Alt+double-click to reset the whole lane. On Notes tracks, velocity is the notes' velocity (a chord keeps its balance). |
 
 In a narrow panel, Size, Swing, Q, Follow and the lanes move into the **…** menu.
 
@@ -40,16 +40,16 @@ The strip shows every page of the song as a small picture of its pattern. A song
 
 ## The display and the eight encoders
 
-The dark **display** shows the selected track: its number, name and type, the waveform of its sample (or the envelope of its synth), and the sound's name. **Click the waveform** to hear the sound once, as the track plays it (a line runs across while it plays). When steps are selected, it says how many.
+The dark **display** shows the selected track: its number and name, the icon of its sound, a **Hits / Notes / Clip** switch (see [Step tracks](#drum-machine-step-tracks)), the waveform of its sample (or the envelope of its synth), and the sound's name. **Click the waveform** to hear the sound once, as the track plays it (a line runs across while it plays). When steps are selected, it says how many.
 
 The tabs above the encoders choose what the eight encoders control:
 
-| Bank      | Drum tracks                                                           | Instrument tracks                                                                                                                                    | Audio tracks                                              |
-| --------- | --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| **Sound** | Tune, Decay, Start, Cutoff, Reso, Drive, Choke, Gain                  | Synths: their 8 [macros](#instruments-macros) (Brightness, Bite…). Sampled instruments: Attack, Decay, Sustain, Release, Cutoff, Reso, Glide, Detune | Gain, Start, Pitch, Warp, Cutoff, Reso, Fade in, Fade out |
-| **Step**  | Velocity, Prob, Nudge, Ratchet, Pitch, Gate, Cond, Accent             | Velocity, Prob, Nudge, Ratchet, Note, Length, Cond, Accent                                                                                           | –                                                         |
-| **FX**    | The parameters of the track's effects; ◀ ▶ steps through the effects. |                                                                                                                                                      |                                                           |
-| **Mix**   | Level, Pan, Reverb (send A), Delay (send B), Width, Low, Mid, High    |                                                                                                                                                      |                                                           |
+| Bank      | Hits of a sample                                                      | Notes, and hits of a synth or sampled instrument                                                                                                                 | Clip                                                      |
+| --------- | --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| **Sound** | Tune, Decay, Start, Cutoff, Reso, Drive, Choke, Gain                  | Synths: their 8 [macros](#instruments-macros) (Brightness, Bite…). Samples and sampled instruments: Attack, Decay, Sustain, Release, Cutoff, Reso, Glide, Detune | Gain, Start, Pitch, Warp, Cutoff, Reso, Fade in, Fade out |
+| **Step**  | Velocity, Prob, Nudge, Ratchet, Pitch, Gate, Cond, Accent             | Notes: Velocity, Prob, Nudge, Ratchet, Note, Length, Cond, Accent. Hits: as for samples                                                                          | –                                                         |
+| **FX**    | The parameters of the track's effects; ◀ ▶ steps through the effects. |                                                                                                                                                                  |                                                           |
+| **Mix**   | Level, Pan, Reverb (send A), Delay (send B), Width, Low, Mid, High    |                                                                                                                                                                  |                                                           |
 
 Using an encoder:
 
@@ -57,7 +57,7 @@ Using an encoder:
 - **Double-click** to reset it to its default. It glides back smoothly (at most 300 ms), so you can use it during a performance, for example to open a filter again. Faders and the crossfader do the same.
 - **Right-click** for Reset and **MIDI learn** (see [MIDI](#midi)).
 
-Some sound parameters in detail: **Decay** shortens the sound ("Full" plays the whole sample). **Start** skips the beginning of the sample. **Choke** puts tracks in a group (1–8) where a new hit cuts off the others, like an open hi-hat that a closed hi-hat stops. **Drive** saturates the sound. **Warp** (audio tracks) makes loops follow the song tempo.
+Some sound parameters in detail: **Decay** shortens the sound ("Full" plays the whole sample). **Start** skips the beginning of the sample. **Choke** puts tracks in a group (1–8) where a new hit cuts off the others, like an open hi-hat that a closed hi-hat stops. **Drive** saturates the sound. **Warp** (Clip mode) makes loops follow the song tempo.
 
 The **Step** bank edits the selected steps (select them with Alt+click, the Select tool, or by holding SELECT). With several steps selected, each encoder changes all of them by the same amount. **Ratchet** repeats the hit 2–8 times within the step; **Nudge** moves it slightly early or late; **Cond** plays it only on some passes (1:2 = every first of two times, FILL = only while FILL is held, !FILL = only when it isn't).
 
@@ -67,51 +67,69 @@ A **parameter lock** gives one step its own sound. Select one or more steps, cho
 
 ## Tracks
 
-Each row is a **track**. Tracks exist on every page; the pages only hold their steps.
+Each row is a **step track**. Tracks exist on every page; the pages only hold their steps.
 
-| Part of a row   | What it does                                                                                                                                                                                                                |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Colored bar     | Drag to reorder tracks. Click the row to select the track.                                                                                                                                                                  |
-| Number and name | Double-click the name to rename.                                                                                                                                                                                            |
-| Icon            | What the track plays: a waveform burst for one-shot samples (drum tracks), audio lines for a loop (audio tracks), a sine wave for a synth, a keyboard for a sampled instrument or sampler. The library uses the same icons. |
-| **M**           | Mute.                                                                                                                                                                                                                       |
-| **S**           | Solo: only soloed tracks play.                                                                                                                                                                                              |
-| **●**           | Arm for recording (audio and instrument tracks).                                                                                                                                                                            |
-| Small fader     | Volume. Drag; double-click for 0 dB.                                                                                                                                                                                        |
-| **FX**          | The number of effects on the track. Click to edit them in the [Inspector](panel:inspector).                                                                                                                                 |
-| Pads            | The steps (see below).                                                                                                                                                                                                      |
-| Scope and meter | What the track sounds like right now. Click to enlarge, with a spectrum view.                                                                                                                                               |
+### Step tracks: a sound and a mode {#drum-machine-step-tracks}
 
-**Right-click the track's name** for more: Duplicate, Delete, Open in piano roll (instrument tracks), Color, **Sound** (what the track plays now, with buttons to show its sample in the library or open it in the sample editor, and a searchable list to replace it: your library samples and the built-in sounds; on instrument tracks also the synth presets and sampled instruments), Copy steps, Paste steps, Clear steps, Shift left, Shift right, Reverse, Randomize, Euclidean…, and these per-page options:
+Every step track has a **sound** and a **mode**. The sound is what you hear:
+
+- a **sample**: one audio file, a one-shot (a kick, a stab) or a loop;
+- a **synth**: one of the factory synths, or your own (see [Instruments](#instruments));
+- a **sampled instrument**: a grand piano, strings, General MIDI sounds, your SoundFonts and multi-samples.
+
+The mode is how the track plays it:
+
+| Mode      | What the track plays                                                                                                                                                                      |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Hits**  | One hit per step, at the step's pitch: drums, stabs. A synth or sampled instrument plays its **hit note** on every hit (set it in the [Inspector](panel:inspector)): a synth kick, a zap. |
+| **Notes** | Notes and chords on the steps, with the [piano roll](panel:piano-roll), the arpeggiator and the keyboard. A sample plays across the keyboard from its root note.                          |
+| **Clip**  | Its sample across the page, for loops and recordings, with warp and scratching (samples only). See [Clip mode](#drum-machine-clip-mode).                                                  |
+
+A new track gets the mode of its sound: one-shots play hits, loops play as a clip, synths and sampled instruments play notes. Switch it any time in the display, in the track's menu (**Play as**) or in the Inspector: nothing is lost, because a track keeps its hits, its notes and its clip side by side. The first switch to Notes writes a note for every hit, at the same pitch.
+
+| Part of a row   | What it does                                                                                                                                                                                                                               |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Colored bar     | Drag to reorder tracks. Click the row to select the track.                                                                                                                                                                                 |
+| Number and name | Double-click the name to rename.                                                                                                                                                                                                           |
+| Icons           | What the track plays (a waveform for a one-shot sample, two arrows for a loop, patch cables for a synth, a keyboard for a sampled instrument) and how (a dot for Hits, a note for Notes, a bar for Clip). The library uses the same icons. |
+| **M**           | Mute.                                                                                                                                                                                                                                      |
+| **S**           | Solo: only soloed tracks play.                                                                                                                                                                                                             |
+| **●**           | Arm for recording (Notes and Clip tracks; hits record without it).                                                                                                                                                                         |
+| Small fader     | Volume. Drag; double-click for 0 dB.                                                                                                                                                                                                       |
+| **FX**          | The number of effects on the track. Click to edit them in the [Inspector](panel:inspector).                                                                                                                                                |
+| Pads            | The steps (see below).                                                                                                                                                                                                                     |
+| Scope and meter | What the track sounds like right now. Click to enlarge, with a spectrum view.                                                                                                                                                              |
+
+**Right-click the track's name** for more: Duplicate, Delete, **Edit sound…** (a synth in the synth editor, a sample in the sample editor, a sampled instrument in the Inspector), **Save to Your sounds**, Open in piano roll (Notes), Color, **Sound** (what the track plays now, with buttons to show its sample in the library or open it in the sample editor, and a searchable list to replace it with a sample, a synth or a sampled instrument), **Play as** Hits, Notes or Clip, Copy steps, Paste steps, Clear steps, Shift left, Shift right, Reverse, Randomize, Euclidean…, and these per-page options:
 
 - **Track length on this page**: let the track loop over fewer steps than the page (for example 3 or 5 against 16, for polyrhythms).
 - **Track rate on this page**: give the track its own step size.
 - **Track swing**: its own swing.
-- **Choke group** (drum tracks) and **Convert to** drum, instrument or audio track. The sample comes along: a drum (or audio) track becomes a keyboard sampler of its sample that plays your hits at the same pitch, so you can play melodies with it; converting a sampler back gives the drum track its sample again.
+- **Choke group** (hits of a sample).
 
-At the bottom, **drop samples** from your computer or the library to add tracks, or use **+ Drum**, **+ Instrument** or **+ Audio**. Drop a sample **on a track** to replace its sound (hold Alt to add it as a new track below instead).
+At the bottom, **drop sounds** from your computer or the library to add step tracks, or use **+ Step track**: Hits (a drum sound), Notes (a synth) or Clip (record or drop audio). Drop a sound **on a track** to replace it (hold Alt to add it as a new track below instead); the track keeps its mode when the sound can play it, so a synth dropped on a track of drum hits plays hits too.
 
-### Audio tracks
+### Clip mode {#drum-machine-clip-mode}
 
-An audio track shows its **clip** as a waveform instead of pads, exactly as wide as a row of pads, so it lines up with the other tracks. The buttons in its top-right corner: the power button turns the clip on or off for this page, the disc button opens a **scratch strip**, and the label switches between **Loop** (the clip loops, restarting with each page) and **1-shot** (it plays once). **Click** the clip to hear it once from the start, click again to stop (while the song plays, it plays along anyway). Right-click the clip for: Double length, Halve length, the overdub layers (click one to mute it), Undo last layer, Merge layers, Last layer → new track, and Clear clip. See [The loop station](#loop-station).
+A step track in Clip mode shows its **clip** as a waveform instead of pads, exactly as wide as a row of pads, so it lines up with the other tracks. The buttons in its top-right corner: the power button turns the clip on or off for this page, the disc button opens a **scratch strip**, and the label switches between **Loop** (the clip loops, restarting with each page) and **1-shot** (it plays once). **Click** the clip to hear it once from the start, click again to stop (while the song plays, it plays along anyway). Right-click the clip for: Double length, Halve length, the overdub layers (click one to mute it), Undo last layer, Merge layers, Last layer → new track, and Clear clip. See [The loop station](#loop-station).
 
 ## Pads (steps)
 
-| Looks like             | Means                                                   |
-| ---------------------- | ------------------------------------------------------- |
-| Dim pad                | Off.                                                    |
-| Lit pad                | On; the brighter, the louder (velocity).                |
-| Bright line at the top | Accent (full velocity).                                 |
-| Partly filled          | Probability below 100%.                                 |
-| Small ticks inside     | Ratchet (repeats within the step).                      |
-| Small mark below       | Nudged early or late.                                   |
-| Small label            | A condition (1:2, FILL…).                               |
-| Dot in the corner      | A parameter lock.                                       |
-| Note name              | The note (instrument tracks); a chord name for chords.  |
-| Joined to the next pad | A long note (instrument tracks); a slash means a slide. |
-| Outline                | Selected.                                               |
-| Dashed outline         | The keyboard cursor.                                    |
-| Hatched                | Beyond this track's own length.                         |
+| Looks like             | Means                                            |
+| ---------------------- | ------------------------------------------------ |
+| Dim pad                | Off.                                             |
+| Lit pad                | On; the brighter, the louder (velocity).         |
+| Bright line at the top | Accent (full velocity).                          |
+| Partly filled          | Probability below 100%.                          |
+| Small ticks inside     | Ratchet (repeats within the step).               |
+| Small mark below       | Nudged early or late.                            |
+| Small label            | A condition (1:2, FILL…).                        |
+| Dot in the corner      | A parameter lock.                                |
+| Note name              | The note (Notes mode); a chord name for chords.  |
+| Joined to the next pad | A long note (Notes mode); a slash means a slide. |
+| Outline                | Selected.                                        |
+| Dashed outline         | The keyboard cursor.                             |
+| Hatched                | Beyond this track's own length.                  |
 
 Working with pads:
 
@@ -153,9 +171,9 @@ In a narrow panel only SHIFT, MUTE, FILL and UNDO are shown; the others are unde
 
 **Pads** in the header (or {{key:dm.view}}) shows big pads, like on a hardware controller, next to the steps of the selected track.
 
-- **Drum tracks**: one pad per track (pad 1 bottom left). Click a pad to play it and select the track; higher on the pad is louder. Hold **REPEAT** and a pad to repeat it at the repeat rate.
-- **Instrument tracks**: the pads become notes of the current key, with the root highlighted. **Scale lock** snaps notes you play to the key; **Notes / Triads / 7ths** plays single notes or chords in the key.
-- **Keys** lets the computer keyboard play the pads: **Z X C V**, **A S D F**, **Q W E R** and **1 2 3 4** are the four rows of drum pads (from the bottom). For instrument tracks, **A W S E D F T G Y H U J K** is a piano from C, and **Z / X** shift the octave.
+- **Hits**: one pad per track (pad 1 bottom left). Click a pad to play it and select the track; higher on the pad is louder. Hold **REPEAT** and a pad to repeat it at the repeat rate.
+- **Notes**: the pads become notes of the current key, with the root highlighted. **Scale lock** snaps notes you play to the key; **Notes / Triads / 7ths** plays single notes or chords in the key.
+- **Keys** lets the computer keyboard play the pads: **Z X C V**, **A S D F**, **Q W E R** and **1 2 3 4** are the four rows of pads (from the bottom). For a Notes track, **A W S E D F T G Y H U J K** is a piano from C, and **Z / X** shift the octave.
 - The step rows on the right work like the grid; the buttons under them set the track's own number of steps.
 
 ### Writing with the pads {#recording}

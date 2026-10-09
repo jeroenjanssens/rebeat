@@ -116,7 +116,7 @@ export function ExportDialog() {
       if (!id) return;
       if (asTrack) addSampleTracks([id]);
       toast(
-        asTrack ? "Resampled into a new audio track" : "Resampled into the library (Recordings)",
+        asTrack ? "Resampled into a new Clip track" : "Resampled into the library (Recordings)",
       );
     });
 
@@ -191,7 +191,7 @@ export function ExportDialog() {
             className="tool-btn border border-line"
             disabled={!!busy}
             onClick={() => resample(true)}
-            title="Render into a new audio track"
+            title="Render into a new Clip track"
             data-hint="app.export.resampletrack"
           >
             Resample to track

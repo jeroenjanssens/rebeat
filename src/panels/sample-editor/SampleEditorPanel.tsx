@@ -961,7 +961,7 @@ function SliceTab({
           data-testid="slices-to-tracks"
           data-hint="editor.slice.toTracks"
         >
-          Slices to new drum tracks
+          Slices to new step tracks
         </button>
       </div>
     </div>
