@@ -54,8 +54,8 @@ test("a synth switched to Hits plays a note on every hit, and you can switch bac
   await select(page, "Bass");
   const display = page.getByTestId("display-mode");
   // synths have no clip mode
-  await expect(display.getByRole("button", { name: "clip" })).toBeDisabled();
-  await display.getByRole("button", { name: "hits" }).click();
+  await expect(display.getByRole("button", { name: "Clip", exact: true })).toBeDisabled();
+  await display.getByRole("button", { name: "Hits", exact: true }).click();
   await expect.poll(async () => (await byName(page, "Bass")).mode).toBe("hits");
   expect((await byName(page, "Bass")).sound?.source).toBe("synth");
   // the Bass alone: hits of the synth
@@ -76,7 +76,7 @@ test("a synth switched to Hits plays a note on every hit, and you can switch bac
     )
     .toBeGreaterThan(0.01);
   await page.evaluate(() => (window as never as W).__rebeat.transport.stop());
-  await display.getByRole("button", { name: "notes" }).click();
+  await display.getByRole("button", { name: "Notes", exact: true }).click();
   await expect.poll(async () => (await byName(page, "Bass")).mode).toBe("notes");
 });
 

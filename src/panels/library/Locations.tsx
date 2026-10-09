@@ -1,18 +1,6 @@
 import { useRef } from "react";
-import {
-  ChevronDown,
-  Disc3,
-  Folder,
-  Globe,
-  Heart,
-  Library,
-  Mic,
-  Music,
-  Piano,
-  Star,
-  User,
-  Waves,
-} from "lucide-react";
+import { ChevronDown, Folder, Globe, Heart, Library, Star } from "lucide-react";
+import { PLACE_ICONS, SOUND_ICONS } from "../../components/soundIcons";
 import type { Family } from "../../library/instruments";
 import { dropdown } from "../../components/Menu";
 import { KITS } from "../../engine/kits";
@@ -67,13 +55,13 @@ function entries(folders: string[]): Entry[] {
     }));
   const kits: Entry[] = KITS.map((k) => ({
     loc: { kind: "kit", kit: k },
-    icon: Disc3,
+    icon: PLACE_ICONS.kit,
     label: `${k} kit`,
   }));
   // instruments in the order you'd look for them (D95); Your sounds sits at the top
   const families = INSTRUMENT_FAMILIES.map((family, i): Entry => ({
     loc: { kind: "instruments", family },
-    icon: family === "Synths" ? Waves : Piano,
+    icon: family === "Synths" ? SOUND_ICONS.synth : SOUND_ICONS.instrument,
     label: family,
     group: i === 0 ? "Instruments" : undefined,
   }));
@@ -81,10 +69,18 @@ function entries(folders: string[]): Entry[] {
     { loc: { kind: "everything" }, icon: Library, label: "All" },
     { loc: { kind: "favorites" }, icon: Heart, label: "Favorites" },
     { loc: { kind: "used" }, icon: Star, label: "Used in project" },
-    { loc: { kind: "instruments", family: "Your sounds" }, icon: User, label: "Your sounds" },
-    { loc: { kind: "folder", path: "Recordings" }, icon: Mic, label: "Recordings" },
+    {
+      loc: { kind: "instruments", family: "Your sounds" },
+      icon: PLACE_ICONS.yours,
+      label: "Your sounds",
+    },
+    {
+      loc: { kind: "folder", path: "Recordings" },
+      icon: PLACE_ICONS.recording,
+      label: "Recordings",
+    },
     ...families,
-    { loc: { kind: "all" }, icon: Music, label: "All samples", group: "Samples" },
+    { loc: { kind: "all" }, icon: SOUND_ICONS.oneshot, label: "All samples", group: "Samples" },
     ...own,
     ...kits.map((e, i) => (i === 0 ? { ...e, group: "Kits" } : e)),
     { loc: { kind: "online" }, icon: Globe, label: "Online kits" },

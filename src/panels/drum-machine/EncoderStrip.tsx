@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { canClip, player, sampleOf } from "../../model/tracks";
 import { setMode } from "../../model/project";
-import { SoundIcon, trackSoundKind } from "../../components/soundIcons";
+import { MODE_ICONS, MODE_LABEL, SoundIcon, trackSoundKind } from "../../components/soundIcons";
 import * as engine from "../../engine/engine";
 import { Playhead } from "../../components/Playhead";
 import { soundLabel } from "../../state/trackActions";
@@ -406,12 +406,21 @@ function ModeSwitch({ track }: { track: Track }) {
       {(["hits", "notes", "clip"] as const).map((m) => (
         <button
           key={m}
-          className="label rounded px-1 !text-[9px] !text-white/40 hover:!text-white/80 disabled:opacity-30 data-[active=true]:bg-white/10 data-[active=true]:!text-white/90"
+          className="flex h-[15px] w-[17px] items-center justify-center rounded !text-white/40 hover:!text-white/80 disabled:opacity-30 data-[active=true]:bg-white/10 data-[active=true]:!text-white/90"
           data-active={track.mode === m}
           disabled={m === "clip" && !canClip(track.sound)}
+          aria-label={MODE_LABEL[m]}
+          title={
+            m === "clip" && !canClip(track.sound)
+              ? "Clip mode plays samples only"
+              : `Play as ${MODE_LABEL[m]}`
+          }
           onClick={() => commit((p) => setMode(p, track.id, m))}
         >
-          {m}
+          {(() => {
+            const Icon = MODE_ICONS[m];
+            return <Icon size={10} />;
+          })()}
         </button>
       ))}
     </span>

@@ -11,7 +11,7 @@ import {
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Disc3, GripVertical, Power } from "lucide-react";
-import { SoundIcon, trackSoundKind } from "../../components/soundIcons";
+import { ModeIcon, SoundIcon, trackSoundKind } from "../../components/soundIcons";
 import { contextMenu, useMenu, type MenuItem } from "../../components/Menu";
 import { InlineEdit } from "../../components/InlineEdit";
 import { MiniFader } from "../../components/MiniFader";
@@ -321,8 +321,15 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
     opacity: isDragging ? 0.85 : 1,
   };
 
-  // every track shows what it plays: one-shots, a loop, a synth or an instrument
-  const typeIcon = <SoundIcon kind={trackSoundKind(track)} size={12} />;
+  // every step track shows what it plays (a one-shot, a loop, a synth or an instrument) and how
+  const typeIcon = (
+    <span className="flex items-center gap-0.5" data-testid="track-icons">
+      <SoundIcon kind={trackSoundKind(track)} size={12} />
+      <span className="opacity-60">
+        <ModeIcon mode={track.mode} size={9} />
+      </span>
+    </span>
+  );
 
   return (
     <div

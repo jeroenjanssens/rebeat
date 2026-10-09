@@ -7,7 +7,7 @@ import type { Track } from "../../model/types";
 import { useSelectedTrack, useStore } from "../../state/store";
 import { EffectsSection } from "./EffectsSection";
 import { NotesSection, SoundSection } from "./SoundSection";
-import { SoundIcon, trackSoundKind } from "../../components/soundIcons";
+import { MODE_LABEL, ModeIcon, SoundIcon, trackSoundKind } from "../../components/soundIcons";
 import { MidiSection } from "./MidiSection";
 
 export function Section({
@@ -100,7 +100,10 @@ export function InspectorPanel() {
         <span className="text-dim">
           <SoundIcon kind={trackSoundKind(track)} size={13} />
         </span>
-        <span className="label">{track.mode}</span>
+        <span className="label flex items-center gap-1">
+          <ModeIcon mode={track.mode} />
+          {MODE_LABEL[track.mode]}
+        </span>
       </div>
       <SoundSection track={track} />
       {track.mode === "notes" && <NotesSection track={track} />}

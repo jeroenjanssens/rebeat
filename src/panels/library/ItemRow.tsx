@@ -1,5 +1,5 @@
 import { Cloud, Heart, Loader2 } from "lucide-react";
-import { SoundIcon } from "../../components/soundIcons";
+import { SoundIcon, soundKind } from "../../components/soundIcons";
 import { toast } from "../../components/Toast";
 import { prefetchInstrument } from "../../engine/instruments";
 import { useDownloads } from "../../library/downloads";
@@ -233,7 +233,7 @@ function InstrumentRow({
     }, DOUBLE_CLICK_MS);
   };
   const busy = useDownloads((s) => s.busy.includes(c.source.preset ?? ""));
-  const kind = c.source.source === "synth" ? "synth" : "instrument";
+  const kind = soundKind(c.source);
   return (
     <div
       data-sample={item.id}

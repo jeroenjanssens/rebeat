@@ -10,7 +10,7 @@ import {
   SlidersVertical,
   Activity,
   BookOpen,
-  Waves,
+  Cable,
 } from "lucide-react";
 import { DrumMachine } from "../panels/drum-machine/DrumMachine";
 import { InspectorPanel } from "../panels/inspector/InspectorPanel";
@@ -113,7 +113,7 @@ export const PANELS: PanelDef[] = [
   {
     id: "synth-editor",
     title: "Synth editor",
-    icon: Waves,
+    icon: Cable,
     component: SynthEditorPanel,
     minHeight: 200,
   },

@@ -311,7 +311,7 @@ upgraded on read; clicking a wave plays it as heard; note letters with octaves o
 
 ### 0.6f Step tracks (agreed 2026-10-09)
 
-Progress: 0 ✅ · 1 ✅ · 2+3 ✅ · 4 ✅ · 5 ✅ · 6 ✅ · 7 · 8 · 9 · 10. (Steps 2 and 3 were done together: with the old
+Progress: 0 ✅ · 1 ✅ · 2+3 ✅ · 4 ✅ · 5 ✅ · 6 ✅ · 7 ✅ · 8 · 9 · 10. (Steps 2 and 3 were done together: with the old
 fields gone from the types, the compiler lists every place that used them.)
 
 The words for sounds didn't line up: "drum", "instrument" and "audio" were track kinds, "instrument"
@@ -385,10 +385,10 @@ Steps, one or more commits each, every one with the full checks, hints and guide
    multi-samples and saved sample sounds (a sample with its knobs and effects); the DB table keeps
    its name. Used in project groups by sound family.
 7. **Icons.** One per sound family, everywhere (library, track rows, pickers, Inspector), and one
-   per mode. Candidates (lucide): one-shot `AudioWaveform`, loop `Repeat`, synth a non-wave icon
-   (e.g. `SlidersVertical`), sampled instrument `Piano`, kit `Drum`, Your sounds `User`, recording
-   `Mic`; Hits `CircleDot`, Notes `Music`, Clip `RectangleHorizontal`. A screenshot sheet in both
-   themes first, to choose.
+   per mode. Chosen from a screenshot sheet in both themes (lucide): one-shot `AudioWaveform`, loop
+   `Repeat`, synth `Cable` (patch cables; `SlidersVertical` was taken by the mixer), sampled
+   instrument `Piano`, kit `Drum`, Your sounds `User`, recording `Mic`; Hits `CircleDot`, Notes
+   `Music`, Clip `RectangleHorizontal` (`components/soundIcons.tsx`).
 8. **MIDI, controllers, export, performance.** MIDI notes 36 and up play Hits tracks as pads (synth
    ones too); the selected Notes track plays notes. Launchpad/Push layouts by mode. MIDI file
    export: Hits on channel 10, Notes on the melodic channels. Looper, live input, scratch and
@@ -979,7 +979,7 @@ Format: **Dn — Question.** Default ✅, alternatives.
 - **D93 — Step tracks: one kind of track, three modes.** Every track is a **step track** with a sound and a mode, **Hits**, **Notes** or **Clip** (§0.6f), instead of the drum / instrument / audio kinds, which mixed how a track plays with what makes its sound. The mode is per track, chosen from the sound when the track is made (one-shot → Hits, loop → Clip, synth or sampled instrument → Notes) and switchable without losing data: steps keep both their hit pitch and their notes, lanes keep both steps and clip settings. Clip is for samples only. Synths and sampled instruments can play Hits: one note per step at the track's hit note plus the step's pitch. "Step track" is the name everywhere (UI, guide, hints). Supersedes D76 (converting becomes switching the mode). Alt: two track types, sequenced and audio (Ableton-style); kit tracks holding many pads (Drum Rack-style); renaming only.
 - **D94 — Sounds in three families, schema v7.** A step track's `sound` is a **Sample** (`{ type: "sample", sampleId, rootNote? }`; one-shot or loop is the sample's attribute), a **Synth** (`{ type: "synth", preset, patch?, … }`) or a **Sampled instrument** (`{ type: "instrument", source: "smplr" | "sf2" | "multi", … }`). "Sampler" is gone: it's a sample in Notes mode, and a sampler with zones is a multi-sample instrument. SOUND param ids mean one thing in every mode (the sampler's ADSR decay becomes `sound.envDecay`, also in locks and MIDI mappings), so a track's params hold every mode's knobs and switching only adds defaults. Old projects, `.rebeat`/`.rbsynth` files and saved sounds convert on read. Alt: keep `kind` and add a mode beside it.
 - **D95 — The library by what you pick.** Sidebar groups INSTRUMENTS (synths by group, sampled instruments by family), SAMPLES (all, your folders) and KITS (built-in, online, link sources), under All · Favorites · Used in project · **Your sounds** · Recordings; a type filter (All · Synths · Sampled instruments · One-shots · Loops). Your sounds (was Your instruments) holds saved and forked synths, SoundFonts, multi-samples and saved sample sounds; Save to Your sounds works on every step track. Alt: one flat list with tags only.
-- **D96 — Icons.** One icon per sound family (one-shot, loop, synth, sampled instrument, plus kit, Your sounds and recording) and one per mode (Hits, Notes, Clip), the same in the library, on step tracks, in pickers and in the Inspector. The synth icon isn't a waveform, so it can't be mixed up with samples. Chosen from a screenshot sheet in both themes. Alt: icons per track kind.
+- **D96 — Icons.** One icon per sound family (one-shot, loop, synth, sampled instrument, plus kit, Your sounds and recording) and one per mode (Hits, Notes, Clip), the same in the library, on step tracks, in pickers and in the Inspector. The synth icon (`Cable`, patch cables) isn't a waveform, so it can't be mixed up with samples, nor with the mixer's sliders. Chosen from a screenshot sheet in both themes; all in `components/soundIcons.tsx`. Alt: icons per track kind.
 - **D97 — Editing a sound.** One rule: Edit sound… (track menu, Inspector), double-clicking the display or a library item opens that sound's editor: samples the sample editor, synths the synth editor, sampled instruments the Inspector's Sound section (no editor of their own for now). The Inspector shows one Sound section for every step track: icon, name, Replace…, Edit…, Save to Your sounds and the mode switch. Alt: an instrument editor for sampled instruments (zones, envelope) now.
 - **D98 — Offline renders are repeatable.** Offline synth processors get a seed in their options and swap in their own seeded Math.random while they work (oscillator phases, drift), so an export renders the same every time; live synths stay random. With the seeded kits (startup) the golden levels test compares within 0.25 dB RMS. What's left is the main thread, where other code draws random numbers while a render waits (a reverb's impulse). Alt: keep renders random and widen the test's tolerance.
 - **D35 — Build order.** ✅ The phases in §7, starting with the mockup (Phase M), each ending with something you can play with.
