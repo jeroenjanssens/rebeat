@@ -60,7 +60,8 @@ describe.each([
 describe("the songs use what they show off", () => {
   it("Hyperdrive: sync, PWM, ring, a wide supersaw, pitch envelopes, Brightness locks", () => {
     const p = SYNTH_SONGS.hyperdrive();
-    const patches = p.tracks.filter((t) => t.mode === "notes").map((t) => trackPatch(t));
+    // every synth, in Notes or Hits mode
+    const patches = p.tracks.filter((t) => t.sound?.source === "synth").map((t) => trackPatch(t));
     expect(patches.some((x) => x.osc[1].sync && from(slots(x, "osc2.pitch"), "env3"))).toBe(true);
     expect(patches.some((x) => x.osc[1].shape === 3 && from(slots(x, "osc2.pw"), "lfo2"))).toBe(
       true,
@@ -105,6 +106,8 @@ describe("the songs use what they show off", () => {
     for (const name of ["Kick", "Snare", "Perc"]) {
       const t = p.tracks.find((x) => x.name === name)!;
       expect(t.sound?.source, name).toBe("synth");
+      // synth drums play hits (D93); the percussion plays a melody
+      expect(t.mode, name).toBe(name === "Perc" ? "notes" : "hits");
       expect(from(slots(trackPatch(t), "pitch"), "env3"), name).toBe(true);
     }
   });

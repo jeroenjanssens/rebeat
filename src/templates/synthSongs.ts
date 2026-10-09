@@ -41,19 +41,21 @@ function patchTrack(
 }
 
 /**
- * Hits on an instrument track from a step string (as `drum`): `x` on, `X` accent, `o` soft,
- * each playing `pitch` for `length` steps.
+ * A synth playing hits (D93), from a step string (as `drum`): `x` on, `X` accent, `o` soft, at
+ * `pitch` (the track's hit note, the first time; later pitches are the steps' own) for `gate`.
  */
-function hits(pattern: Pattern, track: Track, code: string, pitch: number, length = 1) {
+function hits(pattern: Pattern, track: Track, code: string, pitch: number, gate = 1) {
+  track.mode = "hits";
+  track.hitNote ??= pitch;
   const lane = pattern.lanes[track.id] as Lane;
   [...code.replace(/\s/g, "")].forEach((ch, i) => {
     if (ch === ".") return;
-    const velocity = ch === "X" ? 1 : ch === "o" ? 0.45 : 0.8;
     const s = lane.steps[i];
     s.on = true;
-    s.velocity = velocity;
+    s.velocity = ch === "X" ? 1 : ch === "o" ? 0.45 : 0.8;
     if (ch === "X") s.accent = true;
-    s.notes = [{ pitch, length, velocity }];
+    s.pitch = pitch - track.hitNote!;
+    s.gate = gate;
   });
 }
 

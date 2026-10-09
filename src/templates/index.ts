@@ -1,5 +1,6 @@
 import { defaultBuses, defaultMaster, defaultPerf } from "../model/effects";
 import { makePattern, makeTrack, type Project } from "../model/project";
+import { hitsTrack } from "./builder";
 import type { Lane, Track } from "../model/types";
 
 export interface Template {
@@ -29,9 +30,8 @@ function base(name: string, bpm: number): Project {
   };
 }
 
-function drum(name: string, sampleId: string, source: string, category: Track["category"]) {
-  return makeTrack("hits", category, name, source, [], { source: "sample", sampleId });
-}
+const drum = (name: string, sampleId: string, source: string, category: Track["category"]) =>
+  hitsTrack(name, sampleId, source, category);
 
 function hits(p: Project, patternId: string, track: Track, code: string) {
   const lane = p.patterns[patternId].lanes[track.id] as Lane;
