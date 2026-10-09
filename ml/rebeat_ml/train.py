@@ -76,6 +76,7 @@ def main():
     ap.add_argument("--lr", type=float, default=2e-3)
     ap.add_argument("--width", type=int, default=32)
     ap.add_argument("--with-bbs1", action="store_true")
+    ap.add_argument("--no-synth", action="store_true", help="leave out the synthetic takes")
     ap.add_argument("--final", action="store_true", help="train on train + validation")
     ap.add_argument("--name", default=None)
     ap.add_argument("--seed", type=int, default=1)
@@ -87,7 +88,7 @@ def main():
     torch.manual_seed(args.seed)
     rng = np.random.default_rng(args.seed)
 
-    hits = all_hits(with_bbs1=args.with_bbs1)
+    hits = all_hits(with_bbs1=args.with_bbs1, with_synth=not args.no_synth)
     train, val, test = split(hits)
     train = train + negatives(train, rng)
     val = val + negatives(val, rng)

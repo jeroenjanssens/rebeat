@@ -26,6 +26,7 @@ CREDITS = {
     "avp": "Amateur Vocal Percussion dataset (Alejandro Delgado, CC BY 4.0)",
     "beatboxset1": "beatboxset1 (Stowell, CC BY-SA 3.0)",
     "beatbox-samples": "beatbox-samples (Jeroen Janssens, CC BY 4.0)",
+    "synth": "synthetic takes made from beatbox-samples",
 }
 PARITY_FILES = ["kick1.wav", "snare2.wav", "hihat1.wav", "tom1.wav", "laser4.wav"]
 

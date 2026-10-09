@@ -25,6 +25,7 @@ export function flux(x: Float32Array): Float32Array {
   );
   const re = new Float32Array(N);
   const im = new Float32Array(N);
+  // before the audio starts is silence, so a hit at the very start counts
   let prev = new Float32Array(N / 2);
   for (let f = 0; f < frames; f++) {
     for (let i = 0; i < N; i++) {
@@ -39,7 +40,7 @@ export function flux(x: Float32Array): Float32Array {
       mag[k] = Math.log1p(100 * Math.hypot(re[k], im[k]));
       s += Math.max(0, mag[k] - prev[k]);
     }
-    out[f] = f ? s : 0;
+    out[f] = s;
     prev = mag;
   }
   return out;
@@ -61,17 +62,24 @@ export function detectOnsets(x: Float32Array, opts: OnsetOptions = {}): Onset[] 
   let max = 0;
   for (const v of env) max = Math.max(max, v);
   if (max <= 0) return [];
+  // relative to the take's strong hits (95th percentile), not its single loudest moment
+  const sorted = Float32Array.from(env).sort();
+  const p95 = percentile(sorted, 95);
   let peak = 0;
   for (const v of x) peak = Math.max(peak, Math.abs(v));
   // quieter than this (relative to the take's loudest moment) is never a hit
   const floor = peak * 10 ** ((-34 - 20 * sensitivity) / 20);
-  const delta = max * (0.12 - 0.1 * sensitivity);
+  const delta = p95 * (0.12 - 0.1 * sensitivity);
   const W = 10; // ±50 ms for the local mean
+  // the rise is measured on the first difference, which favors the highs: a hi-hat on a kick's
+  // tail still rises (as in ml/rebeat_ml/onsets.py)
+  const dx = new Float32Array(x.length);
+  for (let i = 1; i < x.length; i++) dx[i] = x[i] - x[i - 1];
   const out: Onset[] = [];
   let last = -Infinity;
-  for (let f = 1; f < env.length - 1; f++) {
+  for (let f = 0; f < env.length - 1; f++) {
     const v = env[f];
-    if (v < env[f - 1] || v < env[f + 1]) continue;
+    if ((f && v < env[f - 1]) || v < env[f + 1]) continue;
     let sum = 0;
     let n = 0;
     for (let j = Math.max(0, f - W); j <= Math.min(env.length - 1, f + W); j++) {
@@ -86,11 +94,41 @@ export function detectOnsets(x: Float32Array, opts: OnsetOptions = {}): Onset[] 
     const t = attackStart(x, (f * HOP + N / 2) / sr);
     const level = peakAfter(x, t);
     if (level < floor) continue;
+    // a hit gets louder: the end of a sound (a cut-off, a decaying tail) isn't one
+    if (rms(dx, t, t + 0.03) < 1.15 * rms(dx, t - 0.02, t)) continue;
     if (t - last < minGap) continue;
     last = t;
     out.push({ time: t, peakDb: 20 * Math.log10(level + 1e-9) });
   }
   return out;
+}
+
+/** numpy's percentile (linear interpolation) of sorted values. */
+function percentile(sorted: Float32Array, q: number): number {
+  const pos = ((sorted.length - 1) * q) / 100;
+  const lo = Math.floor(pos);
+  const hi = Math.min(sorted.length - 1, lo + 1);
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (pos - lo);
+}
+
+/** Where a one-shot starts: its first sample within 30 dB of its peak, 5 ms early (like
+ * `ml/rebeat_ml/data.py: first_onset`). A short file is one sound, whatever the detector finds. */
+export function firstOnset(x: Float32Array): number {
+  let peak = 0;
+  for (const v of x) peak = Math.max(peak, Math.abs(v));
+  const thr = peak * 10 ** (-30 / 20);
+  let i = 0;
+  while (i < x.length && Math.abs(x[i]) <= thr) i++;
+  return Math.max(0, i / MODEL_RATE - 0.005);
+}
+
+function rms(x: Float32Array, from: number, to: number): number {
+  const a = Math.max(0, Math.round(from * MODEL_RATE));
+  const b = Math.min(x.length, Math.round(to * MODEL_RATE));
+  if (b <= a) return 0;
+  let s = 0;
+  for (let i = a; i < b; i++) s += x[i] * x[i];
+  return Math.sqrt(s / (b - a));
 }
 
 /** Back from a flux peak to where the attack starts: the quiet point before the rise. */

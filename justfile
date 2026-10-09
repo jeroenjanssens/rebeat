@@ -73,3 +73,7 @@ ml-export name version:
 # Beatbox model: the Python tests
 ml-test:
     cd ml && uv run pytest -q
+
+# Beatbox model: make the synthetic takes from Jeroen's one-shots (ml/data/synth)
+ml-synth:
+    cd ml && uv run python -m rebeat_ml.synth

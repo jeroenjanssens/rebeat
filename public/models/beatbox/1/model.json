@@ -45,24 +45,41 @@
  },
  "trainedOn": [
   "Amateur Vocal Percussion dataset (Alejandro Delgado, CC BY 4.0)",
-  "beatbox-samples (Jeroen Janssens, CC BY 4.0)"
+  "beatbox-samples (Jeroen Janssens, CC BY 4.0)",
+  "synthetic takes made from beatbox-samples"
  ],
  "metrics": {
   "avp": {
    "hits": 2367,
    "voices": 7,
-   "accuracy": 0.6806083650190115,
-   "core_macro_f1": 0.7585525504700262,
-   "calibrated_accuracy": 0.7345471969333972,
-   "calibrated_core_macro_f1": 0.8130307633839421
+   "accuracy": 0.6886354034643009,
+   "core_macro_f1": 0.7664172262977177,
+   "calibrated_accuracy": 0.7355055103018687,
+   "calibrated_core_macro_f1": 0.8015811506424272
+  },
+  "beatbox-samples": {
+   "hits": 6,
+   "voices": 1,
+   "accuracy": 0.6666666666666666,
+   "core_macro_f1": 0.6666666666666666,
+   "calibrated_accuracy": null,
+   "calibrated_core_macro_f1": null
   },
   "beatboxset1": {
    "hits": 3526,
    "voices": 14,
-   "accuracy": 0.36074872376630746,
-   "core_macro_f1": 0.45749707377786547,
-   "calibrated_accuracy": 0.48768809849521205,
-   "calibrated_core_macro_f1": 0.6675230592101008
+   "accuracy": 0.4058423142370959,
+   "core_macro_f1": 0.4635100712334948,
+   "calibrated_accuracy": 0.5218878248974008,
+   "calibrated_core_macro_f1": 0.6492570397220119
+  },
+  "synth-test": {
+   "hits": 768,
+   "voices": 1,
+   "accuracy": 0.7200520833333334,
+   "core_macro_f1": 0.615072884412675,
+   "calibrated_accuracy": 0.915041782729805,
+   "calibrated_core_macro_f1": 0.9201656870835703
   }
  }
 }

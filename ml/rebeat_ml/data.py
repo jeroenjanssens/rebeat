@@ -16,6 +16,7 @@ from .audio import SR, load
 from .classes import AVP, BEATBOX_SAMPLES, BEATBOXSET1, CLASSES
 
 RAW = Path(__file__).resolve().parent.parent / "data" / "raw"
+HELD_OUT = {"kick3.wav", "snare6.wav", "hihat2.wav", "tom3.wav", "crash3.wav", "trumpet4.wav"}
 
 
 @dataclass(frozen=True)
@@ -107,7 +108,10 @@ def beatbox_samples() -> list[Hit]:
         label = BEATBOX_SAMPLES.get(key, "other")
         for rel in value if isinstance(value, list) else [value]:
             path = root / rel
-            out.append(Hit("beatbox-samples", "jeroen", str(path), first_onset(load(path)), label))
+            # the ones the synthetic takes leave out are test-only (synth.py: HELD_OUT)
+            held = Path(rel).name in HELD_OUT
+            out.append(Hit("beatbox-samples", "jeroen-heldout" if held else "jeroen", str(path),
+                           first_onset(load(path)), label, None, not held))
     labels = Path(__file__).resolve().parent.parent / "labels" / "jeroen-takes"
     if (labels / "hits.csv").exists():
         out += read_folder(labels, "jeroen-takes", trainable=False)
@@ -152,9 +156,25 @@ def aligned(hits: list[Hit]) -> list[Hit]:
     return [replace(h, start=realign(h.file, h.start)) for h in hits]
 
 
-def all_hits(with_bbs1=False) -> list[Hit]:
+def synthetic() -> list[Hit]:
+    """Takes made from Jeroen's one-shots (`synth.py`), if they've been made."""
+    out = []
+    for name, trainable in (("synth", True), ("synth-test", False)):
+        folder = RAW.parent / name
+        if (folder / "hits.csv").exists():
+            out += read_folder(folder, name, trainable)
+    return out
+
+
+def all_hits(with_bbs1=False, with_synth=True) -> list[Hit]:
     return with_next(
-        aligned(avp() + beatboxset1(trainable=with_bbs1) + beatbox_samples()) + exported(),
+        aligned(
+            avp()
+            + beatboxset1(trainable=with_bbs1)
+            + beatbox_samples()
+            + (synthetic() if with_synth else [])
+        )
+        + exported(),
         also=_unlabeled_onsets(),
     )
 

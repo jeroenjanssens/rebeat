@@ -13,7 +13,7 @@ import { BEATBOX_CLASSES, classFromName, type BeatboxClass } from "./classes";
 import { PrototypeSums, blend, softmax } from "./calibrate";
 import type { BeatboxHit, BeatboxRecording, BeatboxVoice, LabeledBy } from "./dataset";
 import { classify, useModel } from "./model";
-import { detectOnsets, hitEnd, hitWindow, peakDb } from "./onsets";
+import { detectOnsets, firstOnset, hitEnd, hitWindow, peakDb } from "./onsets";
 import { mono, resample } from "./resample";
 import type { ConvertSettings } from "./convert";
 
@@ -136,8 +136,15 @@ export interface NewRecording {
   bpm?: number;
   barStart?: number;
   voiceId?: string;
+  /** One sound (a short file): one hit from its start, instead of finding them. */
+  oneShot?: boolean;
   /** The recording's own hits (an imported dataset), instead of finding them. */
   hits?: { start: number; end: number; label?: BeatboxClass }[];
+}
+
+function oneShotHit(x: Float32Array) {
+  const start = firstOnset(x);
+  return { start, end: hitEnd(x, start) };
 }
 
 /** Hits found by onsets, each ending at the next or once it has decayed. */
@@ -170,7 +177,8 @@ async function addRecordingWith(
   };
   audio.set(rec.id, a);
   decoding.set(rec.id, Promise.resolve(a));
-  const found: { start: number; end: number; label?: BeatboxClass }[] = opts.hits ?? findHits(a.x);
+  const found: { start: number; end: number; label?: BeatboxClass }[] =
+    opts.hits ?? (opts.oneShot ? [oneShotHit(a.x)] : findHits(a.x));
   const hits: BeatboxHit[] = found.map((h) => {
     const label = h.label ?? opts.label;
     return {
@@ -245,6 +253,7 @@ export async function addFiles(
     last = await addRecordingWith({ blob }, buffer, {
       name: f.name.replace(/\.[^.]+$/, ""),
       kind: label || short ? "sounds" : "take",
+      oneShot: short,
       ...(label || short ? { label: label ?? "other", labeledBy: "import" as const } : {}),
     });
   }

@@ -5,6 +5,7 @@ Training the hit classifier behind the Beatbox panel (PLAN.md §0.6h, D105–D11
 
 ```sh
 just ml-fetch                 # download the datasets (~330 MB) into ml/data/raw
+just ml-synth                 # make the synthetic takes from Jeroen's one-shots
 just ml-train v2 --epochs 60 --final   # train runs/v2 and write runs/v2/report.md
 just ml-export v2 2           # ship it as public/models/beatbox/2 (+ the app's parity fixtures)
 just ml-test                  # the Python tests
@@ -27,6 +28,9 @@ windows with the Python port's.
   on the embedding (it's what calibration compares), SpecAugment, class-balanced sampling and
   augmentation: pitch ±2 semitones, EQ tilt, low-pass (dull recordings), bass boost
   (proximity), rooms, hum, noise, onset jitter.
+- **Synthetic takes** (`synth.py`) put Jeroen's one-shots into random beats with varied
+  velocity, pitch and timing, so a few recordings appear in many contexts; one recording per
+  class stays out (`data.py: HELD_OUT`) and makes the test takes.
 - **Splits are by voice**: nobody is in both training and test. `--final` trains on training
   and validation voices; the test voices stay out.
 - **Calibration** (`calibrate.py`, the same math as `calibrate.ts`): prototypes per class from a
@@ -38,14 +42,21 @@ windows with the Python port's.
 
 ## Model 1 (2026-10-09)
 
-Kick / Snare / Closed hi-hat macro F1 on voices it never heard (`public/models/beatbox/1/report.md`):
+Kick / Snare / Closed hi-hat macro F1 on voices and recordings it never trained on
+(`public/models/beatbox/1/report.md`):
 
-| Test voices | Model alone | Calibrated (10 hits per class) |
+| Test | Model alone | Calibrated (10 hits per class) |
 | --- | ---: | ---: |
-| AVP, 7 amateurs | 0.76 | 0.81 |
-| beatboxset1, 14 beatboxers | 0.46 | 0.67 |
+| AVP, 7 amateurs | 0.77 | 0.80 |
+| beatboxset1, 14 beatboxers | 0.46 | 0.65 |
+| Synthetic takes of Jeroen's held-out recordings | 0.62 | 0.92 |
 
-The go/no-go target (D116: 0.85 on unseen voices) isn't met: there are only 18 training voices,
-all amateurs on one laptop microphone. What closes the gap is more voices: your own labeled
-recordings (calibration, then exported into training) and, if its license is acceptable,
-beatboxset1.
+The go/no-go target (D116: 0.85 on unseen voices without calibration) isn't met: there are only
+18 training voices, all amateurs on one laptop microphone. Calibration does most of the work for
+a voice it knows (0.92 on Jeroen's held-out takes, optimistic because the calibration hits come
+from the same recordings). What closes the gap is more voices: your own labeled recordings
+(exported into training) and, if its license is acceptable, beatboxset1.
+
+What helped, in order: moving annotations to the app's onsets, augmentation for dull and
+bass-heavy recordings, a contrastive loss on the embedding (calibration's prototypes), and the
+synthetic takes (beatboxset1 calibrated 0.57 → 0.66, AVP 0.78 → 0.81 in an A/B run).
