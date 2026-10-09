@@ -16,6 +16,17 @@ describe("grid controllers", () => {
     expect(colors[0][1][0]).toBeLessThan(40);
   });
 
+  it("lights a Clip track's row while its clip plays on the page", () => {
+    const vox = p.tracks.findIndex((t) => t.mode === "clip");
+    const view = { trackOffset: vox - 7, stepOffset: 0 };
+    const on = gridColors(p, pattern, view, null)[7];
+    // the verse plays the vocal clip: the whole row in its color
+    expect(new Set(on.map((c) => c.join()))).toHaveProperty("size", 1);
+    expect(Math.max(...on[0])).toBeGreaterThan(60);
+    const intro = slotPattern(p, p.slots[0].id);
+    expect(Math.max(...gridColors(p, intro, view, null)[7][0])).toBeLessThan(20);
+  });
+
   it("maps pad presses to tracks and steps", () => {
     expect(padTarget(p, { trackOffset: 1, stepOffset: 8 }, 0, 3)).toEqual({
       trackId: p.tracks[1].id,

@@ -1,5 +1,6 @@
 /** Connected grid controllers: they mirror the drum machine and edit it from their pads. */
 import { stepped } from "../../model/tracks";
+import { clipOf } from "../../model/types";
 import { create } from "zustand";
 import { onStep } from "../../engine/transport";
 import * as transport from "../../engine/transport";
@@ -54,7 +55,15 @@ function handle(c: Connected, m: { type: string; number: number; value: number }
     if (!target) return true;
     const pattern = slotPattern(s.project, s.editSlotId);
     const lane = pattern.lanes[target.trackId];
-    if (!lane || !stepped(s.project, target.trackId)) return true;
+    if (!lane) return true;
+    if (!stepped(s.project, target.trackId)) {
+      // a Clip track: any of its pads turns the clip on or off on this page
+      s.commit((p) => {
+        const l = slotPattern(p, s.editSlotId).lanes[target.trackId];
+        l.clip = { ...clipOf(l), active: !clipOf(l).active };
+      });
+      return true;
+    }
     setStep(target.trackId, target.step, !lane.steps[target.step].on, `ctl-${performance.now()}`);
     s.setUi({ selectedTrackId: target.trackId });
     return true;

@@ -62,7 +62,10 @@ export function setStep(trackId: string, index: number, on: boolean, key = "pain
     if (!lane) return;
     const s = lane.steps[index];
     if (s.on === on) return;
-    s.on = on;
+    // Notes steps get a note at the track's hit note (as on screen)
+    const track = p.tracks.find((t) => t.id === trackId);
+    if (track) switchStep(s, track as Track, on);
+    else s.on = on;
     if (on && accent) {
       setStepVelocity(s, 1);
       s.accent = true;

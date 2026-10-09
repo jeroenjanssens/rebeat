@@ -15,6 +15,18 @@ describe("MIDI export", () => {
     expect(kickOn).toBeGreaterThan(0);
   });
 
+  it("puts Hits on channel 10 and Notes on their own channels, whatever plays them", () => {
+    const p = demoProject();
+    const bass = p.tracks.find((t) => t.name === "Bass")!;
+    const notesOn = (b: Uint8Array) => [...b].filter((x) => (x & 0xf0) === 0x90 && x !== 0x99);
+    const before = notesOn(exportMidi(p, "page", "slot-verse")).length;
+    // the bass synth playing hits: drums now, on channel 10, at its category's GM note
+    bass.mode = "hits";
+    const bytes = exportMidi(p, "page", "slot-verse");
+    expect(notesOn(bytes).length).toBeLessThan(before);
+    expect([...bytes].some((b) => b === 0x99)).toBe(true);
+  });
+
   it("includes the tempo", () => {
     const p = demoProject();
     const bytes = [...exportMidi(p, "song")];

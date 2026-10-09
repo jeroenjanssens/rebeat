@@ -3,7 +3,7 @@
  * time), lit in the track colors; the playing step is highlighted. Pure, so it is unit-tested.
  */
 import type { Project } from "../../model/project";
-import type { Pattern } from "../../model/types";
+import { clipOf, type Pattern } from "../../model/types";
 
 export interface GridView {
   /** First visible track and step. */
@@ -37,8 +37,13 @@ export function gridColors(
     for (let c = 0; c < 8; c++) {
       const step = view.stepOffset + c;
       const lane = track && pattern.lanes[track.id];
-      if (!track || !lane || track.mode === "clip") {
+      if (!track || !lane) {
         row.push([0, 0, 0]);
+        continue;
+      }
+      // a Clip track: its row lights while the clip plays on this page (a pad turns it on or off)
+      if (track.mode === "clip") {
+        row.push(scale(hex(track.color), clipOf(lane).active ? (track.mute ? 0.1 : 0.6) : 0.04));
         continue;
       }
       const len = lane.stepCountOverride ?? pattern.stepCount;
