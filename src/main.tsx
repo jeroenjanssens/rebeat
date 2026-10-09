@@ -8,9 +8,23 @@ import { createAudioContext } from "./engine/context";
 
 createAudioContext();
 
-// offline support for the web app (the desktop app ships its files)
+// offline support for the web app (the desktop app ships its files). A new version installs in
+// the background and reloads the page (the project autosaves); a tab that stays open asks for
+// one every half hour and whenever it comes back into view, not only when it's opened
 if (location.protocol.startsWith("http") && "serviceWorker" in navigator && import.meta.env.PROD)
-  void import("virtual:pwa-register").then(({ registerSW }) => registerSW({ immediate: true }));
+  void import("virtual:pwa-register").then(({ registerSW }) =>
+    registerSW({
+      immediate: true,
+      onRegisteredSW(_url, registration) {
+        if (!registration) return;
+        const check = () => void registration.update().catch(() => {});
+        setInterval(check, 30 * 60 * 1000);
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "visible") check();
+        });
+      },
+    }),
+  );
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

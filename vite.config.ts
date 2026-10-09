@@ -35,6 +35,9 @@ export default defineConfig({
         globPatterns: ["**/*.{js,css,html,svg,png,woff2,wasm}"],
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
         navigateFallbackDenylist: [/\/popout\.html/],
+        // a new version takes over open tabs at once (they reload into it)
+        clientsClaim: true,
+        skipWaiting: true,
         runtimeCaching: [
           {
             // online kits and sampled instruments: keep what was downloaded once
