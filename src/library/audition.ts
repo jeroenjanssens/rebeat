@@ -31,8 +31,19 @@ export async function audition(id: string, opts: { sync?: boolean; bpm?: number 
   if (buffer) auditionBuffer(buffer, opts);
 }
 
-/** Play a buffer that isn't (necessarily) in the library, e.g. an online kit preview. */
-export function auditionBuffer(buffer: AudioBuffer, opts: { sync?: boolean; bpm?: number } = {}) {
+export interface AuditionOptions {
+  sync?: boolean;
+  bpm?: number;
+  /** Play a part of the buffer: from `offset` (seconds), for `duration`. */
+  offset?: number;
+  duration?: number;
+  /** Loop the part (or the whole buffer) until stopped. */
+  loop?: boolean;
+}
+
+/** Play a buffer that isn't (necessarily) in the library, e.g. an online kit preview. Returns the
+ * audio time it starts at. */
+export function auditionBuffer(buffer: AudioBuffer, opts: AuditionOptions = {}): number {
   stopAudition();
   const ctx = Tone.getContext().rawContext as AudioContext;
   if (!out) {
@@ -50,13 +61,19 @@ export function auditionBuffer(buffer: AudioBuffer, opts: { sync?: boolean; bpm?
     src.playbackRate.value = project.bpm / opts.bpm;
     if (playing) when = nextBeatTime() ?? when;
   }
-  src.start(when);
+  if (opts.loop) {
+    src.loop = true;
+    src.loopStart = opts.offset ?? 0;
+    src.loopEnd = opts.duration ? (opts.offset ?? 0) + opts.duration : buffer.duration;
+    src.start(when, opts.offset ?? 0);
+  } else src.start(when, opts.offset ?? 0, opts.duration);
   starts++;
   src.onended = () => {
     gain.disconnect();
     if (current?.src === src) current = null;
   };
   current = { src, gain };
+  return when;
 }
 
 export function setPreviewVolume(v: number) {

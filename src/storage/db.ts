@@ -1,6 +1,7 @@
 /** IndexedDB (via Dexie): projects, the sample library and audio blobs. */
 import Dexie, { type EntityTable } from "dexie";
 import type { Effect, Sound } from "../model/types";
+import type { BeatboxHit, BeatboxRecording, BeatboxVoice } from "../library/beatbox/dataset";
 
 export interface ProjectRecord {
   id: string;
@@ -76,6 +77,9 @@ export class RebeatDB extends Dexie {
   blobs!: EntityTable<BlobRecord, "id">;
   meta!: EntityTable<MetaRecord, "key">;
   instruments!: EntityTable<InstrumentRecord, "id">;
+  beatboxVoices!: EntityTable<BeatboxVoice, "id">;
+  beatboxRecordings!: EntityTable<BeatboxRecording, "id">;
+  beatboxHits!: EntityTable<BeatboxHit, "id">;
 
   constructor(name = "rebeat") {
     super(name);
@@ -91,6 +95,12 @@ export class RebeatDB extends Dexie {
     });
     // your own instruments (saved synths and sounds)
     this.version(3).stores({ instruments: "id, name, createdAt" });
+    // the Beatbox panel's voices, recordings and their hits (D110); audio in `blobs`
+    this.version(4).stores({
+      beatboxVoices: "id, name",
+      beatboxRecordings: "id, voiceId, createdAt",
+      beatboxHits: "id, recordingId",
+    });
   }
 }
 
