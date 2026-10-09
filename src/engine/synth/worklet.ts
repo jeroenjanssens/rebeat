@@ -23,12 +23,32 @@ class SynthProcessor extends AudioWorkletProcessor {
   private monitor = false;
   private blocks = 0;
 
+  /** Offline renders: this synth's own seeded Math.random, so an export renders the same every time. */
+  private random: (() => number) | null = null;
+
   constructor(options?: { processorOptions?: Record<string, unknown> }) {
     super(options);
+    const seed = options?.processorOptions?.seed;
+    if (typeof seed === "number") this.random = seeded(seed);
     // offline renders hand over everything at the start (messages could arrive too late)
-    for (const m of (options?.processorOptions?.messages as SynthMessage[] | undefined) ?? [])
-      this.message(m);
-    this.port.onmessage = (e: MessageEvent<SynthMessage>) => this.message(e.data);
+    this.seeded(() => {
+      for (const m of (options?.processorOptions?.messages as SynthMessage[] | undefined) ?? [])
+        this.message(m);
+    });
+    this.port.onmessage = (e: MessageEvent<SynthMessage>) =>
+      this.seeded(() => this.message(e.data));
+  }
+
+  /** Run with this synth's random numbers (oscillator phases, drift), when it has its own. */
+  private seeded<T>(fn: () => T): T {
+    if (!this.random) return fn();
+    const random = Math.random;
+    Math.random = this.random;
+    try {
+      return fn();
+    } finally {
+      Math.random = random;
+    }
   }
 
   private message(m: SynthMessage) {
@@ -58,13 +78,22 @@ class SynthProcessor extends AudioWorkletProcessor {
 
   process(_inputs: Float32Array[][], outputs: Float32Array[][]) {
     const [left, right] = outputs[0];
-    this.core.process(left, right ?? left, currentFrame, left.length);
+    this.seeded(() => this.core.process(left, right ?? left, currentFrame, left.length));
     if (this.monitor && ++this.blocks % 12 === 0) {
       const mod = this.core.modulation();
       this.port.postMessage({ type: "mod", values: mod ? [...mod] : null } satisfies SynthReport);
     }
     return true;
   }
+}
+
+/** A small LCG: the same numbers for the same seed. */
+function seeded(seed: number) {
+  let x = seed >>> 0;
+  return () => {
+    x = (x * 1664525 + 1013904223) >>> 0;
+    return x / 2 ** 32;
+  };
 }
 
 registerProcessor("rebeat-synth", SynthProcessor);

@@ -3,7 +3,7 @@
 This file is the fast way in. It explains what Rebeat is, how the code is organized, how the
 pieces talk to each other, how to verify a change, and the gotchas that cost time before.
 `PLAN.md` is the long-form record: the product spec (§1–§3), the original architecture (§4),
-and every design decision (§6, D1–D97). When this file and the code disagree, the code wins.
+and every design decision (§6, D1–D98). When this file and the code disagree, the code wins.
 Please fix this file in the same change.
 
 Status (2026-10-09): every phase of the original roadmap is built, plus several feature batches
@@ -455,9 +455,10 @@ onPatchEdit` hook, debounced `saveSoundSoon`).
   - Dockview tabs are `.dv-tab`
 - **Golden levels** (`e2e/golden.spec.ts`): every example song and template renders offline (the
   mix and each track alone) and must match the levels in `e2e/golden/*.json` (RMS within
-  0.75 dB). It's the safety net for changes that shouldn't change the sound. Each render seeds
-  Math.random (probability steps); synth phases in the worklet stay random, hence the tolerance.
-  Re-record
+  0.25 dB, peaks within 1 dB). It's the safety net for changes that shouldn't change the sound.
+  It runs on the saved v6 projects too (`src/model/fixtures/v6/`), so migrations are covered.
+  Renders are nearly deterministic: seeded kits, probabilities (each render seeds Math.random)
+  and offline synths (each worklet processor gets a seed, D98). Re-record
   with `GOLDEN_UPDATE=1 pnpm playwright test golden` only when a change is meant to sound
   different, and say so in the commit.
 - **Flakiness**:

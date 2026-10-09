@@ -16,11 +16,11 @@ const DIR = new URL("./golden/", import.meta.url);
 const file = (key: string) => new URL(`${key.replace(":", "-")}.json`, DIR);
 const UPDATE = !!process.env.GOLDEN_UPDATE;
 /**
- * dB of difference allowed. Synth oscillators start at random phases inside the worklet (which has
- * its own Math.random), which moves a synth's peaks by up to about 2 dB; its RMS stays within a
- * fraction of that. RMS is the real check; peaks only catch gross changes (clipping, silence).
+ * dB of difference allowed. Renders are nearly the same every time (seeded kits, probabilities and
+ * offline synths), but on the main thread other code takes random numbers too while a render
+ * waits (a reverb's impulse, ids), which moves a level by up to about 0.1 dB, a peak more.
  */
-const TOLERANCE = { rms: 0.75, peak: 3 };
+const TOLERANCE = { rms: 0.25, peak: 1 };
 /** Below this a render counts as silent (and is compared as such). */
 const SILENT = -90;
 

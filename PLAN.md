@@ -12,7 +12,7 @@
 
 ### 0.1 Where we are
 
-- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D97), and the build order is in §7.
+- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D98), and the build order is in §7.
 - Every phase in §7 is built, tested (unit + Playwright e2e) and pushed. The mockup (Phase M) became the app: its components, model and store were kept and extended; `src/mock/` was replaced by the real engine.
 - The desktop app (Phase 10) runs and packages locally (unsigned); signing/notarization need certificates (see `.github/workflows/desktop.yml`).
 
@@ -981,6 +981,7 @@ Format: **Dn — Question.** Default ✅, alternatives.
 - **D95 — The library by what you pick.** Sidebar groups INSTRUMENTS (synths by group, sampled instruments by family), SAMPLES (all, your folders) and KITS (built-in, online, link sources), under All · Favorites · Used in project · **Your sounds** · Recordings; a type filter (All · Synths · Sampled instruments · One-shots · Loops). Your sounds (was Your instruments) holds saved and forked synths, SoundFonts, multi-samples and saved sample sounds; Save to Your sounds works on every step track. Alt: one flat list with tags only.
 - **D96 — Icons.** One icon per sound family (one-shot, loop, synth, sampled instrument, plus kit, Your sounds and recording) and one per mode (Hits, Notes, Clip), the same in the library, on step tracks, in pickers and in the Inspector. The synth icon isn't a waveform, so it can't be mixed up with samples. Chosen from a screenshot sheet in both themes. Alt: icons per track kind.
 - **D97 — Editing a sound.** One rule: Edit sound… (track menu, Inspector), double-clicking the display or a library item opens that sound's editor: samples the sample editor, synths the synth editor, sampled instruments the Inspector's Sound section (no editor of their own for now). The Inspector shows one Sound section for every step track: icon, name, Replace…, Edit…, Save to Your sounds and the mode switch. Alt: an instrument editor for sampled instruments (zones, envelope) now.
+- **D98 — Offline renders are repeatable.** Offline synth processors get a seed in their options and swap in their own seeded Math.random while they work (oscillator phases, drift), so an export renders the same every time; live synths stay random. With the seeded kits (startup) the golden levels test compares within 0.25 dB RMS. What's left is the main thread, where other code draws random numbers while a render waits (a reverb's impulse). Alt: keep renders random and widen the test's tolerance.
 - **D35 — Build order.** ✅ The phases in §7, starting with the mockup (Phase M), each ending with something you can play with.
 
 ---

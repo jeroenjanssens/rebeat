@@ -65,7 +65,8 @@ export function workletSynth(dest: Tone.Gain | { input: AudioNode }): WorkletSyn
       numberOfInputs: 0,
       numberOfOutputs: 1,
       outputChannelCount: [2],
-      processorOptions: { messages: pending },
+      // offline: a seed too, so renders come out the same every time (live synths stay random)
+      processorOptions: offline ? { messages: pending, seed: 1 } : { messages: pending },
     });
     pending = [];
     node.connect(out);
