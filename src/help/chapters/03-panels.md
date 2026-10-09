@@ -4,6 +4,7 @@ Every part of Rebeat lives in a **panel**: [Drum machine](panel:drum-machine), [
 
 ## Arranging panels
 
+- Every panel's tab shows its icon and its name (a sample or synth editor tab has its panel's icon too); the layout button lists the panels with the same icons.
 - **Move** a panel by dragging its tab. Drop it on the edge of another panel to split, or on the tab bar to stack it as a tab.
 - **Resize** by dragging the line between two panels.
 - **Close** a panel with the × on its tab. Bring it back from the layout button in the transport bar, or with "Show …" in the command palette.

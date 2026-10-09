@@ -208,6 +208,7 @@ export function TransportBar() {
     { separator: true },
     ...PANELS.map((p) => ({
       label: `Show ${p.title}`,
+      icon: p.icon,
       checked: !!dock.api?.getPanel(p.id),
       onSelect: () => dock.api && openPanel(dock.api, p.id),
     })),

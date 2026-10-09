@@ -14,7 +14,7 @@ import { installKeyboard } from "./commands";
 import { installHints } from "./hintLayer";
 import { applyPreset, restoreLayout, saveLayout } from "./layouts";
 import { PanelFrame, togglePanelFullscreen } from "./PanelFrame";
-import { PANELS } from "./panels";
+import { PANELS, panelDef } from "./panels";
 import { dock, useShell } from "./shell";
 
 const theme: DockviewTheme = {
@@ -38,13 +38,22 @@ const components = Object.fromEntries(
   ]),
 );
 
+/** A panel's tab: its icon (D101), its title, and close. Editor tabs share their panel's icon. */
 function Tab(props: IDockviewPanelHeaderProps) {
+  const Icon = panelDef(props.api.component)?.icon;
   return (
-    <DockviewDefaultTab
-      {...props}
-      onDoubleClick={() => toggleMaximize()}
-      title="Double-click to maximize"
-    />
+    <div className="flex h-full items-center">
+      {Icon && (
+        <span className="pl-2.5 pr-1.5 text-dim" data-testid="tab-icon">
+          <Icon size={12} />
+        </span>
+      )}
+      <DockviewDefaultTab
+        {...props}
+        onDoubleClick={() => toggleMaximize()}
+        title="Double-click to maximize"
+      />
+    </div>
   );
 }
 

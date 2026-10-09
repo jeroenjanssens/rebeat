@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { usePortalTarget } from "./portal";
 import { createPortal } from "react-dom";
-import { Check } from "lucide-react";
+import { Check, type LucideIcon } from "lucide-react";
 import { create } from "zustand";
 
 export interface MenuItem {
@@ -10,6 +10,8 @@ export interface MenuItem {
   disabled?: boolean;
   checked?: boolean;
   shortcut?: string;
+  /** An icon after the check mark (panels in the layout menu). */
+  icon?: LucideIcon;
   separator?: boolean;
   /** Custom content instead of a clickable row. */
   render?: (close: () => void) => ReactNode;
@@ -101,6 +103,7 @@ export function MenuHost() {
             }}
           >
             <span className="w-3.5 shrink-0">{item.checked && <Check size={13} />}</span>
+            {item.icon && <item.icon size={12} className="shrink-0 text-dim" />}
             <span className="flex-1 truncate">{item.label}</span>
             {item.shortcut && <span className="num text-[10px] text-faint">{item.shortcut}</span>}
           </button>

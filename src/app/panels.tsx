@@ -1,11 +1,11 @@
 import { lazy, type FC } from "react";
 import {
   AudioWaveform,
-  Drum,
   Gauge,
   Library,
   type LucideIcon,
-  Piano,
+  Music,
+  Grid3x3,
   SlidersHorizontal,
   SlidersVertical,
   Activity,
@@ -55,7 +55,7 @@ export const PANELS: PanelDef[] = [
   {
     id: "drum-machine",
     title: "Drum machine",
-    icon: Drum,
+    icon: Grid3x3,
     component: DrumMachine,
     minWidth: 420,
     minHeight: 320,
@@ -91,7 +91,8 @@ export const PANELS: PanelDef[] = [
   {
     id: "piano-roll",
     title: "Piano roll",
-    icon: Piano,
+    // it edits notes: the Notes icon (D96)
+    icon: Music,
     component: PianoRollPanel,
     minHeight: 160,
   },
