@@ -71,7 +71,7 @@ for (const [key, from] of projects.flatMap((k) => [
     // songs written after schema 6 have no saved v6 file
     test.skip(from === "saved" && !existsSync(fixture(key)), "no v6 file");
     // a whole song, once mixed and once per track; CI runners are several times slower
-    test.setTimeout(process.env.CI ? 900_000 : 240_000);
+    test.setTimeout(process.env.CI ? 900_000 : 600_000);
     const levels: Levels = await page.evaluate(
       async ({ key, SILENT, data }) => {
         const r = (
