@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { MenuHost } from "./components/Menu";
+import { AskHost } from "./components/Ask";
 import { AudioStartOverlay } from "./app/AudioStartOverlay";
 import { CommandPalette } from "./app/CommandPalette";
 import { installHints } from "./app/hintLayer";
@@ -68,6 +69,7 @@ export function App() {
         <Dock />
       </main>
       <MenuHost />
+      <AskHost />
       <CommandPalette />
       <SettingsDialog />
       <ShortcutsDialog />

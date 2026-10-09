@@ -8,6 +8,7 @@ import { deleteInstrument, makeMultiSample, renameInstrument } from "../../libra
 import { useSettings } from "../../state/settings";
 import { editorLabel, openInstrument, openSample } from "./open";
 import { useShell } from "../../app/shell";
+import { openInBeatbox } from "../../app/openers";
 import { contextMenu, type MenuItem } from "../../components/Menu";
 import { PeaksCanvas } from "../../components/PeaksCanvas";
 import { deleteSample, updateSample, usageOf, useLibrary } from "../../library/library";
@@ -69,6 +70,7 @@ function sampleMenu(
       onSelect: () => track && replaceSound(track.id, item.id),
     },
     { label: "Open in sample editor", onSelect: () => void openSample(item.id, item.name) },
+    { label: "Open in Beatbox", onSelect: () => openInBeatbox(item.id, item.name) },
     { label: "Export…", onSelect: () => useShell.getState().set({ sampleExport: item.id }) },
     ...(item.builtIn || !item.folder
       ? []

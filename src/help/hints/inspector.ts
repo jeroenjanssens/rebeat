@@ -54,6 +54,11 @@ const hints: Hints = {
     text: "In Hits mode a synth or sampled instrument plays this note on every hit, moved by the step's pitch. Set it to where the sound sits best: low for a synth kick, high for a zap.",
     guide: "instruments-sound-sources",
   },
+  "inspector.sound.beatbox": {
+    title: "Open in Beatbox",
+    text: "Open this Clip track's recording in the Beatbox panel as a take: label its hits and turn your beatboxing into step tracks.",
+    guide: "beatbox-converting",
+  },
   "inspector.sound.save": {
     title: "Save to Your sounds",
     text: "Keep this sound, with its SOUND knobs and effects, in the library under Your sounds, so you can use it in any project.",

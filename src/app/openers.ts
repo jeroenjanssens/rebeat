@@ -80,3 +80,9 @@ export function openSynthEditor(trackId: string) {
       : { direction: "below" as const },
   });
 }
+
+/** A sample (a Clip track's recording, a loop) as a take in the Beatbox panel (D111). */
+export function openInBeatbox(sampleId: string, name: string) {
+  focusPanel("beatbox");
+  void import("../panels/beatbox/actions").then((m) => m.openTakeFromSample(sampleId, name));
+}

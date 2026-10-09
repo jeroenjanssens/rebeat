@@ -18,7 +18,7 @@ import { MiniFader } from "../../components/MiniFader";
 import { Scope } from "../../components/Scope";
 import { onStep } from "../../engine/transport";
 import { TRACK_PALETTE } from "../../model/colors";
-import { focusPanel } from "../../app/openers";
+import { focusPanel, openInBeatbox } from "../../app/openers";
 import { editSound } from "../library/open";
 import { toast } from "../../components/Toast";
 import { saveInstrument } from "../../library/userInstruments";
@@ -35,7 +35,7 @@ import {
   rotateLane,
 } from "../../model/project";
 import { STEP_SIZES, clipOf, type Lane, type Pattern, type Track } from "../../model/types";
-import { canClip, player } from "../../model/tracks";
+import { canClip, player, sampleOf } from "../../model/tracks";
 import { applyHeld, fnClick } from "../../state/actions";
 import { useStore } from "../../state/store";
 import { ClipView } from "./ClipView";
@@ -168,6 +168,14 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
         : []),
       ...(track.sound || track.mode === "notes"
         ? [{ render: (close: () => void) => <SaveSound track={track} close={close} /> }]
+        : []),
+      ...(track.mode === "clip" && sampleOf(track)
+        ? [
+            {
+              label: "Open in Beatbox",
+              onSelect: () => openInBeatbox(sampleOf(track)!, track.name),
+            },
+          ]
         : []),
       ...(track.mode === "notes"
         ? [

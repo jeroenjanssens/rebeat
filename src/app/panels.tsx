@@ -1,5 +1,6 @@
 import { lazy, type FC } from "react";
 import {
+  AudioLines,
   AudioWaveform,
   Gauge,
   Library,
@@ -31,6 +32,9 @@ const PianoRollPanel = lazyPanel(() =>
 );
 const SynthEditorPanel = lazyPanel(() =>
   import("../panels/synth-editor/SynthEditorPanel").then((m) => m.SynthEditorPanel),
+);
+const BeatboxPanel = lazyPanel(() =>
+  import("../panels/beatbox/BeatboxPanel").then((m) => m.BeatboxPanel),
 );
 const GuidePanel = lazyPanel(() => import("../panels/guide/GuidePanel").then((m) => m.GuidePanel));
 const SampleEditorPanel = lazyPanel(() =>
@@ -117,6 +121,15 @@ export const PANELS: PanelDef[] = [
     icon: Cable,
     component: SynthEditorPanel,
     minHeight: 200,
+  },
+  {
+    id: "beatbox",
+    title: "Beatbox",
+    // sound bars: a voice turned into beats (not a waveform, a mic or a hit, D96, D101)
+    icon: AudioLines,
+    component: BeatboxPanel,
+    minWidth: 480,
+    minHeight: 280,
   },
   {
     id: "guide",

@@ -39,6 +39,8 @@ async function saveFile(name: string, data: Blob) {
  */
 function testMicStream(): MediaStream {
   const ctx = new AudioContext();
+  if ((window as { __REBEAT_TEST_MIC__?: unknown }).__REBEAT_TEST_MIC__ === "beats")
+    return testBeatsStream(ctx);
   const osc = ctx.createOscillator();
   const gate = ctx.createGain();
   osc.frequency.value = 660;
@@ -53,6 +55,25 @@ function testMicStream(): MediaStream {
   osc.connect(gate).connect(dest);
   osc.start();
   lfo.start();
+  return dest.stream;
+}
+
+/** `__REBEAT_TEST_MIC__ = "beats"`: a decaying noise burst every half second, like a hi-hat
+ * beatboxed to a click (for the Beatbox panel, which needs hits that start and fade). */
+function testBeatsStream(ctx: AudioContext): MediaStream {
+  const buf = ctx.createBuffer(1, Math.round(ctx.sampleRate * 0.5), ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  let seed = 1;
+  for (let i = 0; i < d.length; i++) {
+    seed = (seed * 16807) % 2147483647;
+    d[i] = ((seed / 2147483647) * 2 - 1) * 0.6 * Math.exp(-i / (ctx.sampleRate * 0.02));
+  }
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  src.loop = true;
+  const dest = ctx.createMediaStreamDestination();
+  src.connect(dest);
+  src.start();
   return dest.stream;
 }
 

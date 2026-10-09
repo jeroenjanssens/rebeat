@@ -85,6 +85,8 @@ if (import.meta.env.DEV || import.meta.env.MODE === "test") {
         examples: examples.EXAMPLES,
         templates: templates.TEMPLATES,
         deserializeProject: schema.deserializeProject,
+        // the Beatbox panel's data, loaded on demand (importing it doesn't load the model)
+        beatbox: () => import("./library/beatbox/store"),
       };
     },
   );

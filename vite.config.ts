@@ -33,12 +33,25 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,svg,png,woff2,wasm}"],
+        // the beatbox model's runtime (and the model, which isn't matched) download only when
+        // the Beatbox panel is used, then stay cached (D109)
+        globIgnores: ["**/ort-wasm*.wasm", "**/model.worker-*.js"],
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
         navigateFallbackDenylist: [/\/popout\.html/],
         // a new version takes over open tabs at once (they reload into it)
         clientsClaim: true,
         skipWaiting: true,
         runtimeCaching: [
+          {
+            urlPattern: ({ url }) =>
+              /\/models\/beatbox\/|ort-wasm[^/]*\.wasm$|model\.worker-[^/]*\.js$/.test(url.pathname),
+            handler: "CacheFirst",
+            options: {
+              cacheName: "rebeat-models",
+              expiration: { maxEntries: 20 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
           {
             // online kits and sampled instruments: keep what was downloaded once
             urlPattern: ({ url }) =>

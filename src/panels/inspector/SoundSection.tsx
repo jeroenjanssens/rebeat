@@ -5,7 +5,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { Library, Pencil } from "lucide-react";
-import { focusPanel, openSampleEditor, openSynthEditor } from "../../app/openers";
+import { focusPanel, openInBeatbox, openSampleEditor, openSynthEditor } from "../../app/openers";
 import { DragValue } from "../../components/DragValue";
 import { PeaksCanvas } from "../../components/PeaksCanvas";
 import { Playhead } from "../../components/Playhead";
@@ -179,6 +179,15 @@ export function SoundSection({ track }: { track: Track }) {
             }}
           >
             Save to Your sounds
+          </button>
+        )}
+        {track.mode === "clip" && sampleOf(track) && (
+          <button
+            className="tool-btn self-start border border-line"
+            data-hint="inspector.sound.beatbox"
+            onClick={() => openInBeatbox(sampleOf(track)!, track.name)}
+          >
+            Open in Beatbox
           </button>
         )}
       </div>

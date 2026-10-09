@@ -39,6 +39,16 @@ export function defaultCommands(): Command[] {
     },
     { id: "transport.tap", title: "Tap tempo", category: "Transport", keys: ["T"], run: tapTempo },
     {
+      id: "beatbox.record",
+      title: "Record a beatbox",
+      category: "Transport",
+      // the Beatbox panel, recording a 4-bar take to the metronome (D111)
+      run: () => {
+        if (dock.api) openPanel(dock.api, "beatbox");
+        void import("../library/beatbox/record").then((m) => m.recordTake("metronome", 4));
+      },
+    },
+    {
       id: "transport.metronome",
       title: "Metronome on/off",
       category: "Transport",

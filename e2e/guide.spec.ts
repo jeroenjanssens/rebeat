@@ -6,7 +6,7 @@ test("the guide opens, links resolve and search finds sections", async ({ page }
   await page.getByTestId("open-guide").click();
   const guide = page.getByTestId("guide");
   await expect(guide.getByRole("heading", { name: "Getting started", level: 1 })).toBeVisible();
-  await expect(guide.locator("h1")).toHaveCount(15);
+  await expect(guide.locator("h1")).toHaveCount(16);
 
   // placeholders are filled in, and the play shortcut shows up as a key
   const text = await guide.innerText();
@@ -36,6 +36,7 @@ test("the guide opens, links resolve and search finds sections", async ({ page }
       "piano-roll",
       "performance",
       "master-scope",
+      "beatbox",
       "guide",
     ]).toContain(id);
 
