@@ -311,7 +311,7 @@ upgraded on read; clicking a wave plays it as heard; note letters with octaves o
 
 ### 0.6f Step tracks (agreed 2026-10-09)
 
-Progress: 0 ✅ · 1 ✅ · 2+3 ✅ · 4 ✅ · 5 · 6 · 7 · 8 · 9 · 10. (Steps 2 and 3 were done together: with the old
+Progress: 0 ✅ · 1 ✅ · 2+3 ✅ · 4 ✅ · 5 ✅ · 6 · 7 · 8 · 9 · 10. (Steps 2 and 3 were done together: with the old
 fields gone from the types, the compiler lists every place that used them.)
 
 The words for sounds didn't line up: "drum", "instrument" and "audio" were track kinds, "instrument"

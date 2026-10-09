@@ -133,7 +133,7 @@ test("each synth track gets its own synth editor tab", async ({ page }) => {
       .locator("[data-track-row]", { hasText: name })
       .locator('[data-hint="dm.track.name"]')
       .click({ button: "right" });
-    await page.locator(".menu").getByRole("button", { name: "Edit synth…" }).click();
+    await page.locator(".menu").getByRole("button", { name: "Edit sound…" }).click();
   };
   await edit("BASS");
   await edit("CHORDS");

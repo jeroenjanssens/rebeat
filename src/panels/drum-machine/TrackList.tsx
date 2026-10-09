@@ -17,7 +17,7 @@ import {
   type SoundCategory,
   type TrackMode,
 } from "../../model/types";
-import { contextMenu } from "../../components/Menu";
+import { contextMenu, dropdown } from "../../components/Menu";
 import { applyHeld, editSteps, setStep, toggleSelected } from "../../state/actions";
 import { stepMenu } from "./stepMenu";
 import { stepKey, useStore } from "../../state/store";
@@ -359,27 +359,29 @@ export function TrackList({ geo }: { geo: Geometry }) {
           onDragLeave={() => setDropHover(false)}
           onDrop={onDrop}
         >
-          <span className="hidden @[600px]:inline">Drop samples here to add tracks ·</span>
+          <span className="hidden @[600px]:inline">Drop sounds here to add step tracks ·</span>
           <button
             className="tool-btn border border-line"
-            data-hint="dm.track.add-drum"
-            onClick={() => add("hits", "perc", "Perc", "808 Cowbell", "kit:808:cowbell")}
+            data-hint="dm.track.add"
+            data-testid="add-step-track"
+            onClick={(e) =>
+              dropdown(e.currentTarget, [
+                {
+                  label: "Hits · a drum sound",
+                  onSelect: () => add("hits", "perc", "Perc", "808 Cowbell", "kit:808:cowbell"),
+                },
+                {
+                  label: "Notes · a synth",
+                  onSelect: () => add("notes", "keys", "Keys", "Poly · Init"),
+                },
+                {
+                  label: "Clip · record or drop audio",
+                  onSelect: () => add("clip", "vocal", "Audio", "No clip"),
+                },
+              ])
+            }
           >
-            + Drum
-          </button>
-          <button
-            className="tool-btn border border-line"
-            data-hint="dm.track.add-instrument"
-            onClick={() => add("notes", "keys", "Keys", "Poly · Init")}
-          >
-            + Instrument
-          </button>
-          <button
-            className="tool-btn border border-line"
-            data-hint="dm.track.add-audio"
-            onClick={() => add("clip", "vocal", "Audio", "No clip")}
-          >
-            + Audio
+            + Step track
           </button>
         </div>
       </div>

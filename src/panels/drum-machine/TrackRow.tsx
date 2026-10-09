@@ -18,7 +18,8 @@ import { MiniFader } from "../../components/MiniFader";
 import { Scope } from "../../components/Scope";
 import { onStep } from "../../engine/transport";
 import { TRACK_PALETTE } from "../../model/colors";
-import { focusPanel, openSynthEditor } from "../../app/openers";
+import { focusPanel } from "../../app/openers";
+import { editSound } from "../library/open";
 import { toast } from "../../components/Toast";
 import { saveInstrument } from "../../library/userInstruments";
 import { toUnit } from "../../model/params";
@@ -35,7 +36,6 @@ import {
 } from "../../model/project";
 import { STEP_SIZES, clipOf, type Lane, type Pattern, type Track } from "../../model/types";
 import { canClip, player } from "../../model/tracks";
-import { isSynthTrack } from "../../library/synthTrack";
 import { applyHeld, fnClick } from "../../state/actions";
 import { useStore } from "../../state/store";
 import { ClipView } from "./ClipView";
@@ -163,8 +163,8 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
         onSelect: () => commit((p) => void duplicateTrack(p, track.id)),
       },
       { label: "Delete", onSelect: () => commit((p) => deleteTrack(p, track.id)) },
-      ...(isSynthTrack(track)
-        ? [{ label: "Edit synth…", onSelect: () => openSynthEditor(track.id) }]
+      ...(track.sound || track.mode === "notes"
+        ? [{ label: "Edit sound…", onSelect: () => editSound(track) }]
         : []),
       ...(track.sound || track.mode === "notes"
         ? [{ render: (close: () => void) => <SaveSound track={track} close={close} /> }]
@@ -607,7 +607,7 @@ function SaveSound({ track, close }: { track: Track; close: () => void }) {
       }}
       data-hint="dm.track.savesound"
     >
-      <span className="label shrink-0">Save sound</span>
+      <span className="label shrink-0">Save to Your sounds</span>
       <input
         className="input !h-6 min-w-0 flex-1"
         value={name}

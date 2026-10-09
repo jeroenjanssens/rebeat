@@ -128,7 +128,6 @@ export function SoundSection({ track }: { track: Track }) {
         </div>
         {track.mode !== "clip" && (
           <div className="flex items-center gap-2">
-            <span className="label w-[38px] shrink-0">Sound</span>
             <div
               className="segmented"
               data-hint="inspector.sound.family"

@@ -218,20 +218,15 @@ const hints: Hints = {
     text: "Loop: the clip loops and restarts at the top of each page. 1-shot: the clip plays once from the start then stops.",
     guide: "drum-machine-audio-tracks",
   },
-  "dm.track.add-drum": {
-    title: "Add drum track",
-    text: "Add a new drum track with a default percussion sound. Drag a sample from the library or your computer here to create a drum track with that sound.",
+  "dm.display.mode": {
+    title: "Play as",
+    text: "How the selected step track plays: Hits (one hit per step), Notes (notes and chords) or Clip (its sample across the page; samples only). Switching keeps the steps, the notes and the clip, so you can switch back.",
     guide: "drum-machine-tracks",
   },
-  "dm.track.add-instrument": {
-    title: "Add instrument track",
-    text: "Add a new polyphonic instrument track. Play notes with the note pads or open the piano roll for detailed editing.",
+  "dm.track.add": {
+    title: "Add a step track",
+    text: "Add a step track that plays Hits (a drum sound on each step), Notes (a synth for melodies and chords) or a Clip (record a loop or drop audio). You can change its sound and its mode later. Dropping sounds here adds step tracks too.",
     guide: "drum-machine-tracks",
-  },
-  "dm.track.add-audio": {
-    title: "Add audio track",
-    text: "Add a new audio track for recording microphone loops or dropping sample files.",
-    guide: "drum-machine-audio-tracks",
   },
 
   // ─────────────────────────────────── Step pads ─────────────────────────────────────

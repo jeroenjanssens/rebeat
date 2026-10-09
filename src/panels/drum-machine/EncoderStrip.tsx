@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { player, sampleOf } from "../../model/tracks";
+import { canClip, player, sampleOf } from "../../model/tracks";
+import { setMode } from "../../model/project";
+import { SoundIcon, trackSoundKind } from "../../components/soundIcons";
 import * as engine from "../../engine/engine";
 import { Playhead } from "../../components/Playhead";
 import { soundLabel } from "../../state/trackActions";
@@ -231,7 +233,10 @@ function Display({ track, width }: { track: Track; width: number }) {
         <span className="truncate font-semibold uppercase tracking-wider text-white/90">
           {track.name}
         </span>
-        <span className="label ml-auto !text-white/40">{track.mode}</span>
+        <span className="ml-auto text-white/45">
+          <SoundIcon kind={trackSoundKind(track)} size={11} />
+        </span>
+        <ModeSwitch track={track} />
       </div>
       <div
         className="relative my-1.5 h-[30px] cursor-pointer"
@@ -390,5 +395,25 @@ export function EncoderStrip({ sizeClass }: { sizeClass: SizeClass }) {
       <Display track={track} width={sizeClass === "large" ? 280 : 220} />
       {encoders}
     </div>
+  );
+}
+
+/** How the selected step track plays, switchable right in the display (D93). */
+function ModeSwitch({ track }: { track: Track }) {
+  const commit = useStore((s) => s.commit);
+  return (
+    <span className="flex gap-px" data-hint="dm.display.mode" data-testid="display-mode">
+      {(["hits", "notes", "clip"] as const).map((m) => (
+        <button
+          key={m}
+          className="label rounded px-1 !text-[9px] !text-white/40 hover:!text-white/80 disabled:opacity-30 data-[active=true]:bg-white/10 data-[active=true]:!text-white/90"
+          data-active={track.mode === m}
+          disabled={m === "clip" && !canClip(track.sound)}
+          onClick={() => commit((p) => setMode(p, track.id, m))}
+        >
+          {m}
+        </button>
+      ))}
+    </span>
   );
 }

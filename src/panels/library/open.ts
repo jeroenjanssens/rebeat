@@ -2,13 +2,15 @@
  * Opening a library sound in its editor (double-click, or the right-click menu): samples in the
  * sample editor, synths in the synth editor, other instruments in the Inspector.
  */
-import { openSampleEditor, focusPanel } from "../../app/openers";
+import { openSampleEditor, openSynthEditor, focusPanel } from "../../app/openers";
 import { dock } from "../../app/shell";
 import { startLibraryEdit } from "../../library/libraryEdit";
 import { toast } from "../../components/Toast";
 import { getBuffer } from "../../engine/samples";
 import type { CatalogInstrument } from "../../library/instruments";
-import { isBuiltIn, saveVersion } from "../../library/library";
+import { isBuiltIn, sampleName, saveVersion } from "../../library/library";
+import { voiceSound } from "../../library/synthTrack";
+import { sampleOf } from "../../model/tracks";
 import type { Track } from "../../model/types";
 import { useStore } from "../../state/store";
 
@@ -93,4 +95,17 @@ export async function openSample(id: string, name: string) {
   if (!copy) return;
   toast(`“${name}” is built in: editing a copy in your library`);
   openSampleEditor(copy);
+}
+
+/**
+ * Edit sound… (D97): a step track's sound in its editor. Synths in the synth editor, samples in
+ * the sample editor (a built-in one as your copy), sampled instruments in the Inspector.
+ */
+export function editSound(track: Track) {
+  if (track.mode !== "clip" && voiceSound(track).source === "synth")
+    return openSynthEditor(track.id);
+  const sample = sampleOf(track);
+  if (sample) return void openSample(sample, sampleName(sample));
+  useStore.getState().setUi({ selectedTrackId: track.id });
+  focusPanel("inspector");
 }

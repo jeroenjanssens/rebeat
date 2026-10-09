@@ -14,7 +14,7 @@ type W = {
       getState(): {
         project: { tracks: { id: string; name: string; mode: string }[] };
         setUi(p: object): void;
-        commit(fn: (p: { tracks: { name: string; instrument?: unknown }[] }) => void): void;
+        commit(fn: (p: { tracks: { name: string; sound?: unknown }[] }) => void): void;
       };
     };
     commands: () => { id: string; run(): void }[];

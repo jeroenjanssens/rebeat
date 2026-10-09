@@ -38,7 +38,7 @@ test("shape a synth, save it to the library and use it on another track", async 
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await row(page, "BASS").locator('[data-hint="dm.track.name"]').click({ button: "right" });
-  await page.locator(".menu").getByRole("button", { name: "Edit synth…" }).click();
+  await page.locator(".menu").getByRole("button", { name: "Edit sound…" }).click();
   const editor = page.getByTestId("synth-editor");
   await expect(editor).toBeVisible();
   await editor.getByTestId("synth-view").getByRole("button", { name: "Advanced" }).click();
@@ -113,7 +113,7 @@ test("shape a synth, save it to the library and use it on another track", async 
 
 test("the copy in Your sounds keeps up with your edits", async ({ page }) => {
   await row(page, "BASS").locator('[data-hint="dm.track.name"]').click({ button: "right" });
-  await page.locator(".menu").getByRole("button", { name: "Edit synth…" }).click();
+  await page.locator(".menu").getByRole("button", { name: "Edit sound…" }).click();
   const editor = page.getByTestId("synth-editor");
   await editor.getByTestId("synth-view").getByRole("button", { name: "Advanced" }).click();
   await editor.locator('[data-hint="synth.osc.retrigger"]').first().click();
@@ -148,7 +148,7 @@ test("the copy in Your sounds keeps up with your edits", async ({ page }) => {
 
 test("revert brings the factory synth back", async ({ page }) => {
   await row(page, "BASS").locator('[data-hint="dm.track.name"]').click({ button: "right" });
-  await page.locator(".menu").getByRole("button", { name: "Edit synth…" }).click();
+  await page.locator(".menu").getByRole("button", { name: "Edit sound…" }).click();
   const editor = page.getByTestId("synth-editor");
   await editor
     .locator('[data-hint="synth.voice.mode"]')
@@ -172,7 +172,7 @@ test("any instrument track's sound can be saved from its menu", async ({ page })
 
 test("the editor's keyboard holds notes until you let go", async ({ page }) => {
   await row(page, "CHORDS").locator('[data-hint="dm.track.name"]').click({ button: "right" });
-  await page.locator(".menu").getByRole("button", { name: "Edit synth…" }).click();
+  await page.locator(".menu").getByRole("button", { name: "Edit sound…" }).click();
   const level = () =>
     page.evaluate(() =>
       Math.max(
