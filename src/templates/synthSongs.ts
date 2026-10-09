@@ -5,6 +5,9 @@
  * - Hyperdrive: a hard-sync lead swept by the mod envelope, a PWM string pad, ring-mod bells, a
  *   wide stereo-unison supersaw, pitch-envelope zaps and synth toms, and Brightness macro locks
  *   that open the supersaw over the build.
+ * - Laser Highway: synthwave that kicks. A driven 909 kick, a gated-style big snare, Moroder
+ *   octave bass, a dotted-delay arp, Juno strings and Vangelis brass, all pumping on the beat
+ *   (Pump, D104), an Axel lead hook doubled by a supersaw, risers, zaps and synth tom fills.
  * - Liquid Ladder: a self-oscillating ladder bassline with accents and slides, a sample & hold
  *   LFO on its second filter, velocity in the mod matrix, Bite and Movement macro locks per step,
  *   a drifting pad on looping envelopes, and drums made of synths with pitch envelopes.
@@ -531,4 +534,304 @@ function liquidLadder(): Project {
   return p;
 }
 
-export const SYNTH_SONGS = { hyperdrive: split(hyperdrive), liquidLadder: split(liquidLadder) };
+// ---------- Laser Highway: synthwave / outrun, 118 BPM, A minor ----------
+
+const HIGHWAY = ["Am", "F", "C", "G"];
+const HIGHWAY_CHORUS = ["F", "G", "Em", "Am"];
+
+/** The pump of the genre (D104): ducking on every beat, as if keyed by the kick. */
+const pump = (depth: number) => makeEffect("Pump", { rate: 0.5, depth, release: 0.55 });
+
+function laserHighway(): Project {
+  const p = emptyProject("Laser Highway", 118);
+  p.key = { root: 9, scale: "minor" };
+  // a kick that kicks: compressed, driven, with its low end lifted
+  const kick = hitsTrack("Kick", "kit:909:kick", "909 Kick", "kick", [
+    makeEffect("EQ3", { low: 0.68 }),
+    makeEffect("Distortion", { drive: 0.25, output: 0.38 }),
+    makeEffect("Compressor", { threshold: 0.45, ratio: 0.3 }),
+  ]);
+  kick.volume = 0.6;
+  // the big 80s snare: a 909 snare and clap on the same steps, into a short, dense, wet room
+  // that's squeezed (gated reverb, in spirit)
+  const room = () => [
+    makeEffect("Reverb", { size: 0.35, decay: 0.2, predelay: 0, damp: 0.3, mix: 0.5 }),
+    makeEffect("Compressor", { threshold: 0.35, ratio: 0.45, release: 0.15 }),
+  ];
+  const snare = hitsTrack("Snare", "kit:909:snare", "909 Snare", "snare", room());
+  snare.volume = 0.72;
+  const clap = hitsTrack("Clap", "kit:909:clap", "909 Clap", "clap", room());
+  clap.volume = 0.6;
+  const hat = hitsTrack("Cl Hat", "kit:909:chh", "909 Closed Hat", "hat");
+  hat.volume = 0.42;
+  const ohat = hitsTrack("Op Hat", "kit:909:ohh", "909 Open Hat", "hat");
+  ohat.volume = 0.38;
+  const crash = hitsTrack("Crash", "kit:909:crash", "909 Crash", "hat");
+  crash.volume = 0.42;
+  crash.params["mix.sendA"] = 0.3;
+  // synth toms for the fills (their pitch falls as they ring)
+  const toms = patchTrack("Toms", "Synth Toms", "tom", {
+    osc: [{ shape: 0, retrigger: true, phase: 0.25, drift: 0 }],
+    noise: { level: 0.08 },
+    filters: [{ cutoff: 3000, keytrack: 0 }],
+    envs: [
+      { attack: 0.001, decay: 0.34, sustain: 0, release: 0.2, curve: 0.7, velocity: 0.6 },
+      {},
+      { attack: 0.001, decay: 0.2, sustain: 0, release: 0.1, curve: 0.5 },
+    ],
+    matrix: [{ source: "env3", dest: "pitch", amount: 7 / 24 }],
+    output: { volume: -6 },
+  });
+  toms.params["mix.sendA"] = 0.3;
+  const bass = notesTrack("Bass", synth("moroder-bass"), "Moroder Bass", "bass", [pump(0.5)]);
+  bass.volume = 0.75;
+  const arp = notesTrack("Arp", synth("upside-down-arp"), "Upside Down Arp", "keys", [
+    // a dotted-eighth echo, the arp's shadow
+    makeEffect("Delay", { time: 4 / 7, feedback: 0.42, mix: 0.3 }),
+    pump(0.35),
+  ]);
+  arp.volume = 0.5;
+  const pad = notesTrack("Pad", synth("juno-strings"), "Juno Strings", "keys", [
+    makeEffect("Chorus"),
+    pump(0.65),
+  ]);
+  pad.params["mix.sendA"] = 0.45;
+  pad.volume = 0.6;
+  const brass = notesTrack("Brass", synth("vangelis-brass"), "Vangelis Brass", "keys", [pump(0.3)]);
+  brass.params["mix.sendA"] = 0.35;
+  brass.volume = 0.5;
+  const lead = notesTrack("Lead", synth("axel-lead"), "Axel Lead", "keys", [
+    makeEffect("Delay", { time: 4 / 7, feedback: 0.3, mix: 0.22 }),
+  ]);
+  lead.params["mix.sendA"] = 0.3;
+  lead.volume = 0.6;
+  const saw = notesTrack("Supersaw", synth("supersaw"), "Supersaw", "keys", [pump(0.5)]);
+  saw.params["mix.sendA"] = 0.3;
+  saw.volume = 0.55;
+  const riser = notesTrack("Riser", synth("noise-riser"), "Noise Riser", "fx");
+  riser.volume = 0.4;
+  const zap = notesTrack("Zap", synth("laser"), "Laser Zap", "fx");
+  zap.volume = 0.4;
+  p.tracks = [
+    kick,
+    snare,
+    clap,
+    hat,
+    ohat,
+    crash,
+    toms,
+    bass,
+    arp,
+    pad,
+    brass,
+    lead,
+    saw,
+    riser,
+    zap,
+  ];
+
+  // ---------- parts ----------
+  const backbeat = (pt: Pattern, n = 4) => {
+    drum(pt, kick, bars("x... x... x... x...", n));
+    drum(pt, snare, bars(".... x... .... x...", n));
+    drum(pt, clap, bars(".... x... .... x...", n));
+    drum(pt, hat, bars("xoXo xoXo xoXo xoXo", n));
+  };
+  // octave sixteenths, the motor of the genre
+  const octaves = (pt: Pattern, progression: string[]) =>
+    notes(
+      pt,
+      bass,
+      perBar(progression, (c, at) => {
+        const root = chord(c, 1)[0];
+        return Array.from({ length: 16 }, (_, i) => [at + i, [root + (i % 2) * 12], 1]) as NoteList;
+      }),
+      0.72,
+    );
+  // up and down the chord, two octaves, in sixteenths
+  const arpeggio = (pt: Pattern, progression: string[], velocity = 0.62) =>
+    notes(
+      pt,
+      arp,
+      perBar(progression, (c, at) => {
+        const [r, t, f] = chord(c, 4);
+        const tones = [r, t, f, r + 12];
+        return [0, 1, 2, 3, 2, 1, 0, 1, 0, 1, 2, 3, 2, 1, 2, 3].map((k, i) => [
+          at + i,
+          [tones[k]],
+          1,
+        ]) as NoteList;
+      }),
+      velocity,
+    );
+  const strings = (pt: Pattern, progression: string[], velocity = 0.55) =>
+    notes(
+      pt,
+      pad,
+      perBar(progression, (c, at) => [[at, chord(c, 3), 16]]),
+      velocity,
+    );
+  const stabs = (pt: Pattern) =>
+    notes(
+      pt,
+      brass,
+      perBar(HIGHWAY_CHORUS, (c, at) => [
+        [at, chord(c, 4), 3],
+        [at + 10, chord(c, 4), 2],
+      ]),
+      0.7,
+    );
+  // the hook: original, in A minor over F – G – Em – Am
+  const hook: NoteList = [
+    [0, [note("A", 5)], 3],
+    [3, [note("C", 6)], 3],
+    [6, [note("A", 5)], 2],
+    [8, [note("G", 5)], 3],
+    [11, [note("F", 5)], 3],
+    [14, [note("E", 5)], 2],
+    [16, [note("D", 5)], 3],
+    [19, [note("G", 5)], 3],
+    [22, [note("B", 5)], 2],
+    [24, [note("D", 6)], 4],
+    [28, [note("C", 6)], 2],
+    [30, [note("B", 5)], 2],
+    [32, [note("E", 5)], 3],
+    [35, [note("G", 5)], 3],
+    [38, [note("B", 5)], 2],
+    [40, [note("E", 6)], 6],
+    [46, [note("D", 6)], 2],
+    [48, [note("C", 6)], 3],
+    [51, [note("B", 5)], 3],
+    [54, [note("A", 5)], 6],
+    [60, [note("E", 5)], 2],
+    [62, [note("G", 5)], 2],
+  ];
+
+  // ---------- pages ----------
+  const intro = page(p, "Intro", 64);
+  strings(intro, HIGHWAY, 0.5);
+  // Brightness opens bar by bar
+  lock(
+    intro,
+    pad,
+    [0, 16, 32, 48].map((s, i) => [s, { "sound.macro1": 0.12 + 0.18 * i }]),
+  );
+  arpeggio(intro, HIGHWAY, 0.5);
+  // the arp comes in for the second half
+  for (const st of (intro.lanes[arp.id] as Lane).steps.slice(0, 32)) {
+    st.on = false;
+    delete st.notes;
+  }
+  drum(
+    intro,
+    hat,
+    ".... .... .... .... .... .... .... .... oxox oxox oxox oxox oxXx oxXx oxXx oxXx",
+  );
+  drum(
+    intro,
+    kick,
+    ".... .... .... .... .... .... .... .... .... .... .... .... x... x... x... x...",
+  );
+  notes(intro, riser, [[32, [note("C", 4)], 32]], 0.6);
+
+  const verse = page(p, "Verse", 64, 2);
+  backbeat(verse);
+  octaves(verse, HIGHWAY);
+  arpeggio(verse, HIGHWAY);
+  strings(verse, HIGHWAY);
+
+  const build = page(p, "Build", 64);
+  drum(build, kick, bars("x... x... x... x...", 3) + "x.x. x.x. x.x. xxxx");
+  // the snare rolls in: backbeat, then eighths, then sixteenths and ratchets
+  drum(
+    build,
+    snare,
+    ".... x... .... x... ..x. x... ..x. x.x. x.x. x.x. x.x. x.x. xxxx xxxx rrrr rrrr",
+  );
+  drum(build, hat, bars("xoxo xoxo xoxo xoxo", 3) + ".... .... .... ....");
+  octaves(build, HIGHWAY);
+  arpeggio(build, HIGHWAY);
+  strings(build, HIGHWAY, 0.5);
+  // Movement builds on the arp, step by step
+  lock(
+    build,
+    arp,
+    Array.from({ length: 64 }, (_, i) => [i, { "sound.macro7": (0.9 * i) / 63 }]),
+  );
+  notes(build, riser, [[0, [note("C", 4)], 64]], 0.7);
+  // the fill: four toms falling down to the chorus
+  const fill = ".... ".repeat(14);
+  hits(build, toms, `${fill}xX.. ....`, note("E", 3));
+  hits(build, toms, `${fill}..xX ....`, note("C", 3));
+  hits(build, toms, `${fill}.... xX..`, note("A", 2));
+  hits(build, toms, `${fill}.... ..xX`, note("F", 2));
+
+  const chorus = page(p, "Chorus", 64, 2);
+  backbeat(chorus);
+  drum(chorus, ohat, bars("..x. ..x. ..x. ..x.", 4));
+  drum(chorus, crash, `X... ${".... ".repeat(15)}`);
+  octaves(chorus, HIGHWAY_CHORUS);
+  arpeggio(chorus, HIGHWAY_CHORUS, 0.55);
+  strings(chorus, HIGHWAY_CHORUS);
+  stabs(chorus);
+  notes(chorus, lead, hook, 0.8);
+  hits(chorus, zap, `X... ${".... ".repeat(15)}`, note("C", 6));
+
+  const breakdown = page(p, "Breakdown", 64, 2);
+  strings(breakdown, HIGHWAY_CHORUS, 0.6);
+  arpeggio(breakdown, HIGHWAY_CHORUS, 0.5);
+  notes(
+    breakdown,
+    bass,
+    perBar(HIGHWAY_CHORUS, (c, at) => [[at, [chord(c, 1)[0]], 8]]),
+    0.6,
+  );
+  notes(breakdown, lead, hook, 0.55);
+  drum(breakdown, hat, bars(".... ..x. .... ..x.", 4));
+
+  const final = page(p, "Final Chorus", 64, 3);
+  backbeat(final);
+  drum(final, ohat, bars("..x. ..x. ..x. ..x.", 4));
+  drum(final, crash, `X... ${".... ".repeat(15)}`);
+  octaves(final, HIGHWAY_CHORUS);
+  arpeggio(final, HIGHWAY_CHORUS, 0.55);
+  strings(final, HIGHWAY_CHORUS);
+  stabs(final);
+  notes(final, lead, hook, 0.82);
+  // the supersaw doubles the hook an octave down, and fills the chords
+  notes(
+    final,
+    saw,
+    hook.map(([at, ps, len]) => [at, ps.map((x) => x - 12), len]),
+    0.6,
+  );
+  hits(final, zap, `X... ${".... ".repeat(15)}`, note("C", 6));
+
+  const outro = page(p, "Outro", 64, 2);
+  strings(outro, HIGHWAY, 0.5);
+  arpeggio(outro, HIGHWAY, 0.45);
+  // Brightness closes again as it drives away
+  lock(
+    outro,
+    pad,
+    [0, 16, 32, 48].map((s, i) => [s, { "sound.macro1": 0.66 - 0.18 * i }]),
+  );
+  drum(outro, kick, "x... x... x... x... x... x... x... x... " + ".... ".repeat(8));
+  drum(outro, hat, bars("xoxo xoxo xoxo xoxo", 2) + ".... ".repeat(8));
+
+  // the second build comes back as a copy of the first (the slot order makes the song)
+  const order = [intro, verse, build, chorus, breakdown, build, final, outro];
+  p.slots = order.map((pt, i) => ({
+    id: `slot-${pt.id}-${i}`,
+    patternId: pt.id,
+    repeats:
+      pt === verse || pt === chorus || pt === breakdown || pt === outro ? 2 : pt === final ? 3 : 1,
+  }));
+  return p;
+}
+
+export const SYNTH_SONGS = {
+  hyperdrive: split(hyperdrive),
+  liquidLadder: split(liquidLadder),
+  laserHighway: split(laserHighway),
+};

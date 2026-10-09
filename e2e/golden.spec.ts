@@ -47,6 +47,7 @@ const projects = [
     "hyperdrive",
     "liquid-ladder",
     "around-the-world",
+    "laser-highway",
   ].map((id) => `example:${id}`),
   // Late Night Café streams its sampled instruments, so it needs the network: left out
   ...["empty", "808", "loops"].map((id) => `template:${id}`),
@@ -54,12 +55,9 @@ const projects = [
 
 /** The same projects as saved by schema version 6 (before step tracks): they must load and sound
  * the same as the ones made today. */
-const saved = (key: string) =>
-  gunzipSync(
-    readFileSync(
-      new URL(`../src/model/fixtures/v6/${key.replace(":", "-")}.json.gz`, import.meta.url),
-    ),
-  ).toString();
+const fixture = (key: string) =>
+  new URL(`../src/model/fixtures/v6/${key.replace(":", "-")}.json.gz`, import.meta.url);
+const saved = (key: string) => gunzipSync(readFileSync(fixture(key))).toString();
 
 for (const [key, from] of projects.flatMap((k) => [
   [k, "made"],
@@ -67,6 +65,8 @@ for (const [key, from] of projects.flatMap((k) => [
 ]))
   test(`${key} ${from === "saved" ? "saved in v6 " : ""}sounds the same`, async ({ page }) => {
     if (from === "saved" && UPDATE) return;
+    // songs written after schema 6 have no saved v6 file
+    test.skip(from === "saved" && !existsSync(fixture(key)), "no v6 file");
     // a whole song, once mixed and once per track; CI runners are several times slower
     test.setTimeout(process.env.CI ? 900_000 : 240_000);
     const levels: Levels = await page.evaluate(

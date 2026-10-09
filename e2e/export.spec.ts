@@ -96,6 +96,7 @@ for (const [song, busiest] of [
   ["Neon Horizon", "Chorus A"],
   ["Hyperdrive", "Chorus A"],
   ["Liquid Ladder", "Peak A"],
+  ["Laser Highway", "Final Chorus A"],
 ] as const)
   test(`the synth song ${song} renders loud and clean`, async ({ page }) => {
     test.setTimeout(120_000);

@@ -394,6 +394,13 @@ export const EXAMPLES: Example[] = [
     create: SYNTH_SONGS.liquidLadder,
   },
   {
+    id: "laser-highway",
+    name: "Laser Highway",
+    artist: "Rebeat demo · synthwave",
+    year: 2026,
+    create: SYNTH_SONGS.laserHighway,
+  },
+  {
     id: "around-the-world",
     name: "Around the World",
     artist: "Daft Punk",

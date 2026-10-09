@@ -12,7 +12,7 @@
 
 ### 0.1 Where we are
 
-- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D98), and the build order is in §7.
+- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D104), and the build order is in §7.
 - Every phase in §7 is built, tested (unit + Playwright e2e) and pushed. The mockup (Phase M) became the app: its components, model and store were kept and extended; `src/mock/` was replaced by the real engine.
 - The desktop app (Phase 10) runs and packages locally (unsigned); signing/notarization need certificates (see `.github/workflows/desktop.yml`).
 
@@ -67,7 +67,7 @@ src/
   render/                raf (shared loop + load), useCanvas, theme (tokens), thumbnail
   templates/             builder (pattern/chord helpers), index (Empty, 808 starter, Loop station), examples
                          (read-only, ids "example:…", forked on first edit in storage/projects): nightDrive, the
-                         classics, showcase (Neon Horizon, Late Night Café), synthSongs (Hyperdrive, Liquid Ladder)
+                         classics, showcase (Neon Horizon, Late Night Café), synthSongs (Hyperdrive, Liquid Ladder, Laser Highway)
 public/worklets/         recorder.js (PCM capture), scratch.js (scratch voice): plain JS for AudioWorklet scopes
 electron/                main.cts, preload.cts, build/ (entitlements, icon); compiled to electron/dist
 e2e/, e2e-desktop/       Playwright suites (web uses a synthetic mic via window.__REBEAT_TEST_MIC__)
@@ -404,9 +404,9 @@ Risks: the change touches most of the code (the accessors and the safety net kee
 projects, files, saved sounds and MIDI mappings each need a migration test; Clip lanes now carry
 128 steps per page (a small JSON cost); about 22 e2e specs use the old kinds.
 
-### 0.6g Themes, tab icons, a synthwave song, removing kits, instant stop (agreed 2026-10-09)
+### 0.6g Themes, tab icons, a synthwave song, removing kits, instant stop (agreed and done 2026-10-09) ✅
 
-Progress: 1 ✅ · 2 ✅ · 3 ✅ · 4 ✅ · 5 ✅ · 6.
+Progress: 1 ✅ · 2 ✅ · 3 ✅ · 4 ✅ · 5 ✅ · 6 ✅.
 
 Order 1–6, one or more commits each, with hints, guide updates, decisions and the full checks.
 
@@ -509,7 +509,7 @@ These terms are used consistently throughout the plan and later in the code.
 ### 3.2 Projects
 
 - Home/project browser: new, open, recent, duplicate, rename, delete, templates ("Empty", "808 starter", "Loop station").
-- **Example songs** (D69): Night Drive plus five drum-machine classics (Blue Monday, Billie Jean, Planet Rock, Sweet Dreams, Around the World), two instrument showcases (`templates/showcase.ts`): Neon Horizon (factory synths) and Late Night Café (sampled instruments), and two advanced-synth songs (`templates/synthSongs.ts`, D89): Hyperdrive and Liquid Ladder. Examples are read-only: the first change copies the example into your own project and carries on there.
+- **Example songs** (D69): Night Drive plus five drum-machine classics (Blue Monday, Billie Jean, Planet Rock, Sweet Dreams, Around the World), two instrument showcases (`templates/showcase.ts`): Neon Horizon (factory synths) and Late Night Café (sampled instruments), two advanced-synth songs (`templates/synthSongs.ts`, D89): Hyperdrive and Liquid Ladder, and the synthwave song Laser Highway (D103). Examples are read-only: the first change copies the example into your own project and carries on there.
 - **Autosave** to browser storage (debounced) and crash recovery.
 - **Export / import** a project as a single `.rebeat` file (a zip with `project.json` plus the audio it uses), so projects can be moved between machines.
 - On Chromium browsers, optionally "Save to folder" through the File System Access API.
@@ -1030,6 +1030,7 @@ Format: **Dn — Question.** Default ✅, alternatives.
 - **D101 — Icons on the panels' tabs.** Each Dockview tab shows its panel's icon from the registry (`app/panels.tsx`, found by the panel's component, so the per-sample and per-synth editor tabs get theirs), and the layout menu lists panels with them. Icons now mean one thing (D96): the drum machine is `Grid3x3` (its kit icon was the kits'), the piano roll `Music` (the Notes icon; Piano is sampled instruments). Tab rows inside panels have no icons. Alt: icons on every tab row.
 - **D102 — Twenty themes.** Fifteen more, as CSS token blocks (`styles/index.css`) plus `THEMES`: dark Outrun, Abyss, Moss, Graphite, Oxblood, Dracula, Catppuccin Frappé, Macchiato, Mocha; light Daylight, Sand, Mint, Lavender, Sky, Catppuccin Latte (13 dark and 7 light in all). Catppuccin and Dracula use their published palettes (MIT); Catppuccin Latte's panels use its lightest background so its text reaches 7:1. Every light theme keeps a dark display, as Paper does. Settings list them under Dark and Light; System follows the OS with a dark and a light theme of your choice (`systemDarkTheme`, `systemLightTheme`). A unit test reads the stylesheet: every theme has every token, text ≥ 7:1 on the panel, dim text ≥ 4.5:1, faint ≥ 2.2:1 (it's meant to be quiet; the first themes are at 2.3–2.9), accent ≥ 3:1, white on the display ≥ 12:1. Alt: user-made themes from an accent color.
 - **D104 — Pump, a beat-synced duck.** An insert effect that dips the gain on every half note, quarter or eighth (**Rate**), by **Depth**, and lets it come back over **Release** (a share of the beat): the sidechain pump of synthwave and house, without a sidechain. `playPageStep` hands every effect chain the page step (`effectsStep`: time, position and length in quarter notes), so it's timed by the song, live and in exports alike; Pump schedules its dips on the gain's AudioParam. When nothing plays it stays open. Alt: a real sidechain compressor keyed by a track (more routing, and the key has to be audible).
+- **D103 — Laser Highway.** An original synthwave/outrun song (`templates/synthSongs.ts`), 118 BPM in A minor, about two minutes: intro, verse, build, chorus, breakdown, build, final chorus ×3, outro. It shows off Pump (on bass, arp, strings, brass and supersaw), a big 80s snare (909 snare and clap on the same steps, each into a short wet room and a compressor), snare rolls with ratchets, synth toms playing hits (D93) as fills, Brightness locks opening the strings and Movement locks building the arp, and a hook on the Axel lead doubled by the supersaw. Only built-in kits and factory synths, so it renders offline; balanced against the other songs (mix −18 dB RMS, the kick about 4 dB over the bass). Alt: a longer arrangement (each minute adds about a minute to the golden levels test).
 - **D35 — Build order.** ✅ The phases in §7, starting with the mockup (Phase M), each ending with something you can play with.
 
 ---

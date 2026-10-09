@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { hitNoteOf } from "../model/tracks";
 import { SynthCore } from "../engine/synth/core";
 import { effectivePatch, trackPatch } from "../library/synthTrack";
 import type { Project } from "../model/project";
@@ -39,6 +40,7 @@ function render(t: Track, pitch: number) {
 describe.each([
   ["Hyperdrive", SYNTH_SONGS.hyperdrive],
   ["Liquid Ladder", SYNTH_SONGS.liquidLadder],
+  ["Laser Highway", SYNTH_SONGS.laserHighway],
 ])("%s", (_, make) => {
   const p = make();
   it("plays only synths (and built-in drums), pages of at most 32 steps", () => {
@@ -47,8 +49,10 @@ describe.each([
   });
 
   it("every synth sounds, cleanly, at the notes it plays", () => {
-    for (const t of p.tracks.filter((x) => x.mode === "notes")) {
-      const pitch = steps(p, t).find((s) => s.notes?.length)!.notes![0].pitch;
+    for (const t of p.tracks.filter((x) => x.sound?.source === "synth")) {
+      // notes, or hits at the track's hit note (D93)
+      const first = steps(p, t)[0];
+      const pitch = t.mode === "hits" ? hitNoteOf(t) + first.pitch : first.notes![0].pitch;
       const { peak, finite } = render(t, pitch);
       expect(finite, t.name).toBe(true);
       expect(peak, `${t.name} is silent`).toBeGreaterThan(0.01);
@@ -110,5 +114,36 @@ describe("the songs use what they show off", () => {
       expect(t.mode, name).toBe(name === "Perc" ? "notes" : "hits");
       expect(from(slots(trackPatch(t), "pitch"), "env3"), name).toBe(true);
     }
+  });
+
+  it("Laser Highway: pumping on the beat, a big layered snare, rolls, fills and macro locks", () => {
+    const p = SYNTH_SONGS.laserHighway();
+    const by = (name: string) => p.tracks.find((t) => t.name === name)!;
+    // the pump of the genre on the bass, arp, pad, brass and supersaw (D104)
+    expect(p.tracks.filter((t) => t.effects.some((e) => e.name === "Pump")).length).toBe(5);
+    // the snare and the clap on the same steps, each into a short room
+    for (const name of ["Snare", "Clap"])
+      expect(by(name).effects.map((e) => e.name)).toEqual(["Reverb", "Compressor"]);
+    const on = (t: Track) =>
+      Object.values(p.patterns).flatMap((pt) =>
+        (pt.lanes[t.id] as Lane).steps
+          .slice(0, pt.stepCount)
+          .map((s, i) => `${pt.id}:${i}:${s.on}`),
+      );
+    const clapOn = on(by("Clap")).filter((x) => x.endsWith("true"));
+    expect(clapOn.every((x) => on(by("Snare")).includes(x))).toBe(true);
+    // snare rolls with ratchets, tom fills playing hits of a synth
+    expect(steps(p, by("Snare")).some((s) => s.ratchet > 1)).toBe(true);
+    expect(by("Toms").mode).toBe("hits");
+    expect(new Set(steps(p, by("Toms")).map((s) => s.pitch)).size).toBe(4);
+    // Brightness opens the pad, Movement builds the arp
+    expect(
+      steps(p, by("Pad")).filter((s) => s.locks?.["sound.macro1"] !== undefined).length,
+    ).toBeGreaterThan(4);
+    expect(
+      steps(p, by("Arp")).filter((s) => s.locks?.["sound.macro7"] !== undefined).length,
+    ).toBeGreaterThan(30);
+    // the build comes twice, the final chorus three times
+    expect(p.tracks.length).toBe(15);
   });
 });

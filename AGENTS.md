@@ -3,7 +3,7 @@
 This file is the fast way in. It explains what Rebeat is, how the code is organized, how the
 pieces talk to each other, how to verify a change, and the gotchas that cost time before.
 `PLAN.md` is the long-form record: the product spec (§1–§3), the original architecture (§4),
-and every design decision (§6, D1–D98). When this file and the code disagree, the code wins.
+and every design decision (§6, D1–D104). When this file and the code disagree, the code wins.
 Please fix this file in the same change.
 
 Status (2026-10-09): every phase of the original roadmap is built, plus several feature batches
@@ -29,13 +29,14 @@ sequencer**, with:
   favorites, tags, Your sounds.
 - **A non-destructive sample editor.**
 - **A full subtractive/FM synth with an editor.**
-- **A mixer** with insert effects, send buses and a master chain.
+- **A mixer** with insert effects (Pump among them: a beat-synced duck), send buses and a master
+  chain.
 - **Performance tools**: DJ filter, tape stop, beat repeat, crossfader, mute groups, page queueing.
 - **MIDI**: learn, note input, pitch bend and mod wheel, Launchpad/Push as grid controllers.
 - **Export**: WAV/MP3/OGG, stems, MIDI files, `.rebeat` project files.
 - **A built-in user guide**, plus an "explain mode" that shows a hover card on every control.
 
-It should feel like a professional desktop DAW: dockable panels (Dockview), themes,
+It should feel like a professional desktop DAW: dockable panels (Dockview), 20 themes,
 keyboard-driven, autosaving projects in IndexedDB.
 
 Vocabulary (PLAN.md §2):
@@ -79,7 +80,7 @@ pnpm prettier --write src e2e && pnpm tsc --noEmit && pnpm eslint . && pnpm vite
   && pnpm playwright test --workers=4
 ```
 
-Expect about 200 unit tests and about 155 e2e tests (around 5–6 minutes, most of it the golden
+Expect about 245 unit tests and about 165 e2e tests (around 7 minutes, most of it the golden
 levels renders). Visual changes are
 also checked in a real browser: a throwaway Playwright spec that takes a screenshot works well
 (delete it afterwards).
@@ -528,6 +529,13 @@ onPatchEdit` hook, debounced `saveSoundSoon`).
   every reload.
 - **Vite's dev server reloads every open page when a watched file changes**, so `e2e/` and
   `test-results/` are ignored (`vite.config.ts`); tests that write files would reload the app.
+- **Stop is a panic (D99).** `transport.stop()` calls `engine.panic()` unless "Let effects ring
+  out after stop" is on. Anything new that makes or holds sound must stop at once: instrument
+  voices implement `panic()` (return true if they can only be muted), effects with memory are in
+  `HOLDS_SOUND` (`effects.ts`), and nodes outside the engine's chains register `onPanic` (the
+  performance filters do).
+- **Effects that follow the beat get page steps** from `playPageStep` (`effectsStep`, D104), the
+  same live and offline. A new beat-synced effect implements `onStep`.
 - **The factory synth levels test** used to fail sometimes because of random oscillator phases;
   it now seeds `Math.random`. New level-sensitive tests should do the same.
 
@@ -536,21 +544,22 @@ onPatchEdit` hook, debounced `saveSoundSoon`).
 PLAN.md §6 has one entry per decision, with the chosen default and the alternatives. Ones you're
 likely to need:
 
-| Topic                                             | Decisions                 |
-| ------------------------------------------------- | ------------------------- |
-| Pages, clones, song order                         | D8–D13, D73               |
-| Samples, library, edits                           | D17–D21, D31, D74         |
-| Effects and mixing                                | D22–D24                   |
-| MIDI and controllers                              | D27, D61, D84             |
-| Notes (instrument tracks before D93)              | D36–D42, D75              |
-| UI (panels, themes, encoders, explain mode)       | D29–D30, D49–D58, D71–D72 |
-| Desktop and platform                              | D64–D65                   |
-| Synth: patches, factory, editor, your instruments | D79–D82                   |
-| Synth: AudioWorklet engine                        | D83, D92                  |
-| Synth: macros, Advanced editor, workflow          | D85–D87                   |
-| Synth: factory voicing, demo songs, slides        | D88–D89                   |
-| Presets vs. copies, library editing               | D90–D91                   |
-| Step tracks: modes, sounds, library, icons, edit  | D93–D98                   |
+| Topic                                              | Decisions                 |
+| -------------------------------------------------- | ------------------------- |
+| Pages, clones, song order                          | D8–D13, D73               |
+| Samples, library, edits                            | D17–D21, D31, D74         |
+| Effects and mixing                                 | D22–D24                   |
+| MIDI and controllers                               | D27, D61, D84             |
+| Notes (instrument tracks before D93)               | D36–D42, D75              |
+| UI (panels, themes, encoders, explain mode)        | D29–D30, D49–D58, D71–D72 |
+| Desktop and platform                               | D64–D65                   |
+| Synth: patches, factory, editor, your instruments  | D79–D82                   |
+| Synth: AudioWorklet engine                         | D83, D92                  |
+| Synth: macros, Advanced editor, workflow           | D85–D87                   |
+| Synth: factory voicing, demo songs, slides         | D88–D89                   |
+| Presets vs. copies, library editing                | D90–D91                   |
+| Step tracks: modes, sounds, library, icons, edit   | D93–D98                   |
+| Stop, removing kits, tab icons, themes, Pump, song | D99–D104                  |
 
 Feature batches and their acceptance criteria are in PLAN.md §0.6b–§0.6f. Known limitations are
 in §0.7.
