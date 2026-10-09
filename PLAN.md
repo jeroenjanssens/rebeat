@@ -404,6 +404,47 @@ Risks: the change touches most of the code (the accessors and the safety net kee
 projects, files, saved sounds and MIDI mappings each need a migration test; Clip lanes now carry
 128 steps per page (a small JSON cost); about 22 e2e specs use the old kinds.
 
+### 0.6g Themes, tab icons, a synthwave song, removing kits, instant stop (agreed 2026-10-09)
+
+Progress: 1 · 2 · 3 · 4 · 5 · 6.
+
+Order 1–6, one or more commits each, with hints, guide updates, decisions and the full checks.
+
+1. **Mixer labels.** Knobs get an optional `short` label (the sends: **Rev**, **Dly**), used where
+   space is tight; effects get short names for the FX button (Comp, Dist, Filt, Crsh, Dly, Rev,
+   Chor, Phas, Trem, Pan, EQ, Lim). e2e: no mixer strip label is wider than its box.
+2. **Stop means silence (D99).** `stop()` fades the master out over ~5 ms, stops every source hard
+   (hits, clips, a new worklet `panic` that drops voices and queued events, samplers, smplr,
+   SoundFonts, metronome, scratch, perf effects, library previews), flushes the effects that hold
+   sound (`FxChain.flush()`: reverb, delay, chorus, phaser; reverbs reuse their impulse) and fades
+   back in. A setting **Let effects ring out after stop** (off) keeps the old behavior: notes stop,
+   tails ring. Monitoring an armed mic carries on. Tests: `SynthCore` panic (unit); after Space
+   the master is below −80 dB within 30 ms and a restart begins in silence (e2e).
+3. **Removing kits (D100).** Right-click a library folder → **Remove "<folder>"…** (imported kits
+   live in `Kits/<machine>`); Online kits show **Remove from library** for a machine you added.
+   The confirmation counts the samples; samples used by the open or any saved project are kept
+   (moved to the parent folder). Built-in kits stay. Unit + e2e (mocked kit).
+4. **Icons on the panels' tabs (D101).** Every Dockview tab shows its panel's icon (also the
+   per-sample and per-synth editor tabs), and the layout menu lists panels with them. Icons that
+   clashed with the sound icons (D96) change: the drum machine `Grid3x3`, the piano roll `Music`.
+   Tab rows inside panels stay as they are.
+5. **Fifteen more themes (D102).** Dark: Outrun, Abyss, Moss, Graphite, Oxblood, Dracula, and
+   Catppuccin Frappé, Macchiato and Mocha. Light: Daylight, Sand, Mint, Lavender, Sky and
+   Catppuccin Latte (with Paper, 7 light themes; 20 in all). Catppuccin and Dracula use their
+   published palettes (both MIT). Light themes keep a dark display, tinted to match. Settings
+   group the list Dark / Light, and System picks which dark and which light theme it follows.
+   Tests: every theme defines every token, with contrast text/panel ≥ 7:1, dim ≥ 4.5:1, faint
+   ≥ 3:1, accent ≥ 3:1 (unit); every theme draws (e2e); a screenshot sheet.
+6. **Pump and "Laser Highway" (D103, D104).** A new insert effect **Pump**: a gain envelope on
+   every quarter or eighth note (Rate, Depth, Shape), timed by the transport's beats live and
+   offline: the sidechain pump of dance music. The song: synthwave/outrun at 118 BPM in A minor,
+   909 kick with drive, a big gated-style snare (909 snare + clap into a short dense reverb),
+   16th hats, synth toms and ratchet rolls, Moroder octave bass, Upside Down Arp with a dotted
+   delay, Juno Strings, Vangelis Brass stabs, an Axel/Numan lead, a Supersaw for the last chorus,
+   risers and zaps; Pump on bass, pads and arp; Brightness and Movement macro locks. Pages of at
+   most 32 steps, only built-in kits and synths. Tests: valid, every synth renders, it uses what
+   it shows off, the busiest page is loud and clean, golden levels.
+
 ### 0.7 Known limitations and later work
 
 - Offline renders (export, resampling) repitch instead of time-stretching warped clips. Sampled instruments are included (rendering waits for their samples), but the first render of one that was never downloaded needs the network.
