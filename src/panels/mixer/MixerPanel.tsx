@@ -7,12 +7,22 @@ import { useMenu } from "../../components/Menu";
 import { VMeter } from "../../components/VMeter";
 import * as engine from "../../engine/engine";
 import type { Bus } from "../../model/effects";
-import { EFFECT_TYPES, MIX_PARAMS, VOLUME_FORMAT } from "../../model/params";
+import { EFFECT_SHORT, EFFECT_TYPES, MIX_PARAMS, VOLUME_FORMAT } from "../../model/params";
 import type { Effect, Track } from "../../model/types";
 import { addEffect, type FxTarget } from "../../state/effectActions";
 import { useStore } from "../../state/store";
 
 const PAN = MIX_PARAMS.find((p) => p.id === "pan")!;
+/**
+ * A strip's effects in its narrow FX button: short names, at most two and how many more
+ * ("Dly·Rev", "EQ·Comp +1"), or "FX" for none. The tooltip has the whole chain.
+ */
+function fxLabel(effects: { name: string }[]) {
+  const names = effects.map((f) => EFFECT_SHORT[f.name] ?? f.name.slice(0, 4));
+  if (!names.length) return "FX";
+  return names.slice(0, 2).join("·") + (names.length > 2 ? ` +${names.length - 2}` : "");
+}
+
 const SEND_A = MIX_PARAMS.find((p) => p.id === "sendA")!;
 const SEND_B = MIX_PARAMS.find((p) => p.id === "sendB")!;
 
@@ -271,7 +281,7 @@ function TrackStrip({
           )
         }
       >
-        {track.effects.length ? track.effects.map((f) => f.name.slice(0, 4)).join("·") : "FX"}
+        {fxLabel(track.effects)}
       </button>
       {!compact && (
         <>
@@ -281,6 +291,8 @@ function TrackStrip({
                 key={def.id}
                 def={def}
                 size={26}
+                width={36}
+                short
                 color={track.color}
                 value={track.params[`mix.${def.id}`] ?? 0}
                 hint={`param.mix.${def.id}`}
@@ -351,7 +363,7 @@ function BusStrip({ bus, faderH }: { bus: Bus; faderH: number }) {
           chainPopover(fxRef.current!, { bus: bus.id }, `${bus.name} bus`, bus.effects)
         }
       >
-        {bus.effects.map((f) => f.name).join("·") || "FX"}
+        {fxLabel(bus.effects)}
       </button>
     </Strip>
   );
@@ -395,7 +407,7 @@ function MasterStrip({ faderH }: { faderH: number }) {
         onClick={() => chainPopover(fxRef.current!, "master", "Master chain", master.effects)}
         title={master.effects.map((f) => `${f.name}${f.bypass ? " (off)" : ""}`).join(" → ")}
       >
-        {master.effects.map((f) => f.name.slice(0, 4)).join("·")}
+        {fxLabel(master.effects)}
       </button>
     </Strip>
   );

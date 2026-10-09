@@ -17,6 +17,8 @@ interface Props {
   learnLabel?: string;
   /** Room for the label (default: a little wider than the knob). */
   width?: number;
+  /** Show the knob's short label, if it has one (narrow places). */
+  short?: boolean;
   /** Explain-mode hint id (help/hints). */
   hint?: string;
   /** How far modulation moves it (knob units 0..1), drawn as an inner ring. */
@@ -57,6 +59,7 @@ export function Encoder({
   midiTarget,
   learnLabel,
   width,
+  short,
   hint,
   modRange,
   live,
@@ -127,7 +130,9 @@ export function Encoder({
       style={{ opacity: disabled ? 0.4 : 1, width: width ?? size + 18 }}
       title={`${def.label}: drag or scroll · Shift = fine · double-click = reset`}
     >
-      <div className="label truncate max-w-full">{def.label}</div>
+      <div className="label truncate max-w-full">
+        {short ? (def.short ?? def.label) : def.label}
+      </div>
       <svg
         width={size}
         height={size}

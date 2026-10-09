@@ -23,6 +23,8 @@ import { notesLabel } from "./notes";
 export interface ParamDef {
   id: string;
   label: string;
+  /** A shorter label where space is tight (the mixer's narrow strips). */
+  short?: string;
   bipolar?: boolean;
   default: number;
   steps?: number; // number of discrete positions, for stepped encoders
@@ -136,8 +138,8 @@ export const SOUND_PARAMS: Record<Player, ParamDef[]> = {
 export const MIX_PARAMS: ParamDef[] = [
   { id: "volume", label: "Level", default: 0.8, format: VOLUME_FORMAT },
   { id: "pan", label: "Pan", bipolar: true, default: 0.5, format: pan },
-  { id: "sendA", label: "Reverb", default: 0, format: pct },
-  { id: "sendB", label: "Delay", default: 0, format: pct },
+  { id: "sendA", label: "Reverb", short: "Rev", default: 0, format: pct },
+  { id: "sendB", label: "Delay", short: "Dly", default: 0, format: pct },
   { id: "width", label: "Width", default: 1, format: pct },
   { id: "low", label: "Low", bipolar: true, default: 0.5, format: db(-15, 15) },
   { id: "mid", label: "Mid", bipolar: true, default: 0.5, format: db(-15, 15) },
@@ -148,6 +150,22 @@ const rate = (lo: number, hi: number) => (v: number) => `${expo(lo, hi)(v).toFix
 const MIX = (d: number): ParamDef => ({ id: "mix", label: "Mix", default: d, format: pct });
 
 export const DELAY_TIMES = ["1/32", "1/16", "1/8T", "1/8", "1/8.", "1/4", "1/4.", "1/2"];
+
+/** Effect names where space is tight (a mixer strip's FX button). */
+export const EFFECT_SHORT: Record<string, string> = {
+  EQ3: "EQ",
+  Filter: "Filt",
+  Compressor: "Comp",
+  Distortion: "Dist",
+  Bitcrusher: "Crsh",
+  Delay: "Dly",
+  Reverb: "Rev",
+  Chorus: "Chor",
+  Phaser: "Phas",
+  Tremolo: "Trem",
+  AutoPan: "Pan",
+  Limiter: "Lim",
+};
 
 /** Insert/bus/master effects. Values are normalized; the engine maps them (effects.ts). */
 export const EFFECT_PARAMS: Record<string, ParamDef[]> = {

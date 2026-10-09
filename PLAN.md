@@ -406,7 +406,7 @@ projects, files, saved sounds and MIDI mappings each need a migration test; Clip
 
 ### 0.6g Themes, tab icons, a synthwave song, removing kits, instant stop (agreed 2026-10-09)
 
-Progress: 1 · 2 · 3 · 4 · 5 · 6.
+Progress: 1 ✅ · 2 · 3 · 4 · 5 · 6.
 
 Order 1–6, one or more commits each, with hints, guide updates, decisions and the full checks.
 
