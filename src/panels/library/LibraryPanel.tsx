@@ -1,4 +1,7 @@
 import { Fragment, useEffect, useRef, useState, type CSSProperties } from "react";
+import { FolderMinus } from "lucide-react";
+import { askRemoveFolder, RemoveFolderDialog } from "./RemoveFolder";
+import { inFolder } from "../../library/folders";
 import { sampleOf } from "../../model/tracks";
 import { FolderInput, Link2, Upload, Volume2 } from "lucide-react";
 import { toast } from "../../components/Toast";
@@ -363,6 +366,19 @@ export function LibraryPanel() {
                 </div>
               )}
               {loc.kind === "folder" && loc.path === "Recordings" && <RecorderStrip />}
+              {loc.kind === "folder" && loc.path !== "Recordings" && (
+                <div className="flex shrink-0 items-center gap-2 border-b border-line px-2.5 py-1">
+                  <span className="label min-w-0 flex-1 truncate">{loc.path}</span>
+                  <button
+                    className="tool-btn !h-6 border border-line !text-[10.5px]"
+                    data-hint="library.folder.remove"
+                    data-testid="remove-folder-button"
+                    onClick={() => askRemoveFolder(loc.path)}
+                  >
+                    <FolderMinus size={12} /> Remove folder…
+                  </button>
+                </div>
+              )}
               {loc.kind === "instruments" && <FamilyHeader items={items} family={loc.family} />}
               <div
                 ref={listRef}
@@ -413,6 +429,11 @@ export function LibraryPanel() {
         </div>
       </div>
 
+      <RemoveFolderDialog
+        onRemoved={(path) => {
+          if (loc.kind === "folder" && inFolder(loc.path, path)) setLoc({ kind: "all" });
+        }}
+      />
       {/* footer */}
       <div className="flex h-8 shrink-0 items-center gap-2 border-t border-line px-2 text-[10.5px] text-faint">
         <Volume2 size={12} className="shrink-0" />

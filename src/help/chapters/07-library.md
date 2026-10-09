@@ -50,6 +50,7 @@ The **909 kit** and **808 kit** are built in (they're synthesized, so there are 
 - **+** next to a sound adds it to your library (folder Kits/<machine>).
 - **Drag a sound onto a track** to replace that track's sound (Alt+drop adds it as a new track; drop it below the tracks for a new one). It's added to your library at the same time.
 - The folder button next to a machine adds one of each of its sound types to your library; the **Load as tracks** button (the list with a plus) also makes a track for each.
+- A kit you added gets a **Remove from library** button (a folder with a minus). It removes the kit's folder; sounds a project plays stay (moved up a folder). Any of your folders can go the same way: right-click it in the list on the left, or **Remove folder…** above its samples.
 
 The search box finds machines _and_ sounds: type "hat", "808 snare" or "cowbell" to list matching sounds across all machines (by sound type or file name), handy for comparing the same sound on different machines.
 

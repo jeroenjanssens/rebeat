@@ -290,8 +290,8 @@ export class FxChain {
    * Drop the sound the effects still hold (D99): the ones with memory (reverb, delay, chorus,
    * phaser) are built again, the rest keep their nodes. A new reverb makes a new impulse.
    */
-  flush() {
-    if (!this.last.some((fx) => !fx.bypass && HOLDS_SOUND.has(fx.name))) return;
+  flush(all = false) {
+    if (!all && !this.last.some((fx) => !fx.bypass && HOLDS_SOUND.has(fx.name))) return;
     this.key = "";
     this.sync(this.last, this.lastBpm);
   }

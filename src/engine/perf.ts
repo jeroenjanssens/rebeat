@@ -11,6 +11,7 @@ import type { Track } from "../model/types";
 import {
   audioNow,
   forEachChannel,
+  onPanic,
   masterPerfPoints,
   scratchBegin,
   scratchEnd,
@@ -58,6 +59,23 @@ function ensureChain() {
   Tone.connect(gain, output);
   chain = { lp, hp, delay, gain };
   return chain;
+}
+
+/** Stop (D99): the filters ring briefly after the sound ends, so they're built again, as set. */
+function flushChain() {
+  if (!chain) return;
+  const { input } = masterPerfPoints();
+  const fresh = (old: Tone.Filter) =>
+    new Tone.Filter({ type: old.type, frequency: old.frequency.value, Q: old.Q.value });
+  const lp = fresh(chain.lp);
+  const hp = fresh(chain.hp);
+  input.disconnect();
+  chain.lp.dispose();
+  chain.hp.dispose();
+  input.chain(lp, hp);
+  Tone.connect(hp, chain.delay);
+  chain.lp = lp;
+  chain.hp = hp;
 }
 
 /** DJ filter: below 0.5 closes a low-pass, above 0.5 opens a high-pass. */
@@ -196,6 +214,7 @@ function jog(v: number) {
 
 export function startPerf() {
   ensureChain();
+  onPanic(flushChain);
   let last = useStore.getState().project.perf;
   useStore.subscribe((s) => {
     if (s.project.perf === last) return;

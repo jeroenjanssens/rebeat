@@ -2,6 +2,7 @@
  * The sample library (shared by all projects): import, organize, and decode samples on demand.
  * Samples are content-addressed (SHA-256), so importing the same file twice is detected.
  */
+import { planRemoval } from "./folders";
 import { loadUserInstruments } from "./userInstruments";
 import { DEFAULT_SORT, type SampleSort } from "./sort";
 import { unzipSync } from "fflate";
@@ -369,6 +370,35 @@ export async function deleteSample(id: string) {
     await db.blobs.delete(id);
   });
   await refresh();
+}
+
+/** Samples that projects play (D100): the open one, and every saved one. */
+export async function samplesInUse(): Promise<Set<string>> {
+  const { deserializeProject, projectSampleIds } = await import("../model/schema");
+  const ids = new Set(projectSampleIds(useStore.getState().project));
+  for (const rec of await db.projects.toArray()) {
+    try {
+      for (const id of projectSampleIds(deserializeProject(rec.data))) ids.add(id);
+    } catch {
+      // a project that doesn't load can't play anything
+    }
+  }
+  return ids;
+}
+
+/**
+ * Remove a folder from the library (D100), such as an imported kit. Samples a project plays
+ * stay, moved to the folder above; the rest go, with their audio. Returns how many of each.
+ */
+export async function removeFolder(path: string): Promise<{ removed: number; kept: number }> {
+  const plan = planRemoval(await db.samples.toArray(), path, await samplesInUse());
+  await db.transaction("rw", db.samples, db.blobs, async () => {
+    await db.samples.bulkDelete(plan.remove);
+    await db.blobs.bulkDelete(plan.remove);
+    for (const id of plan.keep) await db.samples.update(id, { folder: plan.parent });
+  });
+  await refresh();
+  return { removed: plan.remove.length, kept: plan.keep.length };
 }
 
 /** Tracks in the open project that use a sample. */

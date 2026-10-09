@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import * as Tone from "tone";
-import { FolderPlus, ListPlus, Loader2, Plus, Search, X } from "lucide-react";
+import { FolderMinus, FolderPlus, ListPlus, Loader2, Plus, Search, X } from "lucide-react";
+import { askRemoveFolder } from "./RemoveFolder";
+import { inFolder } from "../../library/folders";
+import { useLibrary } from "../../library/library";
 import { toast } from "../../components/Toast";
 import { auditionBuffer } from "../../library/audition";
 import {
@@ -44,6 +47,10 @@ export function OnlineKits() {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const librarySamples = useLibrary((s) => s.samples);
+  // a kit you added lives in its own folder
+  const kitFolder = (kit: OnlineKit) => `Kits/${machineName(kit.machine)}`;
+  const added = (kit: OnlineKit) => librarySamples.some((s) => inFolder(s.folder, kitFolder(kit)));
 
   useEffect(() => {
     fetchKitIndex().then(setKits, (e) => setError(String(e.message ?? e)));
@@ -212,6 +219,17 @@ export function OnlineKits() {
                     <ListPlus size={14} />
                   )}
                 </button>
+                {added(kit) && (
+                  <button
+                    className="tool-btn !h-6 !w-6 shrink-0 !p-0"
+                    title="Remove from library"
+                    aria-label="Remove from library"
+                    data-hint="library.online.removekit"
+                    onClick={() => askRemoveFolder(kitFolder(kit))}
+                  >
+                    <FolderMinus size={13} />
+                  </button>
+                )}
                 {kit.source && <RemoveSource src={kit.source} />}
               </div>
               {isOpen && (

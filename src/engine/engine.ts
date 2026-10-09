@@ -708,7 +708,6 @@ const FADE = 0.005;
 /** Tracks whose notes can't be cut short (smplr lets them decay): muted until then. */
 const gated = new Set<string>();
 let ungateTimer = 0;
-let reopenTimer = 0;
 
 /**
  * Stop means silence (D99). The master fades out over a few milliseconds; every source stops
@@ -740,22 +739,25 @@ export function panic() {
   clearTimeout(ungateTimer);
   if (gated.size) ungateTimer = window.setTimeout(ungate, 600);
   clearTimeout(flushTimer);
-  clearTimeout(reopenTimer);
   // after the fade (and a little time for the audio thread): drop the tails
   flushTimer = window.setTimeout(() => {
     for (const ch of S.channels.values()) ch.flush();
     for (const b of S.buses.values()) b.flush();
-    m.fx.flush();
+    // the master's filters (EQ, the performance filters) ring briefly too: all of it
+    m.fx.flush(true);
+    for (const fn of onPanicFns) fn();
+    reopen();
   }, 30);
-  // the master's own filters ring a little longer: open again once that's gone, or on play
-  reopenTimer = window.setTimeout(reopen, 300);
 }
 
 let flushTimer = 0;
+const onPanicFns: (() => void)[] = [];
+
+/** Something with its own nodes on the master (the performance filters) flushes on stop too. */
+export const onPanic = (fn: () => void) => void onPanicFns.push(fn);
 
 /** Open the master again after a stop. */
 function reopen() {
-  clearTimeout(reopenTimer);
   const g = S.master?.output.gain;
   if (!g || g.value > 0.999) return;
   const now = audioNow();

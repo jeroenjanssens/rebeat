@@ -135,6 +135,16 @@ const hints: Hints = {
     text: "Downloads one of each sound type into your library, in the folder Kits/<machine>, without adding tracks.",
     guide: "library-kits",
   },
+  "library.online.removekit": {
+    title: "Remove from library",
+    text: "Removes the sounds of this kit you added (its folder Kits/<machine>) from your library. Sounds a project plays stay.",
+    guide: "library-kits",
+  },
+  "library.folder.remove": {
+    title: "Remove folder",
+    text: "Removes this folder and its samples from the library, also folders inside it. Samples your projects play stay, moved to the folder above. Right-click a folder in the list for the same.",
+    guide: "library-kits",
+  },
   "library.online.load": {
     title: "Load as tracks",
     text: "Adds one of each sound type to your library and a track for each to your project.",

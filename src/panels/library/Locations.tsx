@@ -2,7 +2,8 @@ import { useRef } from "react";
 import { ChevronDown, Folder, Globe, Heart, Library, Star } from "lucide-react";
 import { PLACE_ICONS, SOUND_ICONS } from "../../components/soundIcons";
 import type { Family } from "../../library/instruments";
-import { dropdown } from "../../components/Menu";
+import { contextMenu, dropdown } from "../../components/Menu";
+import { askRemoveFolder } from "./RemoveFolder";
 import { KITS } from "../../engine/kits";
 import { updateSample } from "../../library/library";
 import { SAMPLE_MIME } from "../../state/trackActions";
@@ -135,6 +136,13 @@ export function Locations({
               data-active={sameLoc(l.loc, loc)}
               data-hint="library.sidebar"
               onClick={() => setLoc(l.loc)}
+              onContextMenu={(e) => {
+                const folder = l.loc.kind === "folder" ? l.loc.path : null;
+                if (!folder || folder === "Recordings") return;
+                contextMenu(e, [
+                  { label: `Remove “${l.label}”…`, onSelect: () => askRemoveFolder(folder) },
+                ]);
+              }}
               onDragOver={(e) =>
                 l.loc.kind === "folder" &&
                 [...e.dataTransfer.types].includes(SAMPLE_MIME) &&

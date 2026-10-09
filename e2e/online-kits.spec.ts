@@ -117,3 +117,29 @@ test("load as tracks adds a track per sound type", async ({ page }) => {
   );
   expect(sources).toEqual(["Roland TR808 Kick", "Roland TR808 Snare 1", "Roland TR808 Cl Hat"]);
 });
+
+test("a kit you added can be removed again; the sounds a track plays stay (D100)", async ({
+  page,
+}) => {
+  await kit(page, "RolandTR808").getByTitle("Add the kit to the library").click();
+  await expect.poll(async () => (await librarySamples(page)).length).toBe(3);
+  // a track plays the kick
+  await page.getByTestId("online-search").fill("808 bd");
+  const kick = page.getByTestId("online-kits").locator("[data-online-sound]").first();
+  await kick.dragTo(page.locator('[data-panel="drum-machine"] [data-track-row]').first());
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => (window as never as W).__rebeat.store.getState().project.tracks[0].source,
+      ),
+    )
+    .toBe("Roland TR808 Kick");
+  await page.getByTestId("online-search").fill("");
+  await kit(page, "RolandTR808").getByTitle("Remove from library").click();
+  const dialog = page.getByTestId("remove-folder");
+  await expect(dialog).toContainText("3 samples");
+  await expect(dialog.getByTestId("remove-folder-kept")).toContainText("1 of them is used");
+  await dialog.getByTestId("remove-folder-confirm").click();
+  await expect.poll(() => librarySamples(page)).toEqual(["Kits/Roland TR808 Kick"]);
+  await expect(kit(page, "RolandTR808").getByTitle("Remove from library")).toHaveCount(0);
+});
