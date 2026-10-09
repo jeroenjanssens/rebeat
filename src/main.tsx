@@ -32,6 +32,10 @@ if (import.meta.env.DEV || import.meta.env.MODE === "test") {
     import("./engine/synth/node"),
     import("./library/synths"),
     import("./library/audition"),
+    import("./engine/render"),
+    import("./templates/examples"),
+    import("./templates/index"),
+    import("./model/schema"),
   ]).then(
     ([
       engine,
@@ -45,6 +49,10 @@ if (import.meta.env.DEV || import.meta.env.MODE === "test") {
       synth,
       synths,
       audition,
+      render,
+      examples,
+      templates,
+      schema,
     ]) => {
       (window as unknown as Record<string, unknown>).__rebeat = {
         engine,
@@ -58,6 +66,11 @@ if (import.meta.env.DEV || import.meta.env.MODE === "test") {
         renderPatch: synth.renderPatch,
         synths: synths.FACTORY_SYNTHS,
         previews: audition.previewCount,
+        // the golden levels test (e2e/golden.spec.ts) renders every example and template
+        renderProject: render.renderProject,
+        examples: examples.EXAMPLES,
+        templates: templates.TEMPLATES,
+        deserializeProject: schema.deserializeProject,
       };
     },
   );

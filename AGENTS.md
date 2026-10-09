@@ -444,12 +444,19 @@ onPatchEdit` hook, debounced `saveSoundSoon`).
   - `hints`, `commands()` (run any command: `commands().find(c => c.id === "panel.synth-editor").run()`)
   - `dock`, `perf`, `library`
   - `renderPatch`, `synths` (factory list), `previews()` (number of library previews started)
+  - `renderProject`, `deserializeProject`, `examples`, `templates` (for the golden levels test)
 - Conventions:
   - stable `data-testid`s (`synth-editor`, `keyboard`, `library-list`, `display-wave`…)
   - `data-hint` ids double as selectors
   - track rows are `[data-track-row]` with the name in caps (`hasText: "BASS"`)
   - library items are `[data-sample]` and `[data-instrument]`
   - Dockview tabs are `.dv-tab`
+- **Golden levels** (`e2e/golden.spec.ts`): every example song and template renders offline (the
+  mix and each track alone) and must match the levels in `e2e/golden/*.json` (RMS within
+  0.75 dB). It's the safety net for changes that shouldn't change the sound. Math.random is seeded
+  from the first line, because the built-in kits are synthesized from noise at startup. Re-record
+  with `GOLDEN_UPDATE=1 pnpm playwright test golden` only when a change is meant to sound
+  different, and say so in the commit.
 - **Flakiness**:
   - Audio tests measure real output: `masterLevel` polled over 0.8–1.5 s.
   - Under heavy parallel load the first sound or a page change can come late. Prefer

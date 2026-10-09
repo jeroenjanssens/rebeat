@@ -311,7 +311,7 @@ upgraded on read; clicking a wave plays it as heard; note letters with octaves o
 
 ### 0.6f Step tracks (agreed 2026-10-09)
 
-Progress: 0 · 1 ✅ · 2 · 3 · 4 · 5 · 6 · 7 · 8 · 9 · 10.
+Progress: 0 ✅ · 1 ✅ · 2 · 3 · 4 · 5 · 6 · 7 · 8 · 9 · 10.
 
 The words for sounds didn't line up: "drum", "instrument" and "audio" were track kinds, "instrument"
 also meant a sampled instrument (and, in the library, synths too), a "synth track" was an
