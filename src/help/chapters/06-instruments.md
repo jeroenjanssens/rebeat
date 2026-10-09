@@ -16,7 +16,7 @@ A new instrument track plays a built-in synth: **Mono · Acid Bass** for bass tr
 
 ## The synth editor
 
-The **synth editor** shapes the synth of an instrument track. Open it with **Edit synth…** in the Inspector, right-click the track's name → **Edit synth…**, or double-click a synth in the library. Each synth track gets its own editor tab (named after the track), so you can have several open side by side or as tabs.
+The **synth editor** shapes the synth of an instrument track. Open it with **Edit synth…** in the Inspector, right-click the track's name → **Edit synth…**, Each synth track gets its own editor tab (named after the track), so you can have several open side by side or as tabs. Double-clicking a synth in the library opens the library sound itself, without a track: you play it through the preview, a synth of yours is saved as you go, and a factory synth becomes your own copy on the first change. (There, undo is the editor's own, and MIDI learn and the scopes need a track.)
 
 It has two views (switch at the top right; it remembers the one you used last):
 

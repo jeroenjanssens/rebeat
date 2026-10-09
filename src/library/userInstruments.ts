@@ -4,7 +4,7 @@
  * copy of the sound, so projects stay self-contained.
  */
 import { create } from "zustand";
-import { onPatchEdit } from "./synthTrack";
+import { detachedTracks, onPatchEdit } from "./synthTrack";
 import { factorySynth } from "./synths";
 import { useStore } from "../state/store";
 import { defaultInstrument } from "../engine/instruments";
@@ -46,14 +46,17 @@ function soundOf(track: Track, name: string): InstrumentRecord["sound"] {
 
 const saving = new Map<string, ReturnType<typeof setTimeout>>();
 
-/** Store the track's sound in its copy (after the edit is committed; edits in a row: once). */
-function saveCopySoon(id: string, trackId: string, delay: number, copyOf?: string) {
+/** Store a track's sound in Your instruments entry `id` (after the edit is committed; edits in a
+ * row: once). The track is looked up then: in the project, or a library sound being edited. */
+export function saveSoundSoon(id: string, trackId: string, delay: number, copyOf?: string) {
   clearTimeout(saving.get(id));
   saving.set(
     id,
     setTimeout(async () => {
       saving.delete(id);
-      const track = useStore.getState().project.tracks.find((t) => t.id === trackId);
+      const track =
+        useStore.getState().project.tracks.find((t) => t.id === trackId) ??
+        detachedTracks.get(trackId);
       if (!track?.instrument || track.instrument.from !== `user:${id}`) return;
       const old = await db.instruments.get(id);
       const name = track.instrument.name ?? old?.name ?? "Synth";
@@ -85,13 +88,13 @@ onPatchEdit((t, event) => {
         { id, name, createdAt: Date.now(), sound: soundOf(t, name), copyOf: src.preset },
       ],
     }));
-    saveCopySoon(id, t.id, 0, src.preset);
+    saveSoundSoon(id, t.id, 0, src.preset);
     return;
   }
   // later edits keep the copy up to date (only copies made this way, not instruments you saved)
   const id = src.from?.startsWith("user:") ? src.from.slice(5) : null;
   const rec = id && useUserInstruments.getState().list.find((r) => r.id === id);
-  if (rec && rec.copyOf) saveCopySoon(rec.id, t.id, 600);
+  if (rec && rec.copyOf) saveSoundSoon(rec.id, t.id, 600);
 });
 
 export async function loadUserInstruments() {

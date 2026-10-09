@@ -68,6 +68,19 @@ export function setPreviewVolume(v: number) {
 
 let preview: { id: string; voice: InstrumentVoice; gain: Tone.Gain } | null = null;
 
+/** A new input into the library's preview output (at the preview volume). */
+export function previewInput(): Tone.Gain {
+  const ctx = Tone.getContext().rawContext as AudioContext;
+  if (!out) {
+    out = ctx.createGain();
+    out.connect(ctx.destination);
+  }
+  out.gain.value = useSettings.getState().previewVolume;
+  const gain = new Tone.Gain(1);
+  gain.connect(out);
+  return gain;
+}
+
 /** A voice for previewing an instrument (kept while you try the same one). */
 function previewVoice(c: CatalogInstrument): InstrumentVoice {
   if (preview?.id === c.id) return preview.voice;

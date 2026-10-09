@@ -21,40 +21,79 @@ const state = (page: Page) =>
     return { tracks: s.project.tracks, selected: s.selectedTrackId };
   });
 
-test("double-clicking a synth opens it in the synth editor, on a track that plays it", async ({
+test("double-clicking a synth edits the library sound itself, without adding a track", async ({
   page,
 }) => {
   await goTo(page, "Synths");
   const before = (await state(page)).tracks.length;
   const reese = library(page).locator("[data-instrument]", { hasText: "Reese Bass" });
   await reese.dblclick();
-  await expect(page.getByTestId("synth-editor")).toBeVisible();
-  let s = await state(page);
-  // no track played it: a new one does now, selected, in the editor
-  expect(s.tracks.length).toBe(before + 1);
-  const t = s.tracks.find((x) => x.id === s.selected)!;
-  expect(t.instrument?.preset).toBe("reese");
-  // the editor shows that track
-  await expect(page.getByTestId("synth-editor").locator(".label").first()).toHaveText(t.name);
-  // again: the same track, no new one
-  await reese.dblclick();
-  s = await state(page);
-  expect(s.tracks.length).toBe(before + 1);
-  // the right-click menu says where it opens
-  await reese.click({ button: "right" });
+  const editor = page.locator('[data-testid="synth-editor"][data-library]');
+  await expect(editor).toBeVisible();
+  await expect(editor.getByTestId("synth-library-note")).toContainText("your first change");
+  expect((await state(page)).tracks.length).toBe(before);
+  // play it: through the preview, no track needed
+  const key = editor.getByTestId("keyboard").locator('[data-key="36"]');
+  await key.hover();
+  await page.mouse.down();
+  await page.mouse.up();
+  // the first change makes your copy, in Your instruments; still no track
+  await editor.getByTestId("synth-view").getByRole("button", { name: "Advanced" }).click();
+  await editor.locator('[data-hint="synth.osc.retrigger"]').first().click();
+  await expect(editor.getByTestId("synth-library-note")).toContainText("saved as you go");
+  await expect(page.locator(".dv-tab", { hasText: "Reese Bass copy · synth" })).toHaveCount(1);
+  expect((await state(page)).tracks.length).toBe(before);
+  await editor.locator('[data-section="Oscillator 1"] [aria-label="Pulse"]').click();
+  await page.waitForTimeout(900);
+  await goTo(page, "Your instruments");
+  const copy = library(page).locator("[data-instrument]", { hasText: "Reese Bass copy" });
+  await expect(copy).toHaveCount(1);
+  // it keeps your edits: put it on a track to check
+  await copy.dragTo(page.locator("[data-track-row]", { hasText: "CHORDS" }));
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (
+            window as never as {
+              __rebeat: {
+                store: {
+                  getState(): {
+                    project: {
+                      tracks: {
+                        name: string;
+                        instrument?: { patch?: { osc: { shape: number }[] } };
+                      }[];
+                    };
+                  };
+                };
+              };
+            }
+          ).__rebeat.store
+            .getState()
+            .project.tracks.find((t) => t.name === "Chords")?.instrument?.patch?.osc[0].shape,
+      ),
+    )
+    .toBe(3);
+  // double-clicking the copy opens the same editor again
+  await copy.dblclick();
+  await expect(page.locator(".dv-tab", { hasText: "Reese Bass copy · synth" })).toHaveCount(1);
+  // its own undo
+  await editor.click({ position: { x: 5, y: 5 } });
+  await page.keyboard.press("ControlOrMeta+z");
   await expect(
-    page.locator(".menu").getByRole("button", { name: "Open in synth editor" }),
-  ).toBeVisible();
+    editor.locator('[data-section="Oscillator 1"] [aria-label="Pulse"]'),
+  ).toHaveAttribute("aria-checked", "false");
 });
 
-test("a sampled instrument opens in the Inspector", async ({ page }) => {
+test("a sampled instrument has no editor of its own", async ({ page }) => {
   await goTo(page, "Pianos & keys");
+  const before = (await state(page)).tracks.length;
   const first = library(page).locator("[data-instrument]").first();
   await first.click({ button: "right" });
   await page.locator(".menu").getByRole("button", { name: "Open in Inspector" }).click();
-  await expect(page.locator('[data-panel="inspector"]')).toBeVisible();
-  const s = await state(page);
-  expect(s.tracks.find((x) => x.id === s.selected)?.kind).toBe("instrument");
+  await expect(page.getByText("has no editor of its own").first()).toBeVisible();
+  expect((await state(page)).tracks.length).toBe(before);
 });
 
 test("double-clicking a built-in sound edits a copy in the sample editor", async ({ page }) => {
@@ -89,26 +128,28 @@ test("a double-click only opens the editor; a single click previews", async ({ p
 });
 
 test("each synth track gets its own synth editor tab", async ({ page }) => {
-  await goTo(page, "Synths");
-  await library(page).locator("[data-instrument]", { hasText: "Reese Bass" }).dblclick();
-  await library(page).locator("[data-instrument]", { hasText: "Supersaw" }).dblclick();
-  const editors = page.getByTestId("synth-editor");
-  await expect(page.locator(".dv-tab", { hasText: "Reese Bass · synth" })).toHaveCount(1);
-  await expect(page.locator(".dv-tab", { hasText: "Supersaw · synth" })).toHaveCount(1);
+  const edit = async (name: string) => {
+    await page
+      .locator("[data-track-row]", { hasText: name })
+      .locator('[data-hint="dm.track.name"]')
+      .click({ button: "right" });
+    await page.locator(".menu").getByRole("button", { name: "Edit synth…" }).click();
+  };
+  await edit("BASS");
+  await edit("CHORDS");
+  await expect(page.locator(".dv-tab", { hasText: "Bass · synth" })).toHaveCount(1);
+  await expect(page.locator(".dv-tab", { hasText: "Chords · synth" })).toHaveCount(1);
   // switch back: the first tab still edits its own track
-  await page.locator(".dv-tab", { hasText: "Reese Bass · synth" }).click();
-  await expect(editors.locator(":visible").getByTestId("synth-start").first()).toBeVisible();
+  await page.locator(".dv-tab", { hasText: "Bass · synth" }).click();
   const visible = page.locator('[data-testid="synth-editor"]:visible');
   await expect(visible).toHaveCount(1);
-  await expect(visible.locator(".label").first()).toHaveText("Reese Bass");
+  await expect(visible.locator(".label").first()).toHaveText("Bass");
   // renaming the track renames its tab
   await page.evaluate(() => {
     const s = (window as never as W).__rebeat.store.getState() as unknown as {
       commit(fn: (p: { tracks: T[] }) => void): void;
-      selectedTrackId: string;
     };
-    const id = s.selectedTrackId;
-    s.commit((p) => void (p.tracks.find((t) => t.id === id)!.name = "Low End"));
+    s.commit((p) => void (p.tracks.find((t) => t.name === "Bass")!.name = "Low End"));
   });
   await expect(page.locator(".dv-tab", { hasText: "Low End · synth" })).toHaveCount(1);
 });

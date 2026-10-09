@@ -13,20 +13,21 @@ export type SynthMessage =
   | { type: "releaseAll"; at: number }
   | { type: "control"; name: keyof Controls; value: number }
   | { type: "monitor"; on: boolean }
-  | { type: "macros"; id: number; values: number[] | null; at: number }
-  /** Answered with "pong" once every message before it is handled. */
-  | { type: "ping"; n: number };
+  | { type: "macros"; id: number; values: number[] | null; at: number };
 
 /** What the worklet sends back: the newest voice's modulation, about 30 times a second. */
-export type SynthReport = { type: "mod"; values: number[] | null } | { type: "pong"; n: number };
+export type SynthReport = { type: "mod"; values: number[] | null };
 
 class SynthProcessor extends AudioWorkletProcessor {
   private core = new SynthCore(sampleRate, upgradePatch(null));
   private monitor = false;
   private blocks = 0;
 
-  constructor() {
-    super();
+  constructor(options?: { processorOptions?: Record<string, unknown> }) {
+    super(options);
+    // offline renders hand over everything at the start (messages could arrive too late)
+    for (const m of (options?.processorOptions?.messages as SynthMessage[] | undefined) ?? [])
+      this.message(m);
     this.port.onmessage = (e: MessageEvent<SynthMessage>) => this.message(e.data);
   }
 
@@ -50,9 +51,6 @@ class SynthProcessor extends AudioWorkletProcessor {
         return;
       case "macros":
         return this.core.lockMacros(m.id, m.values, frame(m.at));
-      case "ping":
-        this.port.postMessage({ type: "pong", n: m.n } satisfies SynthReport);
-        return;
       case "monitor":
         this.monitor = m.on;
     }

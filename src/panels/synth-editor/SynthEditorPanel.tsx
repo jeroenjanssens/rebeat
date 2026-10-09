@@ -29,6 +29,15 @@ import {
   soundHint,
 } from "../../library/synthTrack";
 import { useSettings } from "../../state/settings";
+import * as Tone from "tone";
+import type { WorkletSynth } from "../../engine/synth/node";
+import {
+  endLibraryEdit,
+  librarySoundVoice,
+  undoLibrarySound,
+  updateLibrarySound,
+  useLibraryEdits,
+} from "../../library/libraryEdit";
 import { dock } from "../../app/shell";
 import { synthEditorTitle } from "../../app/openers";
 import { EnvelopeView, H, LfoView, W } from "./pictures";
@@ -111,11 +120,81 @@ const LFO_SHAPES: [LfoShape, string][] = [
 
 const emptySlot = () => ({ source: null, dest: null, amount: 0, via: null });
 
-/** Shape the selected track's synth (D81, D83): edits a copy on the track; built-ins never change. */
+/** What the editor works on: a track in the project, or a library sound (D91). */
+interface EditTarget {
+  library: boolean;
+  update(fn: (t: Track) => void, key?: string): void;
+  synth(): WorkletSynth | undefined;
+  /** Start a held note; returns how to let go. */
+  hold(pitch: number, velocity: number): () => void;
+  /** Play it once (the wave picture); returns for how long. */
+  once(): number;
+  /** Its own undo (library sounds aren't in the project's history). */
+  undo?(redo: boolean): void;
+}
+
+const trackTarget = (
+  track: Track,
+  commit: ReturnType<typeof useStore.getState>["commit"],
+): EditTarget => ({
+  library: false,
+  update: (fn, key) =>
+    commit((pr) => {
+      const t = pr.tracks.find((x) => x.id === track.id);
+      if (t) fn(t);
+    }, key),
+  synth: () => engine.trackSynth(track),
+  hold: (pitch, velocity) => engine.holdNote(track, pitch, velocity),
+  once: () => engine.playOnce(track),
+});
+
+const libraryTarget = (key: string, track: Track): EditTarget => ({
+  library: true,
+  update: (fn, undoKey) => updateLibrarySound(key, fn, undoKey),
+  undo: (redo) => undoLibrarySound(key, redo),
+  synth: () => librarySoundVoice(key)?.synth,
+  hold: (pitch, velocity) => {
+    const release = librarySoundVoice(key)?.hold?.(pitch, velocity, Tone.now());
+    return () => release?.(Tone.now());
+  },
+  once: () => {
+    librarySoundVoice(key)?.play(
+      [{ pitch: track.category === "bass" ? 36 : 60, length: 6, velocity: 0.8 }],
+      Tone.now() + 0.01,
+      0.125,
+    );
+    return 0.75;
+  },
+});
+
+/** A library sound in the synth editor (no track, D91): saved to Your instruments as you go. */
+function LibrarySoundEditor({ libraryKey }: { libraryKey: string }) {
+  const track = useLibraryEdits((s) => s.entries[libraryKey]?.track);
+  const name = track?.instrument?.name ?? track?.name;
+  useEffect(() => {
+    if (name) dock.api?.getPanel(`synth-editor:lib:${libraryKey}`)?.api.setTitle(`${name} · synth`);
+  }, [libraryKey, name]);
+  useEffect(() => () => endLibraryEdit(libraryKey), [libraryKey]);
+  if (!track)
+    return (
+      <div className="flex h-full items-center justify-center p-6 text-center text-[12px] text-faint">
+        Double-click a synth in the library to edit it here.
+      </div>
+    );
+  return <Editor track={track} target={libraryTarget(libraryKey, track)} />;
+}
+
+/** Shape a track's synth (D81, D83), or a library synth's (D91); built-ins never change. */
 export function SynthEditorPanel({ params }: { params?: Record<string, unknown> }) {
+  const library = params?.library as string | undefined;
+  if (library) return <LibrarySoundEditor libraryKey={library} />;
+  return <TrackSynthEditor own={params?.trackId as string | undefined} />;
+}
+
+function TrackSynthEditor({ own }: { own?: string }) {
+  const commit = useStore((s) => s.commit);
   const selected = useSelectedTrack();
   // a tab of its own track (openSynthEditor), or the one that follows the selection
-  const own = params?.trackId as string | undefined;
   const owned = useStore((s) => (own ? s.project.tracks.find((t) => t.id === own) : undefined));
   const track = own ? owned : selected;
   const name = track?.name;
@@ -147,11 +226,10 @@ export function SynthEditorPanel({ params }: { params?: Record<string, unknown> 
         )}
       </div>
     );
-  return <Editor key={track.id} track={track} />;
+  return <Editor key={track.id} track={track} target={trackTarget(track, commit)} />;
 }
 
-function Editor({ track }: { track: Track }) {
-  const commit = useStore((s) => s.commit);
+function Editor({ track, target }: { track: Track; target: EditTarget }) {
   const src = track.instrument ?? defaultInstrument(track);
   const patch = patchOf(src);
   // what you hear: the macros where the track's SOUND knobs have them
@@ -171,12 +249,8 @@ function Editor({ track }: { track: Track }) {
   // the keyboard's lowest C: two octaves around the track's range
   const [low, setLow] = useState(track.category === "bass" ? 24 : 48);
 
-  /** Change the patch: the first edit copies the factory synth onto the track (editPatch). */
-  const onTrack = (fn: (t: Track) => void, key?: string) =>
-    commit((pr) => {
-      const t = pr.tracks.find((x) => x.id === track.id);
-      if (t) fn(t);
-    }, key);
+  /** Change the patch: the first edit of a factory synth makes your copy (editPatch). */
+  const onTrack = target.update;
   const edit = (fn: (p: SynthPatch) => void, key?: string) => onTrack((t) => editPatch(t, fn), key);
   // values that macros move keep the macros' place (setThroughMacros)
   const set = (path: string, v: unknown) =>
@@ -232,6 +306,8 @@ function Editor({ track }: { track: Track }) {
       },
       {
         label: `Import ${SYNTH_EXT}…`,
+        // onto a track (a library sound is already in the library)
+        disabled: target.library,
         onSelect: async () => {
           const [f] = await platform.files.open({ accept: [SYNTH_EXT] });
           if (!f) return;
@@ -249,7 +325,7 @@ function Editor({ track }: { track: Track }) {
     onTrack((t) => void (t.params[macroKey(i)] = v), `syn-${track.id}-macro${i}`);
 
   // modulation: the range the matrix can move each knob, and where it is now (live)
-  const synth = engine.trackSynth(track);
+  const synth = target.synth();
   useEffect(() => {
     synth?.monitor(true);
     return () => synth?.monitor(false);
@@ -270,7 +346,7 @@ function Editor({ track }: { track: Track }) {
         color={track.color}
         size={34}
         hint={hintFor(d.path)}
-        midiTarget={`track:${track.id}:synth:${d.path}`}
+        midiTarget={target.library ? undefined : `track:${track.id}:synth:${d.path}`}
         learnLabel={`${track.name} · ${paramName(d.path)}`}
         modRange={
           r
@@ -498,31 +574,55 @@ function Editor({ track }: { track: Track }) {
       className="flex h-full min-h-0 flex-col outline-none"
       tabIndex={0}
       data-testid="synth-editor"
+      data-library={target.library || undefined}
+      onKeyDown={(e) => {
+        // a library sound's own undo, instead of the project's
+        if (!target.undo || !(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== "z") return;
+        if ((e.target as HTMLElement).closest("input")) return;
+        e.preventDefault();
+        e.stopPropagation();
+        target.undo(e.shiftKey);
+      }}
     >
       <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-line px-3 py-1.5">
         <span className="h-3 w-1 rounded" style={{ background: track.color }} />
-        <span className="label !text-ink">{track.name}</span>
-        <select
-          className="input !h-6 max-w-[220px]"
-          value={src.from ? "" : src.preset}
-          onChange={(e) => setInstrument(track.id, { source: "synth", preset: e.target.value })}
-          title="Start from a factory synth"
-          data-hint="synth.start"
-          data-testid="synth-start"
-        >
-          {src.from && <option value="">{soundLabel(track)}</option>}
-          {[...new Set(SYNTH_PRESETS.map((p) => p.group))].map((g) => (
-            <optgroup key={g} label={g}>
-              {SYNTH_PRESETS.filter((p) => p.group === g).map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
-        {edited && !src.from && <span className="text-[10.5px] text-lit">edited</span>}
-        {copy && factory && (
+        {target.library ? (
+          <>
+            <span className="label !text-ink">{name}</span>
+            <span className="text-[10.5px] text-faint" data-testid="synth-library-note">
+              {src.from
+                ? "in Your instruments: saved as you go"
+                : "a factory synth: your first change makes your own copy"}
+            </span>
+          </>
+        ) : (
+          <span className="label !text-ink">{track.name}</span>
+        )}
+        {!target.library && (
+          <select
+            className="input !h-6 max-w-[220px]"
+            value={src.from ? "" : src.preset}
+            onChange={(e) => setInstrument(track.id, { source: "synth", preset: e.target.value })}
+            title="Start from a factory synth"
+            data-hint="synth.start"
+            data-testid="synth-start"
+          >
+            {src.from && <option value="">{soundLabel(track)}</option>}
+            {[...new Set(SYNTH_PRESETS.map((p) => p.group))].map((g) => (
+              <optgroup key={g} label={g}>
+                {SYNTH_PRESETS.filter((p) => p.group === g).map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        )}
+        {!target.library && edited && !src.from && (
+          <span className="text-[10.5px] text-lit">edited</span>
+        )}
+        {!target.library && copy && factory && (
           <span className="text-[10.5px] text-faint" data-testid="synth-copy-note">
             your copy of {factory.name}, in Your instruments
           </span>
@@ -560,7 +660,7 @@ function Editor({ track }: { track: Track }) {
             </button>
           ))}
         </div>
-        {edited && (!src.from || copy) && factory && (
+        {!target.library && edited && (!src.from || copy) && factory && (
           <button
             className="tool-btn"
             title={`Back to the factory “${factory.name}”`}
@@ -570,7 +670,7 @@ function Editor({ track }: { track: Track }) {
             <RotateCcw size={13} />
           </button>
         )}
-        {saving === null ? (
+        {target.library ? null : saving === null ? (
           <button
             className="tool-btn border border-line"
             data-hint="synth.save"
@@ -609,30 +709,34 @@ function Editor({ track }: { track: Track }) {
           setMacro={setMacro}
           set={set}
           glide={knob(paramOf("voice.glide")!)}
+          learn={!target.library}
         />
       ) : (
         <>
           <div className="flex shrink-0 items-center border-b border-line">
-            <SignalFlow patch={shown} color={track.color} onPlay={() => engine.playOnce(track)} />
-            <div className="flex shrink-0 gap-1.5 px-2">
-              <div className="h-[40px] w-[120px]" data-hint="synth.scope">
-                <Scope
-                  trackId={track.id}
-                  color={track.color}
-                  meter={false}
-                  className="h-full w-full"
-                />
+            <SignalFlow patch={shown} color={track.color} onPlay={() => target.once()} />
+            {/* a library sound has no track to watch (it plays through the preview) */}
+            {!target.library && (
+              <div className="flex shrink-0 gap-1.5 px-2">
+                <div className="h-[40px] w-[120px]" data-hint="synth.scope">
+                  <Scope
+                    trackId={track.id}
+                    color={track.color}
+                    meter={false}
+                    className="h-full w-full"
+                  />
+                </div>
+                <div className="h-[40px] w-[120px]" data-hint="synth.spectrum">
+                  <Scope
+                    trackId={track.id}
+                    color={track.color}
+                    meter={false}
+                    mode="spectrum"
+                    className="h-full w-full"
+                  />
+                </div>
               </div>
-              <div className="h-[40px] w-[120px]" data-hint="synth.spectrum">
-                <Scope
-                  trackId={track.id}
-                  color={track.color}
-                  meter={false}
-                  mode="spectrum"
-                  className="h-full w-full"
-                />
-              </div>
-            </div>
+            )}
           </div>
 
           <div className="scroll-thin flex min-h-0 flex-1 flex-col gap-2 overflow-auto p-2">
@@ -709,6 +813,7 @@ function Editor({ track }: { track: Track }) {
                   values={values}
                   setMacro={setMacro}
                   onChange={(fn, key) => edit(fn, key)}
+                  learn={!target.library}
                 />
               </Box>
             </Group>
@@ -752,13 +857,13 @@ function Editor({ track }: { track: Track }) {
         </>
       )}
       <div className="flex h-[74px] shrink-0 gap-2 border-t border-line px-2 py-1.5">
-        <Wheels track={track} />
+        <Wheels synth={target.synth} />
         <div className="min-w-0 flex-1">
           <Keyboard
             low={low}
             scope={root}
             onOctave={(d) => setLow((l) => Math.max(12, Math.min(84, l + 12 * d)))}
-            play={(pitch, velocity) => engine.holdNote(track, pitch, velocity)}
+            play={(pitch, velocity) => target.hold(pitch, velocity)}
           />
         </div>
       </div>
@@ -770,11 +875,10 @@ function Editor({ track }: { track: Track }) {
  * Pitch bend and mod wheel, like the ones beside a keyboard: bend springs back to the middle
  * when you let go; the mod wheel stays where you leave it.
  */
-function Wheels({ track }: { track: Track }) {
+function Wheels({ synth }: { synth: () => WorkletSynth | undefined }) {
   const [bend, setBend] = useState(0);
   const [mod, setMod] = useState(0);
-  const send = (name: "pitchbend" | "modwheel", v: number) =>
-    engine.trackSynth(track)?.control(name, v);
+  const send = (name: "pitchbend" | "modwheel", v: number) => synth()?.control(name, v);
   const wheel = (
     label: string,
     value: number,
@@ -997,6 +1101,7 @@ function Basic({
   setMacro,
   set,
   glide,
+  learn,
 }: {
   track: Track;
   patch: SynthPatch;
@@ -1004,6 +1109,8 @@ function Basic({
   setMacro: (i: number, v: number) => void;
   set: (path: string, v: unknown) => void;
   glide: React.ReactNode;
+  /** MIDI learn (tracks only: a mapping needs one) and the scope of the track. */
+  learn: boolean;
 }) {
   const mono = patch.voice.mode !== "poly";
   return (
@@ -1030,7 +1137,7 @@ function Basic({
             size={48}
             width={96}
             hint={soundHint(`macro${i + 1}`)}
-            midiTarget={`track:${track.id}:${macroKey(i)}`}
+            midiTarget={learn ? `track:${track.id}:${macroKey(i)}` : undefined}
             learnLabel={`${track.name} · ${m.name}`}
           />
         ))}
@@ -1047,7 +1154,9 @@ function Basic({
         {glide}
       </div>
       <div className="min-h-[80px] max-h-[220px] flex-1" data-hint="synth.scope">
-        <Scope trackId={track.id} color={track.color} meter={false} className="h-full w-full" />
+        {learn && (
+          <Scope trackId={track.id} color={track.color} meter={false} className="h-full w-full" />
+        )}
       </div>
     </div>
   );
@@ -1063,12 +1172,14 @@ function Macros({
   values,
   setMacro,
   onChange,
+  learn,
 }: {
   track: Track;
   patch: SynthPatch;
   values: number[];
   setMacro: (i: number, v: number) => void;
   onChange: (fn: (p: SynthPatch) => void, key?: string) => void;
+  learn: boolean;
 }) {
   return (
     <div
@@ -1094,7 +1205,7 @@ function Macros({
               color={track.color}
               size={28}
               hint={soundHint(`macro${i + 1}`)}
-              midiTarget={`track:${track.id}:${macroKey(i)}`}
+              midiTarget={learn ? `track:${track.id}:${macroKey(i)}` : undefined}
               learnLabel={`${track.name} · ${m.name}`}
             />
             <input

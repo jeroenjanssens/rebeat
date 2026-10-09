@@ -36,8 +36,8 @@ export interface WorkletSynth {
   controls: Controls;
   ready(): boolean;
   /**
-   * Resolves once the worklet has every message sent so far: before an offline render starts,
-   * so no note arrives after the rendering went past it.
+   * Before an offline render: makes the worklet node, handing it every message so far (notes
+   * sent as port messages could arrive after the rendering went past them).
    */
   settled(): Promise<void>;
   dispose(): void;
@@ -53,24 +53,29 @@ export function workletSynth(dest: Tone.Gain | { input: AudioNode }): WorkletSyn
   let next = 1;
   let mod: number[] | null = null;
   let last: { id: number; end: number } | null = null;
-  const pongs = new Map<number, () => void>();
-  let pings = 0;
   const controls: Controls = { modwheel: 0, aftertouch: 0, pitchbend: 0 };
   const send = (m: SynthMessage) => (node ? node.port.postMessage(m) : pending.push(m));
-  void loadSynthWorklet(ctx).then(() => {
-    if (disposed) return;
+  // offline (exports, previews): the node is made just before rendering, with every message so
+  // far as its options, since port messages can arrive after rendering went past them
+  const offline = "startRendering" in ctx;
+  let loaded = false;
+  const create = () => {
+    if (node || disposed || !loaded) return;
     node = new AudioWorkletNode(ctx, "rebeat-synth", {
       numberOfInputs: 0,
       numberOfOutputs: 1,
       outputChannelCount: [2],
+      processorOptions: { messages: pending },
     });
+    pending = [];
     node.connect(out);
     node.port.onmessage = (e: MessageEvent<SynthReport>) => {
       if (e.data.type === "mod") mod = e.data.values;
-      if (e.data.type === "pong") pongs.get(e.data.n)?.();
     };
-    for (const m of pending) node.port.postMessage(m);
-    pending = [];
+  };
+  void loadSynthWorklet(ctx).then(() => {
+    loaded = true;
+    if (!offline) create();
   });
   return {
     play(notes, time, stepDur) {
@@ -109,20 +114,11 @@ export function workletSynth(dest: Tone.Gain | { input: AudioNode }): WorkletSyn
     },
     modulation: () => mod,
     async settled() {
-      const end = performance.now() + 5000;
-      while (!node && !disposed && performance.now() < end)
-        await new Promise((r) => setTimeout(r, 2));
-      if (!node) return;
-      const n = ++pings;
-      // (a timeout too, in case a browser holds the messages until rendering starts)
-      await Promise.race([
-        new Promise<void>((r) => pongs.set(n, r)),
-        new Promise((r) => setTimeout(r, 3000)),
-      ]);
-      pongs.delete(n);
+      await loadSynthWorklet(ctx);
+      create();
     },
     controls,
-    ready: () => !!node,
+    ready: () => (offline ? loaded : !!node),
     dispose() {
       disposed = true;
       if (!node) return;
@@ -146,8 +142,6 @@ export async function renderPatch(
   g.connect(ctx.destination);
   const s = workletSynth({ input: g });
   s.setPatch(patch, 120);
-  // wait for the node, then schedule
-  while (!s.ready()) await new Promise((r) => setTimeout(r, 1));
   for (const [note, start, end, velocity = 0.8] of notes) s.hold(note, velocity, start)(end);
   await s.settled();
   return ctx.startRendering();

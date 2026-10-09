@@ -111,7 +111,7 @@ const hints: Hints = {
   },
   "library.instrument": {
     title: "Instrument",
-    text: "A synth or sampled instrument. Click to hear a short phrase; with it selected, the A–L keys play it like a piano (Z and X change the octave). Drag it onto a track to play it there: drum and audio tracks become instrument tracks. Double-click to open it in its editor: synths in the synth editor, sampled instruments in the Inspector (on a track that plays it, or a new one). Selecting another instrument starts the keys at its own octave again.",
+    text: "A synth or sampled instrument. Click to hear a short phrase; with it selected, the A–L keys play it like a piano (Z and X change the octave). Drag it onto a track to play it there: drum and audio tracks become instrument tracks. Double-click to open it in its editor, without adding a track: a synth in the synth editor (a factory synth becomes your own copy on the first change). Selecting another instrument starts the keys at its own octave again.",
     keys: "Enter: new track · Double-click: open in editor · Right-click: favorites, offline, source and license",
     guide: "library",
   },

@@ -3,7 +3,7 @@ declare const sampleRate: number;
 declare const currentFrame: number;
 declare class AudioWorkletProcessor {
   readonly port: MessagePort;
-  constructor();
+  constructor(options?: { processorOptions?: Record<string, unknown> });
 }
 declare function registerProcessor(
   name: string,

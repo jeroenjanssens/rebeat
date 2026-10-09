@@ -2,14 +2,15 @@
  * Opening a library sound in its editor (double-click, or the right-click menu): samples in the
  * sample editor, synths in the synth editor, other instruments in the Inspector.
  */
-import { openSampleEditor, openSynthEditor, focusPanel } from "../../app/openers";
+import { openSampleEditor, focusPanel } from "../../app/openers";
+import { dock } from "../../app/shell";
+import { startLibraryEdit } from "../../library/libraryEdit";
 import { toast } from "../../components/Toast";
 import { getBuffer } from "../../engine/samples";
 import type { CatalogInstrument } from "../../library/instruments";
 import { isBuiltIn, saveVersion } from "../../library/library";
 import type { Track } from "../../model/types";
 import { useStore } from "../../state/store";
-import { addInstrumentTrack } from "../../state/trackActions";
 
 /** Which editor an instrument opens in. */
 export function editorOf(c: CatalogInstrument): "synth" | "sample" | "inspector" {
@@ -35,20 +36,49 @@ function plays(t: Track, c: CatalogInstrument) {
 }
 
 /**
- * Open an instrument in its editor. Editors work on a track: the selected one if it plays this
- * instrument, else another that does, else a new track with it.
+ * Open an instrument in its editor, without adding a track (D91): a synth in the synth editor
+ * as the library sound itself; a sampler's sample in the sample editor. Sampled instruments have
+ * no editor of their own: their SOUND knobs are in the Inspector of a track that plays them.
  */
 export function openInstrument(c: CatalogInstrument) {
-  if (editorOf(c) === "sample") return openSampleEditor(c.source.sampleId!);
+  const kind = editorOf(c);
+  if (kind === "sample") return openSampleEditor(c.source.sampleId!);
+  if (kind === "synth") return openLibrarySynth(c);
   const s = useStore.getState();
   const selected = s.project.tracks.find((t) => t.id === s.selectedTrackId);
   const track =
     (selected && plays(selected, c) ? selected : undefined) ??
     s.project.tracks.find((t) => plays(t, c));
-  const id = track?.id ?? addInstrumentTrack(c);
-  s.setUi({ selectedTrackId: id });
-  if (editorOf(c) === "synth") openSynthEditor(id);
-  else focusPanel("inspector");
+  if (!track)
+    return toast(
+      `${c.name} has no editor of its own: drag it onto a track, then shape it with the SOUND knobs in the Inspector`,
+    );
+  s.setUi({ selectedTrackId: track.id });
+  focusPanel("inspector");
+}
+
+/** A library synth in a synth editor tab of its own. */
+function openLibrarySynth(c: CatalogInstrument) {
+  const api = dock.api;
+  if (!api) return;
+  const key = startLibraryEdit(c);
+  const id = `synth-editor:lib:${key}`;
+  const existing = api.getPanel(id);
+  if (existing) return existing.api.setActive();
+  const anchor =
+    api.panels.find((p) => p.id.startsWith("synth-editor")) ??
+    api.getPanel("piano-roll") ??
+    api.getPanel("mixer");
+  api.addPanel({
+    id,
+    component: "synth-editor",
+    title: `${c.name} · synth`,
+    params: { library: key },
+    minimumHeight: 200,
+    position: anchor
+      ? { referencePanel: anchor.id, direction: "within" as const }
+      : { direction: "below" as const },
+  });
 }
 
 /**

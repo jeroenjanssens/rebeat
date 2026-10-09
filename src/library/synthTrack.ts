@@ -60,6 +60,12 @@ export function soundDefs(t: Track, kindDefs: ParamDef[]): ParamDef[] {
  * What happens around an edit, set by the app (userInstruments.ts): "fork" when an edit turns a
  * factory synth into the track's own named copy (in Your instruments), "edit" for edits after.
  */
+/**
+ * Tracks that aren't in the project: library sounds open in the synth editor (libraryEdit.ts),
+ * by track id, so saving a copy can find them.
+ */
+export const detachedTracks = new Map<string, Track>();
+
 type PatchHook = (t: Track, event: "fork" | "edit") => void;
 let patchHook: PatchHook | null = null;
 export const onPatchEdit = (fn: PatchHook) => void (patchHook = fn);

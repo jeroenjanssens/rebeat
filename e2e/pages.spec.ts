@@ -21,14 +21,27 @@ const state = (page: Page, expr: string) =>
 test("a queued page starts when the current page ends", async ({ page }) => {
   await page.evaluate(() => {
     const s = (window as never as { __rebeat: R }).__rebeat.store.getState();
-    // fast, so the current page ends soon even on a busy machine
-    s.commit((p: { bpm: number }) => void (p.bpm = 240));
+    s.commit((p: { bpm: number }) => void (p.bpm = 200));
+    // every page that plays, in order (a busy machine may check after the fill is over)
+    const played: string[] = [];
+    Object.assign(window, { __played: played });
+    (
+      window as never as {
+        __rebeat: { store: { subscribe(fn: (st: { playSlotId: string }) => void): void } };
+      }
+    ).__rebeat.store.subscribe(
+      (st) => played.at(-1) !== st.playSlotId && played.push(st.playSlotId),
+    );
   });
   await page.keyboard.press("Space");
   const thumbs = page.locator('[data-panel="drum-machine"] .page-thumb');
   await thumbs.nth(2).click();
   await expect(thumbs.nth(2)).toHaveClass(/queued/);
-  await expect.poll(() => state(page, "s.playSlotId"), { timeout: 12000 }).toBe("slot-fill");
+  await expect
+    .poll(() => page.evaluate(() => (window as never as { __played: string[] }).__played), {
+      timeout: 15000,
+    })
+    .toContain("slot-fill");
   await expect(thumbs.nth(2)).not.toHaveClass(/queued/);
 });
 

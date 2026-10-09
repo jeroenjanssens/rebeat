@@ -93,6 +93,8 @@ function neonHorizon(): Project {
   const riser = synthTrack("Riser", "noise-riser", "Noise Riser", "fx");
   riser.volume = 0.6;
   p.tracks = [kick, snare, hat, bass, arp, pad, brass, lead, riser];
+  // 2 dB of headroom after the master limiter: the chorus is dense
+  p.master.volume = 0.71;
 
   const drums = (pt: Pattern) => {
     drum(pt, kick, bars("X... .... x... ....", 4));
