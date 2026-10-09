@@ -9,6 +9,7 @@
  */
 import { expect, test } from "@playwright/test";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { gunzipSync } from "node:zlib";
 import { openApp } from "./helpers";
 
 const DIR = new URL("./golden/", import.meta.url);
@@ -51,12 +52,25 @@ const projects = [
   ...["empty", "808", "loops"].map((id) => `template:${id}`),
 ];
 
-for (const key of projects)
-  test(`${key} sounds the same`, async ({ page }) => {
+/** The same projects as saved by schema version 6 (before step tracks): they must load and sound
+ * the same as the ones made today. */
+const saved = (key: string) =>
+  gunzipSync(
+    readFileSync(
+      new URL(`../src/model/fixtures/v6/${key.replace(":", "-")}.json.gz`, import.meta.url),
+    ),
+  ).toString();
+
+for (const [key, from] of projects.flatMap((k) => [
+  [k, "made"],
+  [k, "saved"],
+]))
+  test(`${key} ${from === "saved" ? "saved in v6 " : ""}sounds the same`, async ({ page }) => {
+    if (from === "saved" && UPDATE) return;
     // a whole song, once mixed and once per track; CI runners are several times slower
     test.setTimeout(process.env.CI ? 900_000 : 240_000);
     const levels: Levels = await page.evaluate(
-      async ({ key, SILENT }) => {
+      async ({ key, SILENT, data }) => {
         const r = (
           window as never as {
             __rebeat: {
@@ -71,7 +85,7 @@ for (const key of projects)
         const list = kind === "example" ? r.examples : r.templates;
         const entry = list.find((e) => e.id === id);
         if (!entry) throw new Error(`no ${key}`);
-        const project = r.deserializeProject(JSON.parse(JSON.stringify(entry.create())));
+        const project = r.deserializeProject(JSON.parse(data ?? JSON.stringify(entry.create())));
         // probability steps and random arpeggios: the same choices on every run
         const random = Math.random;
         const level = async (soloTrackId?: string) => {
@@ -109,7 +123,7 @@ for (const key of projects)
           tracks[`${String(i + 1).padStart(2, "0")} ${t.name}`] = await level(t.id);
         return { mix: await level(), tracks };
       },
-      { key, SILENT },
+      { key, SILENT, data: from === "saved" ? saved(key) : undefined },
     );
     if (UPDATE) {
       mkdirSync(DIR, { recursive: true });
