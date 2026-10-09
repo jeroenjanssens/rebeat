@@ -43,7 +43,7 @@ test.beforeEach(async ({ page }) => {
     return r.fulfill({ body: wav(oneShot(100 + i * 40, 0.3)), contentType: "audio/wav" });
   });
   await openApp(page);
-  await page.getByTestId("library").getByRole("button", { name: "All samples" }).click();
+  await page.getByTestId("library").locator('[data-hint="library.location"]').click();
   await page.locator(".menu").getByRole("button", { name: "Online kits" }).click();
   await expect(page.locator("[data-online-kit]")).toHaveCount(2);
 });

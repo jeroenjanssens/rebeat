@@ -5,6 +5,7 @@ import {
   Folder,
   Globe,
   Heart,
+  Library,
   Mic,
   Music,
   Piano,
@@ -12,12 +13,21 @@ import {
   User,
   Waves,
 } from "lucide-react";
-import { FAMILIES } from "../../library/instruments";
+import type { Family } from "../../library/instruments";
 import { dropdown } from "../../components/Menu";
 import { KITS } from "../../engine/kits";
 import { updateSample } from "../../library/library";
 import { SAMPLE_MIME } from "../../state/trackActions";
 import { sameLoc, type Location } from "./items";
+
+const INSTRUMENT_FAMILIES: Family[] = [
+  "Synths",
+  "Pianos & keys",
+  "Orchestral",
+  "Mallets",
+  "Double bass",
+  "General MIDI",
+];
 
 interface Entry {
   loc: Location;
@@ -29,19 +39,21 @@ interface Entry {
 }
 
 export function locLabel(l: Location) {
-  return l.kind === "all"
-    ? "All samples"
-    : l.kind === "favorites"
-      ? "Favorites"
-      : l.kind === "used"
-        ? "Used in project"
-        : l.kind === "folder"
-          ? l.path
-          : l.kind === "kit"
-            ? `${l.kit} kit`
-            : l.kind === "instruments"
-              ? l.family
-              : "Online kits";
+  return l.kind === "everything"
+    ? "All"
+    : l.kind === "all"
+      ? "All samples"
+      : l.kind === "favorites"
+        ? "Favorites"
+        : l.kind === "used"
+          ? "Used in project"
+          : l.kind === "folder"
+            ? l.path
+            : l.kind === "kit"
+              ? `${l.kit} kit`
+              : l.kind === "instruments"
+                ? l.family
+                : "Online kits";
 }
 
 function entries(folders: string[]): Entry[] {
@@ -58,20 +70,24 @@ function entries(folders: string[]): Entry[] {
     icon: Disc3,
     label: `${k} kit`,
   }));
+  // instruments in the order you'd look for them (D95); Your sounds sits at the top
+  const families = INSTRUMENT_FAMILIES.map((family, i): Entry => ({
+    loc: { kind: "instruments", family },
+    icon: family === "Synths" ? Waves : Piano,
+    label: family,
+    group: i === 0 ? "Instruments" : undefined,
+  }));
   return [
-    { loc: { kind: "all" }, icon: Music, label: "All samples" },
+    { loc: { kind: "everything" }, icon: Library, label: "All" },
     { loc: { kind: "favorites" }, icon: Heart, label: "Favorites" },
     { loc: { kind: "used" }, icon: Star, label: "Used in project" },
+    { loc: { kind: "instruments", family: "Your sounds" }, icon: User, label: "Your sounds" },
     { loc: { kind: "folder", path: "Recordings" }, icon: Mic, label: "Recordings" },
-    ...own.map((e, i) => (i === 0 ? { ...e, group: "Folders" } : e)),
+    ...families,
+    { loc: { kind: "all" }, icon: Music, label: "All samples", group: "Samples" },
+    ...own,
     ...kits.map((e, i) => (i === 0 ? { ...e, group: "Kits" } : e)),
     { loc: { kind: "online" }, icon: Globe, label: "Online kits" },
-    ...FAMILIES.map((family, i): Entry => ({
-      loc: { kind: "instruments", family },
-      icon: family === "Synths" ? Waves : family === "Your sounds" ? User : Piano,
-      label: family,
-      group: i === 0 ? "Instruments" : undefined,
-    })),
   ];
 }
 

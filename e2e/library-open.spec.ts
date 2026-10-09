@@ -97,7 +97,7 @@ test("a sampled instrument has no editor of its own", async ({ page }) => {
 });
 
 test("double-clicking a built-in sound edits a copy in the sample editor", async ({ page }) => {
-  await library(page).getByRole("button", { name: "All samples" }).click();
+  await library(page).locator('[data-hint="library.location"]').click();
   await page.locator(".menu").getByRole("button", { name: "909 kit" }).click();
   await library(page).locator("[data-sample]", { hasText: "909 Kick" }).dblclick();
   await expect(page.getByTestId("sample-editor")).toBeVisible();
@@ -105,7 +105,7 @@ test("double-clicking a built-in sound edits a copy in the sample editor", async
 });
 
 test("a double-click only opens the editor; a single click previews", async ({ page }) => {
-  await library(page).getByRole("button", { name: "All samples" }).click();
+  await library(page).locator('[data-hint="library.location"]').click();
   await page.locator(".menu").getByRole("button", { name: "909 kit" }).click();
   const kick = library(page).locator("[data-sample]", { hasText: "909 Kick" });
   const previews = () =>

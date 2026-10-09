@@ -14,6 +14,7 @@ import { sortSamples } from "../../library/sort";
 import { useStore } from "../../state/store";
 
 export type Location =
+  | { kind: "everything" }
   | { kind: "all" }
   | { kind: "favorites" }
   | { kind: "used" }
@@ -22,7 +23,7 @@ export type Location =
   | { kind: "online" }
   | { kind: "instruments"; family: Family };
 
-export type TypeFilter = "all" | "loops" | "oneshots" | "instruments";
+export type TypeFilter = "all" | "synths" | "instruments" | "oneshots" | "loops";
 export type Length = "any" | "short" | "medium" | "long";
 
 export interface Item {
@@ -39,6 +40,24 @@ export interface Item {
   createdAt: number;
   /** Instruments: the catalog entry. */
   instrument?: CatalogInstrument;
+  /** A heading above it in lists that mix families (Samples, Synths, Sampled instruments). */
+  section?: string;
+}
+
+/** Which family a library item belongs to (D95), for headings and the type filter. */
+export function itemFamily(i: Item): "sample" | "synth" | "instrument" {
+  if (!i.instrument || i.instrument.source.source === "sample") return "sample";
+  return i.instrument.source.source === "synth" ? "synth" : "instrument";
+}
+
+const SECTIONS = { sample: "Samples", synth: "Synths", instrument: "Sampled instruments" };
+
+/** Samples first, then synths, then sampled instruments, each under its heading. */
+function bySection(list: Item[]): Item[] {
+  const order = ["sample", "synth", "instrument"] as const;
+  return order.flatMap((f) =>
+    list.filter((i) => itemFamily(i) === f).map((i) => ({ ...i, section: SECTIONS[f] })),
+  );
 }
 
 export interface Filters {
@@ -113,9 +132,17 @@ export function useLibraryItems(loc: Location, f: Filters): Item[] {
         .filter(keep)
         .map((c) => instrumentItem(c, favorites))
         .filter(matches);
-    if (loc.kind === "instruments") return instruments((c) => c.family === loc.family);
+    const ofType = (c: CatalogInstrument) =>
+      f.type === "synths"
+        ? c.source.source === "synth"
+        : f.type === "instruments"
+          ? c.source.source !== "synth" && c.source.source !== "sample"
+          : true;
+    if (loc.kind === "instruments") return instruments((c) => c.family === loc.family && ofType(c));
     const samplesOnly = f.type === "loops" || f.type === "oneshots" || f.length !== "any";
-    if (loc.kind === "all" && f.type === "instruments") return instruments(() => true);
+    const instrumentsOnly = f.type === "synths" || f.type === "instruments";
+    if ((loc.kind === "all" || loc.kind === "everything") && instrumentsOnly)
+      return bySection(instruments(ofType));
     let list: Item[];
     if (loc.kind === "kit") {
       list = kitSounds(loc.kit).map(kitItem);
@@ -146,6 +173,9 @@ export function useLibraryItems(loc: Location, f: Filters): Item[] {
         list.push(
           ...KIT_SOUNDS.filter((k) => usedIds.has(k.id)).map((k) => kitItem(k as KitSound)),
         );
+      // a search in All looks through the kits too
+      if (loc.kind === "everything" && q)
+        list.push(...KIT_SOUNDS.map((k) => kitItem(k as KitSound)));
     }
     list = list.filter(matches);
     if (f.type === "loops") list = list.filter((i) => i.bpm);
@@ -155,12 +185,15 @@ export function useLibraryItems(loc: Location, f: Filters): Item[] {
     if (f.length === "medium") list = list.filter((i) => i.duration >= 1 && i.duration <= 5);
     if (f.length === "long") list = list.filter((i) => i.duration > 5);
     const sorted = sortSamples(list, sort);
-    if (samplesOnly || f.tag || f.type === "instruments") return sorted;
-    // instruments that belong here: favorites, used ones, or search results across everything
+    if (samplesOnly || f.tag || instrumentsOnly) return sorted;
+    // instruments that belong here: favorites, used ones, yours, or search results across everything
     if (loc.kind === "favorites")
-      return [...sorted, ...instruments((c) => favorites.includes(c.id))];
-    if (loc.kind === "used") return [...sorted, ...instruments((c) => usedIds.has(c.id))];
-    if (loc.kind === "all" && q) return [...sorted, ...instruments(() => true)];
+      return bySection([...sorted, ...instruments((c) => favorites.includes(c.id))]);
+    if (loc.kind === "used")
+      return bySection([...sorted, ...instruments((c) => usedIds.has(c.id))]);
+    if (loc.kind === "everything")
+      return bySection([...sorted, ...instruments((c) => (q ? true : c.family === "Your sounds"))]);
+    if (loc.kind === "all" && q) return bySection([...sorted, ...instruments(() => true)]);
     return sorted;
   }, [loc, samples, f.query, f.type, f.tag, f.length, sort, usedIds, favorites, mine]);
 }

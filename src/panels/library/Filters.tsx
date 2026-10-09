@@ -43,15 +43,14 @@ export function FilterBar({
         data-hint="library.filter"
         onClick={() =>
           dropdown(filterRef.current!, [
-            ...(["all", "loops", "oneshots", "instruments"] as TypeFilter[]).map((t) => ({
-              label:
-                t === "all"
-                  ? "All types"
-                  : t === "loops"
-                    ? "Loops (with tempo)"
-                    : t === "oneshots"
-                      ? "One-shots"
-                      : "Instruments",
+            ...(["all", "synths", "instruments", "oneshots", "loops"] as TypeFilter[]).map((t) => ({
+              label: {
+                all: "All types",
+                synths: "Synths",
+                instruments: "Sampled instruments",
+                oneshots: "One-shots",
+                loops: "Loops (with tempo)",
+              }[t],
               checked: type === t,
               onSelect: () => set({ type: t }),
             })),

@@ -53,13 +53,13 @@ test("filters by search and shows built-in kits", async ({ page }) => {
   await expect(page.getByTestId("library-list").locator("[data-sample]")).toHaveCount(1);
   await page.getByTestId("library-search").fill("");
   // the library is narrow in the default layout: locations are in a dropdown
-  await page.getByTestId("library").getByRole("button", { name: "All samples" }).click();
+  await page.getByTestId("library").locator('[data-hint="library.location"]').click();
   await page.locator(".menu").getByRole("button", { name: "909 kit" }).click();
   await expect(page.getByTestId("library-list").locator("[data-sample]")).toHaveCount(8);
 });
 
 test("the library lists one sample per row, also when it's wider", async ({ page }) => {
-  await page.getByTestId("library").getByRole("button", { name: "All samples" }).click();
+  await page.getByTestId("library").locator('[data-hint="library.location"]').click();
   await page.locator(".menu").getByRole("button", { name: "909 kit" }).click();
   const items = page.getByTestId("library-list").locator("[data-sample]");
   await expect(items).toHaveCount(8);
@@ -80,7 +80,7 @@ test("the library lists one sample per row, also when it's wider", async ({ page
 });
 
 test("used in project lists the built-in sounds the tracks play", async ({ page }) => {
-  await page.getByTestId("library").getByRole("button", { name: "All samples" }).click();
+  await page.getByTestId("library").locator('[data-hint="library.location"]').click();
   await page.locator(".menu").getByRole("button", { name: "Used in project" }).click();
   const items = page.getByTestId("library-list").locator("[data-sample]");
   // Night Drive: kick, snare, clap, two hats, rim and the vox hook
@@ -127,7 +127,7 @@ test("sorts by name and duration in both directions, also in a kit", async ({ pa
   expect(await names()).toEqual(["a", "b", "c"]);
 
   // a built-in kit, by name
-  await page.getByTestId("library").getByRole("button", { name: "All samples" }).click();
+  await page.getByTestId("library").locator('[data-hint="library.location"]').click();
   await page.locator(".menu").getByRole("button", { name: "909 kit" }).click();
   await pick("Name");
   const kit = await list

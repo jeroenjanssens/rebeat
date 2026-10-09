@@ -63,7 +63,7 @@ test("a GitHub repository with a strudel.json becomes a source to browse", async
   await page.reload();
   await page.getByTestId("audio-overlay").click();
   await waitForProject(page);
-  await page.getByTestId("library").getByRole("button", { name: "All samples" }).click();
+  await page.getByTestId("library").locator('[data-hint="library.location"]').click();
   await page.locator(".menu").getByRole("button", { name: "Online kits" }).click();
   await expect(kit).toBeVisible();
   await kit.getByRole("button", { name: "Remove this source" }).click();

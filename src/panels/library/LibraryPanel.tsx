@@ -121,7 +121,7 @@ export function LibraryPanel() {
   const importing = useLibrary((s) => s.importing);
   const track = useSelectedTrack();
   const previewVolume = useSettings((s) => s.previewVolume);
-  const [loc, setLoc] = useState<Location>({ kind: "all" });
+  const [loc, setLoc] = useState<Location>({ kind: "everything" });
   const [filters, setFilters] = useState<Filters>({
     query: "",
     type: "all",
@@ -373,7 +373,7 @@ export function LibraryPanel() {
               >
                 {items.length === 0 && (
                   <div className="col-span-full px-4 py-8 text-center text-[12px] text-faint">
-                    {samples.length === 0 && loc.kind === "all"
+                    {samples.length === 0 && (loc.kind === "all" || loc.kind === "everything")
                       ? "Drop audio files, folders or zips here, or use the import button."
                       : "Nothing here."}
                   </div>
@@ -386,6 +386,14 @@ export function LibraryPanel() {
                           {item.instrument!.group}
                         </div>
                       )}
+                    {item.section && item.section !== items[i - 1]?.section && (
+                      <div
+                        className="label col-span-full px-1.5 pb-0.5 pt-2 !text-[9.5px] text-faint"
+                        data-testid="library-section"
+                      >
+                        {item.section}
+                      </div>
+                    )}
                     <ItemRow
                       item={item}
                       active={item.id === selectedId}

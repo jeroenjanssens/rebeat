@@ -55,7 +55,7 @@ test("exports the current page as MP3", async ({ page }) => {
 
 test.describe("exporting a sample", () => {
   async function exportKick(page: import("@playwright/test").Page, format: string) {
-    await page.getByTestId("library").getByRole("button", { name: "All samples" }).click();
+    await page.getByTestId("library").locator('[data-hint="library.location"]').click();
     await page.locator(".menu").getByRole("button", { name: "909 kit" }).click();
     await page
       .getByTestId("library-list")

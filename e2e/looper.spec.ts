@@ -46,7 +46,7 @@ test("records a loop on the armed track, then an overdub layer", async ({ page }
 
 test("records into the library's Recordings folder", async ({ page }) => {
   const lib = page.getByTestId("library");
-  await lib.getByRole("button", { name: "All samples" }).click();
+  await lib.locator('[data-hint="library.location"]').click();
   await page.locator(".menu").getByRole("button", { name: "Recordings" }).click();
   await page.getByTestId("rec-start").click();
   await expect(page.getByTestId("rec-stop")).toBeVisible();
