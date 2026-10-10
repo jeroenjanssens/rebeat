@@ -121,6 +121,9 @@ export interface Settings {
   synthFolded: string[];
   /** Randomize: how far, and the sections it leaves alone. */
   synthRandom: { amount: number; locked: string[] };
+  /** Drum-machine pad zoom: "fit" fills the available width, a number is a multiplier on the
+   * base pad width (0.5–2.5; clamped to 0.25–4.0 when typed; D131). */
+  zoom: number | "fit";
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -160,6 +163,7 @@ export const DEFAULT_SETTINGS: Settings = {
   synthView: "basic",
   synthFolded: [],
   synthRandom: { amount: 0.3, locked: [] },
+  zoom: "fit",
 };
 
 interface SettingsState extends Settings {

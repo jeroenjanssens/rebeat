@@ -1,4 +1,6 @@
 import { useMemo, useRef, useState, type CSSProperties } from "react";
+import { useSettings } from "../../state/settings";
+import { nextZoomLevel } from "./zoom";
 import { stepped } from "../../model/tracks";
 import {
   DndContext,
@@ -63,6 +65,8 @@ export function TrackList({ geo }: { geo: Geometry }) {
   const commit = useStore((s) => s.commit);
   const setUi = useStore((s) => s.setUi);
   const gesture = useRef<Gesture | null>(null);
+  // Accumulated wheel delta for trackpad (many small events per notch, D131).
+  const wheelAccum = useRef(0);
   const [marquee, setMarquee] = useState<{ x: number; y: number; w: number; h: number } | null>(
     null,
   );
@@ -291,8 +295,14 @@ export function TrackList({ geo }: { geo: Geometry }) {
       onWheel={(e) => {
         if (!(e.ctrlKey || e.metaKey)) return;
         e.preventDefault();
-        const z = useStore.getState().zoom;
-        setUi({ zoom: Math.min(2.5, Math.max(0.6, z * (e.deltaY < 0 ? 1.1 : 0.9))) });
+        // Accumulate deltas so trackpads (many fractional events per notch) step at ±50.
+        wheelAccum.current += e.deltaY;
+        const THRESHOLD = 50;
+        if (Math.abs(wheelAccum.current) < THRESHOLD) return;
+        const dir: 1 | -1 = wheelAccum.current < 0 ? 1 : -1;
+        wheelAccum.current = 0;
+        const settings = useSettings.getState();
+        settings.set({ zoom: nextZoomLevel(settings.zoom, dir, geo.effectiveZoom) });
       }}
     >
       <div data-steps-zone className="flex min-w-max flex-col gap-px px-3 pb-2 pt-1">
