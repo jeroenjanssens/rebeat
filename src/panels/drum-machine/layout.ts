@@ -87,7 +87,7 @@ export function stepsPerBeat(pattern: Pattern) {
  * - zoom === "fit": pad width fills the available panel width (minimum `m.minPad`, then scroll).
  * - zoom is a number: pad width = `m.basePad × zoom` exactly, no fitting (scroll when too wide).
  *
- * Pad height scales with the effective zoom (clamped 0.8–1.6 of the nominal height).
+ * Pad height scales with a numeric zoom (clamped 0.8–1.6 of the nominal height); Fit keeps it.
  */
 export function geometry(
   width: number,
@@ -129,7 +129,10 @@ export function geometry(
 
   // pads and everything sized like a row of pads (clips, lanes) use the same rounded width
   padW = Math.floor(padW * 10) / 10;
-  const padH = Math.round(m.padH * Math.min(1.6, Math.max(0.8, effectiveZoom)));
+  // Fit keeps the nominal height: pages with fewer steps get wider pads, not taller rows (the
+  // track list mustn't change height when you switch pages)
+  const heightZoom = zoom === "fit" ? 1 : zoom;
+  const padH = Math.round(m.padH * Math.min(1.6, Math.max(0.8, heightZoom)));
 
   return {
     sizeClass,

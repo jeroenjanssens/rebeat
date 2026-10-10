@@ -125,7 +125,7 @@ const emptySlot = () => ({ source: null, dest: null, amount: 0, via: null });
 interface EditTarget {
   library: boolean;
   update(fn: (t: Track) => void, key?: string): void;
-  synth(): WorkletSynth | undefined;
+  synth(): Pick<WorkletSynth, "monitor" | "modulation" | "control"> | undefined;
   /** Start a held note; returns how to let go. */
   hold(pitch: number, velocity: number): () => void;
   /** Play it once (the wave picture); returns for how long. */
@@ -144,7 +144,7 @@ const trackTarget = (
       const t = pr.tracks.find((x) => x.id === track.id);
       if (t) fn(t);
     }, key),
-  synth: () => engine.trackSynth(track),
+  synth: () => engine.editorSynth(track),
   // route through keys.ts so the live voice is used and notes are recorded (D126)
   hold: (pitch, velocity) => keysNoteOn(pitch, velocity, "screen"),
   once: () => engine.playOnce(track),
@@ -877,7 +877,7 @@ function Editor({ track, target }: { track: Track; target: EditTarget }) {
  * Pitch bend and mod wheel, like the ones beside a keyboard: bend springs back to the middle
  * when you let go; the mod wheel stays where you leave it.
  */
-function Wheels({ synth }: { synth: () => WorkletSynth | undefined }) {
+function Wheels({ synth }: { synth: EditTarget["synth"] }) {
   const [bend, setBend] = useState(0);
   const [mod, setMod] = useState(0);
   const send = (name: "pitchbend" | "modwheel", v: number) => synth()?.control(name, v);

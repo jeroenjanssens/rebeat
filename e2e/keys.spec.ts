@@ -84,5 +84,5 @@ test("Keys chip menu has Follow selected track option", async ({ page }) => {
   await openApp(page);
 
   await page.getByTestId("keys-chip").click();
-  await expect(page.getByRole("menuitem", { name: /Follow selected/i })).toBeVisible();
+  await expect(page.locator(".menu .menu-item", { hasText: /Follow selected/i })).toBeVisible();
 });

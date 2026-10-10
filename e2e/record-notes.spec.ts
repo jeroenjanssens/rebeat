@@ -66,11 +66,11 @@ test("record-notes: chord of two MIDI notes lands in the pattern", async ({ page
 
   const trackId = await getFirstNotesTrackId(page);
 
-  // Enable recording
-  await page.evaluate(() => {
+  // Enable recording, with the keys on the Notes track (they follow the selected track)
+  await page.evaluate((id) => {
     const r = (window as unknown as { __rebeat: Rebeat }).__rebeat;
-    r.store.getState().setUi({ recording: true });
-  });
+    r.store.getState().setUi({ recording: true, selectedTrackId: id });
+  }, trackId);
 
   // Start transport
   await page.keyboard.press("Space");

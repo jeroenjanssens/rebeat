@@ -12,7 +12,7 @@ import {
   disposeKeysChannel,
   getKeysChannel,
   holdNote,
-  liveVoiceSynth,
+  editorSynth,
   trigger,
 } from "../engine/engine";
 import type { Track } from "../model/types";
@@ -207,7 +207,8 @@ export function keysControl(name: "modwheel" | "aftertouch" | "pitchbend", value
     return;
   }
   const track = keysTrack();
-  if (track) liveVoiceSynth(track)?.control(name, value);
+  // the track's sound bends as a whole, as before the live voices: both of its voices
+  if (track) editorSynth(track)?.control(name, value);
 }
 
 /** Make the library sound on the keys a Notes track; the keys then follow it. */

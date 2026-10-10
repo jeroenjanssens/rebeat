@@ -263,7 +263,12 @@ export function HeaderBar({
           hint="dm.header.size"
         />
       )}
-      {!compact && <span data-hint="dm.header.swing">{swing}</span>}
+      {/* as wide with "Swing·P" as with "Swing", so the controls after it don't move */}
+      {!compact && (
+        <span data-hint="dm.header.swing" className="inline-flex min-w-[92px]">
+          {swing}
+        </span>
+      )}
       {!compact && <KeyMenu compact={sizeClass !== "large"} />}
 
       <div className="flex-1" />
@@ -304,14 +309,13 @@ export function HeaderBar({
             </button>
             <button
               ref={zoomLevelRef}
-              className="field px-1.5"
+              className="field px-1"
               title="Zoom level — click to change"
               data-hint="dm.header.zoom-level"
               data-testid="dm-zoom-level"
               onClick={() => dropdown(zoomLevelRef.current!, zoomItems())}
             >
               <span className="num text-[10px]">{formatZoom(zoom)}</span>
-              <ChevronDown size={10} className="text-dim" />
             </button>
             <button
               className="tool-btn"

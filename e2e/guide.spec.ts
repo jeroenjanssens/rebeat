@@ -38,6 +38,7 @@ test("the guide opens, links resolve and search finds sections", async ({ page }
       "master-scope",
       "beatbox",
       "guide",
+      "controller",
     ]).toContain(id);
 
   // search, then jump to a section

@@ -14,6 +14,7 @@ import { getBuffer, sampleInfo } from "./samples";
 import { warper } from "./stretch";
 import type { StretchNode } from "signalsmith-stretch";
 import { createInstrument, instrumentKey, type InstrumentVoice } from "./instruments";
+import type { WorkletSynth } from "./synth/node";
 import { macroValues } from "../library/synthTrack";
 import { hitNoteOf, hitNotes, player, sampleOf } from "../model/tracks";
 
@@ -409,6 +410,7 @@ function liveInstrument(track: Track): InstrumentVoice {
     v?.dispose();
     v = createInstrument(track, channel(track.id).input);
     S.liveVoices.set(track.id, v);
+    if (monitored.has(track.id)) v.synth?.monitor(true);
   }
   // cancel any pending idle disposal
   clearTimeout(liveIdleTimers.get(track.id));
@@ -598,6 +600,42 @@ export function holdNote(track: Track, pitch: number, velocity: number): () => v
  */
 export function liveVoiceSynth(track: Track) {
   return S.liveVoices.get(track.id)?.synth;
+}
+
+/** Tracks whose synth the editor watches (their live voices report modulation too). */
+const monitored = new Set<string>();
+type EditorSynth = Pick<WorkletSynth, "monitor" | "modulation" | "control">;
+const editorSynths = new Map<string, EditorSynth>();
+
+/**
+ * What the synth editor watches and its wheels move: both of a track's voices, the keys' first
+ * (you play the editor's keyboard on the live voice, D126).
+ */
+export function editorSynth(track: Track): EditorSynth | undefined {
+  if (player(track) !== "voice") return undefined;
+  let e = editorSynths.get(track.id);
+  if (!e) {
+    const id = track.id;
+    const main = () => S.synths.get(id)?.synth;
+    const live = () => S.liveVoices.get(id)?.synth;
+    e = {
+      monitor(on) {
+        if (on) monitored.add(id);
+        else monitored.delete(id);
+        main()?.monitor(on);
+        live()?.monitor(on);
+      },
+      modulation: () => live()?.modulation() ?? main()?.modulation() ?? null,
+      control(name, value) {
+        main()?.control(name, value);
+        live()?.control(name, value);
+      },
+    };
+    editorSynths.set(id, e);
+  }
+  // the main voice exists from here on (as trackSynth made sure before)
+  instrument(track);
+  return e;
 }
 
 /**

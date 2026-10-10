@@ -585,6 +585,13 @@ function applyMapping(map: MidiMapping, m: MidiMessage, scope: "project" | "glob
   }
 
   // a CC: absolute, or a relative encoder (D120)
+  // D129: another selected track means another value to pick up (selected:* roles)
+  if (map.target.startsWith("selected:")) {
+    const selected = useStore.getState().selectedTrackId ?? "";
+    const before = lastSelectedForPickup.get(map.id);
+    lastSelectedForPickup.set(map.id, selected);
+    if (before !== undefined && before !== selected) lastInSeen.delete(map.id);
+  }
   const now = Date.now();
   const prevSeen = lastInSeen.get(map.id) ?? { values: [], times: [] };
   // D129: gesture — only accumulate values within 250 ms of the previous one
@@ -609,16 +616,6 @@ function applyMapping(map: MidiMapping, m: MidiMessage, scope: "project" | "glob
       mode = sniffed;
       const s = useSettings.getState();
       s.set({ midiMappings: s.midiMappings.map((x) => (x.id === map.id ? { ...x, mode } : x)) });
-    }
-  }
-
-  // D129: reset pickup state when the selected track changes (for selected:* roles)
-  if (map.target.startsWith("selected:")) {
-    const currentSelected = useStore.getState().selectedTrackId ?? "";
-    if (lastSelectedForPickup.get(map.id) !== currentSelected) {
-      lastSelectedForPickup.set(map.id, currentSelected);
-      // Clearing the seen buffer resets pickup: pickedUp(undefined, v, current) = false
-      lastInSeen.delete(map.id);
     }
   }
 

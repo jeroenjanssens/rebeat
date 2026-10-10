@@ -41,6 +41,6 @@ The **Keys** chip in the transport bar shows what the keys play: by default it f
 
 To put a library sound on the keys from the library panel: hover over it and click the keyboard icon, or press **K** with it selected. You can then play it with your MIDI keyboard, the on-screen pads, or the computer keys.
 
-**Add as a track** — if you've been playing a library sound and want to keep it, click "Add as a track" in the Keys menu (or run the command {{key:keys.add-track}}). Rebeat adds a Notes track with that sound and points the keys at it.
+**Add as a track** — if you've been playing a library sound and want to keep it, click "Add as a track" in the Keys menu (or run **Add the keys' sound as a track** from the command palette). Rebeat adds a Notes track with that sound and points the keys at it.
 
 The keys always use a separate voice from the sequencer. On a mono synth the sequencer keeps playing uninterrupted while you play on top of it.

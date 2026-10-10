@@ -2,82 +2,75 @@
  * Top-down SVG of the Arturia MiniLab 3.
  *
  * Layout reference: Arturia MiniLab 3 Quick Start Guide (1.0.5) and product images.
- * From left to right:
- *   - 4 small buttons: SHIFT, HOLD, OCT−, OCT+
- *   - 2 touch strips (Pitch, Mod) — vertical, side by side
- *   - LCD screen + main encoder to the right of it
- *   - 8 knobs in two rows of 4
- *   - 8 pads (one row)
- *   - 4 faders on the right
- * 25 mini-keys run across the bottom.
+ * From left to right: SHIFT, HOLD, OCT− and OCT+ with the Pitch and Mod touch strips under
+ * them; the screen and the main encoder, the 8 knobs (two rows of 4) beside them and the 8 pads
+ * (one row) below; the 4 faders on the right. 25 slim keys run across the bottom. To check
+ * against the device (PLAN §0.6j step H).
  *
- * Coordinate system: the SVG viewBox is 600×200. The device body is a rounded rect inside that.
+ * Coordinate system: the SVG viewBox is 600×236. The device body is a rounded rect inside that.
  */
 import { useCallback, useEffect, useRef } from "react";
 import { onControllerEvent, type ControllerEvent } from "../../midi/controllerEvents";
+import { useDisplay } from "../../midi/display";
 import { onFrame } from "../../render/raf";
 
 // ── Layout constants (all in SVG user units) ───────────────────────────────
 
 const W = 600;
-const H = 200;
+const H = 236;
 const BODY_X = 8;
 const BODY_Y = 8;
 const BODY_W = W - 16;
 const BODY_H = H - 16;
 const BODY_R = 10;
 
-// Keys area
-const KEYS_Y = BODY_Y + BODY_H - 58;
-const KEYS_H = 50;
+// Keys along the bottom, the whole width
+const KEYS_Y = 146;
+const KEYS_H = 80;
 const KEY_COUNT = 25;
-const KEY_WHITES = 15; // white keys in 25 (C2..C4: C D E F G A B × 2 + C)
-const WHITE_W = BODY_W / (KEY_WHITES + 2); // a little margin at edges
-const KEYS_X = BODY_X + WHITE_W;
+const KEY_WHITES = 15; // white keys in 25 (C D E F G A B × 2 + C)
+const KEYS_X = BODY_X + 8;
+const WHITE_W = (BODY_W - 16) / KEY_WHITES;
 
 // Top section (controls above keys)
 const CTRL_Y = BODY_Y + 10;
-const CTRL_H = KEYS_Y - BODY_Y - 14;
 
-// Left buttons (SHIFT, HOLD, OCT-, OCT+)
+// Left column: SHIFT, HOLD, OCT−, OCT+ (2 × 2), the touch strips under them
 const BTN_X = BODY_X + 8;
-const BTN_W = 26;
-const BTN_H = 16;
+const BTN_W = 22;
+const BTN_H = 12;
 const BTN_GAP = 4;
+const STRIP_X = BTN_X + 3;
+const STRIP_Y = CTRL_Y + 2 * BTN_H + BTN_GAP + 8;
+const STRIP_W = 16;
+const STRIP_H = KEYS_Y - 16 - STRIP_Y;
+const STRIP_GAP = 10;
 
-// Touch strips
-const STRIP_X = BTN_X + BTN_W + 8;
-const STRIP_W = 14;
-const STRIP_H = CTRL_H - 4;
-const STRIP_GAP = 4;
-
-// Screen + encoder
-const SCREEN_X = STRIP_X + STRIP_W * 2 + STRIP_GAP + 10;
-const SCREEN_W = 54;
-const SCREEN_H = 28;
-const SCREEN_Y = CTRL_Y + (CTRL_H - SCREEN_H) / 2;
-const ENC_X = SCREEN_X + SCREEN_W + 10;
-const ENC_R = 10;
+// Middle: the screen and the main encoder, the 8 knobs (2 × 4) beside them, the 8 pads below
+const MID_X = BODY_X + 70;
+const SCREEN_X = MID_X;
+const SCREEN_W = 72;
+const SCREEN_H = 34;
+const SCREEN_Y = CTRL_Y + 6;
+const ENC_X = SCREEN_X + SCREEN_W + 20;
+const ENC_R = 13;
 const ENC_Y = SCREEN_Y + SCREEN_H / 2;
+const KNOB_START_X = ENC_X + ENC_R + 22;
+const KNOB_R = 10;
+const KNOB_COL_W = 58;
+const KNOB_ROW_H = 36;
+const PAD_X = MID_X;
+const PAD_Y = CTRL_Y + 2 * KNOB_ROW_H + 6;
+const PAD_GAP = 6;
+const PAD_W = (KNOB_START_X + 3 * KNOB_COL_W + 2 * KNOB_R - PAD_X - 7 * PAD_GAP) / 8;
+const PAD_H = KEYS_Y - 12 - PAD_Y;
 
-// Knobs (2 rows of 4)
-const KNOB_START_X = ENC_X + ENC_R + 18;
-const KNOB_R = 9;
-const KNOB_COL_W = 26;
-const KNOB_ROW_H = CTRL_H / 2;
-
-// Pads (8 in one row)
-const PAD_START_X = KNOB_START_X + 4 * KNOB_COL_W + 12;
-const PAD_W = 28;
-const PAD_H = CTRL_H - 4;
-const PAD_GAP = 3;
-
-// Faders (4)
-const FADER_START_X = PAD_START_X + 8 * PAD_W + 8 * PAD_GAP + 10;
-const FADER_W = 10;
-const FADER_H = CTRL_H - 8;
-const FADER_TRACK_H = FADER_H - 14;
-const FADER_GAP = 8;
+// Right: 4 faders
+const FADER_START_X = KNOB_START_X + 3 * KNOB_COL_W + 2 * KNOB_R + 24;
+const FADER_W = 12;
+const FADER_GAP = (BODY_X + BODY_W - 12 - FADER_START_X - 4 * FADER_W) / 3;
+const FADER_Y = CTRL_Y + 4;
+const FADER_TRACK_H = KEYS_Y - 30 - FADER_Y;
 
 // ── Keyboard helpers ────────────────────────────────────────────────────────
 
@@ -97,7 +90,7 @@ function buildKeys(): KeyLayout[] {
       wx += 1;
     } else {
       // black key sits over the boundary of the previous/next white key
-      keys.push({ midi: FIRST_KEY + i, white: false, x: wx - 0.6, w: 0.6 });
+      keys.push({ midi: FIRST_KEY + i, white: false, x: wx - 0.3, w: 0.6 });
     }
   }
   return keys;
@@ -163,6 +156,11 @@ interface MiniLab3SvgProps {
 const FADER_LABELS = ["Level", "Reverb", "Delay", "Master"];
 const BTN_LABELS = ["SHIFT", "HOLD", "OCT−", "OCT+"];
 
+// the device's own colors (it looks like a MiniLab in every theme)
+const DEVICE_DARK = "#2a2a2e";
+const WHITE_KEY = "#f4f4f5";
+const BLACK_KEY = "#18181b";
+
 // ── The SVG ────────────────────────────────────────────────────────────────
 
 export function MiniLab3Svg({ labels, onKeyDown, onPadDown }: MiniLab3SvgProps) {
@@ -187,7 +185,8 @@ export function MiniLab3Svg({ labels, onKeyDown, onPadDown }: MiniLab3SvgProps) 
           live.keyVel[index - live.shift] = e.down ? e.value : 0;
           break;
         case "pad":
-          live.padVel[index & 15] = e.down ? e.value : 0;
+          // bank B (pads 9–16) lights the same pads
+          live.padVel[index % 8] = e.down ? e.value : 0;
           break;
         case "knob":
           if (index >= 0 && index < 8) {
@@ -200,7 +199,8 @@ export function MiniLab3Svg({ labels, onKeyDown, onPadDown }: MiniLab3SvgProps) 
           }
           break;
         case "encoder":
-          live.encoderPos = e.targetValue ?? e.value / 127;
+          // an endless encoder: turn the picture by the step it sent (offset 64)
+          live.encoderPos = (live.encoderPos + (e.value - 64) / 24 + 1) % 1;
           break;
         case "strip":
           if (index >= 0 && index < 2) {
@@ -228,8 +228,8 @@ export function MiniLab3Svg({ labels, onKeyDown, onPadDown }: MiniLab3SvgProps) 
         const el = svg.querySelector<SVGElement>(`[data-key="${k.midi}"]`);
         if (el) {
           if (vel > 0) {
-            const alpha = 0.3 + (vel / 127) * 0.7;
-            el.style.fill = `rgba(96,165,250,${alpha})`;
+            // pressed: the theme's accent, stronger the harder it was played
+            el.style.fill = `color-mix(in oklab, var(--accent) ${Math.round(40 + (vel / 127) * 60)}%, ${k.white ? WHITE_KEY : BLACK_KEY})`;
           } else {
             el.style.fill = "";
           }
@@ -242,8 +242,8 @@ export function MiniLab3Svg({ labels, onKeyDown, onPadDown }: MiniLab3SvgProps) 
         const el = svg.querySelector<SVGElement>(`[data-pad="${i}"]`);
         if (el) {
           if (vel > 0) {
-            const alpha = 0.5 + (vel / 127) * 0.5;
-            el.style.fill = `rgba(249,115,22,${alpha})`;
+            // the pads light up (RGB on the device)
+            el.style.fill = `color-mix(in oklab, var(--accent) ${Math.round(50 + (vel / 127) * 50)}%, ${DEVICE_DARK})`;
           } else {
             el.style.fill = "";
           }
@@ -265,7 +265,7 @@ export function MiniLab3Svg({ labels, onKeyDown, onPadDown }: MiniLab3SvgProps) 
         const pos = live.faderPos[i];
         const el = svg.querySelector<SVGElement>(`[data-fader-thumb="${i}"]`);
         if (el) {
-          const y = CTRL_Y + 4 + FADER_TRACK_H * (1 - pos);
+          const y = FADER_Y + FADER_TRACK_H * (1 - pos);
           el.setAttribute("y", y.toFixed(1));
         }
       }
@@ -273,7 +273,7 @@ export function MiniLab3Svg({ labels, onKeyDown, onPadDown }: MiniLab3SvgProps) 
       // Update encoder needle
       const encNeedle = svg.querySelector<SVGElement>("[data-enc-needle]");
       if (encNeedle) {
-        const deg = -135 + live.encoderPos * 270;
+        const deg = live.encoderPos * 360;
         encNeedle.setAttribute("transform", `rotate(${deg.toFixed(1)},0,0)`);
       }
 
@@ -282,8 +282,8 @@ export function MiniLab3Svg({ labels, onKeyDown, onPadDown }: MiniLab3SvgProps) 
         const pos = live.stripPos[i];
         const el = svg.querySelector<SVGElement>(`[data-strip-fill="${i}"]`);
         if (el) {
-          const h = STRIP_H * pos;
-          const y = CTRL_Y + 2 + STRIP_H - h;
+          const h = (STRIP_H - 4) * pos;
+          const y = STRIP_Y + STRIP_H - h;
           el.setAttribute("y", y.toFixed(1));
           el.setAttribute("height", h.toFixed(1));
         }
@@ -344,7 +344,7 @@ export function MiniLab3Svg({ labels, onKeyDown, onPadDown }: MiniLab3SvgProps) 
     <svg
       ref={svgRef}
       viewBox={`0 0 ${W} ${H}`}
-      style={{ width: "100%", height: "100%", maxHeight: "200px", display: "block" }}
+      style={{ width: "100%", height: "100%", display: "block" }}
       aria-label="MiniLab 3 controller"
     >
       {/* Body */}
@@ -359,27 +359,28 @@ export function MiniLab3Svg({ labels, onKeyDown, onPadDown }: MiniLab3SvgProps) 
         strokeWidth="1.5"
       />
 
-      {/* ── Left buttons ────────────────────────────────────────── */}
+      {/* ── Shift, Hold, Octave − and + ─────────────────────────── */}
       {BTN_LABELS.map((label, i) => {
-        const y = CTRL_Y + i * (BTN_H + BTN_GAP);
+        const x = BTN_X + (i % 2) * (BTN_W + BTN_GAP);
+        const y = CTRL_Y + Math.floor(i / 2) * (BTN_H + BTN_GAP);
         return (
           <g key={label} data-hint={`controller.btn.${i}`}>
             <rect
-              x={BTN_X}
+              x={x}
               y={y}
               width={BTN_W}
               height={BTN_H}
               rx={3}
-              fill="var(--surface)"
+              fill={DEVICE_DARK}
               stroke="var(--border)"
-              strokeWidth="0.8"
+              strokeWidth="0.6"
             />
             <text
-              x={BTN_X + BTN_W / 2}
-              y={y + BTN_H / 2 + 3.5}
+              x={x + BTN_W / 2}
+              y={y + BTN_H / 2 + 2}
               textAnchor="middle"
               fontSize="5"
-              fill="var(--text-dim)"
+              fill="#d4d4d8"
               style={{ pointerEvents: "none", userSelect: "none" }}
             >
               {label}
@@ -391,37 +392,34 @@ export function MiniLab3Svg({ labels, onKeyDown, onPadDown }: MiniLab3SvgProps) 
       {/* ── Touch strips ────────────────────────────────────────── */}
       {["Pitch", "Mod"].map((name, i) => {
         const sx = STRIP_X + i * (STRIP_W + STRIP_GAP);
-        const sy = CTRL_Y + 2;
         return (
           <g key={name} data-hint={`controller.strip.${i}`}>
-            {/* Track */}
             <rect
               x={sx}
-              y={sy}
+              y={STRIP_Y}
               width={STRIP_W}
               height={STRIP_H}
-              rx={3}
-              fill="var(--surface)"
+              rx={4}
+              fill={DEVICE_DARK}
               stroke="var(--border)"
-              strokeWidth="0.8"
+              strokeWidth="0.6"
             />
-            {/* Fill */}
             <rect
               data-strip-fill={i}
-              x={sx + 1}
-              y={sy + STRIP_H / 2}
-              width={STRIP_W - 2}
-              height={STRIP_H / 2 - 1}
-              rx={2}
+              x={sx + 2}
+              y={STRIP_Y + STRIP_H / 2}
+              width={STRIP_W - 4}
+              height={STRIP_H / 2 - 2}
+              rx={3}
               fill="var(--accent)"
-              opacity="0.5"
+              opacity="0.55"
               style={{ pointerEvents: "none" }}
             />
             <text
               x={sx + STRIP_W / 2}
-              y={sy + STRIP_H + 7}
+              y={STRIP_Y + STRIP_H + 8}
               textAnchor="middle"
-              fontSize="5"
+              fontSize="5.5"
               fill="var(--text-dim)"
               style={{ userSelect: "none" }}
             >
@@ -438,9 +436,9 @@ export function MiniLab3Svg({ labels, onKeyDown, onPadDown }: MiniLab3SvgProps) 
           y={SCREEN_Y}
           width={SCREEN_W}
           height={SCREEN_H}
-          rx={2}
-          fill="#0a0a0a"
-          stroke="var(--border)"
+          rx={3}
+          fill="#050505"
+          stroke="var(--border-strong)"
           strokeWidth="0.8"
         />
         <ScreenText x={SCREEN_X} y={SCREEN_Y} w={SCREEN_W} h={SCREEN_H} />
@@ -449,43 +447,25 @@ export function MiniLab3Svg({ labels, onKeyDown, onPadDown }: MiniLab3SvgProps) 
       {/* ── Main encoder ────────────────────────────────────────── */}
       <g data-hint="controller.encoder">
         <title>{labels.encoder}</title>
-        <circle
-          cx={ENC_X}
-          cy={ENC_Y}
-          r={ENC_R}
-          fill="#1a1a1a"
-          stroke="var(--border)"
-          strokeWidth="1"
-        />
-        {/* Knob ring */}
-        <circle
-          cx={ENC_X}
-          cy={ENC_Y}
-          r={ENC_R - 2}
-          fill="none"
-          stroke="var(--accent)"
-          strokeWidth="1.5"
-          opacity="0.3"
-        />
-        {/* Needle */}
+        <circle cx={ENC_X} cy={ENC_Y} r={ENC_R} fill="#111113" stroke="#000" strokeWidth="1" />
+        <circle cx={ENC_X} cy={ENC_Y} r={ENC_R - 3} fill="#1f1f23" />
         <g transform={`translate(${ENC_X},${ENC_Y})`}>
           <line
             data-enc-needle
             x1="0"
-            y1={-(ENC_R - 2.5)}
+            y1={-(ENC_R - 3)}
             x2="0"
-            y2="0"
-            stroke="var(--accent)"
-            strokeWidth="1.5"
+            y2={-(ENC_R - 8)}
+            stroke="#f4f4f5"
+            strokeWidth="1.6"
             strokeLinecap="round"
-            transform="rotate(-45,0,0)"
           />
         </g>
         <text
           x={ENC_X}
-          y={ENC_Y + ENC_R + 8}
+          y={ENC_Y + ENC_R + 9}
           textAnchor="middle"
-          fontSize="5"
+          fontSize="5.5"
           fill="var(--text-dim)"
           style={{ userSelect: "none" }}
         >
@@ -498,48 +478,36 @@ export function MiniLab3Svg({ labels, onKeyDown, onPadDown }: MiniLab3SvgProps) 
         const col = i % 4;
         const row = Math.floor(i / 4);
         const cx = KNOB_START_X + col * KNOB_COL_W + KNOB_R;
-        const cy = CTRL_Y + row * KNOB_ROW_H + KNOB_ROW_H / 2;
+        const cy = CTRL_Y + row * KNOB_ROW_H + KNOB_R + 2;
         const label = labels.knobs[i];
         return (
           <g key={i} data-hint={`controller.knob.${i}`}>
             <title>
               {label?.name ?? `Knob ${i + 1}`}: {label?.value ?? ""}
             </title>
-            {/* Outer ring track */}
-            <circle
-              cx={cx}
-              cy={cy}
-              r={KNOB_R}
-              fill="var(--surface)"
-              stroke="var(--border)"
-              strokeWidth="0.8"
-            />
-            {/* Inner cap */}
-            <circle cx={cx} cy={cy} r={KNOB_R - 3} fill="var(--raised)" />
-            {/* Needle */}
+            <circle cx={cx} cy={cy} r={KNOB_R} fill="#111113" stroke="#000" strokeWidth="0.8" />
+            <circle cx={cx} cy={cy} r={KNOB_R - 2.5} fill="#27272a" />
             <g transform={`translate(${cx},${cy})`}>
               <line
                 data-knob-needle={i}
                 x1="0"
-                y1={-(KNOB_R - 3.5)}
+                y1={-(KNOB_R - 2.5)}
                 x2="0"
-                y2="0"
-                stroke="var(--accent)"
-                strokeWidth="1.2"
+                y2={-(KNOB_R - 6)}
+                stroke="#f4f4f5"
+                strokeWidth="1.4"
                 strokeLinecap="round"
-                transform="rotate(0,0,0)"
               />
             </g>
-            {/* Label */}
             <text
               x={cx}
-              y={cy + KNOB_R + 7}
+              y={cy + KNOB_R + 8}
               textAnchor="middle"
-              fontSize="4.5"
+              fontSize="5.5"
               fill="var(--text-dim)"
               style={{ userSelect: "none" }}
             >
-              {label?.name ?? `K${i + 1}`}
+              {label?.name ?? `Knob ${i + 1}`}
             </text>
           </g>
         );
@@ -547,31 +515,29 @@ export function MiniLab3Svg({ labels, onKeyDown, onPadDown }: MiniLab3SvgProps) 
 
       {/* ── Pads ────────────────────────────────────────────────── */}
       {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => {
-        const px = PAD_START_X + i * (PAD_W + PAD_GAP);
-        const py = CTRL_Y + 2;
+        const px = PAD_X + i * (PAD_W + PAD_GAP);
         return (
           <g key={i} data-hint={`controller.pad.${i}`}>
             <rect
               data-pad={i}
               x={px}
-              y={py}
+              y={PAD_Y}
               width={PAD_W}
               height={PAD_H}
-              rx={3}
-              fill="var(--surface)"
-              stroke="var(--border)"
-              strokeWidth="0.8"
+              rx={4}
+              fill={DEVICE_DARK}
+              stroke="#000"
+              strokeWidth="0.6"
               style={{ cursor: onPadDown ? "pointer" : undefined }}
               onPointerDown={(e) => handlePadPointerDown(i, e)}
               onPointerUp={() => handlePadPointerUp(i)}
               onPointerLeave={() => handlePadPointerUp(i)}
             />
             <text
-              x={px + PAD_W / 2}
-              y={py + PAD_H - 6}
-              textAnchor="middle"
+              x={px + 4}
+              y={PAD_Y + 8}
               fontSize="5"
-              fill="var(--text-dim)"
+              fill="#a1a1aa"
               style={{ pointerEvents: "none", userSelect: "none" }}
             >
               {i + 1}
@@ -583,42 +549,37 @@ export function MiniLab3Svg({ labels, onKeyDown, onPadDown }: MiniLab3SvgProps) 
       {/* ── Faders ──────────────────────────────────────────────── */}
       {[0, 1, 2, 3].map((i) => {
         const fx = FADER_START_X + i * (FADER_W + FADER_GAP);
-        const fy = CTRL_Y + 4;
         const label = FADER_LABELS[i];
         return (
           <g key={i} data-hint={`controller.fader.${i}`}>
             <title>
               {label}: {labels.faders[i]?.value ?? ""}
             </title>
-            {/* Track */}
             <rect
               x={fx + FADER_W / 2 - 1.5}
-              y={fy}
+              y={FADER_Y}
               width={3}
-              height={FADER_TRACK_H}
+              height={FADER_TRACK_H + 8}
               rx={1.5}
-              fill="var(--surface)"
-              stroke="var(--border)"
-              strokeWidth="0.5"
+              fill="#000"
+              opacity="0.7"
             />
-            {/* Thumb */}
             <rect
               data-fader-thumb={i}
               x={fx}
-              y={fy + FADER_TRACK_H * 0.5 - 4}
+              y={FADER_Y + FADER_TRACK_H * 0.5}
               width={FADER_W}
               height={8}
               rx={2}
-              fill="var(--raised)"
-              stroke="var(--border-strong)"
+              fill="#27272a"
+              stroke="#000"
               strokeWidth="0.8"
             />
-            {/* Label */}
             <text
               x={fx + FADER_W / 2}
-              y={fy + FADER_TRACK_H + 10}
+              y={FADER_Y + FADER_TRACK_H + 18}
               textAnchor="middle"
-              fontSize="4"
+              fontSize="5.5"
               fill="var(--text-dim)"
               style={{ userSelect: "none" }}
             >
@@ -629,18 +590,25 @@ export function MiniLab3Svg({ labels, onKeyDown, onPadDown }: MiniLab3SvgProps) 
       })}
 
       {/* ── Keys ────────────────────────────────────────────────── */}
-      {/* White keys */}
+      <rect
+        x={KEYS_X - 2}
+        y={KEYS_Y - 3}
+        width={KEY_WHITES * WHITE_W + 4}
+        height={KEYS_H + 5}
+        rx={3}
+        fill={DEVICE_DARK}
+      />
       {whiteKeys.map((k) => (
         <rect
           key={k.midi}
           data-key={k.midi}
-          x={KEYS_X + k.x * WHITE_W}
+          x={KEYS_X + k.x * WHITE_W + 0.5}
           y={KEYS_Y}
           width={WHITE_W - 1}
           height={KEYS_H}
           rx={2}
-          fill="var(--bg)"
-          stroke="var(--border)"
+          fill={WHITE_KEY}
+          stroke="#a1a1aa"
           strokeWidth="0.5"
           style={{ cursor: onKeyDown ? "pointer" : undefined }}
           onPointerDown={(e) => handleKeyPointerDown(k.midi, e)}
@@ -648,7 +616,6 @@ export function MiniLab3Svg({ labels, onKeyDown, onPadDown }: MiniLab3SvgProps) 
           onPointerLeave={() => handleKeyPointerUp(k.midi)}
         />
       ))}
-      {/* Black keys */}
       {blackKeys.map((k) => (
         <rect
           key={k.midi}
@@ -657,9 +624,9 @@ export function MiniLab3Svg({ labels, onKeyDown, onPadDown }: MiniLab3SvgProps) 
           y={KEYS_Y}
           width={k.w * WHITE_W}
           height={KEYS_H * 0.6}
-          rx={1}
-          fill="var(--surface)"
-          stroke="var(--border)"
+          rx={1.5}
+          fill={BLACK_KEY}
+          stroke="#000"
           strokeWidth="0.5"
           style={{ cursor: onKeyDown ? "pointer" : undefined }}
           onPointerDown={(e) => handleKeyPointerDown(k.midi, e)}
@@ -680,15 +647,12 @@ function ScreenText({ x, y, h }: { x: number; y: number; w?: number; h: number }
   const line2Ref = useRef<SVGTextElement>(null);
 
   useEffect(() => {
-    // Lazy import to avoid circular deps / startup cost
-    import("../../midi/display").then(({ useDisplay }) => {
-      const update = (text: { line1: string; line2: string }) => {
-        if (line1Ref.current) line1Ref.current.textContent = text.line1;
-        if (line2Ref.current) line2Ref.current.textContent = text.line2;
-      };
-      update(useDisplay.getState().text);
-      return useDisplay.subscribe((s) => update(s.text));
-    });
+    const update = (text: { line1: string; line2: string }) => {
+      if (line1Ref.current) line1Ref.current.textContent = text.line1;
+      if (line2Ref.current) line2Ref.current.textContent = text.line2;
+    };
+    update(useDisplay.getState().text);
+    return useDisplay.subscribe((s) => update(s.text));
   }, []);
 
   return (

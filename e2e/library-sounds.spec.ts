@@ -21,8 +21,9 @@ test("the locations: All and yours first, then instruments, samples and kits (D9
   const labels = await page.locator(".menu .menu-item").allInnerTexts();
   const names = labels.map((l) => l.trim());
   const at = (n: string) => names.indexOf(n);
-  expect(names.slice(0, 5)).toEqual([
+  expect(names.slice(0, 6)).toEqual([
     "All",
+    "Playable",
     "Favorites",
     "Used in project",
     "Your sounds",

@@ -43,14 +43,11 @@ describe("geometry() in fit mode", () => {
     expect(geo.padW).toBeGreaterThan(50);
   });
 
-  it("padH scales with effectiveZoom, clamped to 0.8–1.6", () => {
-    // Large panel with many steps → effectiveZoom < 0.8 → padH clamped at 0.8
-    const geoSmall = geometry(400, { ...BASE_PATTERN, stepCount: 64 }, "regular", "fit");
-    expect(geoSmall.padH).toBe(Math.round(32 * 0.8)); // clamped at 0.8
-
-    // Wide panel with few steps → effectiveZoom > 1.6 → padH clamped at 1.6
-    const geoBig = geometry(1200, { ...BASE_PATTERN, stepCount: 2 }, "regular", "fit");
-    expect(geoBig.padH).toBe(Math.round(32 * 1.6));
+  it("keeps the nominal padH whatever the step count (pages don't change the rows' height)", () => {
+    const many = geometry(400, { ...BASE_PATTERN, stepCount: 64 }, "regular", "fit");
+    const few = geometry(1200, { ...BASE_PATTERN, stepCount: 2 }, "regular", "fit");
+    expect(many.padH).toBe(32);
+    expect(few.padH).toBe(32);
   });
 });
 
