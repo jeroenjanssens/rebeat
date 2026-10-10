@@ -12,7 +12,7 @@
 
 ### 0.1 Where we are
 
-- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D118), and the build order is in §7.
+- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D125), and the build order is in §7.
 - Every phase in §7 is built, tested (unit + Playwright e2e) and pushed. The mockup (Phase M) became the app: its components, model and store were kept and extended; `src/mock/` was replaced by the real engine.
 - The desktop app (Phase 10) runs and packages locally (unsigned); signing/notarization need certificates (see `.github/workflows/desktop.yml`).
 
@@ -34,7 +34,7 @@ src/
                          ProjectBrowser, projectActions, ExportDialog, WelcomeDialog, AudioStartOverlay, openers
   platform/              Platform interface; web.ts; electron.ts (native dialogs via window.rebeatNative)
   model/                 types (Track, Lane, Step, Note, Sound, Effect…), project ops (setMode…), tracks (modes and
-                         sounds: player, sampleOf…), schema (versions + migrations, now v7; fixtures/v6 holds
+                         sounds: player, sampleOf…), schema (versions + migrations, now v8; fixtures/v6 holds
                          every example as v6 saved it), params (+ toUnit), effects (buses, master, perf setup), notes (keys, chords, arp),
                          noteOps (piano roll), timing (polyrhythm), tempo (tap), midiFile (SMF export)
   state/                 store (project + undo + UI), settings (persisted), actions (steps, function buttons),
@@ -103,8 +103,8 @@ Key implementation patterns:
 0. Beatbox to step tracks (§0.6h, D105–D118) ✅ on the `beatbox` branch: review and merge into
    `main`. Decide whether the shipped model may train on beatboxset1 (CC BY-SA, D108). Record and
    label your own sounds (and friends'), export them, and train model 2 with them (`ml/README.md`).
-0b. MIDI controllers (§0.6i, D119–D125): proposed; for the Arturia MiniLab 3 and controllers like
-   it. Step 8 needs the device.
+0b. MIDI controllers (§0.6i, D119–D125) ✅ on the `midi-controllers` branch: review and merge (after
+   `beatbox`). With a device: check what it sends (the Monitor in Settings → MIDI) and fix its map.
 1. Try the app with real hardware: a microphone and audio interface (calibration, monitoring), a MIDI keyboard/controller (learn), and a Launchpad or Push (the Push color palette is approximate).
 2. Desktop releases: add signing certificates and notarization secrets, then tag `v0.1.0` to produce draft releases.
 3. Decide D6 (license): the repository is public now, without one.
@@ -572,9 +572,17 @@ Step 2 ends with a go/no-go on the model's accuracy before the app work builds o
    audible tracks and undoes it. A guide chapter (recording, labeling, calibrating, converting),
    explain-mode hints for every control, decisions D105–D118.
 
-### 0.6i MIDI controllers: global maps, relative knobs, buttons, pads by channel (proposed 2026-10-10)
+### 0.6i MIDI controllers: global maps, relative knobs, buttons, pads by channel (agreed and done 2026-10-10) ✅
 
-Progress: not started.
+Progress: 1 ✅ · 2 ✅ · 3 ✅ · 4 ✅ · 5 ✅ · 6 ✅ · 7 ✅ · 8 waits for the devices.
+
+Done on the `midi-controllers` branch (from `beatbox`). Besides the MiniLab 3, Jeroen may buy an
+Akai MPK Mini MK3, a Novation Launchkey Mini MK3 or MK4, or a Telepathic Instruments Orchid, so
+there are maps for the MPK Mini MK3 and both Launchkey Minis too, **Learn every control** walks
+through a map's slots for controllers set up differently (or without factory assignments: the
+MK4's encoders), and MIDI Start/Stop play and stop (the MK4's Play button sends them). What the
+manuals say (and don't) is in D124; the Orchid publishes no MIDI implementation, and as a chord
+keyboard it needs no map.
 
 Goal: plug in a MIDI controller such as the **Arturia MiniLab 3** and have its keys, pads, knobs,
 faders and transport buttons do the right thing, in every project, without mapping them again.
@@ -660,6 +668,9 @@ monitor lists what came in.
 - Changing the latency mode applies after a reload (the AudioContext is created once).
 - MIDI clock in/out, track groups/folding, and more conditional trigs are "later" items from the plan (D27, §3.3).
 - Hold-step editing uses step selection (Alt+click, Select tool) for parameter locks rather than physically holding a pad.
+- MIDI controllers, later (§0.6i): the Launchkey's DAW mode (enabled by a note to its DAW port: its
+  transport, session pads and pad colors); MIDI clock in and out; full Mackie Control (faders,
+  displays); maps checked on the devices (D124 lists what's unconfirmed).
 - Beatbox to step tracks, later (§0.6h): the bass (separate the hum from the clicks with
   harmonic–percussive separation, follow its pitch with YIN/pYIN, write a Notes track);
   fine-tuning the model in the browser on your own hits (beyond calibration); detecting and
@@ -1265,8 +1276,8 @@ Format: **Dn — Question.** Default ✅, alternatives.
 - **D120 — Relative encoders.** A mapping's mode is Absolute or one of the three common relative encodings (offset 64, two's complement, sign bit), detected while learning and changeable in Settings; relative steps move the target from its current value (step/127 × sensitivity). Absolute controls can use pickup (off by default). Schema 8 adds `MidiMapping.mode`. Alt: absolute only (endless encoders in a relative mode jump); asking the user for the mode every time.
 - **D121 — Global mappings with roles.** Mappings are saved per project (one track's knob, as now) or everywhere (your controller, in the settings). Global targets name roles instead of ids: the selected track's n-th SOUND knob (`soundDefs`, so the same knob is a sample's Tune or a synth's macro), its volume and sends, the n-th track, buses, master, performance controls and commands. Project mappings win over global ones, both over built-in behavior. Alt: only global mappings; copying mappings into every new project.
 - **D122 — Learning faders and buttons.** Faders learn like knobs (right-click); commands learn from a MIDI column in the Shortcuts dialog and from the transport bar's buttons; a note-on or CC ≥ 64 fires a command, the release ends held ones. Alt: learning buttons only through a controller map.
-- **D123 — Mackie Control transport.** On an MCU input, Play/Stop/Record/Cycle notes (94/93/95/86 on channel 1) and the jog wheel (CC 60) drive the transport and pages with no learning. Alt: learn the transport like any button; full Mackie Control (faders, displays) later.
-- **D124 — Controller maps.** A map is a named set of global slots (knobs, faders, pads, transport), each with a target and a learned control. Rebeat ships one for the Arturia MiniLab 3 (ARTURIA-mode CCs from its manual: knobs 74, 71, 76, 77, 93, 18, 19, 16 → the selected track's SOUND knobs 1–8; faders 82, 83, 85, 17 → volume, Reverb, Delay, master) and a Custom one; any slot can be learned again. To be checked against the device (§0.6i step 8). Alt: one generic "8 knobs + 4 faders" map; a community library of maps.
+- **D123 — Mackie Control transport, and MIDI Start/Stop.** On an MCU input (named MCU, or ticked in Settings), Play/Stop/Record/Cycle notes (94/93/95/86 on channel 1), rewind/forward (91/92: pages) and the jog wheel (CC 60) drive the transport with no learning. MIDI Start/Continue and Stop play and stop (**Follow MIDI Start/Stop**, on by default): the Launchkey Mini MK4's Play button sends them. New commands for controllers: Play, Stop, Next/Previous page, Select the next/previous track. Alt: learn the transport like any button; full Mackie Control (faders, displays) later.
+- **D124 — Controller maps.** A map is a named set of global slots (knobs, faders, pads, transport), each with a target and a learned control. Rebeat ships maps for the **Arturia MiniLab 3** (ARTURIA-mode CCs from its manual 1.0.5: knobs 74, 71, 76, 77, 93, 18, 19, 16 → the selected track's SOUND knobs 1–8; faders 82, 83, 85, 17 → volume, Reverb, Delay, master; whether its encoders are relative isn't documented), the **Akai MPK Mini MK3** (knobs CC 70–77 from its factory program, not confirmed against the manual, which couldn't be downloaded), the **Novation Launchkey Mini MK3** (pots CC 21–28, from its user guide 1.1; transport only in DAW mode) and the **Launchkey Mini MK4** (encoders without factory CCs outside DAW mode: unassigned slots to learn; Play sends MIDI Start), all with pads on channel 10, plus Custom. A slot can be unassigned (learn it); **Learn every control** walks through them; maps whose knobs turn out to be relative switch their mode by themselves (D120). Port names pick the map (and a toast offers it once). Alt: one generic "8 knobs + 4 faders" map; a community library of maps; Launchkey DAW mode (a note to its DAW port) for its transport and session pads, later (§0.7).
 - **D125 — A MIDI monitor.** Settings → MIDI lists the last 20 messages with what Rebeat did with each (played a pad, moved a knob, ran a command, nothing). Alt: the single "last message" line there today.
 - **D35 — Build order.** ✅ The phases in §7, starting with the mockup (Phase M), each ending with something you can play with.
 

@@ -3,7 +3,7 @@
 This file is the fast way in. It explains what Rebeat is, how the code is organized, how the
 pieces talk to each other, how to verify a change, and the gotchas that cost time before.
 `PLAN.md` is the long-form record: the product spec (§1–§3), the original architecture (§4),
-and every design decision (§6, D1–D118). When this file and the code disagree, the code wins.
+and every design decision (§6, D1–D125). When this file and the code disagree, the code wins.
 Please fix this file in the same change.
 
 Status (2026-10-09): every phase of the original roadmap is built, plus several feature batches
@@ -122,7 +122,7 @@ src/
   model/               pure data and operations (no React, no audio):
                        - types.ts (Track, Lane, Step, Note, Sound…), project.ts (setMode…)
                        - tracks.ts (modes and sounds: player, sampleOf, hitNoteOf, canClip…)
-                       - schema.ts (versions + migrations, now v7), params.ts (knob definitions, toUnit)
+                       - schema.ts (versions + migrations, now v8), params.ts (knob definitions, toUnit)
                        - fixtures/v6/ (every example and template as schema 6 saved it, gzipped)
                        - synth.ts (patch v2, macros), synthV1.ts (old patches, read only)
                        - patchParams.ts (the synth editor's knob table), randomize.ts
@@ -145,7 +145,10 @@ src/
                        - render.ts + offline.ts (offline export)
   audio-io/            mic.ts (one shared stream), midi.ts (Web MIDI: learn, notes, bend/mod,
                        sustain), controllers/ (Launchpad/Push grid model, profiles, runtime)
-  midi/learn.ts        startMidiLearn(target, label)
+  midi/                learn.ts (startMidiLearn(target, label, scope)), mapping.ts (pure: relative
+                       encoders, roles such as "selected:sound:3", which mapping wins, pads by
+                       channel, pickup), controllers.ts (controller maps: MiniLab 3, MPK Mini MK3,
+                       Launchkey Mini MK3/MK4)
   library/             samples and instruments:
                        - beatbox/ (D105–D118): classes, onsets (+ resample to 16 kHz), model.ts +
                          model.worker.ts (ONNX Runtime Web, loaded on first use), calibrate,
@@ -259,7 +262,7 @@ from?, sampleId?, rootNote?, zones? }`; `soundFamily(s)` → `sample | synth | i
   `library/synthTrack.ts: soundDefs(track)` returns the right set, and every SOUND UI (encoder
   strip, Inspector, controllers) uses it. Every SOUND id means one thing in every mode (the
   voices' ADSR decay is `sound.envDecay`), so a track keeps every mode's knobs.
-- **Schema**: `model/schema.ts`, currently `SCHEMA_VERSION = 7`.
+- **Schema**: `model/schema.ts`, currently `SCHEMA_VERSION = 8` (8: MIDI mappings' `mode`).
   - Every change to the saved shape bumps the version and adds a migration plus a test.
   - `migrate` + `normalizeProject` run on every load.
   - Migration 5 → 6 converted the old SOUND knobs on synth tracks into patch edits (it changes
@@ -450,9 +453,16 @@ onPatchEdit` hook, debounced `saveSoundSoon`).
 
 ### 6.5 MIDI, controllers, performance, export
 
-- `audio-io/midi.ts`:
-  - notes play the selected Notes track; otherwise note 36 and up play tracks 1, 2, 3… as pads;
-    both are recorded like pad hits
+- `audio-io/midi.ts` (logic without the browser in `midi/mapping.ts`, D119–D125):
+  - notes on the pads channel (10 by default) play tracks by position from note 36; other
+    channels play the selected Notes track (or tracks by position when none is selected); both
+    are recorded like pad hits
+  - mappings: this project's first (`project.midiMappings`, track ids), then global ones
+    (`settings.midiMappings`, roles: `selected:sound:<n>`, `selected:volume`, `track#<n>:…`),
+    resolved by `resolveTarget`; each has a `mode` (absolute or relative, schema 8)
+  - Mackie Control inputs run the transport; MIDI Start/Stop play and stop
+  - controller maps (`midi/controllers.ts`) write global mappings with a `slot`; the Monitor
+    (`useMidi.monitor`) says what each message did
   - CC1 = mod wheel, CC64 = sustain, pitch bend and aftertouch go to the selected synth
   - MIDI learn maps CCs and notes to targets: `track:<id>:sound.x`, `track:<id>:volume`,
     `track:<id>:fx:<fxId>:<param>`, `track:<id>:synth:<path>`, `bus:<id>`, `master:volume`,
@@ -504,6 +514,7 @@ onPatchEdit` hook, debounced `saveSoundSoon`).
   - fresh storage, onboarding skipped, synthetic microphone (`window.__REBEAT_TEST_MIC__`)
   - clicks the audio overlay and waits for the project
 - `midiKeyboard(page)`: a fake Web MIDI input; send bytes with `window.__midi([0x90, 60, 100])`.
+  `midiDevices(page, names)`: several named inputs ("MiniLab3 MCU"…), `__midiFrom(name, bytes)`.
 - The synthetic mic is a tone whose polarity flips twice a second (no real onsets). Set
   `__REBEAT_TEST_MIC__ = "beats"` for decaying noise bursts instead (`beatbox.spec.ts`).
 - `fixtures.ts` generates WAVs and SoundFonts (`fixtureFiles`).
@@ -611,6 +622,7 @@ likely to need:
 | Step tracks: modes, sounds, library, icons, edit   | D93–D98                   |
 | Stop, removing kits, tab icons, themes, Pump, song | D99–D104                  |
 | Beatbox: model, data, panel, calibration, convert  | D105–D118                 |
+| MIDI controllers: maps, roles, relative, buttons   | D119–D125                 |
 
 Feature batches and their acceptance criteria are in PLAN.md §0.6b–§0.6h. Known limitations are
 in §0.7.
