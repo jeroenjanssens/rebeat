@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import {
   ChevronDown,
   ChevronRight,
@@ -18,6 +18,7 @@ import { Encoder } from "../../components/Encoder";
 import { Keyboard } from "../../components/Keyboard";
 import { toast } from "../../components/Toast";
 import * as engine from "../../engine/engine";
+import { soundChanged } from "../../model/tracks";
 import { SYNTH_PRESETS, patchOf, voiceSound } from "../../engine/instruments";
 import { Scope } from "../../components/Scope";
 import {
@@ -231,7 +232,21 @@ function TrackSynthEditor({ own }: { own?: string }) {
   return <Editor key={track.id} track={track} target={trackTarget(track, commit)} />;
 }
 
-function Editor({ track, target }: { track: Track; target: EditTarget }) {
+/**
+ * The editor draws hundreds of knobs: it only redraws when what it shows changes (the track's
+ * sound, SOUND knobs, name or color), not when a fader moves the track's level or sends.
+ */
+const Editor = memo(
+  EditorView,
+  (a, b) =>
+    a.track === b.track ||
+    (a.track.id === b.track.id &&
+      a.track.name === b.track.name &&
+      a.track.color === b.track.color &&
+      !soundChanged(a.track, b.track)),
+);
+
+function EditorView({ track, target }: { track: Track; target: EditTarget }) {
   const src = voiceSound(track);
   const patch = patchOf(src);
   // what you hear: the macros where the track's SOUND knobs have them

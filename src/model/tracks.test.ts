@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { makeTrack } from "./project";
-import { canClip, defaultMode, hitNoteOf, hitNotes, player } from "./tracks";
+import { canClip, defaultMode, hitNoteOf, hitNotes, player, soundChanged } from "./tracks";
 import type { Sound, TrackMode } from "./types";
 
 const sample: Sound = { source: "sample", sampleId: "kit:909:kick" };
@@ -48,5 +48,20 @@ describe("step tracks: which sound plays in which mode (D93)", () => {
     expect(hitNotes(keys, 0.7, -5, 0.5)).toEqual([{ pitch: 67, length: 0.5, velocity: 0.7 }]);
     // a gate of 0 still sounds
     expect(hitNotes(keys, 1, 0, 0)[0].length).toBe(0.1);
+  });
+});
+
+describe("soundChanged", () => {
+  const t = makeTrack("notes", "bass", "Bass", "Bass", [], { source: "synth", preset: "init" });
+  it("ignores the channel: level, pan, sends, mute", () => {
+    expect(soundChanged(t, { ...t, volume: 0.3, mute: true })).toBe(false);
+    expect(
+      soundChanged(t, { ...t, params: { ...t.params, "mix.sendA": 0.7, "mix.pan": 0.2 } }),
+    ).toBe(false);
+  });
+  it("sees the sound, the mode and the SOUND knobs", () => {
+    expect(soundChanged(t, { ...t, sound: { source: "synth", preset: "acid" } })).toBe(true);
+    expect(soundChanged(t, { ...t, mode: "hits" })).toBe(true);
+    expect(soundChanged(t, { ...t, params: { ...t.params, "sound.macro1": 0.9 } })).toBe(true);
   });
 });

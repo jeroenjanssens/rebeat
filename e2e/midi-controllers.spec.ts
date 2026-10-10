@@ -26,9 +26,13 @@ type W = {
   };
 };
 
+// a controller's continuous values are applied once a frame (16 ms): wait for that
 const send = (page: Page, device: string, bytes: number[]) =>
   page.evaluate(
-    ([d, b]) => (window as never as W).__midiFrom(d as string, b as number[]),
+    async ([d, b]) => {
+      (window as never as W).__midiFrom(d as string, b as number[]);
+      await new Promise((r) => setTimeout(r, 40));
+    },
     [device, bytes],
   );
 

@@ -16,7 +16,7 @@ import type { StretchNode } from "signalsmith-stretch";
 import { createInstrument, instrumentKey, type InstrumentVoice } from "./instruments";
 import type { WorkletSynth } from "./synth/node";
 import { macroValues } from "../library/synthTrack";
-import { hitNoteOf, hitNotes, player, sampleOf } from "../model/tracks";
+import { hitNoteOf, hitNotes, player, sampleOf, soundChanged } from "../model/tracks";
 
 export interface TriggerOptions {
   /** Audio time; default = now. */
@@ -256,6 +256,9 @@ export function reconcile(project: Project = useStore.getState().project) {
     if (last && last.track === t && last.audible === audible && last.bpm === bpm) continue;
     S.lastTracks.set(t.id, { track: t, audible, bpm });
     channel(t.id).update(t, audible, bpm);
+    // a level, pan or send (a controller's fader) is the channel's: the voice keeps its patch
+    const voiceSame = last && last.bpm === bpm && !soundChanged(last.track, t);
+    if (player(t) === "voice" && voiceSame && S.synths.has(t.id)) continue;
     if (player(t) === "voice") {
       updateSynth(t, bpm);
       // keep the live voice in sync; if the instrument key changed, rebuild it

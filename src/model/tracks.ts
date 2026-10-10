@@ -59,3 +59,14 @@ export function hitNoteOf(t: Track): number {
 export function hitNotes(t: Track, velocity: number, pitch = 0, gate = 1): Note[] {
   return [{ pitch: hitNoteOf(t) + pitch, length: Math.max(0.1, gate), velocity }];
 }
+
+/** Whether what a track's voice plays changed (its sound, mode or SOUND knobs), not just its
+ * channel (level, pan, sends, mute). */
+export function soundChanged(a: Track, b: Track): boolean {
+  if (a.sound !== b.sound || a.mode !== b.mode || a.hitNote !== b.hitNote) return true;
+  if (a.transpose !== b.transpose || a.arp !== b.arp) return true;
+  if (a.params === b.params) return false;
+  for (const k in b.params) if (k.startsWith("sound.") && a.params[k] !== b.params[k]) return true;
+  for (const k in a.params) if (k.startsWith("sound.") && !(k in b.params)) return true;
+  return false;
+}

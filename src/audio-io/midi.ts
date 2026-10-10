@@ -619,7 +619,8 @@ function applyMapping(map: MidiMapping, m: MidiMessage, scope: "project" | "glob
     }
   }
 
-  const current = readTarget(target, useStore.getState().project) ?? lastSet.get(target);
+  const current =
+    pending.get(target) ?? readTarget(target, useStore.getState().project) ?? lastSet.get(target);
   const settings = useSettings.getState();
   let v: number;
   if (mode === "absolute") {
@@ -634,7 +635,7 @@ function applyMapping(map: MidiMapping, m: MidiMessage, scope: "project" | "glob
     v = Math.max(0, Math.min(1, (current ?? 0.5) + step));
   }
   lastSet.set(target, v);
-  applyTarget(target, v, true);
+  applySoon(target, v);
   const action = `${map.label}${where} = ${Math.round(v * 100)}%`;
   report(m, action, { ...slotEv, value: m.value, target, targetValue: v });
   return action;
@@ -706,6 +707,27 @@ function synthControl(name: "modwheel" | "aftertouch" | "pitchbend", value: numb
 /** The sustain pedal: delegated to the keys module so it works with all note sources. */
 function sustainPedal(down: boolean) {
   keysSustain(down);
+}
+
+/**
+ * A fader or knob sends up to a few hundred messages a second; every commit re-renders what
+ * shows the target (for a track: its row, the Inspector, the synth editor). So continuous
+ * values are applied at most once per frame (about 60 a second), the newest one winning; the
+ * controller events (the Controller panel) still see every message.
+ */
+const pending = new Map<string, number>();
+let flushTimer = 0;
+
+function applySoon(target: string, v: number) {
+  pending.set(target, v);
+  if (flushTimer) return;
+  // a timer, not requestAnimationFrame: it also runs while the window is in the background
+  flushTimer = window.setTimeout(() => {
+    flushTimer = 0;
+    const values = [...pending];
+    pending.clear();
+    for (const [t, x] of values) applyTarget(t, x, true);
+  }, 16);
 }
 
 /** Set a mapped parameter from a 0..1 value (continuous) or fire it (buttons). */
