@@ -47,6 +47,7 @@ export async function midiKeyboard(page: Page) {
 }
 
 /** Fake MIDI inputs with these names; send bytes with `window.__midiFrom(name, [0xb0, 74, 64])`.
+ * Each name also gets a matching fake output that records sent bytes in `window.__midiSent[name]`.
  * Opens the app and enables MIDI. */
 export async function midiDevices(page: Page, names: string[]) {
   await page.addInitScript((names: string[]) => {
@@ -56,8 +57,26 @@ export async function midiDevices(page: Page, names: string[]) {
         { id: `in${i}`, name, onmidimessage: null as null | ((e: { data: Uint8Array }) => void) },
       ]),
     );
-    const access = { inputs, outputs: new Map(), onstatechange: null };
-    Object.defineProperty(navigator, "requestMIDIAccess", { value: async () => access });
+    // Fake outputs: each records bytes sent to window.__midiSent[name]
+    const sentLog: Record<string, number[][]> = {};
+    const outputs = new Map(
+      names.map((name, i) => [
+        `out${i}`,
+        {
+          id: `out${i}`,
+          name,
+          send: (data: Uint8Array | number[]) => {
+            if (!sentLog[name]) sentLog[name] = [];
+            sentLog[name].push(Array.from(data));
+          },
+        },
+      ]),
+    );
+    Object.assign(window, { __midiSent: sentLog });
+    const access = { inputs, outputs, onstatechange: null };
+    Object.defineProperty(navigator, "requestMIDIAccess", {
+      value: async (_opts?: unknown) => access,
+    });
     Object.assign(window, {
       __midiFrom: (name: string, d: number[]) =>
         [...inputs.values()]
