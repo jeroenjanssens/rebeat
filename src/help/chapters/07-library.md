@@ -19,6 +19,7 @@ Importing the same file twice doesn't make a duplicate. Loops get their **tempo*
 - **Filter**: synths, sampled instruments, one-shots or loops (with a tempo); short / medium / long; tags.
 - **Sort**: by name, duration or date added, each in either direction (A → Z or Z → A, shortest or longest first, newest or oldest first). The button shows the current order, e.g. **Name ↑**; it applies to every view, the built-in kits included.
 - The list on the left (or the menu at the top in a narrow library), by what you're looking for:
+  - **Playable** (first in the list): every sound the keys can play at once — see [Playable](#library-playable).
   - **All** (your samples and Your sounds; a search here looks through everything, kits and instruments too), **Favorites**, **Used in project**, **Your sounds** and **Recordings**;
   - **Instruments**: Synths, Pianos & keys, Orchestral, Mallets, Double bass and General MIDI;
   - **Samples**: All samples and your folders;
@@ -78,3 +79,31 @@ Working with instruments:
 ## Recording into the library
 
 Open **Recordings** to record from your microphone: pick the input device, watch the input level, turn on monitoring (use headphones) if you want to hear yourself, and press **Record** / stop. **Trim silence** removes silence at both ends. The recording is saved as a new sample. Your browser asks for microphone access the first time.
+
+## Playable {#library-playable}
+
+**Playable** is a single list of every sound the keys can play: synths, sampled instruments, Your sounds, and pitched samples (samples with a detected key or a name that doesn't suggest they're drums). Drum and percussion samples are hidden by default — turn on **Samples: all** to include them.
+
+- **Click** an item or press ↑ ↓ (or ← →) to select it; it goes straight to the keys so your MIDI keyboard plays it immediately. There's no need to add a track first.
+- **K** puts the currently selected item on the keys from any location; Playable does it automatically on navigation.
+- **Enter** adds it as a Notes track in the drum machine.
+- The **Play on the keys** button (keyboard icon, appears on hover) does the same as clicking in Playable, from any location.
+
+### Browsing with a controller {#library-playable-encoder}
+
+The MiniLab 3's main encoder browses the Playable list while you play:
+
+- **Turn** the encoder one click → next or previous sound; the Library panel scrolls to follow.
+- **Shift + turn** → skip to the next or previous section (Synths, Sampled instruments, Your sounds, Samples).
+- **Click** the encoder → add the current sound as a Notes track.
+- The MiniLab 3's OLED display shows the sound name and its position (e.g. "Rhodes / Instrument · 12/318"). While a streamed instrument is downloading, the display shows "Loading…" and updates when it's ready.
+
+Any controller can learn the same actions with the **Next playable sound**, **Previous playable sound**, **Next playable section** and **Previous playable section** commands (Command palette → Library).
+
+### Names on the display
+
+With **Show names on the MiniLab display** on (Settings → MIDI), the display also shows:
+
+- The current keys target whenever it changes (track name, or sound name for a library sound).
+- The selected track's name and sound when you select a track in the drum machine.
+- A knob's name and value while you turn it (for about 1.5 seconds), then the last lasting text.

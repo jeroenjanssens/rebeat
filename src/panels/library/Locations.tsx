@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { ChevronDown, Folder, Globe, Heart, Library, Star } from "lucide-react";
+import { ChevronDown, Folder, Globe, Heart, Keyboard, Library, Star } from "lucide-react";
 import { PLACE_ICONS, SOUND_ICONS } from "../../components/soundIcons";
 import type { Family } from "../../library/instruments";
 import { contextMenu, dropdown } from "../../components/Menu";
@@ -36,13 +36,15 @@ export function locLabel(l: Location) {
         ? "Favorites"
         : l.kind === "used"
           ? "Used in project"
-          : l.kind === "folder"
-            ? l.path
-            : l.kind === "kit"
-              ? `${l.kit} kit`
-              : l.kind === "instruments"
-                ? l.family
-                : "Online kits";
+          : l.kind === "playable"
+            ? "Playable"
+            : l.kind === "folder"
+              ? l.path
+              : l.kind === "kit"
+                ? `${l.kit} kit`
+                : l.kind === "instruments"
+                  ? l.family
+                  : "Online kits";
 }
 
 function entries(folders: string[]): Entry[] {
@@ -68,6 +70,7 @@ function entries(folders: string[]): Entry[] {
   }));
   return [
     { loc: { kind: "everything" }, icon: Library, label: "All" },
+    { loc: { kind: "playable" }, icon: Keyboard, label: "Playable" },
     { loc: { kind: "favorites" }, icon: Heart, label: "Favorites" },
     { loc: { kind: "used" }, icon: Star, label: "Used in project" },
     {

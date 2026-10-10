@@ -3,6 +3,7 @@ import { platform } from "../platform";
 import { clearSelection, fnClick, fnPress, fnRelease } from "../state/actions";
 import { cursorToggle, moveCursor, velocityDigit } from "../state/input";
 import { addKeysSoundAsTrack, setKeysTarget, useKeys } from "../state/keys";
+import { browsePlayable } from "../library/playable";
 import { THEMES, useSettings } from "../state/settings";
 import { useStore } from "../state/store";
 import { TEMPLATES } from "../templates";
@@ -552,6 +553,31 @@ export function defaultCommands(): Command[] {
       title: "Keys: add library sound as a track",
       category: "Keys",
       run: () => addKeysSoundAsTrack(),
+    },
+    // ---- playable browsing ----
+    {
+      id: "playable.next",
+      title: "Next playable sound",
+      category: "Library",
+      run: () => browsePlayable(1),
+    },
+    {
+      id: "playable.prev",
+      title: "Previous playable sound",
+      category: "Library",
+      run: () => browsePlayable(-1),
+    },
+    {
+      id: "playable.next-section",
+      title: "Next playable section",
+      category: "Library",
+      run: () => browsePlayable(1, true),
+    },
+    {
+      id: "playable.prev-section",
+      title: "Previous playable section",
+      category: "Library",
+      run: () => browsePlayable(-1, true),
     },
   ];
 }

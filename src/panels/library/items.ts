@@ -12,6 +12,7 @@ import { useLibrary } from "../../library/library";
 import { useUserInstruments, userEntry } from "../../library/userInstruments";
 import { sortSamples } from "../../library/sort";
 import { useStore } from "../../state/store";
+import { playableList } from "../../library/playable";
 
 export type Location =
   | { kind: "everything" }
@@ -21,7 +22,9 @@ export type Location =
   | { kind: "folder"; path: string }
   | { kind: "kit"; kit: string }
   | { kind: "online" }
-  | { kind: "instruments"; family: Family };
+  | { kind: "instruments"; family: Family }
+  /** All playable sounds in one ordered list (synths, sampled instruments, Your sounds, samples). */
+  | { kind: "playable"; allSamples?: boolean };
 
 export type TypeFilter = "all" | "synths" | "instruments" | "oneshots" | "loops";
 export type Length = "any" | "short" | "medium" | "long";
@@ -123,6 +126,32 @@ export function useLibraryItems(loc: Location, f: Filters): Item[] {
   const mine = useUserInstruments((s) => s.list);
   const usedIds = useUsedIds();
   return useMemo(() => {
+    // ── Playable location: one list of everything the keys can play ──────────
+    if (loc.kind === "playable") {
+      const q = f.query.trim().toLowerCase();
+      const all = playableList({ allSamples: loc.allSamples });
+      return all
+        .filter((p) => !q || p.name.toLowerCase().includes(q))
+        .map((p): Item => ({
+          kind: p.family === "sample" ? "sample" : "instrument",
+          id: p.id,
+          name: p.name,
+          duration: 0,
+          peaks: [],
+          favorite: favorites.includes(p.id),
+          folder: p.section,
+          tags: [p.section],
+          builtIn: p.family !== "sample",
+          createdAt: 0,
+          instrument:
+            p.family !== "sample"
+              ? (CATALOG.find((c) => c.id === p.id) ??
+                mine.map(userEntry).find((c) => c.id === p.id))
+              : undefined,
+          section: p.section,
+        }));
+    }
+
     const q = f.query.trim().toLowerCase();
     const matches = (i: Item) =>
       !q || `${i.name} ${i.folder} ${i.tags.join(" ")}`.toLowerCase().includes(q);
