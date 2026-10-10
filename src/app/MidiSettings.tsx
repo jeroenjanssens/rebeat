@@ -453,6 +453,21 @@ function MiniLab3DisplayOptions() {
       >
         Send test text
       </button>
+      <label
+        className="flex items-center gap-1.5"
+        title="If the test text doesn't show, try this: Arturia's DAW handshake first. It may switch the MiniLab to DAW mode."
+      >
+        <input
+          type="checkbox"
+          checked={settings.midiMiniLabHandshake}
+          onChange={(e) => {
+            const on = e.target.checked;
+            useSettings.getState().set({ midiMiniLabHandshake: on });
+            if (on) void startMidi(true).then(() => sendTestText("Rebeat", "Connected!", true));
+          }}
+        />
+        DAW handshake
+      </label>
     </div>
   );
 }

@@ -24,6 +24,7 @@
 
 import { midiOutputs, startMidi } from "../midi";
 import { onDisplayText, type DisplayText } from "../../midi/display";
+import { useSettings } from "../../state/settings";
 
 const ARTURIA_MANUFACTURER = [0x00, 0x20, 0x6b];
 /** Send to all mode variants for max compatibility. 0x02=DAW, 0x00=User, 0x01=ARTURIA. */
@@ -71,8 +72,10 @@ function sendInit(out: MIDIOutput) {
   initSent = true;
 }
 
-function sendLines(out: MIDIOutput, line1: string, line2: string) {
-  if (!initSent) sendInit(out);
+function sendLines(out: MIDIOutput, line1: string, line2: string, handshake: boolean) {
+  // the handshake is what Arturia's DAW scripts send to connect, and it may put the MiniLab in
+  // DAW mode (where its knobs send other messages): only when asked for (unconfirmed)
+  if (handshake && !initSent) sendInit(out);
   const l1 = asciiBytes(" ".repeat(LINE1_PAD) + line1);
   const l2 = asciiBytes(line2);
   for (const mode of DISPLAY_MODES) {
@@ -107,7 +110,7 @@ function onText(text: DisplayText) {
     debounceTimer = null;
     const out = findOutput();
     if (!out) return;
-    sendLines(out, text.line1, text.line2);
+    sendLines(out, text.line1, text.line2, useSettings.getState().midiMiniLabHandshake);
   }, DEBOUNCE_MS);
 }
 
@@ -115,13 +118,13 @@ function onText(text: DisplayText) {
  * Send two lines immediately, bypassing the debounce. Used by the "Send test text" button
  * in Settings → MIDI. Returns false when no output port is found.
  */
-export function sendTestText(line1: string, line2: string): boolean {
+export function sendTestText(line1: string, line2: string, handshake = false): boolean {
   const out = findOutput();
   if (!out) return false;
-  // Force re-init and reset cache so the test goes through even if text matches cache.
+  // send the handshake again, and forget the last text, so the test always goes through
   initSent = false;
   lastText = null;
-  sendLines(out, line1, line2);
+  sendLines(out, line1, line2, handshake);
   return true;
 }
 

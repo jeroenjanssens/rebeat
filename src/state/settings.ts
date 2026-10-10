@@ -107,6 +107,8 @@ export interface Settings {
   midiFollowStart: boolean;
   /** Send the selected track and sound name to the MiniLab 3's OLED display (WS-C). */
   midiShowDisplayNames: boolean;
+  /** Send the MiniLab 3 the DAW handshake before writing its display (it may switch it to DAW mode). */
+  midiMiniLabHandshake: boolean;
   /** The Keys strip (a library sound on the keys, D126): level and sends. */
   keysMix: { volume: number; sendA: number; sendB: number };
   previewVolume: number;
@@ -169,6 +171,7 @@ export const DEFAULT_SETTINGS: Settings = {
   midiMackieInputs: [],
   midiFollowStart: true,
   midiShowDisplayNames: true,
+  midiMiniLabHandshake: false,
   keysMix: { volume: 0.8, sendA: 0, sendB: 0 },
   previewVolume: 0.8,
   freeFirstLoop: false,
