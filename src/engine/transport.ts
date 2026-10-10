@@ -22,6 +22,7 @@ import {
   ungate,
 } from "./engine";
 import { click, silenceMetronome } from "./metronome";
+import { notifyTick } from "./load";
 import { startTicker } from "./ticker";
 
 export interface StepEvent {
@@ -387,6 +388,7 @@ function scheduleStep(time: number) {
 }
 
 function onTick() {
+  notifyTick();
   const horizon = audioNow() + LOOKAHEAD;
   // a stalled main thread (hidden tab, debugger): resync instead of catching up
   if (horizon - nextTime > 1) nextTime = audioNow() + 0.02;
