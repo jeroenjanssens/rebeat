@@ -12,6 +12,8 @@ import { EFFECT_SHORT, EFFECT_TYPES, MIX_PARAMS, VOLUME_FORMAT } from "../../mod
 import type { Effect, Track } from "../../model/types";
 import { addEffect, type FxTarget } from "../../state/effectActions";
 import { useStore } from "../../state/store";
+import { useKeys } from "../../state/keys";
+import { useSettings } from "../../state/settings";
 
 const PAN = MIX_PARAMS.find((p) => p.id === "pan")!;
 /**
@@ -429,6 +431,62 @@ function MasterStrip({ faderH }: { faderH: number }) {
   );
 }
 
+/**
+ * The Keys strip (D126): while the keys play a library sound that isn't on a track, its level
+ * and sends. It's a live instrument: it plays through the master but isn't in exports.
+ */
+function KeysStrip({ faderH, compact }: { faderH: number; compact: boolean }) {
+  const target = useKeys((s) => s.target);
+  const mix = useSettings((s) => s.keysMix);
+  if (target.kind !== "sound") return null;
+  const set = (patch: Partial<typeof mix>) => {
+    const next = { ...useSettings.getState().keysMix, ...patch };
+    useSettings.getState().set({ keysMix: next });
+    engine.setKeysChannelMix(next);
+  };
+  return (
+    <Strip
+      name={`Keys · ${target.name}`}
+      color="var(--lit)"
+      testId="keys-strip"
+      hint="mixer.keys"
+      fader={
+        <Fader
+          value={mix.volume}
+          height={faderH}
+          hint="mixer.keys"
+          onChange={(volume) => set({ volume })}
+        />
+      }
+      meter={<VMeter read={() => engine.keysLevel()} height={faderH} />}
+      footer={
+        <>
+          <span className="num text-[9.5px] text-dim">{VOLUME_FORMAT(mix.volume)}</span>
+          <span className="label !text-[8.5px]">Keys</span>
+        </>
+      }
+    >
+      {!compact && (
+        <div className="flex">
+          {[SEND_A, SEND_B].map((def) => (
+            <Encoder
+              key={def.id}
+              def={def}
+              size={26}
+              width={36}
+              short
+              color="var(--lit)"
+              value={def.id === "sendA" ? mix.sendA : mix.sendB}
+              hint={`param.mix.${def.id}`}
+              onChange={(v) => set(def.id === "sendA" ? { sendA: v } : { sendB: v })}
+            />
+          ))}
+        </div>
+      )}
+    </Strip>
+  );
+}
+
 /** Channel strips for every track, the send/return buses and the master. */
 export function MixerPanel() {
   const tracks = useStore((s) => s.project.tracks);
@@ -448,6 +506,7 @@ export function MixerPanel() {
       {tracks.map((t, i) => (
         <TrackStrip key={t.id} track={t} index={i} faderH={faderH} compact={compact} />
       ))}
+      <KeysStrip faderH={faderH} compact={compact} />
       <div className="mx-1 w-px shrink-0 bg-line" />
       {buses.map((b) => (
         <BusStrip key={b.id} bus={b} faderH={faderH + (compact ? 0 : 140)} />

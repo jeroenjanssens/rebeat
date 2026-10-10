@@ -39,6 +39,11 @@ const hints: Hints = {
     text: "Opens the effect chain for this return bus. The reverb and delay live here by default.",
     guide: "mixing-effects",
   },
+  "mixer.keys": {
+    title: "Keys strip",
+    text: "While the keys play a library sound that isn't on a track, this strip sets its level and its Reverb and Delay sends. It plays through the master, so the performance tools reach it, but it isn't in exports: use Add as a track to keep it.",
+    guide: "keys-target",
+  },
   // ── Master strip ─────────────────────────────────────────────────────────
   "mixer.master.fader": {
     title: "Master volume",

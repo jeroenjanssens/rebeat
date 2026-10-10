@@ -107,6 +107,8 @@ export interface Settings {
   midiFollowStart: boolean;
   /** Send the selected track and sound name to the MiniLab 3's OLED display (WS-C). */
   midiShowDisplayNames: boolean;
+  /** The Keys strip (a library sound on the keys, D126): level and sends. */
+  keysMix: { volume: number; sendA: number; sendB: number };
   previewVolume: number;
   /** When nothing plays yet, the first loop recording sets the tempo (loop-pedal style). */
   freeFirstLoop: boolean;
@@ -167,6 +169,7 @@ export const DEFAULT_SETTINGS: Settings = {
   midiMackieInputs: [],
   midiFollowStart: true,
   midiShowDisplayNames: true,
+  keysMix: { volume: 0.8, sendA: 0, sendB: 0 },
   previewVolume: 0.8,
   freeFirstLoop: false,
   onboarded: false,

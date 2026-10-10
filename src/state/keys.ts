@@ -80,7 +80,8 @@ async function ensureKeysChannel(target: Extract<KeysTarget, { kind: "sound" }>)
 
   useKeys.setState({ status: "loading" });
   try {
-    const { voice } = createKeysChannel(track);
+    const { useSettings } = await import("./settings");
+    const { voice } = createKeysChannel(track, useSettings.getState().keysMix);
     // wait until the voice's samples are loaded (up to 30 s)
     const deadline = performance.now() + 30_000;
     while (voice.state() === "loading" && performance.now() < deadline)

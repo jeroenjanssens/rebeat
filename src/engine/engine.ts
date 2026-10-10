@@ -292,7 +292,22 @@ let started = false;
 interface KeysChannel {
   channel: TrackChannel;
   voice: InstrumentVoice;
+  /** The library sound as a track (not in the project): its level and sends are the strip's. */
+  track: Track;
 }
+
+/** The Keys strip's level and sends (fader position and 0..1 sends, as a track's). */
+export interface KeysMix {
+  volume: number;
+  sendA: number;
+  sendB: number;
+}
+
+const withMix = (track: Track, mix: KeysMix): Track => ({
+  ...track,
+  volume: mix.volume,
+  params: { ...track.params, "mix.sendA": mix.sendA, "mix.sendB": mix.sendB },
+});
 
 let keysChannelEntry: KeysChannel | null = null;
 let keysChannelDisposeTimer = 0;
@@ -301,16 +316,36 @@ let keysChannelDisposeTimer = 0;
  * Create (or replace) the Keys channel for a library track. The channel connects to the master
  * so the sound goes through the DJ filter and the performance tools, unlike previews.
  */
-export function createKeysChannel(track: Track): KeysChannel {
+export function createKeysChannel(sound: Track, mix: KeysMix): KeysChannel {
   disposeKeysChannel(true);
+  const track = withMix(sound, mix);
   const ch = new TrackChannel(ensureMaster().input);
   ch.sendA.connect(bus("bus-a").input);
   ch.sendB.connect(bus("bus-b").input);
   ch.update(track, true, useStore.getState().project.bpm);
   const v = createInstrument(track, ch.input);
   v.update(track, useStore.getState().project.bpm);
-  keysChannelEntry = { channel: ch, voice: v };
+  keysChannelEntry = { channel: ch, voice: v, track };
   return keysChannelEntry;
+}
+
+/** Set the Keys strip's level and sends. */
+export function setKeysChannelMix(mix: KeysMix) {
+  const e = keysChannelEntry;
+  if (!e) return;
+  e.track = withMix(e.track, mix);
+  e.channel.update(e.track, true, useStore.getState().project.bpm);
+}
+
+/** Peak level (0..1) of the Keys strip. */
+export function keysLevel(): number {
+  const ch = keysChannelEntry?.channel;
+  if (!ch) return 0;
+  const b = buf("keys", ch.analyser.fftSize);
+  ch.analyser.getFloatTimeDomainData(b);
+  let peak = 0;
+  for (let i = 0; i < b.length; i += 2) peak = Math.max(peak, Math.abs(b[i]));
+  return Math.min(1, peak);
 }
 
 /** The current Keys channel, if any. */
