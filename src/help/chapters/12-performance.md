@@ -51,12 +51,18 @@ Settings → MIDI lists both kinds of mappings, where you can change a control's
 - **Mackie Control**: inputs named MCU (or ones you tick) run the transport: Play, Stop, Record, Cycle (loop or song), rewind and forward (pages), the jog wheel.
 - The **Monitor** at the bottom lists the last messages and what Rebeat did with each: the first place to look when something doesn't respond.
 
-| Controller                      | Knobs                                                                                     | Pads                                                | Transport                                                 |
-| ------------------------------- | ----------------------------------------------------------------------------------------- | --------------------------------------------------- | --------------------------------------------------------- |
-| **Arturia MiniLab 3**           | ARTURIA mode (Shift + Pad 3): CC 74, 71, 76, 77, 93, 18, 19, 16; faders CC 82, 83, 85, 17 | channel 10, bank A tracks 1–8, bank B 9–16          | DAW mode, Shift + Pads 5–7 (its MCU port)                 |
-| **Akai MPK Mini MK3**           | factory program: CC 70–77 (not confirmed: learn them if they don't respond)               | channel 10, banks A and B                           | none on the device; learn buttons if you map pads to them |
-| **Novation Launchkey Mini MK3** | CC 21–28                                                                                  | Drum mode, channel 10, notes 36–51                  | only in DAW mode: learn them                              |
-| **Novation Launchkey Mini MK4** | no factory assignment: **Learn every control**                                            | Drum mode, channel 10, bottom row 1–8, top row 9–16 | Play sends MIDI Start, Shift + Play Stop                  |
+| Controller                      | Knobs                                                                                                         | Pads                                                | Transport                                                 |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- | --------------------------------------------------------- |
+| **Arturia MiniLab 3**           | ARTURIA mode (Shift + Pad 3): CC 74–77, 93, 18, 19, 16; faders CC 82, 83, 85, 17; main encoder CC 28 (browse) | channel 10, bank A tracks 1–8, bank B 9–16          | DAW mode, Shift + Pads 5–7 (its MCU port)                 |
+| **Akai MPK Mini MK3**           | factory program: CC 70–77 (not confirmed: learn them if they don't respond)                                   | channel 10, banks A and B                           | none on the device; learn buttons if you map pads to them |
+| **Novation Launchkey Mini MK3** | CC 21–28                                                                                                      | Drum mode, channel 10, notes 36–51                  | only in DAW mode: learn them                              |
+| **Novation Launchkey Mini MK4** | no factory assignment: **Learn every control**                                                                | Drum mode, channel 10, bottom row 1–8, top row 9–16 | Play sends MIDI Start, Shift + Play Stop                  |
+
+The **Arturia MiniLab 3** has a few extras:
+
+- The **main encoder** (the large knob on the right) turns the Playable list: each click advances one sound. **Shift + turn** jumps by section. **Click** adds the current sound as a new track.
+- The **faders** are always absolute — Rebeat's automatic relative detection only applies to the knobs. If a fader was set to relative in an earlier version, it resets itself when MIDI starts.
+- The **OLED display** can show the selected track name and sound. Enable "Show names on the MiniLab display" under the map in Settings → MIDI. **Send test text** sends "Rebeat / Connected!" immediately so you can check whether the display is receiving (the SysEx format is from community research and unconfirmed — the test tells you).
 
 A keyboard or chord instrument without knobs (such as the Telepathic Instruments **Orchid**) needs no map: its notes play the selected Notes track, chords and all, and its Start/Stop (if it sends them) play and stop Rebeat. Choose **Custom** to build a map for any other controller from scratch.
 
