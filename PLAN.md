@@ -1,6 +1,6 @@
 # Rebeat — Product & Technical Plan
 
-> **Status (2026-10-09):** All phases of §7 are implemented (M, G, 0–10), plus the batches in §0.6b–§0.6g (step tracks were built on the `step-tracks` branch and are merged). §0.6h (beatbox to step tracks) and §0.6i (MIDI controllers) are done and merged (2026-10-10). Repo: `github.com/jeroenjanssens/rebeat` (public; `main` deploys to GitHub Pages). §0 describes the current code; §0.7 lists known limitations and what is left for later.
+> **Status (2026-10-09):** All phases of §7 are implemented (M, G, 0–10), plus the batches in §0.6b–§0.6g (step tracks were built on the `step-tracks` branch and are merged). §0.6h (beatbox to step tracks) and §0.6i (MIDI controllers) are done and merged (2026-10-10), and so is §0.6j (the keys, recording notes, the MiniLab 3 panel and display, browsing, CPU meter, zoom; 2026-10-10). Repo: `github.com/jeroenjanssens/rebeat` (public; `main` deploys to GitHub Pages). §0 describes the current code; §0.7 lists known limitations and what is left for later.
 > Every open question in §6 has a **default**. All defaults were accepted when Phase M was started, except where §6 records a different choice. To change one, refer to it by number (e.g. "D7: B").
 
 ---
@@ -12,7 +12,7 @@
 
 ### 0.1 Where we are
 
-- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D125), and the build order is in §7.
+- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D131), and the build order is in §7.
 - Every phase in §7 is built, tested (unit + Playwright e2e) and pushed. The mockup (Phase M) became the app: its components, model and store were kept and extended; `src/mock/` was replaced by the real engine.
 - The desktop app (Phase 10) runs and packages locally (unsigned); signing/notarization need certificates (see `.github/workflows/desktop.yml`).
 
@@ -103,6 +103,7 @@ Key implementation patterns:
 0. Beatbox to step tracks (§0.6h, D105–D118) ✅ merged into `main` (2026-10-10). Decide whether the shipped model may train on beatboxset1 (CC BY-SA, D108). Record and
    label your own sounds (and friends'), export them, and train model 2 with them (`ml/README.md`).
 0b. MIDI controllers (§0.6i, D119–D125) ✅ merged into `main` (2026-10-10). With a device: check what it sends (the Monitor in Settings → MIDI) and fix its map.
+0c. The keys, recording notes, the MiniLab 3 (§0.6j, D126–D131) ✅ on `main` (2026-10-10). With the MiniLab 3: the checks in §0.6j step H (fader modes, the main encoder's CCs, **Send test text**, with and without the DAW handshake).
 1. Try the app with real hardware: a microphone and audio interface (calibration, monitoring), a MIDI keyboard/controller (learn), and a Launchpad or Push (the Push color palette is approximate).
 2. Desktop releases: add signing certificates and notarization secrets, then tag `v0.1.0` to produce draft releases.
 3. Decide D6 (license): the repository is public now, without one.
@@ -659,6 +660,39 @@ input): pads on channel 10 trigger drum tracks while a Notes track is selected, 
 steps the selected track's first SOUND knob up and down, the MiniLab 3 map works after switching
 projects, a fader and a button learned from the UI, Mackie Play starts the transport, the
 monitor lists what came in.
+
+### 0.6j The keys, recording notes, the MiniLab 3 panel and display, browsing, CPU meter, zoom (agreed and done 2026-10-10) ✅
+
+The full plan, with the causes found in the code and how the work was split across parallel
+agents, is `PLAN-keys-minilab.md`. In short:
+
+- **The keys (D126)**: `state/keys.ts` is what every keyboard plays (MIDI, the on-screen keyboard,
+  the computer keys, the piano roll's key column): the selected track, a locked track, or a
+  library sound with no track (the **Keys strip** in the mixer, into the master, not exported;
+  **Add as a track** keeps it). The keys play a second, live voice per track, so playing never
+  cuts what the sequencer plays (mono synths, sampled instruments that released by pitch).
+- **Recording notes (D127, D128)**: Overdub (default) or Replace (punch-in per step and pass);
+  chords; lengths from the note-off (through the loop's wrap, with sustain); velocity per note;
+  **Snap** (a magnet beside Q, which lost its "Off"): off keeps each note's own start
+  (`Note.offset`, schema 9) and its exact length; the piano roll draws and edits free notes and
+  has Quantize selection.
+- **Faders (D129)**: map slots have a kind; faders are never sniffed as relative encoders (that
+  switch was saved for good and made faders 1–3 jump); sniffing knobs needs one gesture; saved
+  fader slots are reset to Absolute; a second MIDIAccess no longer handles messages twice;
+  identical CCs from a sibling port within 10 ms are dropped.
+- **The Controller panel** (in the Perform layout): a live top-down MiniLab 3 fed by controller
+  events (`midi/controllerEvents.ts`); other maps get a list of their slots.
+- **The display**: `midi/display.ts` (mirrored in the panel), the MiniLab writer
+  (`audio-io/controllers/minilab3.ts`, SysEx from community research, unconfirmed; the DAW
+  handshake only when ticked), names fed by `midi/displayFeed.ts`.
+- **Playable and browsing**: the library's Playable view (`library/playable.ts`), browsed by the
+  MiniLab's main encoder (`browse:sound`, Shift for sections, click = Add as a track) and by
+  commands; each sound goes on the keys (debounced) and its name on the display.
+- **CPU meter (D130)** and **zoom (D131)**.
+
+Step H (with the device, Jeroen): do faders 1–3 show Absolute now; what the main encoder, its
+click and Shift send in ARTURIA mode; does **Send test text** show, with and without the DAW
+handshake; a photo for the drawing.
 
 ### 0.7 Known limitations and later work
 
@@ -1277,6 +1311,12 @@ Format: **Dn — Question.** Default ✅, alternatives.
 - **D123 — Mackie Control transport, and MIDI Start/Stop.** On an MCU input (named MCU, or ticked in Settings), Play/Stop/Record/Cycle notes (94/93/95/86 on channel 1), rewind/forward (91/92: pages) and the jog wheel (CC 60) drive the transport with no learning. MIDI Start/Continue and Stop play and stop (**Follow MIDI Start/Stop**, on by default): the Launchkey Mini MK4's Play button sends them. New commands for controllers: Play, Stop, Next/Previous page, Select the next/previous track. Alt: learn the transport like any button; full Mackie Control (faders, displays) later.
 - **D124 — Controller maps.** A map is a named set of global slots (knobs, faders, pads, transport), each with a target and a learned control. Rebeat ships maps for the **Arturia MiniLab 3** (ARTURIA-mode CCs from its manual 1.0.5: knobs 74, 71, 76, 77, 93, 18, 19, 16 → the selected track's SOUND knobs 1–8; faders 82, 83, 85, 17 → volume, Reverb, Delay, master; whether its encoders are relative isn't documented), the **Akai MPK Mini MK3** (knobs CC 70–77 from its factory program, not confirmed against the manual, which couldn't be downloaded), the **Novation Launchkey Mini MK3** (pots CC 21–28, from its user guide 1.1; transport only in DAW mode) and the **Launchkey Mini MK4** (encoders without factory CCs outside DAW mode: unassigned slots to learn; Play sends MIDI Start), all with pads on channel 10, plus Custom. A slot can be unassigned (learn it); **Learn every control** walks through them; maps whose knobs turn out to be relative switch their mode by themselves (D120). Port names pick the map (and a toast offers it once). Alt: one generic "8 knobs + 4 faders" map; a community library of maps; Launchkey DAW mode (a note to its DAW port) for its transport and session pads, later (§0.7).
 - **D125 — A MIDI monitor.** Settings → MIDI lists the last 20 messages with what Rebeat did with each (played a pad, moved a knob, ran a command, nothing). Alt: the single "last message" line there today.
+- **D126 — The keys.** One module decides what every keyboard plays: the selected track (default), a track you lock them to, or a library sound that isn't on a track (it plays through a Keys strip into the master, isn't exported, and **Add as a track** keeps it). The keys play their own voice per track, created on the first live note and disposed when idle, so they never steal the sequencer's voice. The library's Playable view lists every sound the keys can play (synths, sampled instruments, Your sounds, pitched samples; a chip adds the rest); selecting there puts it on the keys, and a controller's encoder browses it (wrapping, debounced, its name on the display). Alt: the selected track only; previewing library sounds outside the master; one shared voice with smarter note ids.
+- **D127 — Overdub or Replace.** Recording adds notes by default (a note of the same pitch on the same step is replaced); Replace clears a step's notes the first time you play onto it in a pass of the loop, so it punches in rather than wiping the page. The toggle sits beside Record and in the piano roll. Alt: always replace (as before); clearing the whole page in Replace.
+- **D128 — Snap and free notes.** Q always names a grid; a Snap toggle beside it decides whether recorded and edited starts and lengths snap to it. Off keeps each note's own start within its step (`Note.offset`, −0.5..0.5, schema 9) and its exact length; the piano roll draws them where they are, Alt drags freely, and Quantize selection snaps them back. Lengths come from the note-off. Alt: Q Off with the step's nudge (shared by a chord, and not drawn).
+- **D129 — Faders are absolute.** Controller-map slots have a kind (knob, fader, encoder, button, pad); only knobs and encoders are checked for relative values, within one gesture, and saved fader slots that were switched are reset. Duplicate handlers and sibling ports no longer double messages. Alt: stronger detection for every slot.
+- **D130 — An honest CPU meter.** It shows the worst of the audio thread's load (AudioRenderCapacity, where the browser has it), the main thread's busy share (long animation frames) and the scheduler's lateness against its lookahead, labeled with which it is. Alt: the old rAF timing (it read about 1%); hiding the meter.
+- **D131 — Zoom levels and Fit.** The drum machine's zoom is Fit (the default: the steps fill the width) or a level that sets the pad width exactly; − / +, Ctrl/Cmd + wheel and the commands step through 50–250%, and the readout is a dropdown with a field for any value (25–400%), saved in the settings. Alt: multiplying by 1.15 (levels like 132%, and clamps that hid the change).
 - **D35 — Build order.** ✅ The phases in §7, starting with the mockup (Phase M), each ending with something you can play with.
 
 ---
