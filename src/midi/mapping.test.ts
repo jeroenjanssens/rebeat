@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { MidiMapping } from "../model/project";
 import { emptyProject, hitsTrack } from "../templates/builder";
-import { CONTROLLER_MAPS, detectController, mappingsOf } from "./controllers";
+import { CONTROLLER_MAPS, detectController, mapById, mappingsOf, slotKind } from "./controllers";
 import {
   detectMode,
   findMapping,
@@ -150,5 +150,85 @@ describe("controller maps (D124)", () => {
     expect(detectController(["Launchkey Mini MIDI IN1"])?.id).toBe("launchkeymini3");
     expect(detectController(["Launchkey Mini 25 MK4"])?.id).toBe("launchkeymini4");
     expect(detectController(["Launchkey Mini 25 MK4 DAW Out"])?.id).toBe("launchkeymini4");
+  });
+});
+
+describe("slotKind (D129)", () => {
+  it("derives kind from slot ids", () => {
+    expect(slotKind("fader1")).toBe("fader");
+    expect(slotKind("fader4")).toBe("fader");
+    expect(slotKind("knob1")).toBe("knob");
+    expect(slotKind("knob8")).toBe("knob");
+    expect(slotKind("encoder")).toBe("encoder");
+    expect(slotKind("encoder-click")).toBe("button");
+    expect(slotKind("shift")).toBe("button");
+    expect(slotKind("play")).toBe("button");
+    expect(slotKind("pad1")).toBe("pad");
+  });
+
+  it("MiniLab 3 faders are fader kind", () => {
+    const map = mapById("minilab3")!;
+    const faders = map.slots.filter((s) => s.slot.startsWith("fader"));
+    expect(faders).toHaveLength(4);
+    for (const s of faders) expect(slotKind(s.slot)).toBe("fader");
+  });
+
+  it("MiniLab 3 main encoder and click are encoder/button kind", () => {
+    const map = mapById("minilab3")!;
+    expect(slotKind(map.slots.find((s) => s.slot === "encoder")!.slot)).toBe("encoder");
+    expect(slotKind(map.slots.find((s) => s.slot === "encoder-click")!.slot)).toBe("button");
+  });
+});
+
+describe("detectMode — fader protection (D129)", () => {
+  // D129: faders are never fed to detectMode (midi.ts checks slotKind first), so the function
+  // itself is unchanged from D120. These tests confirm the boundary cases.
+
+  it("a sweep through 64 stays absolute (64 is not a rel64 code)", () => {
+    // A fader passing through the center includes 64; the no-64 check keeps it absolute.
+    expect(detectMode([60, 60, 62, 64, 66, 68])).not.toBe("rel64");
+    expect(detectMode([57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71])).toBe(
+      "absolute",
+    );
+  });
+
+  it("a real encoder near 64 with one repeat is still detected correctly", () => {
+    // [63, 63, 62]: one repeat, all in rel64 range, no 64 → rel64
+    expect(detectMode([63, 63, 62])).toBe("rel64");
+    expect(detectMode([65, 65, 66])).toBe("rel64");
+  });
+
+  it("rel2c and relsign are unaffected", () => {
+    expect(detectMode([127, 127, 126, 1, 1])).toBe("rel2c");
+    expect(detectMode([65, 65, 66, 2, 2])).toBe("relsign");
+  });
+});
+
+describe("MiniLab 3 map — new encoder slots", () => {
+  const minilab = mapById("minilab3")!;
+
+  it("has the main encoder on CC 28 with rel64 and browse:sound target", () => {
+    const enc = minilab.slots.find((s) => s.slot === "encoder");
+    expect(enc).toBeDefined();
+    expect(enc?.number).toBe(28);
+    expect(enc?.mode).toBe("rel64");
+    expect(enc?.target).toBe("browse:sound");
+    expect(enc?.kind).toBe("encoder");
+  });
+
+  it("has the encoder click on CC 118 targeting keys.add-track", () => {
+    const click = minilab.slots.find((s) => s.slot === "encoder-click");
+    expect(click).toBeDefined();
+    expect(click?.number).toBe(118);
+    expect(click?.target).toBe("command:keys.add-track");
+    expect(click?.kind).toBe("button");
+  });
+
+  it("has the Shift button on CC 27 targeting modifier:shift", () => {
+    const shift = minilab.slots.find((s) => s.slot === "shift");
+    expect(shift).toBeDefined();
+    expect(shift?.number).toBe(27);
+    expect(shift?.target).toBe("modifier:shift");
+    expect(shift?.kind).toBe("button");
   });
 });

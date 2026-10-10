@@ -9,7 +9,7 @@ import { releaseCommand, runCommand } from "../app/commands";
 import { toast } from "../components/Toast";
 import { holdNote, trackSynth, trigger } from "../engine/engine";
 import { uid } from "../model/id";
-import type { MidiMapping } from "../model/project";
+import type { MidiMapping, MidiMode } from "../model/project";
 import { platform } from "../platform";
 import { padInput, playedNotes } from "../state/input";
 import { useSettings } from "../state/settings";
@@ -29,7 +29,9 @@ import {
   withMapping,
   type TargetContext,
 } from "../midi/mapping";
-import { detectController } from "../midi/controllers";
+import { detectController, slotKind } from "../midi/controllers";
+import { emitControllerEvent, type ControlKind } from "../midi/controllerEvents";
+import { browsePlayable } from "../library/playable";
 
 export interface MidiPort {
   id: string;
@@ -52,6 +54,10 @@ export interface MonitorEntry {
   text: string;
   /** What Rebeat did with it. */
   action: string;
+  /** Structured event kind, when this came from a controller slot. */
+  eventKind?: ControlKind;
+  /** 0-based event index within that kind. */
+  eventIndex?: number;
 }
 
 interface MidiState {
@@ -104,6 +110,43 @@ export function midiInputs(): MIDIInput[] {
 
 const enabled = (id: string) => useSettings.getState().midiInputs[id] !== false;
 
+// ---------- D129: duplicate message filter ----------
+// The MiniLab 3 sends on its MIDI port AND its MCU port simultaneously; ignore the second
+// copy of an identical CC that arrives within 10 ms from a "sibling" port of the same device.
+const lastMsgKey = new Map<string, { device: string; time: number }>();
+
+/** Strip common port-name suffixes to compare device families. */
+const deviceFamily = (name: string) =>
+  name
+    .replace(/\s+(midi|mcu|daw|port\s*\d+|in\d?|out\d?)\s*$/i, "")
+    .toLowerCase()
+    .trim();
+
+function isDuplicate(m: MidiMessage): boolean {
+  if (m.type !== "cc" && m.type !== "noteon" && m.type !== "noteoff") return false;
+  const key = `${m.type}:${m.channel}:${m.number}:${m.value}`;
+  const now = Date.now();
+  const prev = lastMsgKey.get(key);
+  lastMsgKey.set(key, { device: m.device, time: now });
+  if (
+    prev &&
+    now - prev.time < 10 &&
+    prev.device !== m.device &&
+    deviceFamily(prev.device) === deviceFamily(m.device)
+  ) {
+    return true;
+  }
+  return false;
+}
+
+// ---------- D129: shift modifier tracking ----------
+// Per-device shift state (e.g. MiniLab 3's Shift button CC 27).
+const shiftHeld = new Map<string, boolean>();
+
+function isShiftHeld(device: string): boolean {
+  return shiftHeld.get(device) ?? false;
+}
+
 function refreshPorts() {
   if (!access) return;
   useMidi.setState({
@@ -136,6 +179,10 @@ export async function startMidi(sysex = false): Promise<boolean> {
   if (access && (!sysex || sysexGranted)) return true;
   if (!platform.midi.supported) return false;
   useMidi.setState({ status: "asking" });
+  // D129: clear old handlers before requesting new access, so messages aren't handled twice
+  if (access) {
+    for (const input of access.inputs.values()) input.onmidimessage = null;
+  }
   access = await platform.midi.request(sysex);
   sysexGranted ||= sysex && !!access;
   if (!access) {
@@ -144,6 +191,19 @@ export async function startMidi(sysex = false): Promise<boolean> {
   }
   useMidi.setState({ status: "on" });
   access.onstatechange = refreshPorts;
+
+  // D129: reset any fader mappings that were mistakenly sniffed as relative
+  const s = useSettings.getState();
+  const fixed = s.midiMappings.map((m) => {
+    if (m.slot && slotKind(m.slot) === "fader" && m.mode !== "absolute") {
+      return { ...m, mode: "absolute" as MidiMode };
+    }
+    return m;
+  });
+  if (fixed.some((m, i) => m !== s.midiMappings[i])) {
+    s.set({ midiMappings: fixed });
+  }
+
   refreshPorts();
   return true;
 }
@@ -266,9 +326,38 @@ function describe(m: MidiMessage) {
   return `Aftertouch ${m.value} · ${ch}`;
 }
 
-function report(m: MidiMessage, action: string) {
-  const entry = { time: Date.now(), device: m.device, text: describe(m), action };
+function report(
+  m: MidiMessage,
+  action: string,
+  ev?: {
+    kind: ControlKind;
+    index: number;
+    slot?: string;
+    value?: number;
+    down?: boolean;
+    target?: string;
+    targetValue?: number;
+  },
+) {
+  const entry: MonitorEntry = {
+    time: Date.now(),
+    device: m.device,
+    text: describe(m),
+    action,
+    ...(ev ? { eventKind: ev.kind, eventIndex: ev.index } : {}),
+  };
   useMidi.setState((s) => ({ monitor: [entry, ...s.monitor].slice(0, 20) }));
+  if (ev) {
+    emitControllerEvent({
+      device: m.device,
+      control: { kind: ev.kind, index: ev.index, ...(ev.slot ? { slot: ev.slot } : {}) },
+      value: ev.value ?? m.value,
+      ...(ev.down !== undefined ? { down: ev.down } : {}),
+      ...(ev.target ? { target: ev.target } : {}),
+      ...(ev.targetValue !== undefined ? { targetValue: ev.targetValue } : {}),
+      action,
+    });
+  }
 }
 
 export const isMackie = (device: string) =>
@@ -297,9 +386,25 @@ function mackie(m: MidiMessage): string | null {
   return m.type === "noteoff" ? "Mackie" : null;
 }
 
+// ---------- D129: per-mapping gesture timestamps for sniffing ----------
+// Each entry stores the last few values and when they arrived.
+interface SeenEntry {
+  values: number[];
+  times: number[];
+}
+const lastInSeen = new Map<string, SeenEntry>();
+const lastSet = new Map<string, number>();
+
+// D129: track last selected track id per global mapping for pickup reset
+const lastSelectedForPickup = new Map<string, string>();
+
 function handle(e: MIDIMessageEvent, device: string) {
   const m = parse(e, device);
   if (m.type === "other") return;
+
+  // D129: drop duplicate from sibling port of the same device within 10 ms
+  if (isDuplicate(m)) return;
+
   useMidi.setState({ last: `${m.type} ch${m.channel + 1} #${m.number} = ${m.value}` });
   for (const h of hooks) if (h(m)) return report(m, "Controller driver");
 
@@ -330,7 +435,14 @@ function handle(e: MIDIMessageEvent, device: string) {
     if (found) return report(m, applyMapping(found.mapping, m, found.scope));
   }
 
-  if (m.type === "noteon") return report(m, playNote(m.channel, m.number, m.value / 127));
+  if (m.type === "noteon")
+    return report(
+      m,
+      playNote(m.channel, m.number, m.value / 127),
+      m.number >= 36 && useSettings.getState().midiPadsChannel === m.channel
+        ? { kind: "pad", index: m.number - 36, value: m.value, down: true }
+        : { kind: "key", index: m.number, value: m.value, down: true },
+    );
   if (m.type === "noteoff") {
     releaseNote(m.number);
     return report(m, "Note released");
@@ -339,7 +451,11 @@ function handle(e: MIDIMessageEvent, device: string) {
     // 14 bits, 8192 in the middle
     const raw = (m.data[2] << 7) | m.data[1];
     synthControl("pitchbend", Math.max(-1, Math.min(1, (raw - 8192) / 8191)));
-    return report(m, "Pitch bend of the selected track");
+    return report(m, "Pitch bend of the selected track", {
+      kind: "strip",
+      index: 0,
+      value: Math.round(m.value),
+    });
   }
   if (m.type === "aftertouch") {
     synthControl("aftertouch", m.value / 127);
@@ -347,7 +463,11 @@ function handle(e: MIDIMessageEvent, device: string) {
   }
   if (m.type === "cc" && m.number === 1) {
     synthControl("modwheel", m.value / 127);
-    return report(m, "Mod wheel of the selected track");
+    return report(m, "Mod wheel of the selected track", {
+      kind: "strip",
+      index: 1,
+      value: m.value,
+    });
   }
   if (m.type === "cc" && m.number === 64) {
     sustainPedal(m.value >= 64);
@@ -365,35 +485,105 @@ export const targetContext = (): TargetContext => {
   };
 };
 
-/** Values a mapping last saw (pickup, mode sniffing) and set (relative steps on targets that
- * can't be read back). */
-const lastIn = new Map<string, number[]>();
-const lastSet = new Map<string, number>();
-
 /** Apply a mapping to a message; returns what it did (for the monitor). */
 function applyMapping(map: MidiMapping, m: MidiMessage, scope: "project" | "global"): string {
   const target = resolveTarget(map.target, targetContext());
   if (!target) return `${map.label}: nothing to control (select a track)`;
   const where = scope === "global" ? " (everywhere)" : "";
+
+  // modifier:shift — track held state per device, don't apply to any parameter
+  if (target === "modifier:shift") {
+    const held = m.type === "noteon" || (m.type === "cc" && m.value >= 64);
+    shiftHeld.set(m.device, held);
+    report(m, `${map.label}: shift ${held ? "held" : "released"}`, {
+      kind: "button",
+      index: 0,
+      slot: map.slot,
+      value: m.value,
+      down: held,
+    });
+    return `${map.label}: shift ${held ? "held" : "released"}`;
+  }
+
+  // browse:sound / browse:section — library encoder (WS-E implements browsePlayable)
+  if (target === "browse:sound" || target === "browse:section") {
+    if (m.type === "noteoff") return `${map.label}: released`;
+    const bySection = target === "browse:section" || isShiftHeld(m.device);
+    const mode = map.mode ?? "absolute";
+    const now = Date.now();
+    const prevSeen = lastInSeen.get(map.id) ?? { values: [], times: [] };
+    const recent =
+      prevSeen.times.length > 0 && now - prevSeen.times[prevSeen.times.length - 1] > 250
+        ? { values: [m.value], times: [now] }
+        : {
+            values: [...prevSeen.values, m.value].slice(-6),
+            times: [...prevSeen.times, now].slice(-6),
+          };
+    lastInSeen.set(map.id, recent);
+    const delta =
+      mode === "absolute"
+        ? recent.values.length > 1
+          ? m.value - recent.values[recent.values.length - 2]
+          : 0
+        : relativeDelta(mode, m.value);
+    if (delta !== 0) browsePlayable(delta, bySection);
+    const action = `${map.label}: browse ${bySection ? "section" : "sound"}`;
+    report(m, action, { kind: "encoder", index: 0, slot: map.slot, value: m.value });
+    return action;
+  }
+
+  const slotEv = slotEventFromMapping(map);
+
   if (target.startsWith("command:")) {
     const id = target.slice(8);
     const down = m.type === "noteon" || (m.type === "cc" && m.value >= 64);
-    const prev = lastIn.get(map.id)?.[0];
-    lastIn.set(map.id, [down ? 1 : 0]);
-    if (down && prev !== 1) runCommand(id);
-    else if (!down && prev === 1) releaseCommand(id);
-    return `${map.label}${where}`;
+    const prevSeen = lastInSeen.get(map.id) ?? { values: [], times: [] };
+    const prevDown = prevSeen.values[prevSeen.values.length - 1];
+    const now = Date.now();
+    lastInSeen.set(map.id, {
+      values: [...prevSeen.values, down ? 1 : 0].slice(-6),
+      times: [...prevSeen.times, now].slice(-6),
+    });
+    if (down && prevDown !== 1) runCommand(id);
+    else if (!down && prevDown === 1) releaseCommand(id);
+    const action = `${map.label}${where}`;
+    report(m, action, { ...slotEv, value: m.value, down, target });
+    return action;
   }
+
   if (m.type === "noteoff") return `${map.label}: released`;
   if (m.type === "noteon") {
     applyTarget(target, m.value / 127, false);
-    return `${map.label}${where}`;
+    const action = `${map.label}${where}`;
+    report(m, action, {
+      ...slotEv,
+      value: m.value,
+      down: true,
+      target,
+      targetValue: m.value / 127,
+    });
+    return action;
   }
-  // a CC: absolute, or a relative encoder (mapping modes, D120)
-  const seen = [...(lastIn.get(map.id) ?? []), m.value].slice(-6);
-  lastIn.set(map.id, seen);
+
+  // a CC: absolute, or a relative encoder (D120)
+  const now = Date.now();
+  const prevSeen = lastInSeen.get(map.id) ?? { values: [], times: [] };
+  // D129: gesture — only accumulate values within 250 ms of the previous one
+  const recent =
+    prevSeen.times.length > 0 && now - prevSeen.times[prevSeen.times.length - 1] > 250
+      ? { values: [m.value], times: [now] }
+      : {
+          values: [...prevSeen.values, m.value].slice(-6),
+          times: [...prevSeen.times, now].slice(-6),
+        };
+  lastInSeen.set(map.id, recent);
+  const seen = recent.values;
+
   let mode = map.mode ?? "absolute";
-  if (mode === "absolute" && map.slot && seen.length >= 4) {
+
+  // D129: only sniff knobs and encoders, never faders
+  const kind = slotKind(map.slot ?? "");
+  if (mode === "absolute" && (kind === "knob" || kind === "encoder") && seen.length >= 4) {
     // a controller map guessed absolute, but this knob turns out to be relative: switch
     const sniffed = detectMode(seen);
     if (sniffed && sniffed !== "absolute") {
@@ -402,13 +592,25 @@ function applyMapping(map: MidiMapping, m: MidiMessage, scope: "project" | "glob
       s.set({ midiMappings: s.midiMappings.map((x) => (x.id === map.id ? { ...x, mode } : x)) });
     }
   }
+
+  // D129: reset pickup state when the selected track changes (for selected:* roles)
+  if (map.target.startsWith("selected:")) {
+    const currentSelected = useStore.getState().selectedTrackId ?? "";
+    if (lastSelectedForPickup.get(map.id) !== currentSelected) {
+      lastSelectedForPickup.set(map.id, currentSelected);
+      // Clearing the seen buffer resets pickup: pickedUp(undefined, v, current) = false
+      lastInSeen.delete(map.id);
+    }
+  }
+
   const current = readTarget(target, useStore.getState().project) ?? lastSet.get(target);
   const settings = useSettings.getState();
   let v: number;
   if (mode === "absolute") {
     v = m.value / 127;
     if (settings.midiPickup && current !== undefined && current !== null) {
-      const prev = seen.length > 1 ? seen[seen.length - 2] / 127 : undefined;
+      const seenValues = lastInSeen.get(map.id)?.values ?? [];
+      const prev = seenValues.length > 1 ? seenValues[seenValues.length - 2] / 127 : undefined;
       if (!pickedUp(prev, v, current)) return `${map.label}: waiting to pick up`;
     }
   } else {
@@ -417,7 +619,23 @@ function applyMapping(map: MidiMapping, m: MidiMessage, scope: "project" | "glob
   }
   lastSet.set(target, v);
   applyTarget(target, v, true);
-  return `${map.label}${where} = ${Math.round(v * 100)}%`;
+  const action = `${map.label}${where} = ${Math.round(v * 100)}%`;
+  report(m, action, { ...slotEv, value: m.value, target, targetValue: v });
+  return action;
+}
+
+/** Derive controller event kind+index from a mapping's slot id. */
+function slotEventFromMapping(map: MidiMapping): {
+  kind: ControlKind;
+  index: number;
+  slot?: string;
+} {
+  const slot = map.slot ?? "";
+  const k = slotKind(slot);
+  const numStr = slot.replace(/^[^0-9]+/, "");
+  const n = parseInt(numStr, 10);
+  const index = isNaN(n) ? 0 : n - 1;
+  return { kind: k, index: index < 0 ? 0 : index, ...(slot ? { slot } : {}) };
 }
 
 /** The known controller among the connected inputs (to offer its map, D124). */

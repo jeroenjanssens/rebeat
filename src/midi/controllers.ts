@@ -6,8 +6,13 @@
 import type { MidiMapping, MidiMode } from "../model/project";
 import { ROLES, type PadsChannel } from "./mapping";
 
+/** Command id for adding the current Playable sound as a track (WS-A registers it). */
+const ADD_TRACK_CMD = "keys.add-track";
+
+export type SlotKind = "knob" | "fader" | "encoder" | "button" | "pad";
+
 export interface MapSlot {
-  /** Stable id within the map ("knob1", "fader4", "play"). */
+  /** Stable id within the map ("knob1", "fader4", "encoder", "play"). */
   slot: string;
   label: string;
   type: "cc" | "note";
@@ -17,6 +22,11 @@ export interface MapSlot {
   number: number | null;
   mode: MidiMode;
   target: string;
+  /**
+   * What kind of control this is (D129). Derived from the slot id when absent.
+   * Only "knob" and "encoder" slots are sniffed for relative mode; faders are always absolute.
+   */
+  kind?: SlotKind;
 }
 
 export interface ControllerMap {
@@ -30,6 +40,18 @@ export interface ControllerMap {
   checklist: string[];
   /** What we couldn't confirm without the device (shown with the map). */
   unconfirmed?: string;
+}
+
+/**
+ * Derive the kind of a slot from its slot id (D129). Used when `MapSlot.kind` is absent.
+ * Faders are always absolute; only knobs and encoders are sniffed for relative mode.
+ */
+export function slotKind(slot: string): SlotKind {
+  if (/^fader\d/.test(slot)) return "fader";
+  if (/^knob\d/.test(slot)) return "knob";
+  if (/^encoder\d*$/.test(slot)) return "encoder";
+  if (/^pad\d/.test(slot)) return "pad";
+  return "button";
 }
 
 const knobs = (ccs: (number | null)[], channel: number, mode: MidiMode): MapSlot[] =>
@@ -57,7 +79,7 @@ const faders = (ccs: number[], channel: number): MapSlot[] =>
     type: "cc",
     channel,
     number,
-    mode: "absolute",
+    mode: "absolute" as MidiMode,
     target: FADER_TARGETS[i].target,
   }));
 
@@ -68,18 +90,58 @@ export const CONTROLLER_MAPS: ControllerMap[] = [
     ports: /minilab ?3/i,
     padsChannel: 9,
     // ARTURIA mode, from the MiniLab 3 manual 1.0.5 (§5.4): knobs = Analog Lab's macros and
-    // effects, faders = its EQ and master volume; the touch strips send pitch bend and CC 1
+    // effects, faders = its EQ and master volume; the touch strips send pitch bend and CC 1.
+    //
+    // Main encoder (the large knob, ARTURIA mode):
+    //   CC 28 (0x1C) rotate, rel64 — confirmed: MaksPV/minilab3-mixxx-config (MIDI dump 2026-09-21)
+    //   CC 118 (0x76) push — confirmed same source; sends like a button (127 press, 0 release)
+    //   CC 27 (0x1B) Shift button — confirmed same source
+    // Encoder turn = browse library (browse:sound); Shift held = browse by section (browse:section).
     slots: [
       ...knobs([74, 71, 76, 77, 93, 18, 19, 16], 0, "absolute"),
       ...faders([82, 83, 85, 17], 0),
+      // Main encoder
+      {
+        slot: "encoder",
+        label: "Main encoder (browse)",
+        type: "cc",
+        channel: 0,
+        number: 28, // 0x1C, confirmed
+        mode: "rel64",
+        target: "browse:sound",
+        kind: "encoder",
+      },
+      // Encoder click → add track (WS-A registers keys.add-track)
+      {
+        slot: "encoder-click",
+        label: "Main encoder click (add track)",
+        type: "cc",
+        channel: 0,
+        number: 118, // 0x76, confirmed
+        mode: "absolute",
+        target: `command:${ADD_TRACK_CMD}`,
+        kind: "button",
+      },
+      // Shift button — used as modifier for browse:section; held state tracked internally
+      {
+        slot: "shift",
+        label: "Shift (modifier)",
+        type: "cc",
+        channel: 0,
+        number: 27, // 0x1B, confirmed
+        mode: "absolute",
+        target: "modifier:shift",
+        kind: "button",
+      },
     ],
     checklist: [
       "Put the MiniLab in ARTURIA mode: hold Shift and press Pad 3 until the display says Arturia.",
       "The pads play your step tracks (bank A: tracks 1–8, Shift + Pad 2 for bank B: 9–16).",
+      "Turn the large encoder to browse sounds; Shift + turn jumps by section.",
       "For Play, Stop and Record, switch to DAW mode (Shift + Pad 3) and use Shift + Pads 5–7: Rebeat listens to the MiniLab's MCU port.",
     ],
     unconfirmed:
-      "Whether the knobs send absolute or relative values isn't documented; Rebeat notices relative knobs and switches by itself.",
+      "Whether the knobs send absolute or relative values isn't documented; Rebeat notices relative knobs and switches by itself. The display SysEx format comes from community research (MaksPV/minilab3-mixxx-config, confirmed by MIDI dump) and is unconfirmed on real hardware — verify with Send test text.",
   },
 ];
 

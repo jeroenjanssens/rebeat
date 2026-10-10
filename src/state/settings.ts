@@ -105,6 +105,8 @@ export interface Settings {
   midiMackieInputs: string[];
   /** MIDI Start/Continue and Stop messages play and stop (a controller's Play button, D123). */
   midiFollowStart: boolean;
+  /** Send the selected track and sound name to the MiniLab 3's OLED display (WS-C). */
+  midiShowDisplayNames: boolean;
   previewVolume: number;
   /** When nothing plays yet, the first loop recording sets the tempo (loop-pedal style). */
   freeFirstLoop: boolean;
@@ -154,6 +156,7 @@ export const DEFAULT_SETTINGS: Settings = {
   midiPickup: false,
   midiMackieInputs: [],
   midiFollowStart: true,
+  midiShowDisplayNames: true,
   previewVolume: 0.8,
   freeFirstLoop: false,
   onboarded: false,

@@ -26,6 +26,9 @@ export function relativeDelta(mode: MidiMode, value: number): number {
  * What a control sends, from the values of its first few messages while it turns: relative
  * encoders repeat small codes around 64 (offset), near 0 and 127 (two's complement) or near 0 and
  * 64 (sign bit); absolute ones move through values. Null when it can't tell yet.
+ *
+ * D129: fader slots are never sniffed (see midi.ts), so this function only sees data from knobs
+ * and encoders. The logic is unchanged from D120: one repeated value is enough evidence.
  */
 export function detectMode(values: number[]): MidiMode | null {
   if (values.length < 2) return null;
@@ -80,6 +83,7 @@ export function resolveTarget(target: string, ctx: TargetContext): string | null
     const t = ctx.project.tracks[Number(byIndex[1]) - 1];
     return t ? `track:${t.id}:${byIndex[2]}` : null;
   }
+  // browse:sound, browse:section and modifier:shift resolve to themselves
   return target;
 }
 
