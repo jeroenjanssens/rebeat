@@ -491,6 +491,11 @@ const hints: Hints = {
     text: "The last messages from your controllers and what Rebeat did with each: the place to look when a knob or pad doesn't do what you expect.",
     guide: "performance-your-controller",
   },
+  "app.midi.display": {
+    title: "MiniLab 3 display",
+    text: 'Show names on the MiniLab display sends the current track name and sound to the MiniLab 3\'s OLED screen. Send test text checks whether your device is receiving: it sends "Rebeat / Connected!" right now. The display SysEx format comes from community research and is unconfirmed — use the test to check it.',
+    guide: "performance-your-controller",
+  },
 
   // ── Calibration dialog ───────────────────────────────────────────────────
   "app.calibration.start": {
