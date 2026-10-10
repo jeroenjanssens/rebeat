@@ -77,6 +77,8 @@ interface Master {
 export interface EngineScope {
   channels: Map<string, TrackChannel>;
   synths: Map<string, InstrumentVoice>;
+  /** Separate voice per track for live (keys) play — never used offline. */
+  liveVoices: Map<string, InstrumentVoice>;
   voices: Voice[];
   clips: Map<string, Clip>;
   activeUntil: Map<string, number>;
@@ -91,6 +93,7 @@ export function newScope(live = false): EngineScope {
   return {
     channels: new Map(),
     synths: new Map(),
+    liveVoices: new Map(),
     voices: [],
     clips: new Map(),
     activeUntil: new Map(),
@@ -236,6 +239,11 @@ export function reconcile(project: Project = useStore.getState().project) {
     S.channels.delete(id);
     S.synths.get(id)?.dispose();
     S.synths.delete(id);
+    // also dispose the live voice for this track
+    S.liveVoices.get(id)?.dispose();
+    S.liveVoices.delete(id);
+    clearTimeout(liveIdleTimers.get(id));
+    liveIdleTimers.delete(id);
     S.lastTracks.delete(id);
     stopClip(id);
   }
@@ -247,11 +255,27 @@ export function reconcile(project: Project = useStore.getState().project) {
     if (last && last.track === t && last.audible === audible && last.bpm === bpm) continue;
     S.lastTracks.set(t.id, { track: t, audible, bpm });
     channel(t.id).update(t, audible, bpm);
-    if (player(t) === "voice") updateSynth(t, bpm);
-    else if (S.synths.has(t.id)) {
+    if (player(t) === "voice") {
+      updateSynth(t, bpm);
+      // keep the live voice in sync; if the instrument key changed, rebuild it
+      if (S.live) {
+        const lv = S.liveVoices.get(t.id);
+        if (lv) {
+          if (lv.key !== instrumentKey(t)) {
+            lv.dispose();
+            S.liveVoices.delete(t.id);
+          } else {
+            lv.update(t, bpm);
+          }
+        }
+      }
+    } else if (S.synths.has(t.id)) {
       // switched to playing hits of its sample, or a clip: the voice isn't needed any more
       S.synths.get(t.id)!.dispose();
       S.synths.delete(t.id);
+      // also the live voice
+      S.liveVoices.get(t.id)?.dispose();
+      S.liveVoices.delete(t.id);
     }
   }
   for (const b of project.buses) bus(b.id).update(b, bpm);
@@ -262,6 +286,52 @@ export function reconcile(project: Project = useStore.getState().project) {
 }
 
 let started = false;
+
+// ---------- Keys channel (library sounds on the keys, D126) ----------
+
+interface KeysChannel {
+  channel: TrackChannel;
+  voice: InstrumentVoice;
+}
+
+let keysChannelEntry: KeysChannel | null = null;
+let keysChannelDisposeTimer = 0;
+
+/**
+ * Create (or replace) the Keys channel for a library track. The channel connects to the master
+ * so the sound goes through the DJ filter and the performance tools, unlike previews.
+ */
+export function createKeysChannel(track: Track): KeysChannel {
+  disposeKeysChannel(true);
+  const ch = new TrackChannel(ensureMaster().input);
+  ch.sendA.connect(bus("bus-a").input);
+  ch.sendB.connect(bus("bus-b").input);
+  ch.update(track, true, useStore.getState().project.bpm);
+  const v = createInstrument(track, ch.input);
+  v.update(track, useStore.getState().project.bpm);
+  keysChannelEntry = { channel: ch, voice: v };
+  return keysChannelEntry;
+}
+
+/** The current Keys channel, if any. */
+export function getKeysChannel(): KeysChannel | null {
+  return keysChannelEntry;
+}
+
+/** Dispose the Keys channel (after a short tail so notes don't cut off). */
+export function disposeKeysChannel(immediately = false) {
+  const entry = keysChannelEntry;
+  if (!entry) return;
+  keysChannelEntry = null;
+  clearTimeout(keysChannelDisposeTimer);
+  const t = audioNow();
+  entry.voice.releaseAll(t);
+  const delay = immediately ? 0 : 3000;
+  keysChannelDisposeTimer = window.setTimeout(() => {
+    entry.voice.dispose();
+    entry.channel.dispose();
+  }, delay);
+}
 
 /** Build the graph and keep it in sync with the store. */
 export function initEngine() {
@@ -287,6 +357,27 @@ function instrument(track: Track): InstrumentVoice {
     v = createInstrument(track, channel(track.id).input);
     S.synths.set(track.id, v);
   }
+  return v;
+}
+
+/** Idle-disposal timers for live voices (live scope only). */
+const liveIdleTimers = new Map<string, number>();
+
+/**
+ * The live voice for a track: a second InstrumentVoice that the keys play, separate from the
+ * sequencer's main voice. Created lazily; disposed after 30 s idle or on track removal (D126).
+ */
+function liveInstrument(track: Track): InstrumentVoice {
+  const key = instrumentKey(track);
+  let v = S.liveVoices.get(track.id);
+  if (!v || v.key !== key) {
+    v?.dispose();
+    v = createInstrument(track, channel(track.id).input);
+    S.liveVoices.set(track.id, v);
+  }
+  // cancel any pending idle disposal
+  clearTimeout(liveIdleTimers.get(track.id));
+  liveIdleTimers.delete(track.id);
   return v;
 }
 
@@ -438,7 +529,8 @@ export function trackSynth(track: Track) {
 export function holdNote(track: Track, pitch: number, velocity: number): () => void {
   if (player(track) !== "voice") return () => {};
   const shift = track.transpose ?? 0;
-  const v = instrument(track);
+  // live scope: use the dedicated live voice so keys never cut sequenced notes (D126)
+  const v = S.live ? liveInstrument(track) : instrument(track);
   const t = audioNow();
   S.activeUntil.set(track.id, Infinity);
   const release =
@@ -450,7 +542,27 @@ export function holdNote(track: Track, pitch: number, velocity: number): () => v
     release(end);
     const tail = toUnit.ms(1, 8000)(track.params["sound.release"] ?? 0.35) / 1000;
     S.activeUntil.set(track.id, end + Math.max(tail, 2) + 0.5);
+    if (S.live) {
+      // schedule idle disposal of the live voice after 30 s of no held notes
+      clearTimeout(liveIdleTimers.get(track.id));
+      liveIdleTimers.set(
+        track.id,
+        window.setTimeout(() => {
+          S.liveVoices.get(track.id)?.dispose();
+          S.liveVoices.delete(track.id);
+          liveIdleTimers.delete(track.id);
+        }, 30_000),
+      );
+    }
   };
+}
+
+/**
+ * The synth of the live voice for a track, if it exists. Used by keysControl to send pitch
+ * bend, mod wheel and aftertouch to the keys' voice without interfering with the sequencer.
+ */
+export function liveVoiceSynth(track: Track) {
+  return S.liveVoices.get(track.id)?.synth;
 }
 
 /**
@@ -759,6 +871,7 @@ export function panic() {
   for (const t of useStore.getState().project.tracks) if (t.mode === "clip") mute(t.id);
   // decaying on their own (smplr): quiet until they're done, or until playing starts
   for (const [id, v] of S.synths) if (v.panic(at)) mute(id);
+  for (const [id, v] of S.liveVoices) if (v.panic(at)) mute(id);
   clearTimeout(ungateTimer);
   if (gated.size) ungateTimer = window.setTimeout(ungate, 600);
   clearTimeout(flushTimer);

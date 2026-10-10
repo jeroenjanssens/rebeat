@@ -106,6 +106,11 @@ const hints: Hints = {
     command: "app.explain",
     guide: "getting-started-getting-help",
   },
+  "transport.keys": {
+    title: "Keys",
+    text: "What the keyboard, MIDI notes and the on-screen pads play. By default it follows the selected track; click to lock it to a specific track or pick a library sound — it then plays through the Keys strip in the mixer, not through a track.",
+    guide: "keys-target",
+  },
 
   // ── App-wide controls ────────────────────────────────────────────────────
   "app.palette": {

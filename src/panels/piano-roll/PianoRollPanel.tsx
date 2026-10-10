@@ -3,6 +3,7 @@ import { Magnet, MousePointer2, Pencil } from "lucide-react";
 import { contextMenu } from "../../components/Menu";
 import * as engine from "../../engine/engine";
 import { onStep } from "../../engine/transport";
+import { noteOn as keysNoteOn } from "../../state/keys";
 import {
   addNote,
   getNote,
@@ -487,7 +488,23 @@ function PianoRoll({ track }: { track: Track }) {
     }, g);
   };
 
-  const keyClick = (pitch: number) => audition(pitch);
+  // Held note from the key column: sounds while the pointer is down.
+  const keyRelease = useRef<(() => void) | null>(null);
+  const keyDown = (pitch: number) => {
+    keyRelease.current?.();
+    keyRelease.current = keysNoteOn(pitch, 0.8, "piano-roll");
+  };
+  const keyUp = () => {
+    keyRelease.current?.();
+    keyRelease.current = null;
+  };
+  useEffect(
+    () => () => {
+      keyRelease.current?.();
+      keyRelease.current = null;
+    },
+    [],
+  );
 
   return (
     <div className="flex h-full flex-col" data-testid="piano-roll">
@@ -620,7 +637,9 @@ function PianoRoll({ track }: { track: Track }) {
                       borderBottom: "1px solid var(--border)",
                       opacity: inKey(p, key) ? 1 : 0.6,
                     }}
-                    onPointerDown={() => keyClick(p)}
+                    onPointerDown={() => keyDown(p)}
+                    onPointerUp={keyUp}
+                    onPointerLeave={keyUp}
                   >
                     {p % 12 === 0 || rowH >= 16 ? noteName(p, flats) : ""}
                   </button>

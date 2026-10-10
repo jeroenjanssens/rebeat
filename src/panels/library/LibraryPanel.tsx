@@ -19,6 +19,7 @@ import { filesFromDrop, importFiles, useLibrary } from "../../library/library";
 import { importSoundfont } from "../../library/userInstruments";
 import { importSynth } from "../../library/rbsynth";
 import { platform } from "../../platform";
+import { setKeysTarget } from "../../state/keys";
 import { useSettings } from "../../state/settings";
 import { useSelectedTrack } from "../../state/store";
 import { KIT_MIME, addInstrumentTrack, addSampleTracks } from "../../state/trackActions";
@@ -165,6 +166,14 @@ export function LibraryPanel() {
       : audition(item.id, { sync, bpm: item.bpm });
   const addTrack = (item: Item) =>
     item.instrument ? addInstrumentTrack(item.instrument) : addSampleTracks([item.id]);
+  /** Send the selected item to the keys (K shortcut). */
+  const playOnKeys = (item: Item) => {
+    if (item.instrument) {
+      setKeysTarget({ kind: "sound", source: "catalog", id: item.instrument.id, name: item.name });
+    } else {
+      setKeysTarget({ kind: "sound", source: "sample", id: item.id, name: item.name });
+    }
+  };
   // playing the selected instrument from the computer keyboard
   const octave = useRef(0);
   // another sound previews from its own range again
@@ -231,6 +240,7 @@ export function LibraryPanel() {
       ArrowLeft: cols > 1 ? () => move(-1) : undefined,
       Enter: i >= 0 ? () => addTrack(items[i]) : undefined,
       " ": i >= 0 ? () => play(items[i]) : undefined,
+      k: i >= 0 ? () => playOnKeys(items[i]) : undefined,
       Escape: () => {
         stopAudition();
         stopPreview();

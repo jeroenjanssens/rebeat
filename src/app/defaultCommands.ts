@@ -2,6 +2,7 @@ import * as clock from "../engine/transport";
 import { platform } from "../platform";
 import { clearSelection, fnClick, fnPress, fnRelease } from "../state/actions";
 import { cursorToggle, moveCursor, velocityDigit } from "../state/input";
+import { addKeysSoundAsTrack, setKeysTarget, useKeys } from "../state/keys";
 import { THEMES, useSettings } from "../state/settings";
 import { useStore } from "../state/store";
 import { TEMPLATES } from "../templates";
@@ -526,6 +527,31 @@ export function defaultCommands(): Command[] {
       title: "Theme: follow system",
       category: "Theme",
       run: () => useSettings.getState().set({ theme: "system" }),
+    },
+    {
+      id: "keys.follow-selected",
+      title: "Keys: follow selected track",
+      category: "Keys",
+      run: () => setKeysTarget({ kind: "selected" }),
+    },
+    {
+      id: "keys.lock",
+      title: "Keys: lock to selected track",
+      category: "Keys",
+      run: () => {
+        const id = useStore.getState().selectedTrackId;
+        const t = useStore.getState().project.tracks.find((x) => x.id === id);
+        if (!t) return;
+        const cur = useKeys.getState().target;
+        if (cur.kind === "track" && cur.id === id) setKeysTarget({ kind: "selected" });
+        else setKeysTarget({ kind: "track", id });
+      },
+    },
+    {
+      id: "keys.add-track",
+      title: "Keys: add library sound as a track",
+      category: "Keys",
+      run: () => addKeysSoundAsTrack(),
     },
   ];
 }

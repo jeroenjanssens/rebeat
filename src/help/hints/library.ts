@@ -199,6 +199,11 @@ const hints: Hints = {
     text: "Releases the microphone access so other apps can use it. The browser keeps the mic open until you release it or reload.",
     guide: "library-recording-into-the-library",
   },
+  "library.play-on-keys": {
+    title: "Play on the keys",
+    text: "Put this sound on the keys so your MIDI keyboard, the on-screen pads and the computer keys play it directly — without adding it to a track. It plays through the Keys strip in the mixer. Press K when a sound is selected to do the same thing.",
+    guide: "keys-target",
+  },
 };
 
 export default hints;

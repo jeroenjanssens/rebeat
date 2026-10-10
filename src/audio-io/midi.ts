@@ -7,11 +7,11 @@
 import { create } from "zustand";
 import { releaseCommand, runCommand } from "../app/commands";
 import { toast } from "../components/Toast";
-import { holdNote, trackSynth, trigger } from "../engine/engine";
+import { trigger } from "../engine/engine";
 import { uid } from "../model/id";
 import type { MidiMapping } from "../model/project";
 import { platform } from "../platform";
-import { padInput, playedNotes } from "../state/input";
+import { keysControl, keysSustain, keysTrack, noteOn } from "../state/keys";
 import { useSettings } from "../state/settings";
 import { useStore } from "../state/store";
 import { setPerfControl } from "../engine/perf";
@@ -425,62 +425,52 @@ export function connectedController() {
   return detectController(useMidi.getState().inputs.map((p) => p.name));
 }
 
-/** Mod wheel, aftertouch and pitch bend go to the selected instrument track's synth. */
-function synthControl(name: "modwheel" | "aftertouch" | "pitchbend", value: number) {
-  const s = useStore.getState();
-  const track = s.project.tracks.find((t) => t.id === s.selectedTrackId);
-  if (track) trackSynth(track)?.control(name, value);
-}
-
-/** The sustain pedal: notes let go while it's down keep sounding until it comes up. */
-let sustain = false;
-const sustained: (() => void)[] = [];
-
-function sustainPedal(down: boolean) {
-  sustain = down;
-  if (down) return;
-  for (const release of sustained.splice(0)) release();
-}
-
 /** Notes held on a MIDI keyboard: they sound until the key goes up. */
-const held = new Map<number, (() => void)[]>();
+const held = new Map<number, () => void>();
 
 function releaseNote(note: number) {
-  const releases = held.get(note) ?? [];
+  const release = held.get(note);
   held.delete(note);
-  if (sustain) sustained.push(...releases);
-  else for (const release of releases) release();
+  if (release) release();
 }
 
 /** Notes on the pads' channel play step tracks by position (36 = track 1, D119); others play
- * the selected Notes track, or tracks by position when none is selected. */
+ * the keys' target track (or tracks by position when none is selected, D119). */
 function playNote(channel: number, note: number, velocity: number): string {
   const s = useStore.getState();
-  const selected = s.project.tracks.find((t) => t.id === s.selectedTrackId);
+  // keysTrack() resolves the current keys target (selected or locked track)
+  const keysTarget = keysTrack();
   const route = routeNote(
     channel,
     note,
     useSettings.getState().midiPadsChannel,
-    selected?.mode === "notes",
+    keysTarget?.mode === "notes",
   );
   if (!route) return "Nothing (below the pads' notes)";
-  if (route.to === "notes" && selected) {
-    const notes = playedNotes(note);
+  if (route.to === "notes") {
+    // route to the keys' target (selected/locked track or library sound)
+    const targetName = keysTarget?.name ?? "keys target";
     releaseNote(note);
-    held.set(
-      note,
-      notes.map((pitch) => holdNote(selected, pitch, velocity)),
-    );
-    padInput(selected, velocity, notes);
-    return `Played on ${selected.name}`;
+    // noteOn handles scale lock, chord mode, live voice, recording and sustain
+    held.set(note, noteOn(note, velocity, "midi"));
+    return `Played on ${targetName}`;
   }
   const track = route.to === "pad" ? s.project.tracks[route.index] : undefined;
   if (!track) return `Pad ${note - 35}: no track ${note - 35}`;
   if (track.mode === "clip" || track.mute)
     return `Pad: ${track.name} is ${track.mute ? "muted" : "a Clip track"}`;
   trigger(track, velocity, { stepDur: 0.12 });
-  padInput(track, velocity);
   return `Pad: ${track.name}`;
+}
+
+/** Mod wheel, aftertouch and pitch bend go to the keys' voice. */
+function synthControl(name: "modwheel" | "aftertouch" | "pitchbend", value: number) {
+  keysControl(name, value);
+}
+
+/** The sustain pedal: delegated to the keys module so it works with all note sources. */
+function sustainPedal(down: boolean) {
+  keysSustain(down);
 }
 
 /** Set a mapped parameter from a 0..1 value (continuous) or fire it (buttons). */
