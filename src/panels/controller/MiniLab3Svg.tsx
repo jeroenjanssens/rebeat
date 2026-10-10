@@ -120,6 +120,8 @@ interface LiveState {
   stripPos: Float32Array; // 2
   // encoder position 0..1
   encoderPos: number;
+  /** Semitones between the drawn keys and the notes they play (the device's octave buttons). */
+  shift: number;
   dirty: boolean;
 }
 
@@ -131,6 +133,8 @@ function makeLiveState(): LiveState {
     faderPos: new Float32Array(4).fill(0.5),
     stripPos: new Float32Array(2).fill(0.5),
     encoderPos: 0.5,
+    // the MiniLab's keys start at C3 (MIDI 48) at octave 0
+    shift: 12,
     dirty: true,
   };
 }
@@ -175,7 +179,12 @@ export function MiniLab3Svg({ labels, onKeyDown, onPadDown }: MiniLab3SvgProps) 
       const { kind, index } = e.control;
       switch (kind) {
         case "key":
-          live.keyVel[index] = e.down ? e.value : 0;
+          if (index - live.shift < FIRST_KEY || index - live.shift >= FIRST_KEY + KEY_COUNT) {
+            // the octave moved: follow it
+            live.shift = 12 * Math.floor((index - FIRST_KEY) / 12);
+            live.keyVel.fill(0);
+          }
+          live.keyVel[index - live.shift] = e.down ? e.value : 0;
           break;
         case "pad":
           live.padVel[index & 15] = e.down ? e.value : 0;
@@ -287,7 +296,7 @@ export function MiniLab3Svg({ labels, onKeyDown, onPadDown }: MiniLab3SvgProps) 
     (midi: number, e: React.PointerEvent<SVGElement>) => {
       if (!onKeyDown) return;
       e.currentTarget.setPointerCapture(e.pointerId);
-      const release = onKeyDown(midi, 100);
+      const release = onKeyDown(midi + liveRef.current.shift, 100);
       heldKeys.current.set(midi, release);
       liveRef.current.keyVel[midi] = 100;
       liveRef.current.dirty = true;
