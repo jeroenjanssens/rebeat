@@ -21,7 +21,7 @@ import * as clock from "../engine/transport";
 import { TIME_SIGNATURES, createTapTempo } from "../model/tempo";
 import { STEP_SIZE_QUARTERS } from "../model/types";
 import { platform } from "../platform";
-import { frameLoad, onFrame } from "../render/raf";
+import { getLoad, startMainLoad } from "../engine/load";
 import { useSettings } from "../state/settings";
 import { useStore } from "../state/store";
 import { isExampleId } from "../templates/examples";
@@ -128,31 +128,61 @@ function SaveDot() {
 }
 
 function CpuMeter() {
-  const ref = useRef<HTMLDivElement>(null);
-  const label = useRef<HTMLSpanElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const barRef = useRef<HTMLDivElement>(null);
+  const labelRef = useRef<HTMLSpanElement>(null);
+
   useEffect(() => {
-    let lastText = 0;
-    return onFrame((now) => {
-      const load = frameLoad();
-      if (ref.current) ref.current.style.transform = `scaleX(${Math.min(1, load * 2)})`;
-      if (label.current && now - lastText > 500) {
-        lastText = now;
-        label.current.textContent = `${Math.round(load * 100)}%`;
+    // Start main-thread monitoring as soon as the bar mounts (idempotent).
+    startMainLoad();
+
+    const update = () => {
+      const snap = getLoad();
+      const f = Math.min(1, snap.fraction);
+      if (barRef.current) {
+        barRef.current.style.transform = `scaleX(${f})`;
+        barRef.current.style.background =
+          f > 0.8 ? "#ef4444" : f > 0.5 ? "#f59e0b" : "var(--accent)";
       }
-    });
+      if (labelRef.current) labelRef.current.textContent = snap.label;
+      if (containerRef.current) {
+        const audioLine =
+          snap.audioAvg >= 0
+            ? `Audio avg ${Math.round(snap.audioAvg * 100)}%  peak ${Math.round(snap.audioPeak * 100)}%` +
+              (snap.underruns > 0 ? `  dropouts ${snap.underruns}` : "")
+            : "Audio: not available (no AudioRenderCapacity)";
+        containerRef.current.title = [
+          snap.label,
+          audioLine,
+          `Main busy ${Math.round(snap.mainBusy * 100)}%`,
+          `Scheduler late ${snap.schedulerLateMs.toFixed(1)} ms`,
+        ].join("\n");
+      }
+    };
+
+    // Use setInterval so the meter keeps updating even when the rAF loop has no subscribers.
+    const id = setInterval(update, 200);
+    update();
+    return () => clearInterval(id);
   }, []);
+
   return (
-    <div className="flex items-center gap-1.5" title="UI/scheduler load" data-hint="transport.cpu">
+    <div
+      ref={containerRef}
+      className="flex items-center gap-1.5"
+      data-hint="transport.cpu"
+      data-testid="cpu-meter"
+    >
       <span className="label">CPU</span>
       <div className="h-[6px] w-10 overflow-hidden rounded-sm bg-pad">
         <div
-          ref={ref}
-          className="h-full origin-left bg-accent"
-          style={{ transform: "scaleX(0)" }}
+          ref={barRef}
+          className="h-full origin-left"
+          style={{ transform: "scaleX(0)", background: "var(--accent)" }}
         />
       </div>
-      <span ref={label} className="num w-7 text-[10px] text-dim">
-        0%
+      <span ref={labelRef} className="num w-16 text-[10px] text-dim">
+        Main 0%
       </span>
     </div>
   );
