@@ -31,7 +31,6 @@ export interface UiState {
   view: "grid" | "pads";
   tool: Tool;
   quantize: string;
-  zoom: number;
   follow: boolean;
   lanes: { velocity: boolean; probability: boolean; nudge: boolean };
   bank: Bank;
@@ -147,7 +146,6 @@ export const useStore = create<State>()((set, get) => ({
   view: "grid",
   tool: "draw",
   quantize: "1/16",
-  zoom: 1,
   follow: true,
   lanes: { velocity: false, probability: false, nudge: false },
   bank: "sound",

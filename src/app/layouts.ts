@@ -52,8 +52,10 @@ export function applyPreset(api: DockviewApi, preset: LayoutPreset) {
     openPanel(api, "drum-machine");
     openPanel(api, "performance", { referencePanel: "drum-machine", direction: "right" });
     openPanel(api, "master-scope", { referencePanel: "performance", direction: "below" });
+    openPanel(api, "controller", { referencePanel: "master-scope", direction: "below" });
     api.getPanel("performance")?.api.setSize({ width: Math.round(width * 0.36) });
-    api.getPanel("master-scope")?.api.setSize({ height: Math.round(height * 0.3) });
+    api.getPanel("master-scope")?.api.setSize({ height: Math.round(height * 0.22) });
+    api.getPanel("controller")?.api.setSize({ height: Math.round(height * 0.28) });
   } else {
     openPanel(api, "sample-editor");
     openPanel(api, "library", { referencePanel: "sample-editor", direction: "left" });

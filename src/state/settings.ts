@@ -131,6 +131,9 @@ export interface Settings {
    * at their exact position (stored as Note.offset) and lengths are unrounded.
    */
   snap: boolean;
+  /** Drum-machine pad zoom: "fit" fills the available width, a number is a multiplier on the
+   * base pad width (0.5–2.5; clamped to 0.25–4.0 when typed; D131). */
+  zoom: number | "fit";
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -172,6 +175,7 @@ export const DEFAULT_SETTINGS: Settings = {
   synthRandom: { amount: 0.3, locked: [] },
   recordMode: "overdub",
   snap: true,
+  zoom: "fit",
 };
 
 interface SettingsState extends Settings {

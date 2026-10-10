@@ -15,8 +15,10 @@ import { InlineEdit } from "../../components/InlineEdit";
 import { dropdown, type MenuItem } from "../../components/Menu";
 import { STEP_COUNT_PRESETS, STEP_SIZES, type StepSize } from "../../model/types";
 import { useEditPattern, useStore, type Tool } from "../../state/store";
+import { useSettings } from "../../state/settings";
 import { KeyMenu } from "./KeyMenu";
 import type { SizeClass } from "./layout";
+import { ZOOM_LEVELS, formatZoom, nextZoomLevel, percentToZoom } from "./zoom";
 
 function Dropdown({
   label,
@@ -82,11 +84,19 @@ const TOOLS: { id: Tool; icon: typeof Pencil; title: string }[] = [
   { id: "select", icon: SquareDashedMousePointer, title: "Select (S) · drag a marquee" },
 ];
 
-export function HeaderBar({ sizeClass }: { sizeClass: SizeClass }) {
+export function HeaderBar({
+  sizeClass,
+  effectiveZoom,
+}: {
+  sizeClass: SizeClass;
+  effectiveZoom: number;
+}) {
   const pattern = useEditPattern();
   const slots = useStore((s) => s.project.slots);
   const editSlotId = useStore((s) => s.editSlotId);
-  const { view, tool, quantize, zoom, follow, lanes, setUi, commit } = useStore();
+  const { view, tool, quantize, follow, lanes, setUi, commit } = useStore();
+  const zoom = useSettings((s) => s.zoom);
+  const setZoom = (z: number | "fit") => useSettings.getState().set({ zoom: z });
   const pageNumber = slots.findIndex((s) => s.id === editSlotId) + 1;
   const patterns = useStore((s) => s.project.patterns);
   const pageNames = useMemo(
@@ -150,6 +160,48 @@ export function HeaderBar({ sizeClass }: { sizeClass: SizeClass }) {
       checked: lanes[f],
       onSelect: () => setUi({ lanes: { ...lanes, [f]: !lanes[f] } }),
     }));
+
+  const zoomLevelRef = useRef<HTMLButtonElement>(null);
+
+  /** Items for the zoom combobox dropdown. */
+  const zoomItems = (): MenuItem[] => [
+    {
+      label: "Fit",
+      checked: zoom === "fit",
+      onSelect: () => setZoom("fit"),
+    },
+    { separator: true },
+    ...ZOOM_LEVELS.map((l) => ({
+      label: `${Math.round(l * 100)}%`,
+      checked: typeof zoom === "number" && Math.abs(zoom - l) < 0.005,
+      onSelect: () => setZoom(l),
+    })),
+    { separator: true },
+    {
+      render: (close: () => void) => (
+        <label className="flex items-center gap-2 px-2 py-1">
+          <span className="label">Custom</span>
+          <input
+            type="number"
+            min={25}
+            max={400}
+            defaultValue={
+              zoom === "fit" ? Math.round(effectiveZoom * 100) : Math.round((zoom as number) * 100)
+            }
+            className="num w-16 rounded border border-line bg-surface px-1.5 py-0.5 text-[12px] outline-none focus:border-accent"
+            onKeyDown={(e) => {
+              e.stopPropagation();
+              if (e.key === "Enter") {
+                setZoom(percentToZoom(Number(e.currentTarget.value) || 100));
+                close();
+              }
+              if (e.key === "Escape") close();
+            }}
+          />
+        </label>
+      ),
+    },
+  ];
 
   const globalSwing = useStore((s) => s.project.swing);
   const swing = (
@@ -244,20 +296,28 @@ export function HeaderBar({ sizeClass }: { sizeClass: SizeClass }) {
           <div className="flex items-center">
             <button
               className="tool-btn"
-              title="Zoom out (Ctrl/Cmd+scroll)"
+              title="Zoom out (Alt+−, Ctrl/Cmd+scroll)"
               data-hint="dm.header.zoom-out"
-              onClick={() => setUi({ zoom: Math.max(0.6, zoom / 1.15) })}
+              onClick={() => setZoom(nextZoomLevel(zoom, -1, effectiveZoom))}
             >
               <ZoomOut size={14} />
             </button>
-            <span className="num w-9 text-center text-[10px] text-dim">
-              {Math.round(zoom * 100)}%
-            </span>
+            <button
+              ref={zoomLevelRef}
+              className="field px-1.5"
+              title="Zoom level — click to change"
+              data-hint="dm.header.zoom-level"
+              data-testid="dm-zoom-level"
+              onClick={() => dropdown(zoomLevelRef.current!, zoomItems())}
+            >
+              <span className="num text-[10px]">{formatZoom(zoom)}</span>
+              <ChevronDown size={10} className="text-dim" />
+            </button>
             <button
               className="tool-btn"
-              title="Zoom in (Ctrl/Cmd+scroll)"
+              title="Zoom in (Alt+=, Ctrl/Cmd+scroll)"
               data-hint="dm.header.zoom-in"
-              onClick={() => setUi({ zoom: Math.min(2.5, zoom * 1.15) })}
+              onClick={() => setZoom(nextZoomLevel(zoom, 1, effectiveZoom))}
             >
               <ZoomIn size={14} />
             </button>

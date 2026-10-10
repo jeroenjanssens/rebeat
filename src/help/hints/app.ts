@@ -87,7 +87,7 @@ const hints: Hints = {
   },
   "transport.cpu": {
     title: "CPU meter",
-    text: "Shows how busy the app is drawing and scheduling audio. If it stays high you may hear glitches — try closing other tabs or lowering the UI scale in Settings.",
+    text: 'Shows the worst of three real load signals: audio render load (AudioRenderCapacity, labelled "Audio"), main-thread busy fraction from long animation frames ("Main"), and how late the scheduler tick fires vs. the 120 ms lookahead ("Sched"). The label says which one is shown and its percentage. Hover the meter for the full breakdown. If it stays high you may hear glitches — try closing other tabs or lowering the UI scale in Settings.',
     guide: "transport-bar",
   },
   "transport.masterlevel": {

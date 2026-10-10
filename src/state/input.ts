@@ -227,19 +227,20 @@ export function playedNotes(midi: number): number[] {
 // ── Live note recording (called by WS-A's keys.ts) ───────────────────────────────────────────
 
 /**
- * A note was played while the transport is running. Writes a provisional note (length 1) to the
- * step and returns an id for recordNoteOff to complete it with the real length. Returns null
+ * A note was played on the keys while the transport is running. Writes a provisional note to the
+ * step and returns an id for `recordNoteOff` to complete it with the real length. Returns null
  * when not recording or the track is not a Notes track.
  *
  * When the transport is stopped, falls back to step entry (same as padInput) and returns null.
+ * The caller (keys.ts / WS-A) already plays the note's audio through the live voice.
  */
-export function recordNoteOn(trackId: string, pitch: number, velocity: number): number | null {
+export function recordNoteOn(track: Track, pitch: number, velocity: number): number | null {
+  const trackId = track.id;
   const s = get();
 
   // Stopped: step entry
   if (!s.playing) {
-    const track = s.project.tracks.find((t) => t.id === trackId);
-    if (!track || track.mode === "clip") return null;
+    if (track.mode === "clip") return null;
     if (track.mode !== "notes") return null; // padInput handles Hits
     const now = performance.now();
     const sameChord =
@@ -272,8 +273,7 @@ export function recordNoteOn(trackId: string, pitch: number, velocity: number): 
   const pattern = s.project.patterns[slot.patternId];
   const lane = pattern.lanes[trackId];
   if (!lane) return null;
-  const track = s.project.tracks.find((t) => t.id === trackId);
-  if (!track || track.mode !== "notes") return null;
+  if (track.mode !== "notes") return null;
 
   const pos = position();
   detectLoopWrap(pos.progress);
@@ -350,7 +350,8 @@ export function recordNoteOn(trackId: string, pitch: number, velocity: number): 
  * The note started by recordNoteOn(id) was released (or the sustain pedal released it).
  * Computes the real length and updates the note in the store.
  */
-export function recordNoteOff(id: number): void {
+export function recordNoteOff(id: number | null): void {
+  if (id === null) return;
   const inf = inflightNotes.get(id);
   if (!inf) return;
   inflightNotes.delete(id);

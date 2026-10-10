@@ -6,6 +6,7 @@ import { initEngine } from "./engine";
 import { startMidi } from "../audio-io/midi";
 import { renderKits } from "./kits";
 import { startLiveInput } from "./liveInput";
+import { startAudioLoad } from "./load";
 import { startLooper } from "./looper";
 import { startPerf } from "./perf";
 
@@ -53,6 +54,7 @@ export async function startAudio(): Promise<boolean> {
     startLiveInput();
     const { outputDeviceId } = useSettings.getState();
     if (outputDeviceId) await setOutputDevice(outputDeviceId);
+    startAudioLoad(audioContext());
     shell.set({ audio: "running" });
     useSettings.subscribe(
       (s, prev) =>
