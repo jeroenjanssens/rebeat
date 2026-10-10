@@ -12,10 +12,11 @@ import "dockview-react/dist/styles/dockview.css";
 import { Expand, ExternalLink, Maximize2, Minimize2 } from "lucide-react";
 import { installKeyboard } from "./commands";
 import { installHints } from "./hintLayer";
-import { applyPreset, restoreLayout, saveLayout } from "./layouts";
+import { applyPreset, openPanel, restoreLayout, saveLayout } from "./layouts";
 import { PanelFrame, togglePanelFullscreen } from "./PanelFrame";
 import { PANELS, panelDef } from "./panels";
 import { dock, useShell } from "./shell";
+import { toast } from "../components/Toast";
 
 const theme: DockviewTheme = {
   name: "rebeat",
@@ -118,7 +119,21 @@ export function Dock() {
 
   const onReady = ({ api }: DockviewReadyEvent) => {
     dock.api = api;
-    if (!restoreLayout(api)) applyPreset(api, "compose");
+    if (!restoreLayout(api)) {
+      applyPreset(api, "compose");
+    } else {
+      // Offer to add the new Controller panel to a saved layout that doesn't have it yet.
+      const TOAST_KEY = "rebeat.controller-panel-offered";
+      const hasController = api.panels.some((p) => p.id === "controller");
+      const hasPerform = api.panels.some((p) => p.id === "performance");
+      if (!hasController && hasPerform && !localStorage.getItem(TOAST_KEY)) {
+        localStorage.setItem(TOAST_KEY, "1");
+        setTimeout(() => {
+          toast("New: Controller panel added. Open it via Panels → Controller.");
+          openPanel(api, "controller", { referencePanel: "performance", direction: "below" });
+        }, 1000);
+      }
+    }
     let timer = 0;
     const subs = [
       api.onDidLayoutChange(() => {

@@ -12,6 +12,7 @@ import {
   Activity,
   BookOpen,
   Cable,
+  Joystick,
 } from "lucide-react";
 import { DrumMachine } from "../panels/drum-machine/DrumMachine";
 import { InspectorPanel } from "../panels/inspector/InspectorPanel";
@@ -39,6 +40,9 @@ const BeatboxPanel = lazyPanel(() =>
 const GuidePanel = lazyPanel(() => import("../panels/guide/GuidePanel").then((m) => m.GuidePanel));
 const SampleEditorPanel = lazyPanel(() =>
   import("../panels/sample-editor/SampleEditorPanel").then((m) => m.SampleEditorPanel),
+);
+const ControllerPanel = lazyPanel(() =>
+  import("../panels/controller/ControllerPanel").then((m) => m.ControllerPanel),
 );
 
 export interface PanelProps {
@@ -137,6 +141,14 @@ export const PANELS: PanelDef[] = [
     icon: BookOpen,
     component: GuidePanel,
     minWidth: 360,
+  },
+  {
+    id: "controller",
+    title: "Controller",
+    icon: Joystick,
+    component: ControllerPanel,
+    minWidth: 300,
+    minHeight: 160,
   },
 ];
 

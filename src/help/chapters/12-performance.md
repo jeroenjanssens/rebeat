@@ -60,6 +60,16 @@ Settings → MIDI lists both kinds of mappings, where you can change a control's
 
 A keyboard or chord instrument without knobs (such as the Telepathic Instruments **Orchid**) needs no map: its notes play the selected Notes track, chords and all, and its Start/Stop (if it sends them) play and stop Rebeat. Choose **Custom** to build a map for any other controller from scratch.
 
+### The Controller panel
+
+The [Controller](panel:controller) panel shows a live top-down picture of your controller. Open it from the **Panels** menu or by applying the **Perform** layout ({{key:layout.perform}}).
+
+- **Arturia MiniLab 3**: a detailed SVG with all controls. Keys light up as you play them (shaded by velocity), pads glow orange while held, knobs and faders move in real time. The MiniLab's screen is mirrored at the top.
+- **Other maps**: the slots are shown as a labeled list with the current values.
+- **No map selected**: a prompt to plug in a controller and pick its map.
+
+You can click or tap the keys and pads directly in the panel — they play exactly as if you pressed them on the device. Hovering a control shows what it's mapped to and the current value.
+
 ## Launchpad and Push
 
 In **Settings → MIDI**, **Connect Launchpad / Push** turns a Novation Launchpad (Mini MK3, X, Pro MK3) or an Ableton Push 2/3 into a step sequencer for the drum machine:
