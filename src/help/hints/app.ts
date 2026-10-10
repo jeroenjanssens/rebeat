@@ -64,9 +64,19 @@ const hints: Hints = {
     keys: "Drag or scroll · Double-click: reset to 50% (straight)",
     guide: "transport-bar",
   },
+  "transport.recordMode": {
+    title: "Overdub / Replace",
+    text: "Overdub adds notes to what's already there (a note at the same pitch on the same step is replaced). Replace clears a step's notes the first time you play onto it in each loop pass, so you can punch in new parts without erasing what you keep silent.",
+    guide: "transport-bar",
+  },
+  "transport.snap": {
+    title: "Snap",
+    text: "When Snap is on, note starts and lengths snap to the Q grid. Turn it off to record with your exact timing: the sub-step offset is stored per note and heard on playback.",
+    guide: "transport-bar",
+  },
   "transport.quantize": {
-    title: "Quantize",
-    text: "Snaps live-recorded pad hits to the nearest note value. Set to Off to keep the exact timing you play.",
+    title: "Quantize grid (Q)",
+    text: "The grid size for live recording and the Snap toggle. When Snap is on, note starts and lengths round to this grid. In the piano roll, Ctrl/Cmd+Q quantizes the selected notes.",
     guide: "transport-bar",
   },
   "transport.playmode": {

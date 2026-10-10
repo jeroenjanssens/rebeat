@@ -75,6 +75,22 @@ Projects from before the macros keep their sound: moved SOUND knobs on tracks th
 
 The **key** (header bar) decides which notes are "in key" and whether notes are written with flats or sharps (E♭ in C minor, D♯ in E major).
 
+## Recording notes {#instruments-recording-notes}
+
+With **Rec** on and the transport playing, notes you play are written into the pattern as the playhead passes.
+
+**Overdub or Replace** (the button beside Rec, also in the piano roll header): Overdub adds notes and keeps what's there — a note at the same pitch on the same step is replaced, but others stay. Replace clears a step's notes the first time you play onto it in this loop pass: steps you don't play over are kept, so it's a selective punch-in.
+
+**Snap** (the magnet icon beside Q) controls how note starts and lengths land on the grid. With Snap on, they round to the **Q** grid. With Snap off, the exact timing is kept: notes land on the nearest step and the leftover sub-step distance becomes a **per-note offset**, drawn at its precise position in the piano roll and heard on playback. The grid Q (1/4, 1/8, 1/16, 1/32) sets the snap resolution.
+
+**Lengths** come from the time between note-on and note-off: hold a note for two steps and it records as two steps long. With Snap off, lengths are fractional. The minimum is 0.05 steps so the note is always audible.
+
+**Chords** work naturally: hit several notes at once and all of them are recorded as a chord on the same step. Step entry while stopped has a 60 ms chord window to help with this.
+
+**Velocity** is recorded per note from your playing strength. The step's velocity is the loudest note's.
+
+**In the piano roll**, with Snap off or **Alt** held, dragging notes and resizing them is free (sub-step resolution). **Ctrl/Cmd+Q** quantizes the selected notes back to the Q grid.
+
 ## The piano roll
 
 The [Piano roll](panel:piano-roll) edits the notes of the selected Notes track on the page you're editing. Pitches run from top (high) to bottom (low), steps from left to right; out-of-key rows are darker and the root row is highlighted.

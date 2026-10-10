@@ -4,6 +4,7 @@ import {
   Command as CommandIcon,
   Expand,
   LayoutPanelLeft,
+  Magnet,
   Minimize,
   Play,
   Settings,
@@ -207,6 +208,9 @@ export function TransportBar() {
   const fullscreen = useShell((s) => s.fullscreen);
   const set = useShell((s) => s.set);
   const explain = useSettings((s) => s.explain);
+  const recordMode = useSettings((s) => s.recordMode);
+  const snap = useSettings((s) => s.snap);
+  const setSettings = useSettings((s) => s.set);
   const [tapFlash, setTapFlash] = useState(false);
   const layoutRef = useRef<HTMLButtonElement>(null);
   const sigRef = useRef<HTMLButtonElement>(null);
@@ -285,6 +289,15 @@ export function TransportBar() {
       >
         <Circle size={11} fill={recording ? "currentColor" : "none"} />
         <span className="hidden @[1000px]:inline">Rec</span>
+      </button>
+      <button
+        className="hw-btn !min-h-[28px] hidden @[950px]:inline-flex"
+        data-active={recordMode === "replace"}
+        onClick={() => setSettings({ recordMode: recordMode === "overdub" ? "replace" : "overdub" })}
+        title={recordMode === "overdub" ? "Overdub: adds notes, keeps existing (click for Replace)" : "Replace: clears a step the first time you play it each loop (click for Overdub)"}
+        data-hint="transport.recordMode"
+      >
+        {recordMode === "overdub" ? "Ovd" : "Rep"}
       </button>
       <button
         ref={loopRef}
@@ -382,14 +395,23 @@ export function TransportBar() {
         />
       </span>
       <button
+        className="hw-btn !min-h-[28px] hidden @[1200px]:inline-flex"
+        data-active={snap}
+        onClick={() => setSettings({ snap: !snap })}
+        title={snap ? "Snap on: note starts snap to the Q grid (click to record free timing)" : "Snap off: exact timing recorded as sub-step offset (click to snap)"}
+        data-hint="transport.snap"
+      >
+        <Magnet size={12} />
+      </button>
+      <button
         ref={qRef}
         className="field hidden @[1250px]:inline-flex"
-        title="Quantize for live recording"
+        title="Quantize grid for live recording"
         data-hint="transport.quantize"
         onClick={() =>
           dropdown(
             qRef.current!,
-            ["Off", "1/4", "1/8", "1/16", "1/32"].map((q) => ({
+            ["1/4", "1/8", "1/16", "1/32"].map((q) => ({
               label: q,
               checked: quantize === q,
               onSelect: () => setUi({ quantize: q }),

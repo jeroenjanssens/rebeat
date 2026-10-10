@@ -18,7 +18,7 @@ import {
 } from "./types";
 import { convertSynthKnobs, defaultSynth } from "../library/synthTrack";
 
-export const SCHEMA_VERSION = 8;
+export const SCHEMA_VERSION = 9;
 
 export interface SerializedProject {
   format: "rebeat-project";
@@ -132,6 +132,8 @@ const migrations: Record<number, Migration> = {
     for (const m of (p.midiMappings as Json[]) ?? []) m.mode ??= "absolute";
     return p;
   },
+  // 8 → 9: Note.offset (D128) — optional field added; no data to migrate
+  8: (p) => p,
 };
 
 /** The ADSR decay of a voice's SOUND knobs, renamed in version 7. */
@@ -232,7 +234,16 @@ export function normalizeProject(p: Project): Project {
         continue;
       }
       const steps: Step[] = lane.steps ?? [];
-      for (let i = 0; i < MAX_STEPS; i++) steps[i] = { ...emptyStep(), ...steps[i] };
+      for (let i = 0; i < MAX_STEPS; i++) {
+        steps[i] = { ...emptyStep(), ...steps[i] };
+        // sanitize Note.offset: clamp to −0.5..0.5 and drop 0 (undefined = no offset)
+        for (const n of steps[i].notes ?? []) {
+          if (n.offset !== undefined) {
+            n.offset = Math.max(-0.5, Math.min(0.5, n.offset));
+            if (n.offset === 0) delete n.offset;
+          }
+        }
+      }
       steps.length = MAX_STEPS;
       lane.steps = steps;
     }

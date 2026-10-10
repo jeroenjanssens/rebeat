@@ -121,6 +121,16 @@ export interface Settings {
   synthFolded: string[];
   /** Randomize: how far, and the sections it leaves alone. */
   synthRandom: { amount: number; locked: string[] };
+  /**
+   * Live note recording mode (D127): Overdub adds notes and keeps what's there; Replace clears
+   * a step's notes the first time you play onto it in this loop pass (punch-in).
+   */
+  recordMode: "overdub" | "replace";
+  /**
+   * Snap (D128): when on, note starts and lengths snap to Q's grid. When off, starts are kept
+   * at their exact position (stored as Note.offset) and lengths are unrounded.
+   */
+  snap: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -160,6 +170,8 @@ export const DEFAULT_SETTINGS: Settings = {
   synthView: "basic",
   synthFolded: [],
   synthRandom: { amount: 0.3, locked: [] },
+  recordMode: "overdub",
+  snap: true,
 };
 
 interface SettingsState extends Settings {

@@ -29,10 +29,15 @@ export interface Step {
 
 export interface Note {
   pitch: number; // MIDI, middle C = 60 = C4
-  length: number; // in steps
+  length: number; // in steps (fractional when Snap is off)
   velocity: number; // 0..1
   /** 303-style glide into this note (mono synths). */
   slide?: boolean;
+  /**
+   * Sub-step start offset in steps (schema 9, D128). When Snap is off, a note starts at
+   * `step + offset` rather than exactly at the step boundary. Range: −0.5..0.5 of a step.
+   */
+  offset?: number;
 }
 
 /**

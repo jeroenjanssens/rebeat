@@ -75,24 +75,29 @@ function trackEvents(track: Track, patterns: Pattern[], channel: number): Ev[] {
       for (let i = 0; i < count; i++) {
         const s = lane.steps[i % len];
         if (!s.on) continue;
-        const at = Math.round(offset + (i + s.nudge) * laneTicks);
+        const stepAt = offset + (i + s.nudge) * laneTicks;
         const notes =
           track.mode === "notes"
             ? (s.notes ?? []).map((n) => ({
                 pitch: n.pitch + (track.transpose ?? 0) + (pattern.transpose ?? 0),
+                // fractional lengths are preserved (D128)
                 len: n.length,
                 vel: n.velocity,
+                // per-note offset: how far into the step the note starts (D128)
+                offset: n.offset ?? 0,
               }))
             : [
                 {
                   pitch: GM_DRUMS[track.category],
                   len: Math.max(0.25, s.gate),
                   vel: s.accent ? 1 : s.velocity,
+                  offset: 0,
                 },
               ];
         for (const n of notes) {
           const v = Math.max(1, Math.min(127, Math.round(n.vel * 127)));
           const pitch = Math.max(0, Math.min(127, n.pitch));
+          const at = Math.round(stepAt + n.offset * laneTicks);
           ev.push({ tick: Math.max(0, at), data: [0x90 | channel, pitch, v] });
           ev.push({
             tick: Math.max(0, at + Math.round(n.len * laneTicks) - 1),

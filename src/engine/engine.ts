@@ -374,8 +374,20 @@ function playNotes(track: Track, velocity: number, time: number, o: TriggerOptio
     const values = macroValues({ ...track, params: { ...track.params, ...o.locks } });
     voice.synth.lockMacros(values, time, time + Math.max(...notes.map((n) => n.length)) * step);
   }
-  voice.play(shift ? notes.map((n) => ({ ...n, pitch: n.pitch + shift })) : notes, time, step);
-  const dur = Math.max(...notes.map((n) => n.length)) * step;
+  const pitched = shift ? notes.map((n) => ({ ...n, pitch: n.pitch + shift })) : notes;
+  // Notes with a non-zero offset (D128) start at time + offset × stepDur; clamp to audioNow()
+  // so a negative offset on the very first scheduled step never goes below the context's time.
+  const hasOffsets = pitched.some((n) => n.offset);
+  if (hasOffsets) {
+    for (const n of pitched) {
+      const t = n.offset ? Math.max(audioNow(), time + n.offset * step) : time;
+      voice.play([n], t, step);
+    }
+  } else {
+    voice.play(pitched, time, step);
+  }
+  const maxOffset = hasOffsets ? Math.max(...pitched.map((n) => (n.offset ?? 0) * step)) : 0;
+  const dur = maxOffset + Math.max(...notes.map((n) => n.length)) * step;
   const release = toUnit.ms(1, 8000)(track.params["sound.release"] ?? 0.35) / 1000;
   S.activeUntil.set(
     track.id,

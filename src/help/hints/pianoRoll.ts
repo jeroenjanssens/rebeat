@@ -23,6 +23,16 @@ const hints: Hints = {
     text: "When on, notes snap to the current key as you draw or move them. Out-of-key positions are skipped.",
     guide: "instruments-entering-notes",
   },
+  "roll.recordMode": {
+    title: "Overdub / Replace",
+    text: "Overdub adds notes to what's already there. Replace clears a step the first time you play onto it in each loop pass. Matches the transport bar toggle.",
+    guide: "instruments-recording-notes",
+  },
+  "roll.snap": {
+    title: "Snap",
+    text: "When on, recorded notes snap to the Q grid. When off, the exact timing is kept as a sub-step offset and drawn at its precise position. Matches the transport bar magnet. In the piano roll, drag notes or edges freely with Alt held regardless of this setting.",
+    guide: "instruments-recording-notes",
+  },
   "roll.zoomOut": {
     title: "Zoom out",
     text: "Shows more steps on screen, making the grid narrower.",

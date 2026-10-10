@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { MousePointer2, Pencil } from "lucide-react";
+import { Magnet, MousePointer2, Pencil } from "lucide-react";
 import { contextMenu } from "../../components/Menu";
 import * as engine from "../../engine/engine";
 import { onStep } from "../../engine/transport";
@@ -10,8 +10,10 @@ import {
   moveNotes,
   noteKey,
   parseNoteKey,
+  quantizeNotes,
   removeNote,
   resizeNotes,
+  resizeNotesFree,
   type NoteRef,
 } from "../../model/noteOps";
 import { inKey, keyName, keyUsesFlats, noteName, snapToKey } from "../../model/notes";
@@ -20,6 +22,7 @@ import { STEP_SIZE_QUARTERS, type Note, type Lane, type Track } from "../../mode
 import { token } from "../../render/theme";
 import { useCanvas } from "../../render/useCanvas";
 import { useEditPattern, useSelectedTrack, useStore } from "../../state/store";
+import { useSettings } from "../../state/settings";
 
 const LOW = 24; // C1
 const HIGH = 96; // C7
@@ -28,9 +31,24 @@ const VEL_H = 56;
 const BLACK = new Set([1, 3, 6, 8, 10]);
 
 type Gesture =
-  | { kind: "move"; x: number; y: number; orig: NoteRef[]; cur: NoteRef[]; key: string }
-  | { kind: "resize"; x: number; orig: Map<string, number>; refs: NoteRef[]; key: string }
-  | { kind: "draw"; step: number; pitch: number; key: string }
+  | {
+      kind: "move";
+      x: number;
+      y: number;
+      orig: NoteRef[];
+      cur: NoteRef[];
+      key: string;
+      free: boolean;
+    }
+  | {
+      kind: "resize";
+      x: number;
+      orig: Map<string, number>;
+      refs: NoteRef[];
+      key: string;
+      free: boolean;
+    }
+  | { kind: "draw"; step: number; pitch: number; key: string; free: boolean }
   | { kind: "marquee"; x: number; y: number; additive: boolean }
   | { kind: "velocity"; key: string };
 
@@ -90,6 +108,10 @@ function PianoRoll({ track }: { track: Track }) {
   const project = useStore((s) => s.project);
   const commit = useStore((s) => s.commit);
   const scaleLock = useStore((s) => s.scaleLock);
+  const quantize = useStore((s) => s.quantize);
+  const recordMode = useSettings((s) => s.recordMode);
+  const snap = useSettings((s) => s.snap);
+  const setSettings = useSettings((s) => s.set);
   const key = pageKey(project, pattern);
   const flats = keyUsesFlats(key);
   const length = lane.stepCountOverride ?? pattern.stepCount;
@@ -113,6 +135,17 @@ function PianoRoll({ track }: { track: Track }) {
   const gridW = length * colW;
   const gridH = rows * rowH;
   const spb = Math.max(1, Math.round(1 / STEP_SIZE_QUARTERS[pattern.stepSize]));
+  // quantize grid size in steps (for Quantize Selection and free-drag clamping)
+  const QUANTIZE_QUARTERS: Record<string, number> = {
+    "1/4": 1,
+    "1/8": 0.5,
+    "1/16": 0.25,
+    "1/32": 0.125,
+  };
+  const qGrid = Math.max(
+    1,
+    Math.round((QUANTIZE_QUARTERS[quantize] ?? 0.25) / STEP_SIZE_QUARTERS[pattern.stepSize]),
+  );
   const notes = useMemo(() => listNotes(lane, length), [lane, length]);
 
   // start scrolled to the notes (or around C4), once the panel has a size
@@ -214,9 +247,10 @@ function PianoRoll({ track }: { track: Track }) {
       }
       const refs = [...sel].map(parseNoteKey);
       e.currentTarget.setPointerCapture(e.pointerId);
+      const free = !snap || e.altKey;
       if ((e.target as HTMLElement).dataset.edge !== undefined) {
         const orig = new Map(refs.map((r) => [noteKey(r), getNote(lane, r)?.length ?? 1]));
-        gesture.current = { kind: "resize", x: e.clientX, orig, refs, key: g };
+        gesture.current = { kind: "resize", x: e.clientX, orig, refs, key: g, free };
       } else {
         gesture.current = {
           kind: "move",
@@ -225,6 +259,7 @@ function PianoRoll({ track }: { track: Track }) {
           orig: refs,
           cur: refs,
           key: g,
+          free,
         };
         audition(ref.pitch, getNote(lane, ref)?.velocity);
       }
@@ -237,9 +272,10 @@ function PianoRoll({ track }: { track: Track }) {
       if (!e.shiftKey) setSelected(new Set());
       return;
     }
+    const free = !snap || e.altKey;
     edit((l) => addNote(l, p.step, { pitch: p.pitch, length: noteLen, velocity: 0.8 }), g);
     setSelected(new Set([noteKey(p)]));
-    gesture.current = { kind: "draw", step: p.step, pitch: p.pitch, key: g };
+    gesture.current = { kind: "draw", step: p.step, pitch: p.pitch, key: g, free };
     audition(p.pitch);
   };
 
@@ -248,11 +284,22 @@ function PianoRoll({ track }: { track: Track }) {
     if (!g) return;
     if (g.kind === "draw") {
       // drag while drawing sets the length
-      const p = at(e);
-      const len = Math.max(1, p.step - g.step + 1);
-      edit((l) => resizeNotes(l, [{ step: g.step, pitch: g.pitch }], () => len), g.key);
+      const r = gridRef.current!.getBoundingClientRect();
+      const rawStep = (e.clientX - r.left) / colW;
+      const len = g.free
+        ? Math.max(0.05, rawStep - g.step)
+        : Math.max(1, Math.round(rawStep) - g.step + 1);
+      edit((l) => {
+        if (g.free) {
+          resizeNotesFree(l, [{ step: g.step, pitch: g.pitch }], () => len);
+        } else {
+          resizeNotes(l, [{ step: g.step, pitch: g.pitch }], () => len);
+        }
+      }, g.key);
     } else if (g.kind === "move") {
-      const dStep = Math.round((e.clientX - g.x) / colW);
+      const dStep = g.free
+        ? (e.clientX - g.x) / colW
+        : Math.round((e.clientX - g.x) / colW);
       let dPitch = -Math.round((e.clientY - g.y) / rowH);
       if (scaleLock && g.orig.length)
         dPitch = snapToKey(g.orig[0].pitch + dPitch, key) - g.orig[0].pitch;
@@ -265,7 +312,7 @@ function PianoRoll({ track }: { track: Track }) {
           const n = removeNote(l, c);
           if (n) addNote(l, g.orig[i].step, { ...n, pitch: g.orig[i].pitch });
         });
-        next = moveNotes(l, g.orig, dStep, dPitch, length);
+        next = moveNotes(l, g.orig, dStep, dPitch, length, g.free);
       }, g.key);
       if (next.length) {
         if (next[0].pitch !== cur[0]?.pitch) audition(next[0].pitch);
@@ -273,11 +320,19 @@ function PianoRoll({ track }: { track: Track }) {
         setSelected(new Set(next.map(noteKey)));
       }
     } else if (g.kind === "resize") {
-      const d = Math.round((e.clientX - g.x) / colW);
+      const d = g.free
+        ? (e.clientX - g.x) / colW
+        : Math.round((e.clientX - g.x) / colW);
       edit((l) => {
         for (const r of g.refs) {
+          const orig = g.orig.get(noteKey(r)) ?? 1;
           const n = getNote(l, r);
-          if (n) n.length = Math.max(1, (g.orig.get(noteKey(r)) ?? 1) + d);
+          if (!n) continue;
+          if (g.free) {
+            n.length = Math.max(0.05, orig + d);
+          } else {
+            n.length = Math.max(1, Math.round(orig + d));
+          }
         }
       }, g.key);
     } else if (g.kind === "marquee") {
@@ -365,6 +420,10 @@ function PianoRoll({ track }: { track: Track }) {
         }
       });
       setSelected(new Set(placed.map(noteKey)));
+    } else if (mod && e.key.toLowerCase() === "q" && refs.length) {
+      // Quantize selection: snap starts and lengths to the Q grid
+      handled();
+      edit((l) => quantizeNotes(l, refs, qGrid), k);
     } else if (e.key === "Escape") {
       handled();
       setSelected(new Set());
@@ -483,6 +542,34 @@ function PianoRoll({ track }: { track: Track }) {
           Scale lock
         </button>
         <span className="text-[11px] text-dim">{keyName(key)}</span>
+        <button
+          className="tool-btn border border-line !text-[10.5px]"
+          data-active={recordMode === "replace"}
+          onClick={() =>
+            setSettings({ recordMode: recordMode === "overdub" ? "replace" : "overdub" })
+          }
+          title={
+            recordMode === "overdub"
+              ? "Overdub: adds notes, keeps existing (click for Replace)"
+              : "Replace: clears a step on first hit each loop (click for Overdub)"
+          }
+          data-hint="roll.recordMode"
+        >
+          {recordMode === "overdub" ? "Ovd" : "Rep"}
+        </button>
+        <button
+          className="tool-btn border border-line"
+          data-active={snap}
+          onClick={() => setSettings({ snap: !snap })}
+          title={
+            snap
+              ? "Snap on: note starts snap to the Q grid (click to record free timing)"
+              : "Snap off: exact timing recorded (click to snap)"
+          }
+          data-hint="roll.snap"
+        >
+          <Magnet size={11} />
+        </button>
         <span className="flex-1" />
         <span className="text-[10.5px] text-faint">
           {selected.size ? `${selected.size} selected` : `${notes.length} notes`}
@@ -566,6 +653,8 @@ function PianoRoll({ track }: { track: Track }) {
               {notes.map((n) => {
                 const k = noteKey(n);
                 const sel = selected.has(k);
+                // notes may start at a sub-step offset (D128)
+                const startX = (n.step + (n.note.offset ?? 0)) * colW;
                 return (
                   <div
                     key={k}
@@ -574,7 +663,7 @@ function PianoRoll({ track }: { track: Track }) {
                     className="absolute rounded-[3px]"
                     style={
                       {
-                        left: n.step * colW + 1,
+                        left: startX + 1,
                         top: (HIGH - n.pitch) * rowH + 1,
                         width: Math.max(4, n.note.length * colW - 2),
                         height: rowH - 2,
