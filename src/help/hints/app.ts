@@ -281,6 +281,11 @@ const hints: Hints = {
     text: "Click the key badge, then press the new key combination. Press Esc to cancel without changing anything.",
     guide: "shortcuts",
   },
+  "app.shortcuts.midi": {
+    title: "MIDI button",
+    text: "Learn a button or pad on your controller for this command, in every project: click, then press it. Notes and buttons that send CC 127/0 both work; held commands (fill) end when you let go.",
+    guide: "performance-your-controller",
+  },
   "app.shortcuts.resetone": {
     title: "Reset this shortcut",
     text: "Resets this command's shortcut to its default, removing your custom binding.",
@@ -423,8 +428,68 @@ const hints: Hints = {
   },
   "app.midi.removemap": {
     title: "Remove mapping",
-    text: "Removes this MIDI learn mapping from the project.",
+    text: "Forgets this MIDI mapping: the control goes back to doing nothing (or its built-in job: notes, mod wheel, sustain).",
     guide: "performance-midi",
+  },
+  "app.midi.mackie": {
+    title: "Mackie Control",
+    text: "This input's transport buttons run Rebeat's: Play, Stop, Record, Cycle (loop or song), rewind and forward (pages), the jog wheel. Inputs named MCU are Mackie Control already.",
+    guide: "performance-your-controller",
+  },
+  "app.midi.controller": {
+    title: "Controller",
+    text: "Your controller's map: what its knobs, faders and pads do in every project. The knobs turn the selected track's SOUND knobs, so they follow whatever track you select. Custom: learn your own.",
+    guide: "performance-your-controller",
+  },
+  "app.midi.learnslot": {
+    title: "Learn",
+    text: "Teach this slot a control: press Learn, then move the knob, fader or button on your controller. Use it when your controller is set up differently from its factory settings.",
+    guide: "performance-your-controller",
+  },
+  "app.midi.mode": {
+    title: "How the control sends values",
+    text: "Absolute: a position (most knobs and faders). Relative: steps up or down, from endless encoders, in one of three encodings. MIDI learn finds out by itself; change it here if a knob jumps or barely moves.",
+    guide: "performance-your-controller",
+  },
+  "app.midi.padschannel": {
+    title: "Pads channel",
+    text: "Notes on this channel always play step tracks as pads (from note 36: track 1, 2, 3…), even when a Notes track is selected; the keys on other channels play the selected track. Pad controllers use channel 10.",
+    guide: "performance-midi",
+  },
+  "app.midi.sensitivity": {
+    title: "Relative knobs",
+    text: "How far one step of an endless encoder turns a knob. Higher: fewer turns from one end to the other.",
+    guide: "performance-your-controller",
+  },
+  "app.midi.pickup": {
+    title: "Pick up",
+    text: "An absolute knob or fader takes over only when it reaches the value on screen, so nothing jumps when you select another track. Off: it jumps to where the control is.",
+    guide: "performance-your-controller",
+  },
+  "app.midi.global": {
+    title: "Mappings in every project",
+    text: "Your controller's mappings: they work in every project, and point at roles (the selected track's knobs, track 2's level, a command) rather than one track.",
+    guide: "performance-your-controller",
+  },
+  "app.midi.project": {
+    title: "Mappings in this project",
+    text: "Mappings for one track's knob, saved with this project. They win over the ones in every project.",
+    guide: "performance-midi",
+  },
+  "app.midi.learnall": {
+    title: "Learn every control",
+    text: "Walks through the map's slots one by one: move each knob or fader when it's asked for. Skip leaves a slot as it is; Esc or Stop ends it.",
+    guide: "performance-your-controller",
+  },
+  "app.midi.followstart": {
+    title: "Follow MIDI Start/Stop",
+    text: "MIDI Start and Stop messages play and stop Rebeat: some controllers' Play buttons send them (the Launchkey Mini MK4), and so do other music apps.",
+    guide: "performance-your-controller",
+  },
+  "app.midi.monitor": {
+    title: "Monitor",
+    text: "The last messages from your controllers and what Rebeat did with each: the place to look when a knob or pad doesn't do what you expect.",
+    guide: "performance-your-controller",
   },
 
   // ── Calibration dialog ───────────────────────────────────────────────────

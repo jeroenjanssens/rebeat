@@ -1,5 +1,7 @@
 import { useRef } from "react";
 import { useGlide } from "./glide";
+import { contextMenu } from "./Menu";
+import { startMidiLearn } from "../midi/learn";
 import { VOLUME_FORMAT } from "../model/params";
 
 /** dB marks on the fader scale, as fader positions (0.8 = 0 dB, 40·log10 curve). */
@@ -12,6 +14,7 @@ export function Fader({
   color = "var(--accent)",
   height = 140,
   hint,
+  midi,
 }: {
   value: number;
   onChange: (v: number) => void;
@@ -19,6 +22,8 @@ export function Fader({
   height?: number;
   /** Explain-mode hint id (help/hints). */
   hint?: string;
+  /** MIDI learn (D122): this project's target, and optionally a role for every project. */
+  midi?: { target: string; label: string; global?: { target: string; label: string } };
 }) {
   const drag = useRef<{ y: number; v: number } | null>(null);
   const glider = useGlide();
@@ -42,6 +47,25 @@ export function Fader({
       onPointerUp={() => (drag.current = null)}
       onWheel={(e) => onChange(clamp(value - Math.sign(e.deltaY) * 0.01))}
       onDoubleClick={() => glider.glide(value, 0.8, onChange)}
+      onContextMenu={(e) =>
+        midi &&
+        contextMenu(e, [
+          { label: "Reset to 0 dB", onSelect: () => glider.glide(value, 0.8, onChange) },
+          { separator: true },
+          {
+            label: midi.global ? "MIDI learn (in this project)" : "MIDI learn",
+            onSelect: () => startMidiLearn(midi.target, midi.label),
+          },
+          ...(midi.global
+            ? [
+                {
+                  label: `MIDI learn: ${midi.global.label} (every project)`,
+                  onSelect: () => startMidiLearn(midi.global!.target, midi.global!.label, "global"),
+                },
+              ]
+            : []),
+        ])
+      }
     >
       <div className="absolute inset-y-1 left-1/2 w-[3px] -translate-x-1/2 rounded bg-pad" />
       <div

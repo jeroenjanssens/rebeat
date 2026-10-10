@@ -14,7 +14,8 @@ import {
 } from "lucide-react";
 import { DragValue } from "../components/DragValue";
 import { LevelMeter } from "../components/LevelMeter";
-import { dropdown, type MenuItem } from "../components/Menu";
+import { contextMenu, dropdown, type MenuItem } from "../components/Menu";
+import { startMidiLearn } from "../midi/learn";
 import * as engine from "../engine/engine";
 import * as clock from "../engine/transport";
 import { TIME_SIGNATURES, createTapTempo } from "../model/tempo";
@@ -36,17 +37,29 @@ export function tapTempo() {
   if (bpm) useStore.getState().commit((p) => void (p.bpm = bpm), "bpm");
 }
 
+/** Right-click a transport button: MIDI learn its command, in every project (D122). */
+const learnCommand = (id: string, title: string) => (e: React.MouseEvent) =>
+  contextMenu(e, [
+    {
+      label: `MIDI learn: ${title} (every project)`,
+      onSelect: () => startMidiLearn(`command:${id}`, title, "global"),
+    },
+  ]);
+
 function Toggle({
   lit,
   onClick,
   title,
   hint,
+  command,
   children,
 }: {
   lit: boolean;
   onClick: () => void;
   title: string;
   hint?: string;
+  /** The command it runs, for MIDI learn. */
+  command?: { id: string; title: string };
   children: React.ReactNode;
 }) {
   return (
@@ -56,6 +69,7 @@ function Toggle({
       onClick={onClick}
       title={title}
       data-hint={hint}
+      onContextMenu={command ? learnCommand(command.id, command.title) : undefined}
     >
       {children}
     </button>
@@ -248,6 +262,7 @@ export function TransportBar() {
         className="hw-btn !min-h-[28px] !flex-row gap-1.5"
         data-lit={playing}
         onClick={clock.toggle}
+        onContextMenu={learnCommand("transport.toggle", "Play / stop")}
         title="Play / stop (Space)"
         data-testid="play"
         data-hint="transport.play"
@@ -264,6 +279,7 @@ export function TransportBar() {
         data-lit={recording}
         style={recording ? { color: "#ef4444", borderColor: "#ef4444" } : undefined}
         onClick={() => setUi({ recording: !recording })}
+        onContextMenu={learnCommand("transport.record", "Record")}
         title="Record (R): live pad recording and armed Clip tracks"
         data-hint="transport.record"
       >
@@ -308,6 +324,7 @@ export function TransportBar() {
         data-lit={tapFlash}
         title="Tap tempo (T)"
         data-hint="transport.tap"
+        onContextMenu={learnCommand("transport.tap", "Tap tempo")}
         onClick={() => {
           tapTempo();
           setTapFlash(true);
@@ -339,6 +356,7 @@ export function TransportBar() {
         onClick={() => commit((p) => void (p.metronome = !p.metronome))}
         title="Metronome (K)"
         hint="transport.metronome"
+        command={{ id: "transport.metronome", title: "Metronome on/off" }}
       >
         <Timer size={12} />
         <span className="hidden @[1200px]:inline">Click</span>
@@ -382,7 +400,12 @@ export function TransportBar() {
         <span className="label">Q</span>
         <span className="num">{quantize}</span>
       </button>
-      <div className="segmented" title="Playback mode (L)" data-hint="transport.playmode">
+      <div
+        className="segmented"
+        title="Playback mode (L)"
+        data-hint="transport.playmode"
+        onContextMenu={learnCommand("transport.mode", "Loop / song")}
+      >
         <button
           data-active={playMode === "loop"}
           onClick={() => useStore.getState().setPlayMode("loop")}

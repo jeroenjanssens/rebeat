@@ -17,6 +17,7 @@ import { editSteps, selectedIndices } from "../../state/actions";
 import { stepKey, useEditPattern, useSelectedTrack, useStore, type Bank } from "../../state/store";
 import type { SizeClass } from "./layout";
 import { effectivePatch, isSynthTrack, soundDefs, soundHint } from "../../library/synthTrack";
+import { ROLES } from "../../midi/mapping";
 import { applyMacros } from "../../model/synth";
 
 const BANKS: { id: Bank; label: string }[] = [
@@ -31,6 +32,8 @@ interface Slot {
   value: number | null;
   onChange: (v: number) => void;
   midiTarget?: string;
+  /** The role this knob is, for mappings in every project (D121). */
+  globalTarget?: { target: string; label: string };
   /** Parameter lock mode: this slot has a lock on the selected step. */
   locked?: boolean;
   onClear?: () => void;
@@ -101,7 +104,7 @@ function useEncoderSlots(track: Track): { slots: Slot[]; note?: string; locking?
   if (bank === "sound" || bank === "mix") {
     const defs = bank === "sound" ? soundDefs(track) : MIX_PARAMS;
     return {
-      slots: defs.map((def) => {
+      slots: defs.map((def, i) => {
         const key = `${bank}.${def.id}`;
         if (def.id === "volume" && bank === "mix")
           return {
@@ -110,6 +113,7 @@ function useEncoderSlots(track: Track): { slots: Slot[]; note?: string; locking?
             hint: `param.mix.${def.id}`,
             onChange: (v) => setTrack((t) => (t.volume = v), `enc-${track.id}-vol`),
             midiTarget: `track:${track.id}:volume`,
+            globalTarget: { target: ROLES.selectedVolume, label: "Selected track · Level" },
           };
         return {
           def,
@@ -117,6 +121,14 @@ function useEncoderSlots(track: Track): { slots: Slot[]; note?: string; locking?
           hint: bank === "sound" ? soundHint(def.id) : `param.${bank}.${def.id}`,
           onChange: (v) => setTrack((t) => (t.params[key] = v), `enc-${track.id}-${key}`),
           midiTarget: `track:${track.id}:${key}`,
+          // the same knob on whichever track is selected (D121)
+          globalTarget:
+            bank === "sound"
+              ? {
+                  target: ROLES.selectedSound(i + 1),
+                  label: `Selected track · SOUND knob ${i + 1}`,
+                }
+              : { target: ROLES.selectedMix(def.id), label: `Selected track · ${def.label}` },
         };
       }),
     };
@@ -314,7 +326,7 @@ export function EncoderStrip({ sizeClass }: { sizeClass: SizeClass }) {
         {tabs}
         {note && <span className="truncate text-[10.5px] text-faint">{note}</span>}
       </div>
-      <div className="flex items-start justify-between gap-1">
+      <div className="flex items-start justify-between gap-1" data-testid="encoder-strip">
         {slots.map((s, i) =>
           s.def ? (
             <div
@@ -332,6 +344,7 @@ export function EncoderStrip({ sizeClass }: { sizeClass: SizeClass }) {
                 value={s.value}
                 onChange={s.onChange}
                 midiTarget={s.midiTarget}
+                globalTarget={s.globalTarget}
                 color={locking ? (s.locked ? "#ffffff" : track.color) : track.color}
                 size={knobSize}
                 hint={s.hint}

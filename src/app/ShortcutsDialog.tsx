@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
-import { RotateCcw } from "lucide-react";
+import { RotateCcw, X } from "lucide-react";
 import { Dialog } from "../components/Dialog";
 import { useSettings } from "../state/settings";
 import { eventShortcut, formatKeys, keysFor, useCommands, type Command } from "./commands";
+import { useMidi } from "../audio-io/midi";
+import { startMidiLearn } from "../midi/learn";
 import { useShell } from "./shell";
 
 /** Cheat sheet of all shortcuts; click a shortcut to rebind it. */
@@ -46,7 +48,7 @@ export function ShortcutsDialog() {
     <Dialog
       open={open}
       onOpenChange={(o) => set({ shortcutsOpen: o })}
-      title="Keyboard shortcuts"
+      title="Keyboard shortcuts and MIDI buttons"
       width={720}
     >
       <div className="flex items-center gap-2 border-b border-line px-4 py-2">
@@ -92,6 +94,7 @@ export function ShortcutsDialog() {
                         <span className="text-[10px] text-faint">—</span>
                       )}
                     </button>
+                    <MidiButton command={c} />
                     {overrides[c.id] !== undefined && (
                       <button
                         className="tool-btn !h-5 !min-w-5 !p-0"
@@ -113,5 +116,45 @@ export function ShortcutsDialog() {
         })}
       </div>
     </Dialog>
+  );
+}
+
+/** Learn a MIDI button or pad for a command, in every project (D122). */
+function MidiButton({ command }: { command: Command }) {
+  const target = `command:${command.id}`;
+  const mapping = useSettings((s) => s.midiMappings.find((m) => m.target === target));
+  const learning = useMidi((s) => s.learning?.target === target);
+  return (
+    <span className="flex items-center">
+      <button
+        className="rounded px-1 text-[10px] text-faint hover:bg-surface hover:text-dim"
+        title="Learn a MIDI button or pad for this (every project)"
+        data-hint="app.shortcuts.midi"
+        data-testid={`midi-learn-${command.id}`}
+        onClick={() => startMidiLearn(target, command.title, "global")}
+      >
+        {learning ? (
+          <span className="text-accent">Press a button…</span>
+        ) : mapping ? (
+          <span className="num text-dim">
+            {mapping.type === "cc" ? "CC" : "Note"} {mapping.number}
+          </span>
+        ) : (
+          "MIDI"
+        )}
+      </button>
+      {mapping && (
+        <button
+          className="tool-btn !h-5 !min-w-5 !p-0"
+          title="Forget this MIDI control"
+          onClick={() => {
+            const st = useSettings.getState();
+            st.set({ midiMappings: st.midiMappings.filter((m) => m.id !== mapping.id) });
+          }}
+        >
+          <X size={10} />
+        </button>
+      )}
+    </span>
   );
 }

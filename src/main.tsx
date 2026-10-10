@@ -87,6 +87,9 @@ if (import.meta.env.DEV || import.meta.env.MODE === "test") {
         deserializeProject: schema.deserializeProject,
         // the Beatbox panel's data, loaded on demand (importing it doesn't load the model)
         beatbox: () => import("./library/beatbox/store"),
+        // MIDI: the monitor, learning; settings for global mappings
+        midi: () => import("./audio-io/midi").then((m) => m.useMidi),
+        settings: () => import("./state/settings").then((m) => m.useSettings),
       };
     },
   );

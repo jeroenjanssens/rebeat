@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { focusPanel } from "../../app/openers";
 import { EffectEditor } from "../../components/EffectEditor";
 import { Encoder } from "../../components/Encoder";
+import { ROLES } from "../../midi/mapping";
 import { Fader } from "../../components/Fader";
 import { useMenu } from "../../components/Menu";
 import { VMeter } from "../../components/VMeter";
@@ -237,6 +238,11 @@ function TrackStrip({
           height={faderH}
           hint="param.mix.volume"
           onChange={(v) => update((t) => (t.volume = v), `mix-vol-${track.id}`)}
+          midi={{
+            target: `track:${track.id}:volume`,
+            label: `${track.name} · Level`,
+            global: { target: ROLES.trackVolume(index + 1), label: `Track ${index + 1} · Level` },
+          }}
         />
       }
       meter={<VMeter read={() => engine.level(track.id)} height={faderH} />}
@@ -337,6 +343,11 @@ function BusStrip({ bus, faderH }: { bus: Bus; faderH: number }) {
           height={faderH}
           hint="mixer.bus.fader"
           onChange={(v) => update((b) => (b.volume = v), `bus-vol-${bus.id}`)}
+          midi={{
+            target: `bus:${bus.id}`,
+            label: `${bus.name} · Level`,
+            global: { target: `bus:${bus.id}`, label: `${bus.name} · Level` },
+          }}
         />
       }
       meter={<VMeter read={() => engine.busLevel(bus.id)} height={faderH} />}
@@ -384,6 +395,11 @@ function MasterStrip({ faderH }: { faderH: number }) {
           height={faderH}
           hint="mixer.master.fader"
           onChange={(v) => commit((p) => void (p.master.volume = v), "master-vol")}
+          midi={{
+            target: "master:volume",
+            label: "Master · Level",
+            global: { target: "master:volume", label: "Master · Level" },
+          }}
         />
       }
       meter={<VMeter read={() => engine.masterLevel()} height={faderH} width={10} />}

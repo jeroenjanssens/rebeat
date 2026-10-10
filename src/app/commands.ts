@@ -60,6 +60,11 @@ export function runCommand(id: string) {
   if (c && (c.enabled?.() ?? true)) c.run();
 }
 
+/** End a held command (a controller's button came up, D122). */
+export function releaseCommand(id: string) {
+  registry.get(id)?.release?.();
+}
+
 /** The active shortcuts of a command (user overrides win over defaults). */
 export function keysFor(c: Command, overrides = useSettings.getState().shortcuts): string[] {
   const o = overrides[c.id];

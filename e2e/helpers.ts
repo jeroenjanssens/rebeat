@@ -45,3 +45,28 @@ export async function midiKeyboard(page: Page) {
   await page.getByRole("button", { name: "Enable MIDI" }).click();
   await page.keyboard.press("Escape");
 }
+
+/** Fake MIDI inputs with these names; send bytes with `window.__midiFrom(name, [0xb0, 74, 64])`.
+ * Opens the app and enables MIDI. */
+export async function midiDevices(page: Page, names: string[]) {
+  await page.addInitScript((names: string[]) => {
+    const inputs = new Map(
+      names.map((name, i) => [
+        `in${i}`,
+        { id: `in${i}`, name, onmidimessage: null as null | ((e: { data: Uint8Array }) => void) },
+      ]),
+    );
+    const access = { inputs, outputs: new Map(), onstatechange: null };
+    Object.defineProperty(navigator, "requestMIDIAccess", { value: async () => access });
+    Object.assign(window, {
+      __midiFrom: (name: string, d: number[]) =>
+        [...inputs.values()]
+          .find((x) => x.name === name)
+          ?.onmidimessage?.({ data: new Uint8Array(d) }),
+    });
+  }, names);
+  await openApp(page);
+  await page.getByTestId("open-settings").click();
+  await page.getByRole("button", { name: "MIDI", exact: true }).click();
+  await page.getByRole("button", { name: "Enable MIDI" }).click();
+}

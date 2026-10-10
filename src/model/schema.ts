@@ -18,7 +18,7 @@ import {
 } from "./types";
 import { convertSynthKnobs, defaultSynth } from "../library/synthTrack";
 
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 
 export interface SerializedProject {
   format: "rebeat-project";
@@ -125,6 +125,11 @@ const migrations: Record<number, Migration> = {
       if (m.target.startsWith("track:") && renamed.has(id) && param === "sound.decay")
         m.target = `track:${id}:sound.envDecay`;
     }
+    return p;
+  },
+  // 7 → 8: MIDI mappings say how their control sends values (D120); the old ones were absolute
+  7: (p) => {
+    for (const m of (p.midiMappings as Json[]) ?? []) m.mode ??= "absolute";
     return p;
   },
 };

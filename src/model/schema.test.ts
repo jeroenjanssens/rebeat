@@ -276,3 +276,24 @@ describe("migration 6 → 7: step tracks (D93, D94)", () => {
     expect(deserializeProject(serializeProject(structuredClone(p)))).toEqual(p);
   });
 });
+
+describe("migration 7 → 8", () => {
+  it("marks the old MIDI mappings absolute (D120)", () => {
+    const p = demoProject();
+    const saved = JSON.parse(JSON.stringify(serializeProject(p)));
+    saved.schemaVersion = 7;
+    saved.project.midiMappings = [
+      {
+        id: "m",
+        type: "cc",
+        channel: 0,
+        number: 74,
+        device: "",
+        target: "master:volume",
+        label: "Master",
+      },
+    ];
+    const back = deserializeProject(saved);
+    expect(back.midiMappings[0].mode).toBe("absolute");
+  });
+});

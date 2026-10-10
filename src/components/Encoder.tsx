@@ -15,6 +15,9 @@ interface Props {
   midiTarget?: string;
   /** What the learned mapping is called (default: the knob's label). */
   learnLabel?: string;
+  /** A role this knob also is, for a mapping in every project (D121), e.g. the selected
+   * track's SOUND knob 3: "selected:sound:3", with what to call it. */
+  globalTarget?: { target: string; label: string };
   /** Room for the label (default: a little wider than the knob). */
   width?: number;
   /** Show the knob's short label, if it has one (narrow places). */
@@ -58,6 +61,7 @@ export function Encoder({
   size = 40,
   midiTarget,
   learnLabel,
+  globalTarget,
   width,
   short,
   hint,
@@ -156,10 +160,19 @@ export function Encoder({
             { label: "Reset to default", onSelect: reset, disabled },
             { separator: true },
             {
-              label: "MIDI learn",
+              label: globalTarget ? "MIDI learn (this track, in this project)" : "MIDI learn",
               disabled: !midiTarget,
               onSelect: () => midiTarget && startMidiLearn(midiTarget, learnLabel ?? def.label),
             },
+            ...(globalTarget
+              ? [
+                  {
+                    label: `MIDI learn: ${globalTarget.label} (every project)`,
+                    onSelect: () =>
+                      startMidiLearn(globalTarget.target, globalTarget.label, "global"),
+                  },
+                ]
+              : []),
           ])
         }
       >

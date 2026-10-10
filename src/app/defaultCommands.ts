@@ -20,6 +20,26 @@ import { tapTempo } from "./TransportBar";
 const store = () => useStore.getState();
 const shell = () => useShell.getState();
 
+/** Edit the page next to the one being edited; while playing it's queued, as a click does. */
+function stepPage(dir: 1 | -1) {
+  const s = store();
+  const i = s.project.slots.findIndex((x) => x.id === s.editSlotId);
+  const next = s.project.slots[Math.max(0, Math.min(s.project.slots.length - 1, i + dir))];
+  if (!next || next.id === s.editSlotId) return;
+  s.setUi({ editSlotId: next.id, selectedSteps: {} });
+  if (s.playing && next.id !== s.playSlotId) s.setUi({ queuedSlotId: next.id });
+  else if (!s.playing) s.setUi({ playSlotId: next.id });
+}
+
+/** Select the track above or below: a controller's knobs follow the selected track (D121). */
+function stepTrack(dir: 1 | -1) {
+  const s = store();
+  const tracks = s.project.tracks;
+  const i = tracks.findIndex((t) => t.id === s.selectedTrackId);
+  const next = tracks[Math.max(0, Math.min(tracks.length - 1, i < 0 ? 0 : i + dir))];
+  if (next) s.setUi({ selectedTrackId: next.id });
+}
+
 export function defaultCommands(): Command[] {
   return [
     // ---- transport ----
@@ -37,7 +57,39 @@ export function defaultCommands(): Command[] {
       keys: ["R"],
       run: () => store().setUi({ recording: !store().recording }),
     },
+    // for controllers' Play and Stop buttons (D122, D123)
+    {
+      id: "transport.play",
+      title: "Play",
+      category: "Transport",
+      run: () => void (store().playing || clock.play()),
+    },
+    { id: "transport.stop", title: "Stop", category: "Transport", run: clock.stop },
     { id: "transport.tap", title: "Tap tempo", category: "Transport", keys: ["T"], run: tapTempo },
+    {
+      id: "page.next",
+      title: "Next page",
+      category: "Pages",
+      run: () => stepPage(1),
+    },
+    {
+      id: "page.previous",
+      title: "Previous page",
+      category: "Pages",
+      run: () => stepPage(-1),
+    },
+    {
+      id: "track.next",
+      title: "Select the next track",
+      category: "Tracks",
+      run: () => stepTrack(1),
+    },
+    {
+      id: "track.previous",
+      title: "Select the previous track",
+      category: "Tracks",
+      run: () => stepTrack(-1),
+    },
     {
       id: "beatbox.record",
       title: "Record a beatbox",

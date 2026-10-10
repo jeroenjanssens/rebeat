@@ -45,6 +45,10 @@ export interface Project {
 
 export type PlayMode = "loop" | "song";
 
+/** How a controller sends values (D120): absolute, or a relative encoding (offset 64, two's
+ * complement, sign bit). */
+export type MidiMode = "absolute" | "rel64" | "rel2c" | "relsign";
+
 export interface MidiMapping {
   id: string;
   /** "cc" for controllers, "note" for buttons/pads. */
@@ -56,6 +60,10 @@ export interface MidiMapping {
   /** e.g. "track:<id>:sound.cutoff", "track:<id>:volume", "master:volume", "command:transport.toggle" */
   target: string;
   label: string;
+  /** Absolute unless learned or set otherwise (schema 8). */
+  mode?: MidiMode;
+  /** A controller map's slot ("knob1", "fader2", "play"): global mappings from a map. */
+  slot?: string;
 }
 
 export interface PerfSetup {

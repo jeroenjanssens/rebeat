@@ -1,5 +1,7 @@
 /** User settings (not per project): theme, UI scale, audio devices, shortcuts, layout. */
 import { create } from "zustand";
+import type { MidiMapping } from "../model/project";
+import type { PadsChannel } from "../midi/mapping";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { platform } from "../platform";
 
@@ -88,6 +90,21 @@ export interface Settings {
   midiInputs: Record<string, boolean>;
   /** Start Web MIDI with the audio (the user enabled it once). */
   midiEnabled: boolean;
+  /** Your controller's mappings, in every project (D121); targets are roles. */
+  midiMappings: MidiMapping[];
+  /** The controller map in use (D124): a map's id, "custom" or "none". */
+  midiController: string;
+  /** Notes on this channel always play step tracks as pads (D119): 0..15, "any" or "off". */
+  midiPadsChannel: PadsChannel;
+  /** Relative encoders: how far one step moves a knob (×1/127). */
+  midiSensitivity: number;
+  /** Absolute controls take over only when they reach the value (soft takeover, D120). */
+  midiPickup: boolean;
+  /** Inputs that speak Mackie Control (their transport notes run Rebeat's, D123), besides the
+   * ones whose name says MCU. */
+  midiMackieInputs: string[];
+  /** MIDI Start/Continue and Stop messages play and stop (a controller's Play button, D123). */
+  midiFollowStart: boolean;
   previewVolume: number;
   /** When nothing plays yet, the first loop recording sets the tempo (loop-pedal style). */
   freeFirstLoop: boolean;
@@ -127,6 +144,13 @@ export const DEFAULT_SETTINGS: Settings = {
   countInBars: 1,
   midiInputs: {},
   midiEnabled: false,
+  midiMappings: [],
+  midiController: "none",
+  midiPadsChannel: 9,
+  midiSensitivity: 2,
+  midiPickup: false,
+  midiMackieInputs: [],
+  midiFollowStart: true,
   previewVolume: 0.8,
   freeFirstLoop: false,
   onboarded: false,
