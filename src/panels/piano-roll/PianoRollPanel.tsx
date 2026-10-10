@@ -297,9 +297,7 @@ function PianoRoll({ track }: { track: Track }) {
         }
       }, g.key);
     } else if (g.kind === "move") {
-      const dStep = g.free
-        ? (e.clientX - g.x) / colW
-        : Math.round((e.clientX - g.x) / colW);
+      const dStep = g.free ? (e.clientX - g.x) / colW : Math.round((e.clientX - g.x) / colW);
       let dPitch = -Math.round((e.clientY - g.y) / rowH);
       if (scaleLock && g.orig.length)
         dPitch = snapToKey(g.orig[0].pitch + dPitch, key) - g.orig[0].pitch;
@@ -320,9 +318,7 @@ function PianoRoll({ track }: { track: Track }) {
         setSelected(new Set(next.map(noteKey)));
       }
     } else if (g.kind === "resize") {
-      const d = g.free
-        ? (e.clientX - g.x) / colW
-        : Math.round((e.clientX - g.x) / colW);
+      const d = g.free ? (e.clientX - g.x) / colW : Math.round((e.clientX - g.x) / colW);
       edit((l) => {
         for (const r of g.refs) {
           const orig = g.orig.get(noteKey(r)) ?? 1;

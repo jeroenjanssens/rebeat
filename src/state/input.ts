@@ -244,17 +244,10 @@ export function recordNoteOn(track: Track, pitch: number, velocity: number): num
     if (track.mode !== "notes") return null; // padInput handles Hits
     const now = performance.now();
     const sameChord =
-      chordWindow.trackId === trackId &&
-      now - chordWindow.at < 60 &&
-      chordWindow.index >= 0;
+      chordWindow.trackId === trackId && now - chordWindow.at < 60 && chordWindow.index >= 0;
     const cursor = s.cursor;
-    const index = sameChord ? chordWindow.index : (cursor?.trackId === trackId ? cursor.index : 0);
-    writeStep(
-      trackId,
-      index,
-      (st) => apply(st, velocity, [pitch], 0, !!sameChord),
-      `entry-${now}`,
-    );
+    const index = sameChord ? chordWindow.index : cursor?.trackId === trackId ? cursor.index : 0;
+    writeStep(trackId, index, (st) => apply(st, velocity, [pitch], 0, !!sameChord), `entry-${now}`);
     chordWindow = { at: now, index, trackId };
     if (!sameChord) {
       const len = laneLen(trackId);

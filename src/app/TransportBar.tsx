@@ -323,8 +323,14 @@ export function TransportBar() {
       <button
         className="hw-btn !min-h-[28px] hidden @[950px]:inline-flex"
         data-active={recordMode === "replace"}
-        onClick={() => setSettings({ recordMode: recordMode === "overdub" ? "replace" : "overdub" })}
-        title={recordMode === "overdub" ? "Overdub: adds notes, keeps existing (click for Replace)" : "Replace: clears a step the first time you play it each loop (click for Overdub)"}
+        onClick={() =>
+          setSettings({ recordMode: recordMode === "overdub" ? "replace" : "overdub" })
+        }
+        title={
+          recordMode === "overdub"
+            ? "Overdub: adds notes, keeps existing (click for Replace)"
+            : "Replace: clears a step the first time you play it each loop (click for Overdub)"
+        }
         data-hint="transport.recordMode"
       >
         {recordMode === "overdub" ? "Ovd" : "Rep"}
@@ -428,7 +434,11 @@ export function TransportBar() {
         className="hw-btn !min-h-[28px] hidden @[1200px]:inline-flex"
         data-active={snap}
         onClick={() => setSettings({ snap: !snap })}
-        title={snap ? "Snap on: note starts snap to the Q grid (click to record free timing)" : "Snap off: exact timing recorded as sub-step offset (click to snap)"}
+        title={
+          snap
+            ? "Snap on: note starts snap to the Q grid (click to record free timing)"
+            : "Snap off: exact timing recorded as sub-step offset (click to snap)"
+        }
         data-hint="transport.snap"
       >
         <Magnet size={12} />
