@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { connectControllers, useControllers } from "../audio-io/controllers/controllers";
+import {
+  sendTestText,
+  startMiniLab3Display,
+  stopMiniLab3Display,
+} from "../audio-io/controllers/minilab3";
 import { cancelLearn, isMackie, setInputEnabled, startMidi, useMidi } from "../audio-io/midi";
 import { toast } from "../components/Toast";
 import {
@@ -182,6 +187,7 @@ export function MidiSettings() {
                   ))}
                 </ul>
                 {map.unconfirmed && <p className="text-[11px] text-faint">{map.unconfirmed}</p>}
+                {map.id === "minilab3" && <MiniLab3DisplayOptions />}
                 <LearnAll map={map} />
                 <table className="w-full text-[11px]" data-testid="midi-map-slots">
                   <tbody>
@@ -409,6 +415,45 @@ function MappingList(props: {
         </div>
       ))}
     </section>
+  );
+}
+
+/** MiniLab 3 display options: send test text and toggle show-names (WS-C). */
+function MiniLab3DisplayOptions() {
+  const settings = useSettings();
+  return (
+    <div className="flex flex-wrap items-center gap-3 text-[11px]" data-hint="app.midi.display">
+      <label className="flex items-center gap-1.5">
+        <input
+          type="checkbox"
+          checked={settings.midiShowDisplayNames}
+          onChange={(e) => {
+            useSettings.getState().set({ midiShowDisplayNames: e.target.checked });
+            if (e.target.checked) {
+              void startMiniLab3Display();
+            } else {
+              stopMiniLab3Display();
+            }
+          }}
+        />
+        Show names on the MiniLab display
+      </label>
+      <button
+        className="tool-btn border border-line"
+        data-testid="minilab3-send-test"
+        onClick={() => {
+          void startMidi(true).then(() => {
+            const ok = sendTestText("Rebeat", "Connected!");
+            toast(
+              ok ? "Sent to MiniLab 3 display" : "MiniLab 3 output not found",
+              ok ? undefined : "error",
+            );
+          });
+        }}
+      >
+        Send test text
+      </button>
+    </div>
   );
 }
 
