@@ -97,6 +97,17 @@ export function padInput(track: Track, velocity: number, notes?: number[]) {
   }
 }
 
+/**
+ * Recording a held note (WS-B): the note-on writes the note, the note-off sets its length.
+ * Returns an id for `recordNoteOff`, or null when nothing was recorded.
+ */
+export function recordNoteOn(track: Track, pitch: number, velocity: number): number | null {
+  padInput(track, velocity, [pitch]);
+  return null;
+}
+
+export function recordNoteOff(_id: number | null) {}
+
 /** What a played note becomes: snapped to the key (scale lock) and/or a chord (chord mode). */
 export function playedNotes(midi: number): number[] {
   const s = get();
