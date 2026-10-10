@@ -11,8 +11,7 @@ Status (2026-10-09): every phase of the original roadmap is built, plus several 
 the `step-tracks` branch and merged): the drum / instrument / audio track kinds became one kind
 of track with a **sound** (sample, synth, sampled instrument) and a **mode** (Hits, Notes,
 Clip), schema 7, a library ordered by what you pick, one set of icons, and an Inspector Sound
-section. The latest batch is **beatbox to step tracks** (§0.6h, D105–D118, on the `beatbox`
-branch): a Beatbox panel and a small deep learning model (trained in `ml/`) that turn your
+section. The latest batch is **beatbox to step tracks** (§0.6h, D105–D118): a Beatbox panel and a small deep learning model (trained in `ml/`) that turn your
 beatboxing into step tracks. Left: tests
 with real hardware (mic, MIDI, Launchpad/Push), signing the desktop release, the license (D6),
 and the "later" items in PLAN.md §0.7. The repository is public and `main` deploys to GitHub

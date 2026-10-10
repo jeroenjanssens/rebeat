@@ -1,6 +1,6 @@
 # Rebeat — Product & Technical Plan
 
-> **Status (2026-10-09):** All phases of §7 are implemented (M, G, 0–10), plus the batches in §0.6b–§0.6g (step tracks were built on the `step-tracks` branch and are merged). §0.6h (beatbox to step tracks) is done on the `beatbox` branch, to be merged. Repo: `github.com/jeroenjanssens/rebeat` (public; `main` deploys to GitHub Pages). §0 describes the current code; §0.7 lists known limitations and what is left for later.
+> **Status (2026-10-09):** All phases of §7 are implemented (M, G, 0–10), plus the batches in §0.6b–§0.6g (step tracks were built on the `step-tracks` branch and are merged). §0.6h (beatbox to step tracks) and §0.6i (MIDI controllers) are done and merged (2026-10-10). Repo: `github.com/jeroenjanssens/rebeat` (public; `main` deploys to GitHub Pages). §0 describes the current code; §0.7 lists known limitations and what is left for later.
 > Every open question in §6 has a **default**. All defaults were accepted when Phase M was started, except where §6 records a different choice. To change one, refer to it by number (e.g. "D7: B").
 
 ---
@@ -100,11 +100,9 @@ Key implementation patterns:
 
 ### 0.6 Next steps
 
-0. Beatbox to step tracks (§0.6h, D105–D118) ✅ on the `beatbox` branch: review and merge into
-   `main`. Decide whether the shipped model may train on beatboxset1 (CC BY-SA, D108). Record and
+0. Beatbox to step tracks (§0.6h, D105–D118) ✅ merged into `main` (2026-10-10). Decide whether the shipped model may train on beatboxset1 (CC BY-SA, D108). Record and
    label your own sounds (and friends'), export them, and train model 2 with them (`ml/README.md`).
-0b. MIDI controllers (§0.6i, D119–D125) ✅ on the `midi-controllers` branch: review and merge (after
-   `beatbox`). With a device: check what it sends (the Monitor in Settings → MIDI) and fix its map.
+0b. MIDI controllers (§0.6i, D119–D125) ✅ merged into `main` (2026-10-10). With a device: check what it sends (the Monitor in Settings → MIDI) and fix its map.
 1. Try the app with real hardware: a microphone and audio interface (calibration, monitoring), a MIDI keyboard/controller (learn), and a Launchpad or Push (the Push color palette is approximate).
 2. Desktop releases: add signing certificates and notarization secrets, then tag `v0.1.0` to produce draft releases.
 3. Decide D6 (license): the repository is public now, without one.
