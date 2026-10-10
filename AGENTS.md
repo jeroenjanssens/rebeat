@@ -625,6 +625,11 @@ onPatchEdit` hook, debounced `saveSoundSoon`).
   separate on purpose (D126).
 - **Controller-map slots have kinds** (`slotKind`: the slot id's prefix). Only knobs and encoders
   may be sniffed as relative; a fader that switched once stayed jumpy for good (D129).
+- **A track edit redraws everything that shows the track.** A controller's faders and knobs
+  send hundreds of messages a second, so `midi.ts` applies continuous values once a frame
+  (`applySoon`), `reconcile` leaves a voice alone when only the channel changed
+  (`soundChanged`), and the synth editor is memoized on it. New heavy views of a track should do
+  the same.
 - **Agent worktrees start from the pushed `origin/main`,** not from local commits: merge `main`
   into them first. ESLint ignores `.claude/` (worktrees live there); vitest only looks in
   `src/`.
