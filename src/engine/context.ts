@@ -52,6 +52,7 @@ export async function startAudio(): Promise<boolean> {
     startPerf();
     if (useSettings.getState().midiEnabled) void startMidi();
     startLiveInput();
+    void import("../midi/displayFeed").then((m) => m.startDisplayFeed());
     const { outputDeviceId } = useSettings.getState();
     if (outputDeviceId) await setOutputDevice(outputDeviceId);
     startAudioLoad(audioContext());

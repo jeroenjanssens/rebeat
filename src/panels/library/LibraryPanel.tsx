@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState, type CSSProperties } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { FolderMinus } from "lucide-react";
 import { askRemoveFolder, RemoveFolderDialog } from "./RemoveFolder";
 import { inFolder } from "../../library/folders";
@@ -23,6 +23,7 @@ import { setKeysTarget } from "../../state/keys";
 import { useSettings } from "../../state/settings";
 import { useSelectedTrack } from "../../state/store";
 import { KIT_MIME, addInstrumentTrack, addSampleTracks } from "../../state/trackActions";
+import { setBrowseIndex, setOnBrowseSelect } from "../../library/playable";
 import { FilterBar } from "./Filters";
 import { ImportLink } from "./ImportLink";
 import { ItemRow } from "./ItemRow";
@@ -144,7 +145,61 @@ export function LibraryPanel() {
 
   const { folders, tags } = useFoldersAndTags();
   const usedIds = useUsedIds();
+
+  // Playable: allSamples chip lives on the Location so useLibraryItems re-runs when it changes.
+  const isPlayable = loc.kind === "playable";
+  const playableAllSamples =
+    isPlayable && !!(loc as { kind: "playable"; allSamples?: boolean }).allSamples;
+
   const items = useLibraryItems(loc, filters);
+
+  // Debounce timer for putting a Playable item on the keys.
+  const playableDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /** Put item on keys (debounced for arrow-key / encoder navigation). */
+  const putOnKeys = useCallback(
+    (item: Item, immediate = false) => {
+      if (!isPlayable) return;
+      const doIt = () => {
+        if (item.instrument) {
+          setKeysTarget({ kind: "sound", source: "catalog", id: item.id, name: item.name });
+        } else {
+          setKeysTarget({ kind: "sound", source: "sample", id: item.id, name: item.name });
+        }
+        setBrowseIndex(item.id, playableAllSamples);
+      };
+      if (immediate) {
+        doIt();
+        return;
+      }
+      if (playableDebounce.current !== null) clearTimeout(playableDebounce.current);
+      playableDebounce.current = setTimeout(() => {
+        playableDebounce.current = null;
+        doIt();
+      }, 150);
+    },
+    [isPlayable, playableAllSamples],
+  );
+
+  // Register/unregister the scroll callback so browsePlayable can scroll this panel.
+  useEffect(() => {
+    if (!isPlayable) {
+      setOnBrowseSelect(null);
+      return () => {};
+    }
+    setOnBrowseSelect((id: string) => {
+      select(id);
+      // scroll into view next frame (list may not have rerendered yet)
+      requestAnimationFrame(() => {
+        listRef.current
+          ?.querySelector(
+            `[data-sample="${CSS.escape(id)}"], [data-instrument="${CSS.escape(id)}"]`,
+          )
+          ?.scrollIntoView({ block: "nearest" });
+      });
+    });
+    return () => setOnBrowseSelect(null);
+  }, [isPlayable]);
 
   // selecting a track shows its sample in the library
   useEffect(() => {
@@ -228,9 +283,15 @@ export function LibraryPanel() {
       const next = items[Math.min(items.length - 1, Math.max(0, i < 0 ? 0 : i + d))];
       if (!next) return;
       select(next.id);
-      play(next);
+      if (isPlayable) {
+        putOnKeys(next);
+      } else {
+        play(next);
+      }
       listRef.current
-        ?.querySelector(`[data-sample="${CSS.escape(next.id)}"]`)
+        ?.querySelector(
+          `[data-sample="${CSS.escape(next.id)}"], [data-instrument="${CSS.escape(next.id)}"]`,
+        )
         ?.scrollIntoView({ block: "nearest" });
     };
     const actions: Record<string, (() => void) | undefined> = {
@@ -297,6 +358,23 @@ export function LibraryPanel() {
             set={(f) => setFilters((cur) => ({ ...cur, ...f }))}
             tags={tags}
           />
+        )}
+        {/* Playable: chip to include all samples (including drums) */}
+        {isPlayable && (
+          <button
+            className="tool-btn shrink-0 border border-line !text-[10.5px]"
+            data-active={playableAllSamples}
+            data-hint="library.playable.all-samples"
+            title="Show drum and percussion samples too"
+            onClick={() =>
+              setLoc({
+                kind: "playable",
+                allSamples: !playableAllSamples,
+              } as Location)
+            }
+          >
+            Samples: all
+          </button>
         )}
         <button
           className="tool-btn shrink-0"
@@ -427,8 +505,11 @@ export function LibraryPanel() {
                       tiles={view === "tiles"}
                       renaming={renaming === item.id}
                       track={track}
-                      onSelect={() => select(item.id)}
-                      onPlay={() => play(item)}
+                      onSelect={() => {
+                        select(item.id);
+                        if (isPlayable) putOnKeys(item, true);
+                      }}
+                      onPlay={() => (isPlayable ? putOnKeys(item, true) : play(item))}
                       setRenaming={(on) => setRenaming(on ? item.id : null)}
                     />
                   </Fragment>

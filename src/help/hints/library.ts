@@ -204,6 +204,19 @@ const hints: Hints = {
     text: "Put this sound on the keys so your MIDI keyboard, the on-screen pads and the computer keys play it directly — without adding it to a track. It plays through the Keys strip in the mixer. Press K when a sound is selected to do the same thing.",
     guide: "keys-target",
   },
+
+  // ─── Playable ─────────────────────────────────────────────────────────────
+
+  "library.playable": {
+    title: "Playable",
+    text: "Every sound the keys can play in one list: synths, sampled instruments, Your sounds, and pitched samples. Use ↑ ↓ to step through them; selecting one puts it on the keys. Turn the MiniLab 3's main encoder to browse the same list — the Library panel follows along.",
+    guide: "library-playable",
+  },
+  "library.playable.all-samples": {
+    title: "Samples: all",
+    text: "When on, the list also includes drum and percussion samples (which are excluded by default since they don't play musically across the keys).",
+    guide: "library-playable",
+  },
 };
 
 export default hints;
