@@ -9,6 +9,7 @@ import { Keyboard } from "lucide-react";
 import { addKeyHook, keyName } from "../../app/commands";
 import { applyHeld, setStep } from "../../state/actions";
 import { padInput, playedNotes } from "../../state/input";
+import { noteOn as keysNoteOn } from "../../state/keys";
 import { useEditPattern, useSelectedTrack, useStore } from "../../state/store";
 import { geometry, type SizeClass } from "./layout";
 import { StepsArea } from "./StepsArea";
@@ -83,6 +84,9 @@ function usePadHit() {
 
 /** The computer keyboard plays the pads (drum tracks) or a piano (instrument tracks). */
 function useKeyboardPads(track: Track, root: React.RefObject<HTMLElement | null>) {
+  // For Notes tracks: map key codes to active releases so keyup releases each held note.
+  const keyReleases = useRef(new Map<string, () => void>());
+
   useEffect(
     () =>
       addKeyHook((e, down) => {
@@ -107,7 +111,13 @@ function useKeyboardPads(track: Track, root: React.RefObject<HTMLElement | null>
           if (down && !e.repeat) {
             const base = (track.category === "bass" ? 36 : 48) + s.keyboardOctave * 12;
             const midi = base + semis;
-            playPad(track, velocity, [midi], root.current?.querySelector(`[data-midi="${midi}"]`));
+            // held note: keydown starts, keyup releases (via keysNoteOn)
+            const release = keysNoteOn(midi, velocity, "computer");
+            keyReleases.current.set(key, release);
+            flash(root.current?.querySelector(`[data-midi="${midi}"]`));
+          } else if (!down) {
+            keyReleases.current.get(key)?.();
+            keyReleases.current.delete(key);
           }
           return true;
         }
@@ -199,7 +209,6 @@ function DrumPads({ size }: { size: SizeClass }) {
 
 /** In-key note layout: rows go up by a fourth (3 scale degrees), the root is highlighted. */
 function NotePads({ track, size }: { track: Track; size: SizeClass }) {
-  const { hit, stopRepeat } = usePadHit();
   const octave = useStore((s) => s.keyboardOctave);
   const pattern = useEditPattern();
   const key = useStore((s) => pageKey(s.project, pattern));
@@ -219,6 +228,30 @@ function NotePads({ track, size }: { track: Track; size: SizeClass }) {
       pads.push({ midi, root: degree % n === 0 });
     }
   }
+  // held releases for in-key pads; released on pointerUp/pointerLeave
+  const padReleases = useRef(new Map<number, () => void>());
+  const pressPad = (e: React.PointerEvent<HTMLButtonElement>, midi: number) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const s = useStore.getState();
+    const velocity = s.accentMode
+      ? 1
+      : Math.min(1, Math.max(0.2, 1 - (e.clientY - r.top) / r.height + 0.25));
+    padReleases.current.get(midi)?.();
+    const release = keysNoteOn(midi, velocity, "screen");
+    padReleases.current.set(midi, release);
+  };
+  const releasePad = (midi: number) => {
+    padReleases.current.get(midi)?.();
+    padReleases.current.delete(midi);
+  };
+  // release all held pads when unmounting
+  useEffect(
+    () => () => {
+      for (const r of padReleases.current.values()) r();
+      padReleases.current.clear();
+    },
+    [],
+  );
   return (
     <div className="flex shrink-0 flex-col gap-1.5">
       <div
@@ -235,9 +268,9 @@ function NotePads({ track, size }: { track: Track; size: SizeClass }) {
             className={`perf-pad num touch-none text-[10px] font-semibold text-ink ${p.root ? "root" : ""}`}
             data-hint="dm.pads.note-pad"
             style={{ "--c": track.color } as CSSProperties}
-            onPointerDown={(e) => hit(e, track, [p.midi])}
-            onPointerUp={stopRepeat}
-            onPointerLeave={stopRepeat}
+            onPointerDown={(e) => pressPad(e, p.midi)}
+            onPointerUp={() => releasePad(p.midi)}
+            onPointerLeave={() => releasePad(p.midi)}
           >
             {noteName(p.midi, flats)}
           </button>

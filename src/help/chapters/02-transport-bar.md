@@ -28,3 +28,17 @@ The bar along the top of the window controls playback and settings for the whole
 | Gear                      | [Settings](command:app.settings) ({{key:app.settings}}).                                                                                                                                                                                                                                                           |
 
 On narrow windows some controls hide; they're always available in the command palette.
+
+## The keys {#keys-target}
+
+The **Keys** chip in the transport bar shows what the keys play: by default it follows the selected track (the chip reads "Keys · _track name_"). Click it to open a menu:
+
+- **Follow selected track** — the keys always play whatever track you click on in the drum machine. This is the default.
+- **A specific track** — the keys stay on that track even when you select a different one. Useful when you want to play a bass line while editing the drums above it.
+- **A library sound** — the keys play a sound from the library without adding it to the project. The sound plays through a **Keys** strip in the mixer (it appears while a library sound is active), so you can add reverb and delay just like a track. Recent library sounds appear at the bottom of the menu.
+
+To put a library sound on the keys from the library panel: hover over it and click the keyboard icon, or press **K** with it selected. You can then play it with your MIDI keyboard, the on-screen pads, or the computer keys.
+
+**Add as a track** — if you've been playing a library sound and want to keep it, click "Add as a track" in the Keys menu (or run the command {{key:keys.add-track}}). Rebeat adds a Notes track with that sound and points the keys at it.
+
+The keys always use a separate voice from the sequencer. On a mono synth the sequencer keeps playing uninterrupted while you play on top of it.

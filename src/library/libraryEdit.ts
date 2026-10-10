@@ -8,14 +8,13 @@ import * as Tone from "tone";
 import { produce } from "immer";
 import { create } from "zustand";
 import { createInstrument, type InstrumentVoice } from "../engine/instruments";
-import { makeTrack, prefixed } from "../model/project";
 import { uid } from "../model/id";
-import { SOUND_PARAMS, defaultParams } from "../model/params";
 import type { Track } from "../model/types";
 import { useStore } from "../state/store";
 import { previewInput } from "./audition";
 import type { CatalogInstrument } from "./instruments";
-import { convertSynthKnobs, detachedTracks, editPatch } from "./synthTrack";
+import { trackForInstrument } from "./soundTrack";
+import { detachedTracks, editPatch } from "./synthTrack";
 import { saveSoundSoon } from "./userInstruments";
 
 interface Entry {
@@ -35,13 +34,7 @@ const voices = new Map<string, { voice: InstrumentVoice; out: Tone.Gain }>();
 
 /** The library sound (catalog id) as a track that isn't in the project. */
 function trackOf(c: CatalogInstrument): Track {
-  const sound = JSON.parse(JSON.stringify(c.source));
-  const t = makeTrack("notes", c.low ? "bass" : "keys", c.name, c.name, [], sound);
-  for (const k of Object.keys(t.params)) if (k.startsWith("sound.")) delete t.params[k];
-  Object.assign(t.params, prefixed("sound", defaultParams(SOUND_PARAMS.voice)), c.params ?? {});
-  t.effects = JSON.parse(JSON.stringify(c.effects ?? []));
-  convertSynthKnobs(t);
-  return t;
+  return trackForInstrument(c);
 }
 
 /**

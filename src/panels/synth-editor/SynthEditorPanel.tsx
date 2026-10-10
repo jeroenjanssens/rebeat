@@ -59,6 +59,7 @@ import {
 } from "../../model/synth";
 import type { Track } from "../../model/types";
 import { useSelectedTrack, useStore } from "../../state/store";
+import { noteOn as keysNoteOn } from "../../state/keys";
 import { playInstrumentOn, setSound, soundLabel } from "../../state/trackActions";
 
 type ClipKind = "osc" | "filter" | "env" | "lfo";
@@ -144,7 +145,8 @@ const trackTarget = (
       if (t) fn(t);
     }, key),
   synth: () => engine.trackSynth(track),
-  hold: (pitch, velocity) => engine.holdNote(track, pitch, velocity),
+  // route through keys.ts so the live voice is used and notes are recorded (D126)
+  hold: (pitch, velocity) => keysNoteOn(pitch, velocity, "screen"),
   once: () => engine.playOnce(track),
 });
 

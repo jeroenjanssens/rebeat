@@ -3,6 +3,7 @@ import {
   Circle,
   Command as CommandIcon,
   Expand,
+  Keyboard,
   LayoutPanelLeft,
   Minimize,
   Play,
@@ -23,6 +24,7 @@ import { STEP_SIZE_QUARTERS } from "../model/types";
 import { platform } from "../platform";
 import { getLoad, startMainLoad } from "../engine/load";
 import { useSettings } from "../state/settings";
+import { addKeysSoundAsTrack, keysTargetName, setKeysTarget, useKeys } from "../state/keys";
 import { useStore } from "../state/store";
 import { isExampleId } from "../templates/examples";
 import { LAYOUT_PRESETS, applyPreset, openPanel } from "./layouts";
@@ -221,6 +223,76 @@ function AudioStatus() {
       />
       <span className="label hidden @[1100px]:inline">{text}</span>
     </span>
+  );
+}
+
+/** The keys chip: shows the current target and a menu to change it. */
+function KeysChip() {
+  const chipRef = useRef<HTMLButtonElement>(null);
+  const keysTarget = useKeys((s) => s.target);
+  const keysStatus = useKeys((s) => s.status);
+  const recent = useKeys((s) => s.recent);
+  const tracks = useStore((s) => s.project.tracks);
+  const selectedTrackId = useStore((s) => s.selectedTrackId);
+
+  const name = keysTargetName();
+  const isSound = keysTarget.kind === "sound";
+  const isLoading = keysStatus === "loading";
+
+  const openMenu = () => {
+    const notesTracks = tracks.filter((t) => t.mode === "notes");
+    const items: import("../components/Menu").MenuItem[] = [
+      {
+        label: "Follow selected track",
+        checked: keysTarget.kind === "selected",
+        onSelect: () => setKeysTarget({ kind: "selected" }),
+      },
+    ];
+    if (notesTracks.length > 0) {
+      items.push({ separator: true });
+      for (const t of notesTracks) {
+        items.push({
+          label: t.name,
+          checked: keysTarget.kind === "track" && keysTarget.id === t.id,
+          onSelect: () => setKeysTarget({ kind: "track", id: t.id }),
+        });
+      }
+    }
+    if (recent.length > 0) {
+      items.push({ separator: true });
+      for (const r of recent) {
+        items.push({
+          label: r.name,
+          checked: keysTarget.kind === "sound" && keysTarget.id === r.id,
+          onSelect: () => setKeysTarget(r),
+        });
+      }
+    }
+    if (isSound) {
+      items.push({ separator: true });
+      items.push({ label: "Add as a track", onSelect: () => addKeysSoundAsTrack() });
+    }
+    dropdown(chipRef.current!, items);
+  };
+
+  const selectedTrackName = tracks.find((t) => t.id === selectedTrackId)?.name;
+  const label = keysTarget.kind === "selected" ? (selectedTrackName ?? "No track") : name;
+
+  return (
+    <button
+      ref={chipRef}
+      className="field hidden @[800px]:inline-flex"
+      title="Keys target: what the keyboard, MIDI and pads play"
+      data-hint="transport.keys"
+      data-testid="keys-chip"
+      onClick={openMenu}
+    >
+      <Keyboard size={11} />
+      <span className="label">Keys</span>
+      <span className="num max-w-[80px] truncate" style={{ opacity: isLoading ? 0.5 : 1 }}>
+        {isLoading ? "Loading…" : label}
+      </span>
+    </button>
   );
 }
 
@@ -449,6 +521,7 @@ export function TransportBar() {
           Song
         </button>
       </div>
+      <KeysChip />
 
       <div className="flex-1" />
 

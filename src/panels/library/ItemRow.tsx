@@ -1,10 +1,11 @@
-import { Cloud, Heart, Loader2 } from "lucide-react";
+import { Cloud, Heart, Keyboard, Loader2 } from "lucide-react";
 import { SoundIcon, soundKind } from "../../components/soundIcons";
 import { toast } from "../../components/Toast";
 import { prefetchInstrument } from "../../engine/instruments";
 import { useDownloads } from "../../library/downloads";
 import type { CatalogInstrument } from "../../library/instruments";
 import { deleteInstrument, makeMultiSample, renameInstrument } from "../../library/userInstruments";
+import { setKeysTarget, useKeys } from "../../state/keys";
 import { useSettings } from "../../state/settings";
 import { editorLabel, openInstrument, openSample } from "./open";
 import { useShell } from "../../app/shell";
@@ -205,6 +206,32 @@ function instrumentMenu(
   ];
 }
 
+/** A small keyboard icon that puts the sound on the keys. Active when it's the current target. */
+function PlayOnKeysBtn({
+  id,
+  name,
+  source,
+}: {
+  id: string;
+  name: string;
+  source: "catalog" | "sample";
+}) {
+  const isActive = useKeys((s) => s.target.kind === "sound" && s.target.id === id);
+  return (
+    <button
+      className={`shrink-0 ${isActive ? "text-accent" : "text-faint opacity-0 group-hover:opacity-100"}`}
+      title="Play on the keys (K)"
+      data-hint="library.play-on-keys"
+      onClick={(e) => {
+        e.stopPropagation();
+        setKeysTarget({ kind: "sound", source, id, name });
+      }}
+    >
+      <Keyboard size={11} />
+    </button>
+  );
+}
+
 /** One instrument in the library list. */
 function InstrumentRow({
   item,
@@ -288,6 +315,7 @@ function InstrumentRow({
             </span>
           )
         )}
+        <PlayOnKeysBtn id={c.id} name={item.name} source="catalog" />
         <button
           className={`shrink-0 ${item.favorite ? "text-lit" : "text-faint opacity-0 group-hover:opacity-100"}`}
           title="Favorite"
@@ -423,6 +451,7 @@ export function ItemRow({
           </span>
         )}
         <span className="num shrink-0 text-[9.5px] text-faint">{fmtDur(item.duration)}</span>
+        <PlayOnKeysBtn id={item.id} name={item.name} source="sample" />
         {!item.builtIn && (
           <button
             className={`shrink-0 ${item.favorite ? "text-lit" : "text-faint opacity-0 group-hover:opacity-100"}`}
