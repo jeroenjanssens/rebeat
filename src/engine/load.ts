@@ -73,7 +73,11 @@ const WINDOW_MS = 1000;
 
 function recordEntry(start: number, duration: number) {
   longFrames.push({ start, duration });
-  const cutoff = start - WINDOW_MS;
+}
+
+/** The busy share of the last second (it falls back to 0 when no long frames come). */
+function updateMainBusy(now: number) {
+  const cutoff = now - WINDOW_MS;
   while (longFrames.length > 0 && longFrames[0].start < cutoff) longFrames.shift();
   let busy = 0;
   for (const f of longFrames) busy += f.duration;
@@ -124,7 +128,8 @@ let schedulerLateMs = 0;
  */
 export function notifyTick(): void {
   const now = performance.now();
-  if (lastTickAt > 0) {
+  // the ticker only runs while playing: a gap after a stop isn't lateness
+  if (lastTickAt > 0 && now - lastTickAt < 1000) {
     const late = Math.max(0, now - lastTickAt - TICK_INTERVAL_MS);
     // EWMA α = 0.2 — smooth but quick to react to a run of late ticks.
     schedulerLateMs = schedulerLateMs * 0.8 + late * 0.2;
@@ -176,6 +181,12 @@ export function combineLoad(
 
 /** Current load state. */
 export function getLoad(): LoadSnapshot {
+  if (typeof performance !== "undefined") {
+    const now = performance.now();
+    updateMainBusy(now);
+    // stopped: nothing is being scheduled, so nothing is late
+    if (now - lastTickAt > 1000) schedulerLateMs = 0;
+  }
   const { fraction, label } = combineLoad(audioAvg, mainBusy, schedulerLateMs);
   return { audioAvg, audioPeak, underruns, mainBusy, schedulerLateMs, fraction, label };
 }
