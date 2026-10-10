@@ -452,16 +452,10 @@ function handle(e: MIDIMessageEvent, device: string) {
   }
 
   if (m.type === "noteon")
-    return report(
-      m,
-      playNote(m.channel, m.number, m.value / 127),
-      m.number >= 36 && useSettings.getState().midiPadsChannel === m.channel
-        ? { kind: "pad", index: m.number - 36, value: m.value, down: true }
-        : { kind: "key", index: m.number, value: m.value, down: true },
-    );
+    return report(m, playNote(m.channel, m.number, m.value / 127), noteEvent(m, true));
   if (m.type === "noteoff") {
     releaseNote(m.number);
-    return report(m, "Note released");
+    return report(m, "Note released", noteEvent(m, false));
   }
   if (m.type === "pitchbend") {
     // 14 bits, 8192 in the middle
@@ -490,6 +484,15 @@ function handle(e: MIDIMessageEvent, device: string) {
     return report(m, m.value >= 64 ? "Sustain down" : "Sustain up");
   }
   report(m, "Nothing (not mapped: right-click a knob → MIDI learn)");
+}
+
+/** A key or a pad (notes on the pads' channel), for the controller events. */
+function noteEvent(m: MidiMessage, down: boolean) {
+  const pads = useSettings.getState().midiPadsChannel;
+  const onPads = m.number >= 36 && (pads === "any" || pads === m.channel);
+  return onPads
+    ? { kind: "pad" as const, index: m.number - 36, value: down ? m.value : 0, down }
+    : { kind: "key" as const, index: m.number, value: down ? m.value : 0, down };
 }
 
 export const targetContext = (): TargetContext => {
