@@ -11,7 +11,15 @@ import { trigger } from "../engine/engine";
 import { uid } from "../model/id";
 import type { MidiMapping } from "../model/project";
 import { platform } from "../platform";
-import { keysControl, keysSustain, keysTrack, noteOn } from "../state/keys";
+import {
+  keysControl,
+  keysSustain,
+  keysTargetName,
+  keysTrack,
+  noteOn,
+  useKeys,
+} from "../state/keys";
+import { padInput } from "../state/input";
 import { useSettings } from "../state/settings";
 import { useStore } from "../state/store";
 import { setPerfControl } from "../engine/perf";
@@ -444,12 +452,12 @@ function playNote(channel: number, note: number, velocity: number): string {
     channel,
     note,
     useSettings.getState().midiPadsChannel,
-    keysTarget?.mode === "notes",
+    keysTarget?.mode === "notes" || useKeys.getState().target.kind === "sound",
   );
   if (!route) return "Nothing (below the pads' notes)";
   if (route.to === "notes") {
     // route to the keys' target (selected/locked track or library sound)
-    const targetName = keysTarget?.name ?? "keys target";
+    const targetName = keysTargetName();
     releaseNote(note);
     // noteOn handles scale lock, chord mode, live voice, recording and sustain
     held.set(note, noteOn(note, velocity, "midi"));
@@ -460,6 +468,7 @@ function playNote(channel: number, note: number, velocity: number): string {
   if (track.mode === "clip" || track.mute)
     return `Pad: ${track.name} is ${track.mute ? "muted" : "a Clip track"}`;
   trigger(track, velocity, { stepDur: 0.12 });
+  padInput(track, velocity);
   return `Pad: ${track.name}`;
 }
 

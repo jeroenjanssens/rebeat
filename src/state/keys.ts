@@ -13,6 +13,7 @@ import {
   getKeysChannel,
   holdNote,
   liveVoiceSynth,
+  trigger,
 } from "../engine/engine";
 import type { Track } from "../model/types";
 import { player } from "../model/tracks";
@@ -142,25 +143,19 @@ export function noteOn(pitch: number, velocity: number, _source: KeysSource): ()
   const track = keysTrack();
   if (!track) return () => {};
   if (player(track) === "drum") {
-    // Hits track: a short pad hit (no sustain, no recording of held length)
-    const notes = playedNotes(pitch);
-    padInput(track, velocity, notes.length > 0 ? notes : undefined);
+    // hits of a sample: a pad hit, recorded as one
+    trigger(track, velocity, { stepDur: 0.12 });
+    padInput(track, velocity);
     return () => {};
   }
   if (player(track) !== "voice") return () => {};
 
-  // Notes/voice track: use the live voice, record the note
+  // the live voice plays it; Notes record each note (its length on release), Hits a hit
   const notes = playedNotes(pitch);
-  const recordIds: (number | null)[] = notes.map((p) => recordNoteOn(track, p, velocity));
-
   const releases = notes.map((p) => holdNote(track, p, velocity));
-
-  // For recording step entry (pads channel plays through padInput in midi.ts)
-  // Only do padInput here for non-pads sources (midi.ts does it for pads)
-  // Actually, the plan says: "one recordNoteOn per sounding pitch, recordNoteOff on release"
-  // padInput is called in midi.ts for pads and here it's redundant for track notes.
-  // Let's call padInput so step entry works from all sources.
-  padInput(track, velocity, notes);
+  const recordIds: (number | null)[] =
+    track.mode === "notes" ? notes.map((p) => recordNoteOn(track, p, velocity)) : [];
+  if (track.mode !== "notes") padInput(track, velocity);
 
   const doRelease = () => {
     for (let i = 0; i < releases.length; i++) {

@@ -246,7 +246,9 @@ export function recordNoteOn(track: Track, pitch: number, velocity: number): num
     const sameChord =
       chordWindow.trackId === trackId && now - chordWindow.at < 60 && chordWindow.index >= 0;
     const cursor = s.cursor;
-    const index = sameChord ? chordWindow.index : cursor?.trackId === trackId ? cursor.index : 0;
+    // without the step cursor, playing while stopped writes nothing (as padInput)
+    if (!sameChord && !cursor) return null;
+    const index = sameChord ? chordWindow.index : cursor!.index;
     writeStep(trackId, index, (st) => apply(st, velocity, [pitch], 0, !!sameChord), `entry-${now}`);
     chordWindow = { at: now, index, trackId };
     if (!sameChord) {
