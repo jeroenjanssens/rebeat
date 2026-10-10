@@ -93,7 +93,7 @@ pnpm prettier --write src e2e && pnpm tsc --noEmit && pnpm eslint . && pnpm vite
   && pnpm playwright test --workers=4
 ```
 
-Expect about 245 unit tests and about 165 e2e tests (around 7 minutes, most of it the golden
+Expect about 350 unit tests and about 210 e2e tests (around 7 minutes, most of it the golden
 levels renders). Visual changes are
 also checked in a real browser: a throwaway Playwright spec that takes a screenshot works well
 (delete it afterwards).
