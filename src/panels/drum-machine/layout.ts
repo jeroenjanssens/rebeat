@@ -28,8 +28,9 @@ const METRICS = {
     headerW: 128,
     scopeW: 56,
     padH: 24,
+    /** Base pad width at 100% zoom (D131). */
+    basePad: 22,
     minPad: 15,
-    maxPad: 30,
     gap: 2,
     beatGap: 5,
     radius: 3,
@@ -38,8 +39,8 @@ const METRICS = {
     headerW: 292,
     scopeW: 104,
     padH: 32,
+    basePad: 30,
     minPad: 18,
-    maxPad: 54,
     gap: 3,
     beatGap: 8,
     radius: 5,
@@ -48,8 +49,8 @@ const METRICS = {
     headerW: 320,
     scopeW: 168,
     padH: 50,
+    basePad: 44,
     minPad: 26,
-    maxPad: 72,
     gap: 4,
     beatGap: 11,
     radius: 7,
@@ -68,17 +69,31 @@ export interface Geometry {
   /** Step indices grouped by beat; `barStart` marks groups that begin a new bar. */
   groups: { indices: number[]; barStart: boolean }[];
   stepsW: number;
+  /**
+   * The effective zoom multiplier (padW / basePad).
+   * In "fit" mode this reflects the computed fit ratio; in number mode it equals the zoom value.
+   * Used to find the nearest fixed level when stepping away from Fit (D131).
+   */
+  effectiveZoom: number;
 }
 
 export function stepsPerBeat(pattern: Pattern) {
   return Math.round(1 / STEP_SIZE_QUARTERS[pattern.stepSize]);
 }
 
+/**
+ * Compute the drum-machine layout geometry.
+ *
+ * - zoom === "fit": pad width fills the available panel width (minimum `m.minPad`, then scroll).
+ * - zoom is a number: pad width = `m.basePad × zoom` exactly, no fitting (scroll when too wide).
+ *
+ * Pad height scales with the effective zoom (clamped 0.8–1.6 of the nominal height).
+ */
 export function geometry(
   width: number,
   pattern: Pattern,
   sizeClass: SizeClass,
-  zoom: number,
+  zoom: number | "fit",
 ): Geometry {
   const m = METRICS[sizeClass];
   const n = pattern.stepCount;
@@ -97,19 +112,36 @@ export function geometry(
   const gapsW =
     (n - groups.length) * m.gap + (groups.length - 1) * m.beatGap + bars * (m.beatGap + 1);
   const available = width - m.headerW - m.scopeW - 40;
-  const fit = Math.max(m.minPad * zoom, Math.min(m.maxPad * zoom, (available - gapsW) / n));
+
+  let padW: number;
+  let effectiveZoom: number;
+
+  if (zoom === "fit") {
+    // Fill the available width; enforce a minimum pad size below which the row scrolls.
+    const rawFit = (available - gapsW) / n;
+    padW = Math.max(m.minPad, rawFit);
+    effectiveZoom = padW / m.basePad;
+  } else {
+    // Fixed size: base × zoom, no fitting (the row may scroll if too wide for the panel).
+    padW = m.basePad * zoom;
+    effectiveZoom = zoom;
+  }
+
   // pads and everything sized like a row of pads (clips, lanes) use the same rounded width
-  const padW = Math.floor(fit * 10) / 10;
+  padW = Math.floor(padW * 10) / 10;
+  const padH = Math.round(m.padH * Math.min(1.6, Math.max(0.8, effectiveZoom)));
+
   return {
     sizeClass,
     headerW: m.headerW,
     scopeW: m.scopeW,
     padW,
-    padH: Math.round(m.padH * Math.min(1.6, Math.max(0.8, zoom))),
+    padH,
     gap: m.gap,
     beatGap: m.beatGap,
     radius: m.radius,
     groups,
     stepsW: n * padW + gapsW,
+    effectiveZoom,
   };
 }

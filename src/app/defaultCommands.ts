@@ -16,9 +16,11 @@ import { openGuide } from "./openers";
 import { PANELS } from "./panels";
 import { dock, useShell } from "./shell";
 import { tapTempo } from "./TransportBar";
+import { nextZoomLevel } from "../panels/drum-machine/zoom";
 
 const store = () => useStore.getState();
 const shell = () => useShell.getState();
+const settings = () => useSettings.getState();
 
 /** Edit the page next to the one being edited; while playing it's queued, as a click does. */
 function stepPage(dir: 1 | -1) {
@@ -344,6 +346,43 @@ export function defaultCommands(): Command[] {
       title: "Accent mode on/off",
       category: "Drum machine",
       run: () => fnClick("accent"),
+    },
+    // Zoom: Alt+= / Alt+- to avoid clashing with = (BPM up) and - (BPM down).
+    // Alt+0 = 100%; no shortcut for Fit (use the combobox).
+    {
+      id: "dm.zoom.in",
+      title: "Zoom in",
+      category: "Drum machine",
+      keys: ["Alt+="],
+      run: () => {
+        const s = settings();
+        // effectiveZoom is unknown here; passing 1.0 falls back to the nearest level above 1.
+        // For the accurate value the caller (HeaderBar, TrackList) uses geo.effectiveZoom instead.
+        s.set({ zoom: nextZoomLevel(s.zoom, 1, typeof s.zoom === "number" ? s.zoom : 1) });
+      },
+    },
+    {
+      id: "dm.zoom.out",
+      title: "Zoom out",
+      category: "Drum machine",
+      keys: ["Alt+-"],
+      run: () => {
+        const s = settings();
+        s.set({ zoom: nextZoomLevel(s.zoom, -1, typeof s.zoom === "number" ? s.zoom : 1) });
+      },
+    },
+    {
+      id: "dm.zoom.fit",
+      title: "Zoom to fit",
+      category: "Drum machine",
+      run: () => settings().set({ zoom: "fit" }),
+    },
+    {
+      id: "dm.zoom.100",
+      title: "Zoom 100%",
+      category: "Drum machine",
+      keys: ["Alt+0"],
+      run: () => settings().set({ zoom: 1.0 }),
     },
 
     // ---- step cursor ----

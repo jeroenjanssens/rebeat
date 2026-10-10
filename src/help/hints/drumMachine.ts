@@ -60,13 +60,21 @@ const hints: Hints = {
   },
   "dm.header.zoom-out": {
     title: "Zoom out",
-    text: "Show more steps at once by shrinking the pads. You can also hold Ctrl/Cmd and scroll over the pads.",
+    text: "Step to the next smaller zoom level. Fixed levels go from 50% to 250%; at Fit, the first step moves to the level nearest the current fitted size.",
+    command: "dm.zoom.out",
     keys: "Ctrl/Cmd+scroll over the pads",
+    guide: "drum-machine-the-header-bar",
+  },
+  "dm.header.zoom-level": {
+    title: "Zoom level",
+    text: "Click to choose a zoom level from the list, type a custom percentage (25–400%) and press Enter, or pick Fit to fill the available width automatically.",
+    command: "dm.zoom.100",
     guide: "drum-machine-the-header-bar",
   },
   "dm.header.zoom-in": {
     title: "Zoom in",
-    text: "Enlarge the pads so velocity bars and note names are easier to read. You can also hold Ctrl/Cmd and scroll over the pads.",
+    text: "Step to the next larger zoom level so velocity bars and note names are easier to read.",
+    command: "dm.zoom.in",
     keys: "Ctrl/Cmd+scroll over the pads",
     guide: "drum-machine-the-header-bar",
   },
