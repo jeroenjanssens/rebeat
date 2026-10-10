@@ -103,6 +103,8 @@ Key implementation patterns:
 0. Beatbox to step tracks (§0.6h, D105–D118) ✅ on the `beatbox` branch: review and merge into
    `main`. Decide whether the shipped model may train on beatboxset1 (CC BY-SA, D108). Record and
    label your own sounds (and friends'), export them, and train model 2 with them (`ml/README.md`).
+0b. MIDI controllers (§0.6i, D119–D125): proposed; for the Arturia MiniLab 3 and controllers like
+   it. Step 8 needs the device.
 1. Try the app with real hardware: a microphone and audio interface (calibration, monitoring), a MIDI keyboard/controller (learn), and a Launchpad or Push (the Push color palette is approximate).
 2. Desktop releases: add signing certificates and notarization secrets, then tag `v0.1.0` to produce draft releases.
 3. Decide D6 (license): the repository is public now, without one.
@@ -569,6 +571,88 @@ Step 2 ends with a go/no-go on the model's accuracy before the app work builds o
    the synthetic mic, labels and relabels, trims, removes, exports a dataset, converts a take into
    audible tracks and undoes it. A guide chapter (recording, labeling, calibrating, converting),
    explain-mode hints for every control, decisions D105–D118.
+
+### 0.6i MIDI controllers: global maps, relative knobs, buttons, pads by channel (proposed 2026-10-10)
+
+Progress: not started.
+
+Goal: plug in a MIDI controller such as the **Arturia MiniLab 3** and have its keys, pads, knobs,
+faders and transport buttons do the right thing, in every project, without mapping them again.
+Today (D27, D84) keys and pads work and MIDI learn maps knobs, but: mappings are saved per
+project and point at one track's id; values are read as absolute only (endless encoders that
+send relative values jump); faders and buttons can't be learned from the UI (the engine already
+runs `command:<id>` targets); and the MIDI channel is ignored when routing notes, so with a Notes
+track selected the pads play that synth instead of the drum tracks.
+
+The MiniLab 3, from its manual (1.0.5): 25 keys, 8 pads with velocity and pressure (bank A
+notes 36–43, bank B 44–51, both on **channel 10**), 8 endless encoders, 4 faders, pitch and mod
+(CC 1) touch strips, Shift, Hold, octave buttons. In its ARTURIA mode the knobs send CC 74, 71,
+76, 77, 93, 18, 19, 16 and the faders CC 82, 83, 85, 17; whether the encoders send absolute or
+relative values isn't documented (and can be changed in Arturia's MIDI Control Center). Shift +
+pads 4–7 are Loop, Stop, Play and Record: in DAW mode through Mackie Control (its "MiniLab3 MCU"
+port) or Arturia's DAW scripts. Everything in User programs can be remapped. So Rebeat must not
+depend on one setup: it detects what a control sends and lets you learn the rest.
+
+Order 1–8, one or more commits each, with hints, guide updates, decisions and the full checks.
+Step 8 needs the device.
+
+1. **Pads by channel (D119).** Notes on the pads' channel (Settings → MIDI → **Pads channel**:
+   10 by default, Any, or Off) always play step tracks by position (36 = track 1, … 51 = track 16,
+   so both MiniLab banks reach 16 tracks); notes on other channels play the selected Notes track,
+   and with no Notes track selected, play tracks by position as they do now. Hits record as pad
+   hits, notes as notes. Unit tests on the routing; e2e with the fake MIDI input.
+2. **Relative encoders (D120).** A mapping has a **mode**: Absolute, Relative (offset 64: 65 = +1,
+   63 = −1), Relative (two's complement: 1 = +1, 127 = −1) or Relative (sign bit: 1 = +1,
+   65 = −1). MIDI learn detects it from the first few messages (values that hover around 64, or
+   at 1/127, while the knob turns are relative), and Settings → MIDI lets you change it. Relative
+   steps move the target from its current value (`readTarget`, beside `applyTarget`) by
+   step/127 × a sensitivity (Settings, with Shift on the device for fine steps where it sends
+   one); absolute faders can use **pickup** (soft takeover: nothing moves until the control
+   passes the current value), off by default. Schema 8: `MidiMapping.mode` (old mappings are
+   Absolute), with a migration and a test.
+3. **Global mappings and relative targets (D121).** Mappings live in two places: **this
+   project** (as now, for one track's knob) and **everywhere** (in the settings, for your
+   controller). Global targets can't name a track id, so they name a role: `selected:sound:<n>`
+   (the selected track's n-th SOUND knob, by `soundDefs`, so knob 1–8 follow what the track plays:
+   a sample's Tune…, a synth's macros), `selected:volume`, `selected:mix.<id>`,
+   `track#<n>:volume` (the n-th track), `bus:<id>`, `master:volume`, `perf:<control>` and
+   `command:<id>`. Project mappings win over global ones for the same control; both win over
+   the built-in behavior (notes, CC 1, CC 64). MIDI learn asks where to save when it can be
+   either (the encoder strip's knobs, faders, buttons); one-track knobs stay per project.
+4. **Learning faders and buttons (D122).** Right-click a fader (track, bus, master) → **MIDI
+   learn**. Buttons: a **MIDI** column in the Shortcuts dialog learns any command (play/stop,
+   record, metronome, tap, next page, fill, …), and right-click on the transport bar's buttons
+   does the same. A note-on or a CC ≥ 64 fires it; for held commands (fill) the release ends it.
+   Learned controls show in Settings → MIDI with their mode, place and a **Remove**.
+5. **Mackie Control transport (D123).** On an input whose name says MCU (or one you mark as
+   Mackie Control), the standard transport notes on channel 1 run Rebeat's transport: Play (94),
+   Stop (93), Record (95), Cycle (86, loop/song) and the jog wheel's CC 60 (relative) moves the
+   page. That covers Shift + pads 4–7 in the MiniLab's DAW mode and most controllers with
+   transport buttons, without learning anything.
+6. **Controller maps (D124).** Settings → MIDI → **Controller**: None, **Arturia MiniLab 3**, or
+   **Custom**. A map is a list of named slots (Knob 1–8, Fader 1–4, Pad bank A/B, Transport)
+   with a target and a learned control each, saved globally. The MiniLab 3 map: knobs 1–8 →
+   the selected track's SOUND knobs 1–8, fader 1 → its volume, faders 2–3 → its Reverb and Delay
+   sends, fader 4 → master volume, pads → tracks by position (channel 10), Mackie transport,
+   using the ARTURIA-mode CCs above; any slot can be learned again (if your MiniLab is in a User
+   program, turn each control once). Custom starts empty. Choosing a map shows a short checklist
+   ("Put the MiniLab in ARTURIA mode: Shift + Pad 3…").
+7. **A MIDI monitor and docs.** Settings → MIDI shows the last 20 messages (device, channel,
+   type, number, value, and what Rebeat did with it), which makes "why doesn't my knob work"
+   answerable. Guide: a "Your controller" section with the MiniLab 3 walk-through; hints for
+   every new control; decisions D119–D125.
+8. **With the device (Jeroen).** Plug in a MiniLab 3: check the pads' channel and notes, what the
+   encoders send (absolute or which relative mode) in ARTURIA mode, DAW mode and a User program,
+   whether Shift + pads send Mackie notes, CC 1 and pitch bend, aftertouch from the pads; fix the
+   map's defaults to what it really sends, and record the findings in D124.
+
+Tests: unit (routing by channel; relative decoding and detection; pickup; target roles resolved
+against the selected track and `soundDefs`; global vs project precedence; the schema 8
+migration); e2e with `midiKeyboard` (a fake input that can also send CCs and a second "MCU"
+input): pads on channel 10 trigger drum tracks while a Notes track is selected, a relative knob
+steps the selected track's first SOUND knob up and down, the MiniLab 3 map works after switching
+projects, a fader and a button learned from the UI, Mackie Play starts the transport, the
+monitor lists what came in.
 
 ### 0.7 Known limitations and later work
 
@@ -1177,6 +1261,13 @@ Format: **Dn — Question.** Default ✅, alternatives.
 - **D116 — Test material and targets.** Jeroen's loops and freestyle are labeled once (a draft from onsets and the first model, corrected in the panel) and stay out of training; his one-shots and later recordings may train. Targets for the go/no-go (step 2): macro F1 ≥ 0.85 over Kick, Snare and Closed hi-hat on unseen voices; on Jeroen's takes, hits found within 30 ms with F-measure ≥ 0.95 and classes right ≥ 0.9 after calibration with 10 hits per class. The numbers are recorded, so later changes can't quietly get worse. Result for model 1: missed (0.77 on AVP voices alone, 0.80 calibrated; see §0.6h); the work went ahead because calibration and new recordings need the panel. The loops and freestyle aren't labeled yet; synthetic takes of held-out recordings (D118) stand in for them. Alt: no target (judge by ear).
 - **D117 — Finding hits.** Spectral flux on a 512-point log-magnitude spectrogram every 5 ms (silence before the audio starts, so a hit at the very start counts), a peak above 1.4 × the mean of ±50 ms plus a share of the take's 95th percentile (not its loudest moment, which hid the hits of dense takes), moved back to where its attack starts, and only if it rises: the 30 ms after it are at least 1.15 × louder than the 20 ms before, measured on the first difference, which favors the highs (a hi-hat on a kick's tail still rises; the end of a sound doesn't). Chosen on AVP, beatboxset1 and synthetic takes: F-measure 0.83, 0.81 and 0.81 within 30 ms. A short file (under 1.5 s) is one sound: one hit at its first sample within 30 dB of its peak. TypeScript (`onsets.ts`) and Python (`onsets.py`) are tested against the same fixture. Alt: a learned onset detector (later, §0.7).
 - **D118 — Synthetic takes.** `ml/rebeat_ml/synth.py` turns Jeroen's one-shots into 150 beats at 80–145 BPM: patterns where each class likes to sit, a few classes per take, every hit with its own velocity (0 to −14 dB), pitch (±1.5 semitones) and timing, each sound ending where the next begins (as a voice does), sometimes a hummed bass or noise under it. They put a few recordings into many contexts, and give labeled onsets in dense takes. One recording per class (`data.py: HELD_OUT`) stays out of them and of training; 40 takes of those are the test of Jeroen's voice. In an A/B run they raised beatboxset1 0.57 → 0.66 and AVP 0.78 → 0.81 calibrated. Alt: only per-window augmentation (what training already did).
+- **D119 — Pads by channel.** Notes on the pads' channel (10 by default, the General MIDI drum channel most pad controllers use; Any or Off in Settings) always play step tracks by position from note 36, whatever is selected; notes on other channels play the selected Notes track (or tracks by position when none is selected, as before). Alt: route by note range only (today: the pads play a selected synth); per-device routing tables.
+- **D120 — Relative encoders.** A mapping's mode is Absolute or one of the three common relative encodings (offset 64, two's complement, sign bit), detected while learning and changeable in Settings; relative steps move the target from its current value (step/127 × sensitivity). Absolute controls can use pickup (off by default). Schema 8 adds `MidiMapping.mode`. Alt: absolute only (endless encoders in a relative mode jump); asking the user for the mode every time.
+- **D121 — Global mappings with roles.** Mappings are saved per project (one track's knob, as now) or everywhere (your controller, in the settings). Global targets name roles instead of ids: the selected track's n-th SOUND knob (`soundDefs`, so the same knob is a sample's Tune or a synth's macro), its volume and sends, the n-th track, buses, master, performance controls and commands. Project mappings win over global ones, both over built-in behavior. Alt: only global mappings; copying mappings into every new project.
+- **D122 — Learning faders and buttons.** Faders learn like knobs (right-click); commands learn from a MIDI column in the Shortcuts dialog and from the transport bar's buttons; a note-on or CC ≥ 64 fires a command, the release ends held ones. Alt: learning buttons only through a controller map.
+- **D123 — Mackie Control transport.** On an MCU input, Play/Stop/Record/Cycle notes (94/93/95/86 on channel 1) and the jog wheel (CC 60) drive the transport and pages with no learning. Alt: learn the transport like any button; full Mackie Control (faders, displays) later.
+- **D124 — Controller maps.** A map is a named set of global slots (knobs, faders, pads, transport), each with a target and a learned control. Rebeat ships one for the Arturia MiniLab 3 (ARTURIA-mode CCs from its manual: knobs 74, 71, 76, 77, 93, 18, 19, 16 → the selected track's SOUND knobs 1–8; faders 82, 83, 85, 17 → volume, Reverb, Delay, master) and a Custom one; any slot can be learned again. To be checked against the device (§0.6i step 8). Alt: one generic "8 knobs + 4 faders" map; a community library of maps.
+- **D125 — A MIDI monitor.** Settings → MIDI lists the last 20 messages with what Rebeat did with each (played a pad, moved a knob, ran a command, nothing). Alt: the single "last message" line there today.
 - **D35 — Build order.** ✅ The phases in §7, starting with the mockup (Phase M), each ending with something you can play with.
 
 ---
