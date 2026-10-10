@@ -334,6 +334,8 @@ function describe(m: MidiMessage) {
   return `Aftertouch ${m.value} · ${ch}`;
 }
 
+let lastReported: MidiMessage | null = null;
+
 function report(
   m: MidiMessage,
   action: string,
@@ -355,6 +357,7 @@ function report(
     ...(ev ? { eventKind: ev.kind, eventIndex: ev.index } : {}),
   };
   useMidi.setState((s) => ({ monitor: [entry, ...s.monitor].slice(0, 20) }));
+  lastReported = m;
   if (ev) {
     emitControllerEvent({
       device: m.device,
@@ -440,7 +443,12 @@ function handle(e: MIDIMessageEvent, device: string) {
       useStore.getState().project.midiMappings,
       s.midiMappings,
     );
-    if (found) return report(m, applyMapping(found.mapping, m, found.scope));
+    if (found) {
+      const action = applyMapping(found.mapping, m, found.scope);
+      // applyMapping reports what it did with the control's event; the rest is reported here
+      if (lastReported !== m) report(m, action);
+      return;
+    }
   }
 
   if (m.type === "noteon")

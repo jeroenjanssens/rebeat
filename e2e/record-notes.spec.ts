@@ -8,7 +8,14 @@ import { midiKeyboard, openApp } from "./helpers";
 // ── helpers ──────────────────────────────────────────────────────────────────────────────────
 
 type Rebeat = {
-  store: { getState(): { project: Project; playSlotId: string; setUi(u: Record<string, unknown>): void; commit(fn: (p: unknown) => void): void } };
+  store: {
+    getState(): {
+      project: Project;
+      playSlotId: string;
+      setUi(u: Record<string, unknown>): void;
+      commit(fn: (p: unknown) => void): void;
+    };
+  };
 };
 type Project = {
   slots: { id: string; patternId: string }[];
@@ -71,8 +78,9 @@ test("record-notes: chord of two MIDI notes lands in the pattern", async ({ page
     .poll(
       () =>
         page.evaluate(() => {
-          const r = (window as unknown as { __rebeat: { store: { getState(): { playing: boolean } } } })
-            .__rebeat;
+          const r = (
+            window as unknown as { __rebeat: { store: { getState(): { playing: boolean } } } }
+          ).__rebeat;
           return r.store.getState().playing;
         }),
       { timeout: 4000 },
@@ -109,50 +117,44 @@ test("record-notes: Overdub keeps existing note when adding a new pitch", async 
   const trackId = await getFirstNotesTrackId(page);
 
   // Pre-populate step 4 with pitch 55 via store commit
-  await page.evaluate(
-    (tid) => {
-      const r = (window as unknown as { __rebeat: Rebeat }).__rebeat;
-      const s = r.store.getState();
-      const playSlotId = s.playSlotId;
-      s.commit((proj) => {
-        const p = proj as Project;
-        const slot = p.slots.find((x) => x.id === playSlotId) ?? p.slots[0];
-        const lane = p.patterns[slot.patternId]?.lanes[tid];
-        if (lane) {
-          lane.steps[4].notes = [{ pitch: 55, length: 2, velocity: 0.7 }];
-          lane.steps[4].on = true;
-        }
-      });
-    },
-    trackId,
-  );
+  await page.evaluate((tid) => {
+    const r = (window as unknown as { __rebeat: Rebeat }).__rebeat;
+    const s = r.store.getState();
+    const playSlotId = s.playSlotId;
+    s.commit((proj) => {
+      const p = proj as Project;
+      const slot = p.slots.find((x) => x.id === playSlotId) ?? p.slots[0];
+      const lane = p.patterns[slot.patternId]?.lanes[tid];
+      if (lane) {
+        lane.steps[4].notes = [{ pitch: 55, length: 2, velocity: 0.7 }];
+        lane.steps[4].on = true;
+      }
+    });
+  }, trackId);
 
   // Verify pitch 55 is there
   const notesBefore = await notesAtStep(page, trackId, 4);
   expect(notesBefore.map((n) => n.pitch)).toContain(55);
 
   // Overdub: add pitch 60 without clearing
-  await page.evaluate(
-    (tid) => {
-      const r = (window as unknown as { __rebeat: Rebeat }).__rebeat;
-      const s = r.store.getState();
-      const playSlotId = s.playSlotId;
-      s.commit((proj) => {
-        const p = proj as Project;
-        const slot = p.slots.find((x) => x.id === playSlotId) ?? p.slots[0];
-        const lane = p.patterns[slot.patternId]?.lanes[tid];
-        if (lane) {
-          const existing = lane.steps[4].notes ?? [];
-          const kept = existing.filter((n) => n.pitch !== 60);
-          lane.steps[4].notes = [...kept, { pitch: 60, length: 1, velocity: 0.8 }].sort(
-            (a, b) => a.pitch - b.pitch,
-          );
-          lane.steps[4].on = true;
-        }
-      });
-    },
-    trackId,
-  );
+  await page.evaluate((tid) => {
+    const r = (window as unknown as { __rebeat: Rebeat }).__rebeat;
+    const s = r.store.getState();
+    const playSlotId = s.playSlotId;
+    s.commit((proj) => {
+      const p = proj as Project;
+      const slot = p.slots.find((x) => x.id === playSlotId) ?? p.slots[0];
+      const lane = p.patterns[slot.patternId]?.lanes[tid];
+      if (lane) {
+        const existing = lane.steps[4].notes ?? [];
+        const kept = existing.filter((n) => n.pitch !== 60);
+        lane.steps[4].notes = [...kept, { pitch: 60, length: 1, velocity: 0.8 }].sort(
+          (a, b) => a.pitch - b.pitch,
+        );
+        lane.steps[4].on = true;
+      }
+    });
+  }, trackId);
 
   const notesAfter = await notesAtStep(page, trackId, 4);
   expect(notesAfter.map((n) => n.pitch)).toContain(55);
