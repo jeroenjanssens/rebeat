@@ -14,6 +14,7 @@ import { getBuffer, sampleInfo } from "./samples";
 import { warper } from "./stretch";
 import type { StretchNode } from "signalsmith-stretch";
 import { createInstrument, instrumentKey, type InstrumentVoice } from "./instruments";
+import { detectRootNote } from "../library/pitch";
 import type { WorkletSynth } from "./synth/node";
 import { macroValues } from "../library/synthTrack";
 import { hitNoteOf, hitNotes, player, sampleOf, soundChanged } from "../model/tracks";
@@ -32,6 +33,8 @@ export interface TriggerOptions {
   /** Parameter locks for this step ("sound.tune" → value). */
   locks?: Record<string, number>;
   gate?: number;
+  /** Play into this input instead of the track's channel (the keys' live channel, D134). */
+  dest?: Tone.InputNode;
 }
 
 interface Voice {
@@ -80,6 +83,9 @@ export interface EngineScope {
   synths: Map<string, InstrumentVoice>;
   /** Separate voice per track for live (keys) play — never used offline. */
   liveVoices: Map<string, InstrumentVoice>;
+  /** The keys' own channel per track (D134): its sound and effects, but unmuted and at 0 dB
+   * unless recording. */
+  liveChannels: Map<string, TrackChannel>;
   voices: Voice[];
   clips: Map<string, Clip>;
   activeUntil: Map<string, number>;
@@ -95,6 +101,7 @@ export function newScope(live = false): EngineScope {
     channels: new Map(),
     synths: new Map(),
     liveVoices: new Map(),
+    liveChannels: new Map(),
     voices: [],
     clips: new Map(),
     activeUntil: new Map(),
@@ -243,6 +250,8 @@ export function reconcile(project: Project = useStore.getState().project) {
     // also dispose the live voice for this track
     S.liveVoices.get(id)?.dispose();
     S.liveVoices.delete(id);
+    S.liveChannels.get(id)?.dispose();
+    S.liveChannels.delete(id);
     clearTimeout(liveIdleTimers.get(id));
     liveIdleTimers.delete(id);
     S.lastTracks.delete(id);
@@ -256,6 +265,7 @@ export function reconcile(project: Project = useStore.getState().project) {
     if (last && last.track === t && last.audible === audible && last.bpm === bpm) continue;
     S.lastTracks.set(t.id, { track: t, audible, bpm });
     channel(t.id).update(t, audible, bpm);
+    S.liveChannels.get(t.id)?.update(liveView(t), true, bpm);
     // a level, pan or send (a controller's fader) is the channel's: the voice keeps its patch
     const voiceSame = last && last.bpm === bpm && !soundChanged(last.track, t);
     if (player(t) === "voice" && voiceSame && S.synths.has(t.id)) continue;
@@ -379,7 +389,14 @@ export function initEngine() {
   ensureMaster();
   reconcile();
   let last = useStore.getState().project;
+  let recording = useStore.getState().recording;
   useStore.subscribe((s) => {
+    if (s.recording !== recording) {
+      // the keys' channels play at the track's level while recording (D134)
+      recording = s.recording;
+      for (const t of s.project.tracks)
+        S.liveChannels.get(t.id)?.update(liveView(t), true, s.project.bpm);
+    }
     if (s.project === last) return;
     last = s.project;
     reconcile();
@@ -411,7 +428,7 @@ function liveInstrument(track: Track): InstrumentVoice {
   let v = S.liveVoices.get(track.id);
   if (!v || v.key !== key) {
     v?.dispose();
-    v = createInstrument(track, channel(track.id).input);
+    v = createInstrument(track, liveChannel(track).input);
     S.liveVoices.set(track.id, v);
     if (monitored.has(track.id)) v.synth?.monitor(true);
   }
@@ -421,12 +438,93 @@ function liveInstrument(track: Track): InstrumentVoice {
   return v;
 }
 
+/**
+ * What the keys' channel of a track plays like (D134): the track's sound and effects, but
+ * heard even when the track is muted (or another is soloed), and at 0 dB unless you're
+ * recording (then at the track's level, as it will play back).
+ */
+function liveView(t: Track): Track {
+  return { ...t, mute: false, solo: false, volume: useStore.getState().recording ? t.volume : 0.8 };
+}
+
+function liveChannel(track: Track): TrackChannel {
+  let ch = S.liveChannels.get(track.id);
+  if (!ch) {
+    ch = new TrackChannel(ensureMaster().input);
+    ch.sendA.connect(bus("bus-a").input);
+    ch.sendB.connect(bus("bus-b").input);
+    S.liveChannels.set(track.id, ch);
+    ch.update(liveView(track), true, useStore.getState().project.bpm);
+    const p = track.params;
+    if (player(track) === "voice")
+      ch.setFilter(toUnit.hz(p["sound.cutoff"] ?? 1), toUnit.q(p["sound.reso"] ?? 0.2));
+  }
+  return ch;
+}
+
+/** After 30 s without a live note, the keys' voice and channel of a track go. */
+function idleLive(trackId: string) {
+  clearTimeout(liveIdleTimers.get(trackId));
+  liveIdleTimers.set(
+    trackId,
+    window.setTimeout(() => {
+      S.liveVoices.get(trackId)?.dispose();
+      S.liveVoices.delete(trackId);
+      S.liveChannels.get(trackId)?.dispose();
+      S.liveChannels.delete(trackId);
+      liveIdleTimers.delete(trackId);
+    }, 30_000),
+  );
+}
+
+/** The key a sample plays as it is on (D133): its sound's root, else its detected pitch. */
+const roots = new Map<string, number>();
+function sampleRootNote(track: Track): number {
+  if (track.sound?.rootNote !== undefined) return track.sound.rootNote;
+  const id = sampleOf(track);
+  if (!id) return 60;
+  let root = roots.get(id);
+  if (root === undefined) {
+    const buffer = getBuffer(id);
+    root = (buffer && detectRootNote(buffer)) ?? 60;
+    if (buffer) roots.set(id, root);
+  }
+  return root;
+}
+
+/**
+ * A sample from the keys (D134): `pitch` against its base key, played to its end like a pad (a
+ * tap plays the whole kick); a long sample (over 2 s) stops when the key is let go. Into the
+ * track's live channel, or the Keys strip ("keys") for a library sample. Returns the release.
+ */
+export function playKeysSample(
+  track: Track,
+  pitch: number,
+  velocity: number,
+  into: "track" | "keys" = "track",
+): () => void {
+  const dest = into === "keys" ? keysChannelEntry?.channel.input : liveChannel(track).input;
+  if (!dest) return () => {};
+  const voice = playDrum(track, velocity, audioNow(), {
+    pitch: pitch - sampleRootNote(track),
+    dest,
+  });
+  if (into === "track" && S.live) idleLive(track.id);
+  const buffer = getBuffer(sampleOf(track));
+  return () => {
+    if (voice && buffer && buffer.duration > 2) stopVoice(voice, audioNow());
+  };
+}
+
 function updateSynth(track: Track, bpm: number) {
   const v = instrument(track);
   v.update(track, bpm);
   // instruments use the channel filter for cutoff/resonance
   const p = track.params;
-  channel(track.id).setFilter(toUnit.hz(p["sound.cutoff"] ?? 1), toUnit.q(p["sound.reso"] ?? 0.2));
+  const hz = toUnit.hz(p["sound.cutoff"] ?? 1);
+  const q = toUnit.q(p["sound.reso"] ?? 0.2);
+  channel(track.id).setFilter(hz, q);
+  S.liveChannels.get(track.id)?.setFilter(hz, q);
 }
 
 /** Loading state of a track's sampled instrument. */
@@ -452,7 +550,7 @@ function stopVoice(v: Voice, time: number) {
 
 function playDrum(track: Track, velocity: number, time: number, o: TriggerOptions) {
   const buffer = getBuffer(sampleOf(track));
-  if (!buffer) return;
+  if (!buffer) return undefined;
   const ctx = raw();
   const p = o.locks ? { ...track.params, ...o.locks } : track.params;
   const group = chokeGroup(track);
@@ -479,9 +577,10 @@ function playDrum(track: Track, velocity: number, time: number, o: TriggerOption
     env.gain.setTargetAtTime(0, time + length * 0.7, Math.max(0.005, length * 0.12));
   }
   src.connect(env);
-  Tone.connect(env, channel(track.id).input);
+  Tone.connect(env, o.dest ?? channel(track.id).input);
   const end = time + Math.min(natural, length + 0.25);
-  if (o.locks) channel(track.id).lockStep(o.locks, track.params, time, time + (o.stepDur ?? 0.12));
+  if (o.locks && !o.dest)
+    channel(track.id).lockStep(o.locks, track.params, time, time + (o.stepDur ?? 0.12));
   src.start(time, offset);
   src.stop(end);
   const voice: Voice = { src, env, trackId: track.id, end };
@@ -492,6 +591,7 @@ function playDrum(track: Track, velocity: number, time: number, o: TriggerOption
     if (i >= 0) S.voices.splice(i, 1);
   };
   S.activeUntil.set(track.id, Math.max(S.activeUntil.get(track.id) ?? 0, end + 0.1));
+  return voice;
 }
 
 function playNotes(track: Track, velocity: number, time: number, o: TriggerOptions) {
@@ -582,18 +682,7 @@ export function holdNote(track: Track, pitch: number, velocity: number): () => v
     release(end);
     const tail = toUnit.ms(1, 8000)(track.params["sound.release"] ?? 0.35) / 1000;
     S.activeUntil.set(track.id, end + Math.max(tail, 2) + 0.5);
-    if (S.live) {
-      // schedule idle disposal of the live voice after 30 s of no held notes
-      clearTimeout(liveIdleTimers.get(track.id));
-      liveIdleTimers.set(
-        track.id,
-        window.setTimeout(() => {
-          S.liveVoices.get(track.id)?.dispose();
-          S.liveVoices.delete(track.id);
-          liveIdleTimers.delete(track.id);
-        }, 30_000),
-      );
-    }
+    if (S.live) idleLive(track.id);
   };
 }
 
@@ -947,13 +1036,19 @@ export function panic() {
   for (const t of useStore.getState().project.tracks) if (t.mode === "clip") mute(t.id);
   // decaying on their own (smplr): quiet until they're done, or until playing starts
   for (const [id, v] of S.synths) if (v.panic(at)) mute(id);
-  for (const [id, v] of S.liveVoices) if (v.panic(at)) mute(id);
+  // the keys' voices that can't be cut short: drop them (the next note makes a new one)
+  for (const [id, v] of S.liveVoices)
+    if (v.panic(at)) {
+      v.dispose();
+      S.liveVoices.delete(id);
+    }
   clearTimeout(ungateTimer);
   if (gated.size) ungateTimer = window.setTimeout(ungate, 600);
   clearTimeout(flushTimer);
   // after the fade (and a little time for the audio thread): drop the tails
   flushTimer = window.setTimeout(() => {
     for (const ch of S.channels.values()) ch.flush();
+    for (const ch of S.liveChannels.values()) ch.flush();
     for (const b of S.buses.values()) b.flush();
     // the master's filters (EQ, the performance filters) ring briefly too: all of it
     m.fx.flush(true);

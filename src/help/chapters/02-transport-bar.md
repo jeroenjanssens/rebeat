@@ -47,4 +47,8 @@ To put a library sound on the keys from the library panel: hover over it and cli
 
 The top of the Keys menu says exactly what plays and where it comes from ("Acid Bass", "Synth editor · BASS", "Track BASS" or "Library"), the chip reads **Keys · Editor** while it follows an editor, and a MiniLab 3 shows the same two lines on its display.
 
+**Muted and turned-down tracks still play from the keys.** The keys have their own channel per track, with the track's sound and effects: you hear what you play even when the track is muted (or another one is soloed), at full level (0 dB) whatever its fader says. While you're recording, it plays at the track's level, the way it will play back.
+
+**Samples play from the keys too**, on a Hits track (a kick, a snare…) as well as from the library: the sample's base key plays it as it is (its detected pitch, else C4), higher keys play it higher, lower keys lower. A sample plays to its end like a pad, so a short tap plays the whole kick; a long sample (over 2 seconds) stops when you let go. On a Hits track, recording writes a hit.
+
 The keys always use a separate voice from the sequencer. On a mono synth the sequencer keeps playing uninterrupted while you play on top of it.

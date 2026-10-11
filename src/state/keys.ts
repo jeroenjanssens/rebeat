@@ -13,7 +13,7 @@ import {
   getKeysChannel,
   holdNote,
   editorSynth,
-  trigger,
+  playKeysSample,
 } from "../engine/engine";
 import { noteName } from "../model/notes";
 import type { Track } from "../model/types";
@@ -158,7 +158,9 @@ export function keysEditor(): KeysEditor | undefined {
 /** Whether notes from a keyboard go to the keys (and not to the pads by position). */
 export function keysTakeNotes(): boolean {
   if (useKeys.getState().target.kind === "sound" || keysEditor()) return true;
-  return keysTrack()?.mode === "notes";
+  // a Hits track plays too: a sample at the key's pitch, a synth's note (D134)
+  const track = keysTrack();
+  return !!track && track.mode !== "clip";
 }
 
 /** The track the keys play, if they play a track (Notes or Hits of a voice). */
@@ -239,10 +241,10 @@ export function noteOn(pitch: number, velocity: number, _source: KeysSource): ()
   const track = keysTrack();
   if (!track) return () => {};
   if (player(track) === "drum") {
-    // hits of a sample: a pad hit, recorded as one
-    trigger(track, velocity, { stepDur: 0.12 });
+    // hits of a sample: it plays at the key's pitch against its base key (D134), recorded as a hit
+    const releases = playedNotes(pitch).map((p) => playKeysSample(track, p, velocity));
     padInput(track, velocity);
-    return () => {};
+    return sustained(() => releases.forEach((r) => r()));
   }
   if (player(track) !== "voice") return () => {};
 
@@ -289,6 +291,9 @@ function sustained(release: () => void): () => void {
 function noteOnKeys(pitch: number, velocity: number): () => void {
   const kc = getKeysChannel();
   if (!kc) return () => {};
+  // a library sample plays like a pad, to its end, at the key's pitch (D134)
+  if (useKeys.getState().target.kind === "sound" && kc.track.sound?.source === "sample")
+    return sustained(playKeysSample(kc.track, pitch, velocity, "keys"));
   const { voice } = kc;
   const t = audioNow();
   const release = voice.hold?.(pitch, velocity, t) ?? (() => {});

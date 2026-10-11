@@ -3,7 +3,7 @@
 This file is the fast way in. It explains what Rebeat is, how the code is organized, how the
 pieces talk to each other, how to verify a change, and the gotchas that cost time before.
 `PLAN.md` is the long-form record: the product spec (§1–§3), the original architecture (§4),
-and every design decision (§6, D1–D133). When this file and the code disagree, the code wins.
+and every design decision (§6, D1–D134). When this file and the code disagree, the code wins.
 Please fix this file in the same change.
 
 Status (2026-10-10): every phase of the original roadmap is built, plus several feature batches
@@ -624,7 +624,8 @@ onPatchEdit` hook, debounced `saveSoundSoon`).
   notes from a new input: `noteOn(pitch, velocity, source)` picks the target, plays the live
   voice, handles sustain and records (`recordNoteOn` on the note-on, `recordNoteOff` with the
   length on the release). The sequencer's voice (`S.synths`) and the keys' (`S.liveVoices`) are
-  separate on purpose (D126).
+  separate on purpose (D126), and so are their channels: the keys play into `S.liveChannels`
+  (unmuted, 0 dB unless recording, D134); samples from the keys go through `playKeysSample`.
 - **Controller-map slots have kinds** (`slotKind`: the slot id's prefix). Only knobs and encoders
   may be sniffed as relative; a fader that switched once stayed jumpy for good (D129).
 - **A track edit redraws everything that shows the track.** A controller's faders and knobs
@@ -661,7 +662,7 @@ likely to need:
 | Stop, removing kits, tab icons, themes, Pump, song | D99–D104                  |
 | Beatbox: model, data, panel, calibration, convert  | D105–D118                 |
 | MIDI controllers: maps, roles, relative, buttons   | D119–D125                 |
-| The keys, recording notes, faders, CPU, zoom       | D126–D133                 |
+| The keys, recording notes, faders, CPU, zoom       | D126–D134                 |
 
 Feature batches and their acceptance criteria are in PLAN.md §0.6b–§0.6h. Known limitations are
 in §0.7.

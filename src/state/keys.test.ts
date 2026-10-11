@@ -21,7 +21,7 @@ const getKeysChannel = vi.fn(() => undefined as ReturnType<typeof createKeysChan
 
 vi.mock("../engine/engine", () => ({
   holdNote,
-  trigger: vi.fn(),
+  playKeysSample: vi.fn(() => () => {}),
   editorSynth: liveVoiceSynth,
   audioNow,
   createKeysChannel,
