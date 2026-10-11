@@ -230,22 +230,24 @@ function AudioStatus() {
 /** The keys chip: shows the current target and a menu to change it. */
 function KeysChip() {
   const chipRef = useRef<HTMLButtonElement>(null);
-  const keysTarget = useKeys((s) => s.target);
+  useKeys((s) => s.target);
   const keysStatus = useKeys((s) => s.status);
-  const recent = useKeys((s) => s.recent);
   // the name follows the synth editor in focus, and what the editors edit (D132)
   useKeys((s) => s.focused);
   useKeys((s) => s.editors);
-  const followEditor = useSettings((s) => s.keysFollowEditor);
+  useSettings((s) => s.keysFollowEditor);
   const tracks = useStore((s) => s.project.tracks);
   useStore((s) => s.selectedTrackId);
 
   const playing = keysDescription();
-  const isSound = keysTarget.kind === "sound";
   const isLoading = keysStatus === "loading";
 
   const openMenu = () => {
     const notesTracks = tracks.filter((t) => t.mode === "notes");
+    // read now, not from the last render: the menu opens right after a change
+    const followEditor = useSettings.getState().keysFollowEditor;
+    const { target: keysTarget, recent } = useKeys.getState();
+    const playing = keysDescription();
     // following the synth editor, it's the only choice that's checked (D132)
     const usual = !followEditor;
     const items: import("../components/Menu").MenuItem[] = [
@@ -291,7 +293,7 @@ function KeysChip() {
         });
       }
     }
-    if (isSound && usual) {
+    if (keysTarget.kind === "sound" && usual) {
       items.push({ separator: true });
       items.push({ label: "Add as a track", onSelect: () => addKeysSoundAsTrack() });
     }
