@@ -158,7 +158,7 @@ const hints: Hints = {
   },
   "controller.notes": {
     title: "The notes you're playing",
-    text: "The keys held down, low to high, as an equation: A3 + C4 + E4 = Am. When they make a chord, its name comes after the equals sign (an inversion shows its bass: C/E).",
+    text: "The keys held down, low to high, as an equation: A3 + C4 + E4 = Am. When they make a chord (from triads to 13ths and altered dominants), its name comes after the equals sign; a bass that isn't the root comes after a slash (C/E).",
     guide: "performance-your-controller",
   },
 };
