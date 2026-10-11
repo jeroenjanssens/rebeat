@@ -16,7 +16,13 @@ export default defineConfig({
       registerType: "autoUpdate",
       // registered in main.tsx, only over http(s) (not in the desktop app)
       injectRegister: false,
-      includeAssets: ["icon.svg", "apple-touch-icon.png", "favicon-32.png", "worklets/*.js", "popout.html"],
+      includeAssets: [
+        "icon.svg",
+        "apple-touch-icon.png",
+        "favicon-32.png",
+        "worklets/*.js",
+        "popout.html",
+      ],
       manifest: {
         name: "Rebeat",
         short_name: "Rebeat",
@@ -28,7 +34,12 @@ export default defineConfig({
         icons: [
           { src: "icon-192.png", sizes: "192x192", type: "image/png" },
           { src: "icon-512.png", sizes: "512x512", type: "image/png" },
-          { src: "icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+          {
+            src: "icon-maskable-512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "maskable",
+          },
         ],
       },
       workbox: {
@@ -44,7 +55,9 @@ export default defineConfig({
         runtimeCaching: [
           {
             urlPattern: ({ url }) =>
-              /\/models\/beatbox\/|ort-wasm[^/]*\.wasm$|model\.worker-[^/]*\.js$/.test(url.pathname),
+              /\/models\/beatbox\/|ort-wasm[^/]*\.wasm$|model\.worker-[^/]*\.js$/.test(
+                url.pathname,
+              ),
             handler: "CacheFirst",
             options: {
               cacheName: "rebeat-models",
@@ -69,11 +82,22 @@ export default defineConfig({
   ],
   // Tone.js, React and Dockview make up most of the main chunk; editors and WASM load lazily
   build: { chunkSizeWarningLimit: 1100 },
+  // the beatbox model's runtime is imported on first use; found then, Vite would optimize it and
+  // reload every open page (the beatbox e2e tests failed on a fresh dev server)
+  optimizeDeps: { include: ["onnxruntime-web/wasm"] },
   server: {
     port: 5173,
     strictPort: true,
     // tests write files there (golden levels, results): a change would reload every open page
-    watch: { ignored: ["**/e2e/**", "**/e2e-desktop/**", "**/test-results/**", "**/release/**"] },
+    watch: {
+      ignored: [
+        "**/e2e/**",
+        "**/e2e-desktop/**",
+        "**/test-results/**",
+        "**/release/**",
+        "**/.claude/**",
+      ],
+    },
   },
   preview: { port: 4173, strictPort: true },
   test: { include: ["src/**/*.test.{ts,tsx}"] },
