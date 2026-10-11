@@ -160,6 +160,11 @@ interface LiveState {
   knobPos: Float32Array; // 8  (0..1)
   faderPos: Float32Array; // 4  (0..1)
   stripPos: Float32Array; // 2  (0..1)
+  /**
+   * Which knobs (0–7) and faders (8–11) the device has sent: MIDI can't ask a controller where
+   * its controls are, so until one moves it's drawn faint, at the value it controls.
+   */
+  seen: Uint8Array;
   encoderPos: number;
   shift: number;
   dirty: boolean;
@@ -172,7 +177,9 @@ function makeLiveState(): LiveState {
     knobPos: new Float32Array(8).fill(0.5),
     faderPos: new Float32Array(4).fill(0.5),
     // strips start empty; live events fill them when touched
-    stripPos: new Float32Array(2).fill(0.0),
+    // the pitch strip springs back to the middle; the mod strip starts at 0
+    stripPos: new Float32Array([0.5, 0]),
+    seen: new Uint8Array(12),
     encoderPos: 0.5,
     shift: 12, // MiniLab's keys start at C3 (MIDI 48) at octave 0
     dirty: true,
@@ -184,6 +191,8 @@ function makeLiveState(): LiveState {
 interface KnobLabel {
   name: string;
   value: string;
+  /** Where what it controls is (0..1): drawn until the device sends where it is. */
+  pos?: number;
 }
 
 interface ControlLabels {
@@ -203,6 +212,12 @@ interface MiniLab3SvgProps {
 export function MiniLab3Svg({ labels, onKeyDown, onPadDown }: MiniLab3SvgProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const liveRef = useRef<LiveState>(makeLiveState());
+  // the labels (and the values they control) for the frame loop, which runs outside React
+  const labelsRef = useRef(labels);
+  useEffect(() => {
+    labelsRef.current = labels;
+    liveRef.current.dirty = true;
+  });
   const heldKeys = useRef<Map<number, () => void>>(new Map());
   const heldPads = useRef<Map<number, () => void>>(new Map());
 
@@ -223,10 +238,16 @@ export function MiniLab3Svg({ labels, onKeyDown, onPadDown }: MiniLab3SvgProps) 
           live.padVel[index % 8] = e.down ? e.value : 0;
           break;
         case "knob":
-          if (index >= 0 && index < 8) live.knobPos[index] = e.targetValue ?? e.value / 127;
+          if (index >= 0 && index < 8) {
+            live.knobPos[index] = e.targetValue ?? e.value / 127;
+            live.seen[index] = 1;
+          }
           break;
         case "fader":
-          if (index >= 0 && index < 4) live.faderPos[index] = e.targetValue ?? e.value / 127;
+          if (index >= 0 && index < 4) {
+            live.faderPos[index] = e.targetValue ?? e.value / 127;
+            live.seen[8 + index] = 1;
+          }
           break;
         case "encoder":
           live.encoderPos = (live.encoderPos + (e.value - 64) / 24 + 1) % 1;
@@ -274,22 +295,30 @@ export function MiniLab3Svg({ labels, onKeyDown, onPadDown }: MiniLab3SvgProps) 
         }
       }
 
-      // Knob needles
+      // Knob needles (faint, at the value they control, until the device sends one)
+      const labels = labelsRef.current;
       for (let i = 0; i < 8; i++) {
-        const pos = live.knobPos[i];
+        const seen = live.seen[i] === 1;
+        const pos = seen ? live.knobPos[i] : (labels.knobs[i]?.pos ?? 0.5);
         const el = svg.querySelector<SVGElement>(`[data-knob-needle="${i}"]`);
         if (el) {
           const deg = -135 + pos * 270;
           el.setAttribute("transform", `rotate(${deg.toFixed(1)},0,0)`);
+          el.style.opacity = seen ? "1" : "0.35";
         }
       }
 
       // Fader caps (cap rect + center line move together)
       for (let i = 0; i < 4; i++) {
-        const pos = live.faderPos[i];
+        const seen = live.seen[8 + i] === 1;
+        const pos = seen ? live.faderPos[i] : (labels.faders[i]?.pos ?? 0.5);
         const y = FADER_Y + FADER_TRACK_H * (1 - pos);
         const cap = svg.querySelector<SVGElement>(`[data-fader-thumb="${i}"]`);
-        if (cap) cap.setAttribute("y", y.toFixed(1));
+        if (cap) {
+          cap.setAttribute("y", y.toFixed(1));
+          cap.style.opacity = seen ? "1" : "0.45";
+          cap.setAttribute("stroke-dasharray", seen ? "" : "4 3");
+        }
         const line = svg.querySelector<SVGElement>(`[data-fader-line="${i}"]`);
         if (line) {
           const ly = (y + FADER_CAP_H / 2).toFixed(1);

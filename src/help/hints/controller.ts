@@ -58,42 +58,42 @@ const hints: Hints = {
   },
   "controller.knob.0": {
     title: "Knob 1",
-    text: "Turns the selected track's first SOUND knob (Tune, Macro 1, or whatever the track plays). The name and value are shown below the knob.",
+    text: "Turns the selected track's first SOUND knob (Tune, Macro 1, or whatever the track plays). The name and value are shown below the knob. Until you move it, it's drawn faint where its value is: MIDI can't ask the device where its controls are.",
     guide: "performance-your-controller",
   },
   "controller.knob.1": {
     title: "Knob 2",
-    text: "Turns the selected track's second SOUND knob.",
+    text: "Turns the selected track's second SOUND knob. Until you move it, it's drawn faint where its value is: MIDI can't ask the device where its controls are.",
     guide: "performance-your-controller",
   },
   "controller.knob.2": {
     title: "Knob 3",
-    text: "Turns the selected track's third SOUND knob.",
+    text: "Turns the selected track's third SOUND knob. Until you move it, it's drawn faint where its value is: MIDI can't ask the device where its controls are.",
     guide: "performance-your-controller",
   },
   "controller.knob.3": {
     title: "Knob 4",
-    text: "Turns the selected track's fourth SOUND knob.",
+    text: "Turns the selected track's fourth SOUND knob. Until you move it, it's drawn faint where its value is: MIDI can't ask the device where its controls are.",
     guide: "performance-your-controller",
   },
   "controller.knob.4": {
     title: "Knob 5",
-    text: "Turns the selected track's fifth SOUND knob.",
+    text: "Turns the selected track's fifth SOUND knob. Until you move it, it's drawn faint where its value is: MIDI can't ask the device where its controls are.",
     guide: "performance-your-controller",
   },
   "controller.knob.5": {
     title: "Knob 6",
-    text: "Turns the selected track's sixth SOUND knob.",
+    text: "Turns the selected track's sixth SOUND knob. Until you move it, it's drawn faint where its value is: MIDI can't ask the device where its controls are.",
     guide: "performance-your-controller",
   },
   "controller.knob.6": {
     title: "Knob 7",
-    text: "Turns the selected track's seventh SOUND knob.",
+    text: "Turns the selected track's seventh SOUND knob. Until you move it, it's drawn faint where its value is: MIDI can't ask the device where its controls are.",
     guide: "performance-your-controller",
   },
   "controller.knob.7": {
     title: "Knob 8",
-    text: "Turns the selected track's eighth SOUND knob.",
+    text: "Turns the selected track's eighth SOUND knob. Until you move it, it's drawn faint where its value is: MIDI can't ask the device where its controls are.",
     guide: "performance-your-controller",
   },
   "controller.pad.0": {
@@ -138,22 +138,22 @@ const hints: Hints = {
   },
   "controller.fader.0": {
     title: "Fader 1 — Level",
-    text: "Sets the selected track's volume. Move the fader to adjust the level; the current value is shown below.",
+    text: "Sets the selected track's volume. Move the fader to adjust the level; the current value is shown below. Until you move it, it's drawn faint where its value is: MIDI can't ask the device where its controls are.",
     guide: "performance-your-controller",
   },
   "controller.fader.1": {
     title: "Fader 2 — Reverb",
-    text: "Sets the selected track's Reverb send amount.",
+    text: "Sets the selected track's Reverb send amount. Until you move it, it's drawn faint where its value is: MIDI can't ask the device where its controls are.",
     guide: "performance-your-controller",
   },
   "controller.fader.2": {
     title: "Fader 3 — Delay",
-    text: "Sets the selected track's Delay send amount.",
+    text: "Sets the selected track's Delay send amount. Until you move it, it's drawn faint where its value is: MIDI can't ask the device where its controls are.",
     guide: "performance-your-controller",
   },
   "controller.fader.3": {
     title: "Fader 4 — Master",
-    text: "Sets the master output level.",
+    text: "Sets the master output level. Until you move it, it's drawn faint where its value is: MIDI can't ask the device where its controls are.",
     guide: "performance-your-controller",
   },
 };

@@ -19,16 +19,14 @@ import { GenericControllerView } from "./GenericControllerView";
 
 // ── Label helpers ────────────────────────────────────────────────────────
 
-function faderLabel(
+/** What fader `index` controls now (0..1), if it can be read. */
+function faderValue(
   index: number,
   project: ReturnType<typeof useStore.getState>["project"],
-): string {
+): number | null {
   const targets = ["selected:volume", "selected:mix.sendA", "selected:mix.sendB", "master:volume"];
-  const ctx = targetContext();
-  const resolved = resolveTarget(targets[index], ctx);
-  if (!resolved) return "—";
-  const v = readTarget(resolved, project);
-  return v !== null ? `${Math.round(v * 100)}%` : "—";
+  const resolved = resolveTarget(targets[index], targetContext());
+  return resolved ? readTarget(resolved, project) : null;
 }
 
 // ── Knob labels: the selected track's SOUND knob names ──────────────────
@@ -48,6 +46,7 @@ function knobLabels(
     return {
       name: def.label,
       value: def.format ? def.format(raw) : `${Math.round(raw * 100)}%`,
+      pos: raw,
     };
   });
 }
@@ -102,10 +101,14 @@ export function ControllerPanel() {
   const isMiniLab = activeMap?.id === "minilab3";
 
   const kLabels = knobLabels(project, selectedTrackId);
-  const fLabels = [0, 1, 2, 3].map((i) => ({
-    name: ["Level", "Reverb", "Delay", "Master"][i],
-    value: faderLabel(i, project),
-  }));
+  const fLabels = [0, 1, 2, 3].map((i) => {
+    const v = faderValue(i, project);
+    return {
+      name: ["Level", "Reverb", "Delay", "Master"][i],
+      value: v !== null ? `${Math.round(v * 100)}%` : "—",
+      ...(v !== null ? { pos: v } : {}),
+    };
+  });
 
   const handleKeyDown = useCallback((midi: number, velocity: number): (() => void) => {
     return noteOn(midi, velocity, "screen");
