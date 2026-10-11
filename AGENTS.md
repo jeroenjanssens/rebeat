@@ -579,7 +579,8 @@ onPatchEdit` hook, debounced `saveSoundSoon`).
 - **Messages to an offline worklet can arrive after rendering passed them.** Offline synths get
   everything in their node options instead (`settled()`, D92). Any new offline path that creates
   synth voices must call `scopeSettled(scope)` before rendering.
-- **Library previews don't reach the master bus**, so `masterLevel` can't see them; use
+- **Library previews skip the master's chain** (no master effects, not exported) but end in its
+  output stage, so the scope, the meters and `masterLevel` see them; to count previews, use
   `__rebeat.previews()`.
 - **Track kinds are gone** (D93). Ask `track.mode` how it plays and `track.sound` what; use
   `model/tracks.ts` (`player`, `sampleOf`, `hitNoteOf`, `canClip`, `stepped`) rather than

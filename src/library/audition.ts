@@ -1,6 +1,6 @@
 /** Previewing samples from the library, optionally in time with the song. */
 import * as Tone from "tone";
-import { audioNow } from "../engine/engine";
+import { audioNow, masterOutput } from "../engine/engine";
 import { getBuffer } from "../engine/samples";
 import { nextBeatTime } from "../engine/transport";
 import { useSettings } from "../state/settings";
@@ -15,6 +15,16 @@ let starts = 0;
 /** How many previews have started (for tests). */
 export const previewCount = () => starts;
 let out: GainNode | null = null;
+
+/**
+ * The preview output: past the master's chain (previews aren't mixed through its effects, nor
+ * exported) into its output stage, so the master scope and meters show everything you hear.
+ */
+function previewOut(ctx: AudioContext): GainNode {
+  const g = ctx.createGain();
+  Tone.connect(g, masterOutput());
+  return g;
+}
 
 export function stopAudition() {
   if (!current) return;
@@ -46,10 +56,7 @@ export interface AuditionOptions {
 export function auditionBuffer(buffer: AudioBuffer, opts: AuditionOptions = {}): number {
   stopAudition();
   const ctx = Tone.getContext().rawContext as AudioContext;
-  if (!out) {
-    out = ctx.createGain();
-    out.connect(ctx.destination);
-  }
+  out ??= previewOut(ctx);
   out.gain.value = useSettings.getState().previewVolume;
   const src = ctx.createBufferSource();
   src.buffer = buffer;
@@ -88,10 +95,7 @@ let preview: { id: string; voice: InstrumentVoice; gain: Tone.Gain } | null = nu
 /** A new input into the library's preview output (at the preview volume). */
 export function previewInput(): Tone.Gain {
   const ctx = Tone.getContext().rawContext as AudioContext;
-  if (!out) {
-    out = ctx.createGain();
-    out.connect(ctx.destination);
-  }
+  out ??= previewOut(ctx);
   out.gain.value = useSettings.getState().previewVolume;
   const gain = new Tone.Gain(1);
   gain.connect(out);
@@ -103,10 +107,7 @@ function previewVoice(c: CatalogInstrument): InstrumentVoice {
   if (preview?.id === c.id) return preview.voice;
   stopPreview();
   const ctx = Tone.getContext().rawContext as AudioContext;
-  if (!out) {
-    out = ctx.createGain();
-    out.connect(ctx.destination);
-  }
+  out ??= previewOut(ctx);
   out.gain.value = useSettings.getState().previewVolume;
   const gain = new Tone.Gain(1);
   gain.connect(out);

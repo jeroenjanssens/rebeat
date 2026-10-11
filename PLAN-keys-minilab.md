@@ -371,3 +371,23 @@ synth of the synth editor that's open and selected.
 Parallel: (1) is an agent in its own worktree (made from local `main`); (2) and (3) are done in
 the main checkout at the same time (no shared files with (1)). Then merge, docs (D132, AGENTS),
 the full checks and one e2e run.
+
+## 6. Follow-up (2026-10-11): the scope sees everything, any sample on the keys, where the device's controls are
+
+1. **The master scope (and the master meters) show everything you hear.** Library sounds (the
+   synth editor's library synths, previews) play through the preview output, which skipped the
+   master. The preview output now ends in the master's output stage (after the master chain,
+   before the analysers), so the scope and meters see it while it still isn't mixed into the
+   master's effects or exports.
+2. **Any sample on the keys, at its own pitch on its base key.** Every sample (kit sounds
+   included) can go on the keys (the keyboard button, K, and Playable lists all samples by
+   default; the chip now filters to pitched ones). The base key is the sample's detected pitch
+   (a YIN pitch detector on its first second, `library/pitch.ts`, unit-tested on synthetic
+   tones), else C4: that key plays it as it is, higher keys higher, lower keys lower. The Keys
+   menu and the display say it ("Library · plays as is on A3").
+3. **Where the device's faders and knobs are.** MIDI 1.0 has no way to ask a controller where its
+   faders and knobs are (they only send when they move; Arturia's SysEx reads settings, not
+   positions), so Rebeat can't know before you touch one. The Controller panel shows a control
+   it hasn't heard from as an outline at the value it controls ("move it once"), and solid once
+   it has; the pitch strip rests in the middle. Pickup (Settings → MIDI) keeps an untouched
+   fader from jumping its value. Guide and hints say so.
