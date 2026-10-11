@@ -12,7 +12,7 @@
 
 ### 0.1 Where we are
 
-- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D131), and the build order is in §7.
+- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D132), and the build order is in §7.
 - Every phase in §7 is built, tested (unit + Playwright e2e) and pushed. The mockup (Phase M) became the app: its components, model and store were kept and extended; `src/mock/` was replaced by the real engine.
 - The desktop app (Phase 10) runs and packages locally (unsigned); signing/notarization need certificates (see `.github/workflows/desktop.yml`).
 
@@ -1317,6 +1317,7 @@ Format: **Dn — Question.** Default ✅, alternatives.
 - **D129 — Faders are absolute.** Controller-map slots have a kind (knob, fader, encoder, button, pad); only knobs and encoders are checked for relative values, within one gesture, and saved fader slots that were switched are reset. Duplicate handlers and sibling ports no longer double messages. What made faders 1–3 jumpy and heavy (and not the master's) was the cost of a track edit: each message re-rendered every view of the selected track (the synth editor's knobs above all) and re-sent the synth its patch; continuous controller values now commit once a frame, the voice is only updated when its sound changes, and the editor is memoized. Alt: stronger detection for every slot.
 - **D130 — An honest CPU meter.** It shows the worst of the audio thread's load (AudioRenderCapacity, where the browser has it), the main thread's busy share (long animation frames) and the scheduler's lateness against its lookahead, labeled with which it is. Alt: the old rAF timing (it read about 1%); hiding the meter.
 - **D131 — Zoom levels and Fit.** The drum machine's zoom is Fit (the default: the steps fill the width) or a level that sets the pad width exactly; − / +, Ctrl/Cmd + wheel and the commands step through 50–250%, and the readout is a dropdown with a field for any value (25–400%), saved in the settings. Alt: multiplying by 1.15 (levels like 132%, and clamps that hid the change).
+- **D132 — The keys follow the synth editor.** A choice in the Keys menu (saved): while it's on, the keys play what the last activated synth editor tab edits (still open): its track, or a library synth through that sound's own voice (D91); with no editor open, their usual target. Alt: always follow the editor; a per-editor "play with the keys" button.
 - **D35 — Build order.** ✅ The phases in §7, starting with the mockup (Phase M), each ending with something you can play with.
 
 ---
