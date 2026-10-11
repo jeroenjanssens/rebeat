@@ -153,3 +153,22 @@ test("clicking a pad in the SVG triggers the track", async ({ page }) => {
   page.on("pageerror", (e) => errors.push(e.message));
   expect(errors).toEqual([]);
 });
+
+test("a key that's down shows the note it plays", async ({ page }) => {
+  await midiDevices(page, ["Minilab3 MIDI"]);
+  await page.getByTestId("midi-use-detected").click();
+  await page.keyboard.press("Escape");
+  await openControllerPanel(page);
+  const notes = () =>
+    page
+      .locator("[data-key-note]")
+      .allTextContents()
+      .then((t) => t.filter(Boolean));
+  await send(page, "Minilab3 MIDI", [0x90, 57, 100]);
+  await send(page, "Minilab3 MIDI", [0x90, 60, 100]);
+  await expect.poll(notes).toEqual(["A3", "C4"]);
+  await send(page, "Minilab3 MIDI", [0x80, 57, 0]);
+  await expect.poll(notes).toEqual(["C4"]);
+  await send(page, "Minilab3 MIDI", [0x80, 60, 0]);
+  await expect.poll(notes).toEqual([]);
+});

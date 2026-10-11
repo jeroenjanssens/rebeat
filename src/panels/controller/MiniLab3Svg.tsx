@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { onControllerEvent, type ControllerEvent } from "../../midi/controllerEvents";
 import { useDisplay } from "../../midi/display";
+import { noteName } from "../../model/notes";
 import { onFrame } from "../../render/raf";
 
 // ── Layout constants (all in SVG user units = body pixels) ─────────────────
@@ -280,6 +281,9 @@ export function MiniLab3Svg({ labels, onKeyDown, onPadDown }: MiniLab3SvgProps) 
               ? `color-mix(in oklab, var(--accent) ${Math.round(40 + (vel / 127) * 60)}%, ${k.white ? WHITE_KEY : BLACK_KEY})`
               : "";
         }
+        // while a key is down: the note it plays (the device's octave included)
+        const label = svg.querySelector<SVGTextElement>(`[data-key-note="${k.midi}"]`);
+        if (label) label.textContent = vel > 0 ? noteName(k.midi + live.shift) : "";
       }
 
       // Pads — inner face brightens on hit (uses pad's own color)
@@ -977,6 +981,23 @@ export function MiniLab3Svg({ labels, onKeyDown, onPadDown }: MiniLab3SvgProps) 
           onPointerDown={(e) => handleKeyPointerDown(k.midi, e)}
           onPointerUp={() => handleKeyPointerUp(k.midi)}
           onPointerLeave={() => handleKeyPointerUp(k.midi)}
+        />
+      ))}
+      {/* The notes of the keys that are down (filled in by the frame loop) */}
+      {KEY_LAYOUT.map((k) => (
+        <text
+          key={k.midi}
+          data-key-note={k.midi}
+          x={KEYS_X + (k.x + k.w / 2) * WHITE_W}
+          y={k.white ? KEYS_Y + KEYS_H - 22 : KEYS_Y + BLACK_KEY_H - 16}
+          textAnchor="middle"
+          fontSize={k.white ? 22 : 16}
+          fontWeight="600"
+          fill="#ffffff"
+          stroke="rgba(0,0,0,0.45)"
+          strokeWidth={k.white ? 3 : 2.5}
+          paintOrder="stroke"
+          style={{ pointerEvents: "none", userSelect: "none" }}
         />
       ))}
     </svg>
