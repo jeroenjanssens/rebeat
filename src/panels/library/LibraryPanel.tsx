@@ -149,7 +149,7 @@ export function LibraryPanel() {
   // Playable: allSamples chip lives on the Location so useLibraryItems re-runs when it changes.
   const isPlayable = loc.kind === "playable";
   const playableAllSamples =
-    isPlayable && !!(loc as { kind: "playable"; allSamples?: boolean }).allSamples;
+    isPlayable && ((loc as { kind: "playable"; allSamples?: boolean }).allSamples ?? true);
 
   const items = useLibraryItems(loc, filters);
 
@@ -359,13 +359,13 @@ export function LibraryPanel() {
             tags={tags}
           />
         )}
-        {/* Playable: chip to include all samples (including drums) */}
+        {/* Playable: every sample plays on the keys (D133); the chip keeps the pitched ones */}
         {isPlayable && (
           <button
             className="tool-btn shrink-0 border border-line !text-[10.5px]"
-            data-active={playableAllSamples}
+            data-active={!playableAllSamples}
             data-hint="library.playable.all-samples"
-            title="Show drum and percussion samples too"
+            title="Only samples with a pitch (no drums and noises)"
             onClick={() =>
               setLoc({
                 kind: "playable",
@@ -373,7 +373,7 @@ export function LibraryPanel() {
               } as Location)
             }
           >
-            Samples: all
+            Pitched only
           </button>
         )}
         <button

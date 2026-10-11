@@ -15,6 +15,7 @@ import {
   editorSynth,
   trigger,
 } from "../engine/engine";
+import { noteName } from "../model/notes";
 import type { Track } from "../model/types";
 import { player } from "../model/tracks";
 import { recordNoteOff, recordNoteOn, playedNotes, padInput } from "./input";
@@ -52,6 +53,8 @@ interface KeysState {
    * when editors register or change, so what shows the keys' name redraws. */
   focused: string | null;
   editors: number;
+  /** A sample on the keys: the key that plays it as it is (D133). */
+  root: number | null;
   /** "loading" while a library sound's voice gets its samples. */
   status: "ready" | "loading" | "error";
   /** Recent library sounds put on the keys (newest first, at most 8). */
@@ -62,6 +65,7 @@ export const useKeys = create<KeysState>()(() => ({
   target: { kind: "selected" },
   focused: null,
   editors: 0,
+  root: null,
   status: "ready",
   recent: [],
 }));
@@ -73,7 +77,7 @@ export function setKeysTarget(target: KeysTarget) {
   const prev = useKeys.getState().target;
   // leaving a sound target: dispose the Keys channel
   if (prev.kind === "sound" && target.kind !== "sound") disposeKeysChannel();
-  useKeys.setState({ target });
+  useKeys.setState({ target, root: null });
   if (target.kind === "sound") {
     // add to recent (dedupe by id, newest first, at most 8)
     const t = target;
@@ -90,7 +94,7 @@ export function setKeysTarget(target: KeysTarget) {
 async function ensureKeysChannel(target: Extract<KeysTarget, { kind: "sound" }>) {
   // Lazily import the library helpers to keep this module importable in Node tests.
   const { CATALOG } = await import("../library/instruments");
-  const { trackForInstrument, trackForSample } = await import("../library/soundTrack");
+  const { trackForInstrument, trackForSample, sampleRoot } = await import("../library/soundTrack");
 
   let track: Track;
   if (target.source === "catalog") {
@@ -98,7 +102,12 @@ async function ensureKeysChannel(target: Extract<KeysTarget, { kind: "sound" }>)
     if (!entry) return;
     track = trackForInstrument(entry);
   } else {
-    track = trackForSample(target.id, target.name);
+    // any sample plays as it is on its base key (its pitch, else C4), D133
+    const { loadSample } = await import("../library/library");
+    const root = sampleRoot(await loadSample(target.id));
+    if (useKeys.getState().target !== target) return;
+    useKeys.setState({ root });
+    track = trackForSample(target.id, target.name, root);
   }
 
   // Only proceed if the target is still ours
@@ -176,7 +185,11 @@ export function keysDescription(): { name: string; from: string; editor: boolean
       : { name: ed.name, from: "Synth editor · library", editor: true };
   }
   const t = useKeys.getState().target;
-  if (t.kind === "sound") return { name: t.name, from: "Library", editor: false };
+  if (t.kind === "sound") {
+    const root = useKeys.getState().root;
+    const at = t.source === "sample" && root !== null ? ` · as is on ${noteName(root)}` : "";
+    return { name: t.name, from: `Library${at}`, editor: false };
+  }
   const track = keysTrack();
   if (!track) return { name: "Nothing", from: "", editor: false };
   return { name: track.source || track.name, from: `Track ${track.name}`, editor: false };

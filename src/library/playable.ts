@@ -40,7 +40,8 @@ function isDrum(s: { name: string; key?: string; tags?: string[]; id?: string })
   return DRUM_CATEGORIES.has(cat);
 }
 
-/** The list, in order. `allSamples` adds the drum samples too (the chip). */
+/** The list, in order: every sample by default (D133); `allSamples: false` leaves out drums and
+ * noises (the Pitched only chip). */
 export function playableList(opts: { allSamples?: boolean } = {}): PlayableItem[] {
   const items: PlayableItem[] = [];
 
@@ -84,7 +85,7 @@ export function playableList(opts: { allSamples?: boolean } = {}): PlayableItem[
   // 4. Samples from the library
   const samples = useLibrary.getState().samples;
   for (const s of samples) {
-    if (!opts.allSamples && isDrum(s)) continue;
+    if (!(opts.allSamples ?? true) && isDrum(s)) continue;
     items.push({
       id: s.id,
       name: s.name,
@@ -104,7 +105,7 @@ let browseIndex = -1;
 /** The list at the time of the last browse call (recomputed when `browsePlayable` is called). */
 let browseListCache: PlayableItem[] = [];
 /** Whether `allSamples` was set on the last browse call. */
-let browseAllSamples = false;
+let browseAllSamples = true;
 
 /** Debounce timer for putting the item on the keys (so fast scrolling doesn't load 40 instruments). */
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -238,7 +239,7 @@ export function getBrowseIndex(): number {
 }
 
 /** Set the browse index directly (when the user selects an item in the Playable panel). */
-export function setBrowseIndex(id: string, allSamples = false) {
+export function setBrowseIndex(id: string, allSamples = true) {
   browseAllSamples = allSamples;
   browseListCache = playableList({ allSamples });
   const idx = browseListCache.findIndex((i) => i.id === id);

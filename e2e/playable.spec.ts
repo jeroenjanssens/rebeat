@@ -6,7 +6,7 @@
  * - Sending a relative CC 28 (MiniLab 3 main encoder, rel64: 65 = +1) with the MiniLab 3 map
  *   active moves the Playable selection forward and updates the keys chip.
  * - After browsing, the fake MiniLab output received a SysEx message containing the sound name.
- * - The "Samples: all" chip toggles drum samples in/out of the list.
+ * - The "Pitched only" chip toggles drum samples out of and back into the list.
  *
  * Note: this spec is written but NOT run during wave-1 development. It runs once at the end
  * (wave 3, with the full Playwright suite). Do NOT add it to the CI skip list.
@@ -76,7 +76,7 @@ test("the MiniLab 3's main encoder browses Playable: the keys and the display fo
     .toBe(true);
 });
 
-test("the Samples: all chip toggles", async ({ page }) => {
+test("the Pitched only chip toggles", async ({ page }) => {
   await openApp(page);
   await goPlayable(page);
   const chip = page.getByTestId("library").locator('[data-hint="library.playable.all-samples"]');

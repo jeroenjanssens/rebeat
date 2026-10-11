@@ -234,8 +234,11 @@ describe("playableList()", () => {
     expect(firstSample).toBeGreaterThan(lastYours);
   });
 
-  it("excludes drum samples by default", () => {
-    const list = playableList();
+  it("lists every sample by default; Pitched only leaves out drums (D133)", () => {
+    expect(playableList().map((i) => i.id)).toEqual(
+      expect.arrayContaining(["s1", "s2", "s3", "s4"]),
+    );
+    const list = playableList({ allSamples: false });
     const ids = list.map((i) => i.id);
     expect(ids).not.toContain("s2"); // "Kick Drum" → kick
     expect(ids).not.toContain("s3"); // "Snare Hit" → snare

@@ -213,8 +213,8 @@ const hints: Hints = {
     guide: "library-playable",
   },
   "library.playable.all-samples": {
-    title: "Samples: all",
-    text: "When on, the list also includes drum and percussion samples (which are excluded by default since they don't play musically across the keys).",
+    title: "Pitched only",
+    text: "Playable lists every sample: each plays as it is on its base key (its detected pitch, else C4), higher keys higher. Pitched only leaves out drums and noises.",
     guide: "library-playable",
   },
 };

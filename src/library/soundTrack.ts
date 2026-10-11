@@ -9,7 +9,7 @@ import { SOUND_PARAMS, defaultParams } from "../model/params";
 import type { Sound, Track } from "../model/types";
 import type { CatalogInstrument } from "./instruments";
 import { convertSynthKnobs } from "./synthTrack";
-import { useLibrary } from "./library";
+import { detectRootNote } from "./pitch";
 
 /**
  * A detached Notes track playing a catalog instrument. Its params start at the instrument's
@@ -27,13 +27,10 @@ export function trackForInstrument(c: CatalogInstrument): Track {
 }
 
 /**
- * A detached Notes track playing a sample. Root note: the sample's detected key (C octave 4)
- * or C4 (60). The sound plays chromatically from there.
+ * A detached Notes track playing a sample (D133). Its root (the key that plays it as it is) is
+ * the sample's detected pitch, else C4 (60); higher keys play it higher, lower keys lower.
  */
-export function trackForSample(sampleId: string, name: string): Track {
-  // detect key from library metadata if available
-  const rec = useLibrary.getState().samples.find((s) => s.id === sampleId);
-  const rootNote = sampleKeyToMidi(rec?.key) ?? 60;
+export function trackForSample(sampleId: string, name: string, rootNote = 60): Track {
   const sound: Sound = { source: "sample", sampleId, rootNote };
   const t = makeTrack("notes", "keys", name, name, [], sound);
   for (const k of Object.keys(t.params)) if (k.startsWith("sound.")) delete t.params[k];
@@ -41,28 +38,7 @@ export function trackForSample(sampleId: string, name: string): Track {
   return t;
 }
 
-/** Convert a key string like "C", "D#", "Bb" to a MIDI note at octave 4. */
-function sampleKeyToMidi(key: string | undefined): number | undefined {
-  if (!key) return undefined;
-  const PC: Record<string, number> = {
-    C: 0,
-    "C#": 1,
-    Db: 1,
-    D: 2,
-    "D#": 3,
-    Eb: 3,
-    E: 4,
-    F: 5,
-    "F#": 6,
-    Gb: 6,
-    G: 7,
-    "G#": 8,
-    Ab: 8,
-    A: 9,
-    "A#": 10,
-    Bb: 10,
-    B: 11,
-  };
-  const pc = PC[key.replace(/m$/, "")];
-  return pc !== undefined ? 60 + pc : undefined;
+/** The key a sample plays as it is on: its detected pitch, or C4. */
+export function sampleRoot(buffer: AudioBuffer | null | undefined): number {
+  return (buffer && detectRootNote(buffer)) ?? 60;
 }

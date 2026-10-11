@@ -129,7 +129,7 @@ export function useLibraryItems(loc: Location, f: Filters): Item[] {
     // ── Playable location: one list of everything the keys can play ──────────
     if (loc.kind === "playable") {
       const q = f.query.trim().toLowerCase();
-      const all = playableList({ allSamples: loc.allSamples });
+      const all = playableList({ allSamples: loc.allSamples ?? true });
       return all
         .filter((p) => !q || p.name.toLowerCase().includes(q))
         .map((p): Item => ({

@@ -82,7 +82,7 @@ Open **Recordings** to record from your microphone: pick the input device, watch
 
 ## Playable {#library-playable}
 
-**Playable** is a single list of every sound the keys can play: synths, sampled instruments, Your sounds, and pitched samples (samples with a detected key or a name that doesn't suggest they're drums). Drum and percussion samples are hidden by default — turn on **Samples: all** to include them.
+**Playable** is a single list of every sound the keys can play: synths, sampled instruments, Your sounds, and every sample. A sample plays as it is on its **base key**: its detected pitch (a bass note, a vocal, a chord stab), or C4 for drums and noises. Higher keys play it higher (and shorter), lower keys lower; the Keys menu and the MiniLab's display say which key plays it as it is ("as is on A3"). Turn on **Pitched only** to leave out drums and noises. Any sample elsewhere in the library goes on the keys too: its keyboard button, or **K**.
 
 - **Click** an item or press ↑ ↓ (or ← →) to select it; it goes straight to the keys so your MIDI keyboard plays it immediately. There's no need to add a track first.
 - **K** puts the currently selected item on the keys from any location; Playable does it automatically on navigation.
