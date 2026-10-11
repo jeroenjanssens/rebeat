@@ -60,7 +60,7 @@ import {
 } from "../../model/synth";
 import type { Track } from "../../model/types";
 import { useSelectedTrack, useStore } from "../../state/store";
-import { noteOn as keysNoteOn } from "../../state/keys";
+import { noteOn as keysNoteOn, registerKeysEditor } from "../../state/keys";
 import { playInstrumentOn, setSound, soundLabel } from "../../state/trackActions";
 
 type ClipKind = "osc" | "filter" | "env" | "lfo";
@@ -178,6 +178,19 @@ function LibrarySoundEditor({ libraryKey }: { libraryKey: string }) {
     if (name) dock.api?.getPanel(`synth-editor:lib:${libraryKey}`)?.api.setTitle(`${name} · synth`);
   }, [libraryKey, name]);
   useEffect(() => () => endLibraryEdit(libraryKey), [libraryKey]);
+  // the keys can follow this editor (D132): it plays the library sound's own voice
+  useEffect(() => {
+    if (!name) return;
+    return registerKeysEditor({
+      panelId: `synth-editor:lib:${libraryKey}`,
+      name,
+      hold: (pitch, velocity) => {
+        const release = librarySoundVoice(libraryKey)?.hold?.(pitch, velocity, Tone.now());
+        return () => release?.(Tone.now());
+      },
+      control: (n, v) => librarySoundVoice(libraryKey)?.synth?.control(n, v),
+    });
+  }, [libraryKey, name]);
   if (!track)
     return (
       <div className="flex h-full items-center justify-center p-6 text-center text-[12px] text-faint">
@@ -205,6 +218,16 @@ function TrackSynthEditor({ own }: { own?: string }) {
     if (own && name) dock.api?.getPanel(`synth-editor:${own}`)?.api.setTitle(synthEditorTitle(own));
   }, [own, name]);
   const src = track && track.mode !== "clip" ? voiceSound(track) : null;
+  // the keys can follow this editor (D132): it plays its track
+  const trackId = src?.source === "synth" ? track?.id : undefined;
+  useEffect(() => {
+    if (!trackId || !name) return;
+    return registerKeysEditor({
+      panelId: own ? `synth-editor:${own}` : "synth-editor",
+      name,
+      trackId,
+    });
+  }, [own, trackId, name]);
   if (own && !track)
     return (
       <div className="flex h-full items-center justify-center p-6 text-center text-[12px] text-faint">

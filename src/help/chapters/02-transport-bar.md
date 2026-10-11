@@ -43,4 +43,6 @@ To put a library sound on the keys from the library panel: hover over it and cli
 
 **Add as a track** — if you've been playing a library sound and want to keep it, click "Add as a track" in the Keys menu (or run **Add the keys' sound as a track** from the command palette). Rebeat adds a Notes track with that sound and points the keys at it.
 
+**Follow the synth editor** — tick it in the Keys menu and the keys play what the synth editor you're in edits: the track of a synth editor tab, or a library synth you opened from the library (it plays that sound's own voice, so you hear your edits as you play). Switch between editor tabs and the keys follow; with no synth editor open they play their usual target. The chip shows the editor's sound with "(editor)".
+
 The keys always use a separate voice from the sequencer. On a mono synth the sequencer keeps playing uninterrupted while you play on top of it.

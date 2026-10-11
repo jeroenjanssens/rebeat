@@ -11,14 +11,7 @@ import { trigger } from "../engine/engine";
 import { uid } from "../model/id";
 import type { MidiMapping, MidiMode } from "../model/project";
 import { platform } from "../platform";
-import {
-  keysControl,
-  keysSustain,
-  keysTargetName,
-  keysTrack,
-  noteOn,
-  useKeys,
-} from "../state/keys";
+import { keysControl, keysSustain, keysTakeNotes, keysTargetName, noteOn } from "../state/keys";
 import { padInput } from "../state/input";
 import { useSettings } from "../state/settings";
 import { useStore } from "../state/store";
@@ -677,14 +670,8 @@ function releaseNote(note: number) {
  * the keys' target track (or tracks by position when none is selected, D119). */
 function playNote(channel: number, note: number, velocity: number): string {
   const s = useStore.getState();
-  // keysTrack() resolves the current keys target (selected or locked track)
-  const keysTarget = keysTrack();
-  const route = routeNote(
-    channel,
-    note,
-    useSettings.getState().midiPadsChannel,
-    keysTarget?.mode === "notes" || useKeys.getState().target.kind === "sound",
-  );
+  const route = routeNote(channel, note, useSettings.getState().midiPadsChannel, keysTakeNotes());
+
   if (!route) return "Nothing (below the pads' notes)";
   if (route.to === "notes") {
     // route to the keys' target (selected/locked track or library sound)

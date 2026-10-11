@@ -16,6 +16,7 @@ import { applyPreset, openPanel, restoreLayout, saveLayout } from "./layouts";
 import { PanelFrame, togglePanelFullscreen } from "./PanelFrame";
 import { PANELS, panelDef } from "./panels";
 import { dock, useShell } from "./shell";
+import { activateKeysEditor } from "../state/keys";
 import { toast } from "../components/Toast";
 
 const theme: DockviewTheme = {
@@ -136,6 +137,10 @@ export function Dock() {
     }
     let timer = 0;
     const subs = [
+      // the keys can follow the synth editor you're in (D132)
+      api.onDidActivePanelChange(({ panel }) => {
+        if (panel?.id.startsWith("synth-editor")) activateKeysEditor(panel.id);
+      }),
       api.onDidLayoutChange(() => {
         clearTimeout(timer);
         timer = window.setTimeout(() => saveLayout(api), 400);

@@ -108,7 +108,7 @@ const hints: Hints = {
   },
   "transport.keys": {
     title: "Keys",
-    text: "What the keyboard, MIDI notes and the on-screen pads play. By default it follows the selected track; click to lock it to a specific track or pick a library sound — it then plays through the Keys strip in the mixer, not through a track.",
+    text: "What the keyboard, MIDI notes and the on-screen pads play. By default it follows the selected track; click to lock it to a specific track or pick a library sound — it then plays through the Keys strip in the mixer, not through a track. With Follow the synth editor on, the keys play what the synth editor you're in edits (its track, or a library synth).",
     guide: "keys-target",
   },
 

@@ -63,7 +63,16 @@ vi.mock("./store", () => ({
   },
 }));
 
-const { noteOn, keysSustain, setKeysTarget, useKeys } = await import("./keys");
+const {
+  noteOn,
+  keysSustain,
+  setKeysTarget,
+  useKeys,
+  registerKeysEditor,
+  activateKeysEditor,
+  keysTargetName,
+} = await import("./keys");
+const { useSettings } = await import("./settings");
 
 describe("noteOn → voice track", () => {
   beforeEach(() => {
@@ -166,5 +175,50 @@ describe("setKeysTarget", () => {
     setKeysTarget({ kind: "sound", source: "catalog", id: "piano", name: "Piano" });
     setKeysTarget({ kind: "selected" });
     expect(disposeKeysChannel).toHaveBeenCalled();
+  });
+});
+
+describe("following the synth editor (D132)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setKeysTarget({ kind: "selected" });
+  });
+
+  it("plays the active editor's track only while following is on", () => {
+    const off = registerKeysEditor({
+      panelId: "synth-editor:x",
+      name: "Lead",
+      trackId: drumTrack.id,
+    });
+    useSettings.getState().set({ keysFollowEditor: false });
+    noteOn(60, 0.8, "midi");
+    expect(holdNote).toHaveBeenLastCalledWith(voiceTrack, 60, 0.8);
+    useSettings.getState().set({ keysFollowEditor: true });
+    expect(keysTargetName()).toBe("Lead (editor)");
+    off();
+    expect(useKeys.getState().editor).toBeNull();
+    useSettings.getState().set({ keysFollowEditor: false });
+  });
+
+  it("plays a library sound's editor through its own voice, and follows the last activated", () => {
+    const hold = vi.fn(() => vi.fn());
+    const offA = registerKeysEditor({ panelId: "synth-editor:lib:a", name: "Pad", hold });
+    const offB = registerKeysEditor({
+      panelId: "synth-editor:t",
+      name: "Bass",
+      trackId: voiceTrack.id,
+    });
+    useSettings.getState().set({ keysFollowEditor: true });
+    expect(useKeys.getState().editor?.panelId).toBe("synth-editor:lib:a");
+    noteOn(62, 0.5, "midi");
+    expect(hold).toHaveBeenCalledWith(62, 0.5);
+    expect(holdNote).not.toHaveBeenCalled();
+    activateKeysEditor("synth-editor:t");
+    noteOn(64, 0.5, "midi");
+    expect(holdNote).toHaveBeenCalledWith(voiceTrack, 64, 0.5);
+    offB();
+    expect(useKeys.getState().editor?.panelId).toBe("synth-editor:lib:a");
+    offA();
+    useSettings.getState().set({ keysFollowEditor: false });
   });
 });

@@ -18,6 +18,7 @@ import {
 import type { Track } from "../model/types";
 import { player } from "../model/tracks";
 import { recordNoteOff, recordNoteOn, playedNotes, padInput } from "./input";
+import { useSettings } from "./settings";
 import { useStore } from "./store";
 
 export type KeysTarget =
@@ -29,8 +30,24 @@ export type KeysTarget =
 /** Where a held note came from (for the monitor and the Controller panel). */
 export type KeysSource = "midi" | "screen" | "computer" | "piano-roll";
 
+/**
+ * A synth editor the keys can follow (D132): its track, or a library sound's own voice (D91).
+ * Editors register while they're open; the last one activated is the one followed.
+ */
+export interface KeysEditor {
+  panelId: string;
+  name: string;
+  trackId?: string;
+  hold?: (pitch: number, velocity: number) => () => void;
+  control?: (name: "modwheel" | "aftertouch" | "pitchbend", value: number) => void;
+}
+
+const editors = new Map<string, KeysEditor>();
+
 interface KeysState {
   target: KeysTarget;
+  /** The synth editor activated last (still open). */
+  editor: { panelId: string; name: string } | null;
   /** "loading" while a library sound's voice gets its samples. */
   status: "ready" | "loading" | "error";
   /** Recent library sounds put on the keys (newest first, at most 8). */
@@ -39,6 +56,7 @@ interface KeysState {
 
 export const useKeys = create<KeysState>()(() => ({
   target: { kind: "selected" },
+  editor: null,
   status: "ready",
   recent: [],
 }));
@@ -80,7 +98,6 @@ async function ensureKeysChannel(target: Extract<KeysTarget, { kind: "sound" }>)
 
   useKeys.setState({ status: "loading" });
   try {
-    const { useSettings } = await import("./settings");
     const { voice } = createKeysChannel(track, useSettings.getState().keysMix);
     // wait until the voice's samples are loaded (up to 30 s)
     const deadline = performance.now() + 30_000;
@@ -93,9 +110,47 @@ async function ensureKeysChannel(target: Extract<KeysTarget, { kind: "sound" }>)
   }
 }
 
+/** A synth editor that's open: it registers (and again when what it edits changes). */
+export function registerKeysEditor(e: KeysEditor): () => void {
+  editors.set(e.panelId, e);
+  const k = useKeys.getState();
+  if (!k.editor || k.editor.panelId === e.panelId) activateKeysEditor(e.panelId);
+  return () => {
+    if (editors.get(e.panelId) !== e) return;
+    editors.delete(e.panelId);
+    if (useKeys.getState().editor?.panelId === e.panelId) {
+      // the next open editor, if any
+      const next = [...editors.keys()].pop();
+      useKeys.setState({ editor: null });
+      if (next) activateKeysEditor(next);
+    }
+  };
+}
+
+/** A synth editor tab became the active panel. */
+export function activateKeysEditor(panelId: string) {
+  const e = editors.get(panelId);
+  if (e) useKeys.setState({ editor: { panelId, name: e.name } });
+}
+
+/** The synth editor the keys play now, if they follow one. */
+export function keysEditor(): KeysEditor | undefined {
+  const k = useKeys.getState();
+  if (!useSettings.getState().keysFollowEditor || !k.editor) return undefined;
+  return editors.get(k.editor.panelId);
+}
+
+/** Whether notes from a keyboard go to the keys (and not to the pads by position). */
+export function keysTakeNotes(): boolean {
+  if (useKeys.getState().target.kind === "sound" || keysEditor()) return true;
+  return keysTrack()?.mode === "notes";
+}
+
 /** The track the keys play, if they play a track (Notes or Hits of a voice). */
 export function keysTrack(): Track | undefined {
   const s = useStore.getState();
+  const ed = keysEditor();
+  if (ed) return ed.trackId ? s.project.tracks.find((x) => x.id === ed.trackId) : undefined;
   const t = useKeys.getState().target;
   const id = t.kind === "selected" ? s.selectedTrackId : t.kind === "track" ? t.id : null;
   if (!id) return undefined;
@@ -104,6 +159,8 @@ export function keysTrack(): Track | undefined {
 
 /** What the keys play, for the chip, the Controller panel and the MiniLab display. */
 export function keysTargetName(): string {
+  const ed = keysEditor();
+  if (ed) return `${ed.name} (editor)`;
   const t = useKeys.getState().target;
   if (t.kind === "sound") return t.name;
   return keysTrack()?.name ?? "Nothing";
@@ -135,8 +192,11 @@ export function keysSustain(down: boolean) {
 /** Start a held note on the keys' target; the returned function releases it. */
 export function noteOn(pitch: number, velocity: number, _source: KeysSource): () => void {
   const target = useKeys.getState().target;
+  const ed = keysEditor();
+  // a library sound's editor plays its own voice (D91)
+  if (ed && !ed.trackId) return ed.hold ? sustained(ed.hold(pitch, velocity)) : () => {};
 
-  if (target.kind === "sound") {
+  if (!ed && target.kind === "sound") {
     // Library sound: play through the Keys channel
     return noteOnKeys(pitch, velocity);
   }
@@ -182,6 +242,14 @@ export function noteOn(pitch: number, velocity: number, _source: KeysSource): ()
   };
 }
 
+/** A release that waits for the sustain pedal. */
+function sustained(release: () => void): () => void {
+  return () => {
+    if (sustainDown) sustainedReleases.push(release);
+    else release();
+  };
+}
+
 /** Play a note through the Keys channel (library sound target). */
 function noteOnKeys(pitch: number, velocity: number): () => void {
   const kc = getKeysChannel();
@@ -202,7 +270,9 @@ function noteOnKeys(pitch: number, velocity: number): () => void {
 /** Pitch bend (−1..1), mod wheel and aftertouch (0..1) for the keys' voice. */
 export function keysControl(name: "modwheel" | "aftertouch" | "pitchbend", value: number) {
   const target = useKeys.getState().target;
-  if (target.kind === "sound") {
+  const ed = keysEditor();
+  if (ed && !ed.trackId) return ed.control?.(name, value);
+  if (!ed && target.kind === "sound") {
     getKeysChannel()?.voice.synth?.control(name, value);
     return;
   }

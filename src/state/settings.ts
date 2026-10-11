@@ -111,6 +111,8 @@ export interface Settings {
   midiMiniLabHandshake: boolean;
   /** The Keys strip (a library sound on the keys, D126): level and sends. */
   keysMix: { volume: number; sendA: number; sendB: number };
+  /** The keys play what the active synth editor edits (D132). */
+  keysFollowEditor: boolean;
   previewVolume: number;
   /** When nothing plays yet, the first loop recording sets the tempo (loop-pedal style). */
   freeFirstLoop: boolean;
@@ -173,6 +175,7 @@ export const DEFAULT_SETTINGS: Settings = {
   midiShowDisplayNames: true,
   midiMiniLabHandshake: false,
   keysMix: { volume: 0.8, sendA: 0, sendB: 0 },
+  keysFollowEditor: false,
   previewVolume: 0.8,
   freeFirstLoop: false,
   onboarded: false,

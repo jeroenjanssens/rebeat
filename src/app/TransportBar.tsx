@@ -25,7 +25,13 @@ import { STEP_SIZE_QUARTERS } from "../model/types";
 import { platform } from "../platform";
 import { getLoad, startMainLoad } from "../engine/load";
 import { useSettings } from "../state/settings";
-import { addKeysSoundAsTrack, keysTargetName, setKeysTarget, useKeys } from "../state/keys";
+import {
+  addKeysSoundAsTrack,
+  keysEditor,
+  keysTargetName,
+  setKeysTarget,
+  useKeys,
+} from "../state/keys";
 import { useStore } from "../state/store";
 import { isExampleId } from "../templates/examples";
 import { LAYOUT_PRESETS, applyPreset, openPanel } from "./layouts";
@@ -233,6 +239,9 @@ function KeysChip() {
   const keysTarget = useKeys((s) => s.target);
   const keysStatus = useKeys((s) => s.status);
   const recent = useKeys((s) => s.recent);
+  // the chip's name follows the synth editor too (D132)
+  useKeys((s) => s.editor);
+  const followEditor = useSettings((s) => s.keysFollowEditor);
   const tracks = useStore((s) => s.project.tracks);
   const selectedTrackId = useStore((s) => s.selectedTrackId);
 
@@ -247,6 +256,11 @@ function KeysChip() {
         label: "Follow selected track",
         checked: keysTarget.kind === "selected",
         onSelect: () => setKeysTarget({ kind: "selected" }),
+      },
+      {
+        label: "Follow the synth editor",
+        checked: followEditor,
+        onSelect: () => useSettings.getState().set({ keysFollowEditor: !followEditor }),
       },
     ];
     if (notesTracks.length > 0) {
@@ -277,7 +291,8 @@ function KeysChip() {
   };
 
   const selectedTrackName = tracks.find((t) => t.id === selectedTrackId)?.name;
-  const label = keysTarget.kind === "selected" ? (selectedTrackName ?? "No track") : name;
+  const label =
+    keysTarget.kind === "selected" && !keysEditor() ? (selectedTrackName ?? "No track") : name;
 
   return (
     <button
