@@ -43,6 +43,8 @@ To put a library sound on the keys from the library panel: hover over it and cli
 
 **Add as a track** — if you've been playing a library sound and want to keep it, click "Add as a track" in the Keys menu (or run **Add the keys' sound as a track** from the command palette). Rebeat adds a Notes track with that sound and points the keys at it.
 
-**Follow the synth editor** — tick it in the Keys menu and the keys play what the synth editor you're in edits: the track of a synth editor tab, or a library synth you opened from the library (it plays that sound's own voice, so you hear your edits as you play). Switch between editor tabs and the keys follow; with no synth editor open they play their usual target. The chip shows the editor's sound with "(editor)".
+**Follow the synth editor in focus** — tick it in the Keys menu and the keys play what the synth editor panel in focus edits: the track of a synth editor tab, or a library synth you opened from the library (it plays that sound's own voice, so you hear your edits as you play). With several editors open, the one you clicked last is in focus; close it and the keys play their usual target again. While it's on, it's the only choice ticked in the menu; picking another one turns it off.
+
+The top of the Keys menu says exactly what plays and where it comes from ("Acid Bass", "Synth editor · BASS", "Track BASS" or "Library"), the chip reads **Keys · Editor** while it follows an editor, and a MiniLab 3 shows the same two lines on its display.
 
 The keys always use a separate voice from the sequencer. On a mono synth the sequencer keeps playing uninterrupted while you play on top of it.

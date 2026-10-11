@@ -46,8 +46,12 @@ test("the keys follow the synth editor you're in (D132)", async ({ page }) => {
   await page.waitForTimeout(600);
 
   await page.getByTestId("keys-chip").click();
-  await page.locator(".menu .menu-item", { hasText: "Follow the synth editor" }).click();
-  await expect(page.getByTestId("keys-chip")).toContainText("(editor)");
+  await page.locator(".menu .menu-item", { hasText: "Follow the synth editor in focus" }).click();
+  await expect(page.getByTestId("keys-chip")).toContainText("Editor");
+  // the menu says exactly what plays, and from where
+  await page.getByTestId("keys-chip").click();
+  await expect(page.getByTestId("keys-now")).toContainText(/Synth editor · Bass/i);
+  await page.keyboard.press("Escape");
   await page.evaluate(() => (window as never as W).__midi([0x90, 48, 100]));
   await expect.poll(() => peak(page), { timeout: 5000 }).toBeGreaterThan(0.01);
   await page.evaluate(() => (window as never as W).__midi([0x80, 48, 0]));

@@ -132,7 +132,7 @@ test("pads on channel 10 play the drum tracks while a Notes track is selected", 
   await send(page, "Pad Keys", [0x89, 36, 0]);
   // the keys (channel 1) play the selected track
   await send(page, "Pad Keys", [0x90, 60, 100]);
-  await expect(lastAction(page)).resolves.toBe(`Played on ${ts[notesIndex].name}`);
+  await expect(lastAction(page)).resolves.toContain(`Track ${ts[notesIndex].name}`);
   await send(page, "Pad Keys", [0x80, 60, 0]);
 });
 

@@ -25,13 +25,7 @@ import { STEP_SIZE_QUARTERS } from "../model/types";
 import { platform } from "../platform";
 import { getLoad, startMainLoad } from "../engine/load";
 import { useSettings } from "../state/settings";
-import {
-  addKeysSoundAsTrack,
-  keysEditor,
-  keysTargetName,
-  setKeysTarget,
-  useKeys,
-} from "../state/keys";
+import { addKeysSoundAsTrack, keysDescription, setKeysTarget, useKeys } from "../state/keys";
 import { useStore } from "../state/store";
 import { isExampleId } from "../templates/examples";
 import { LAYOUT_PRESETS, applyPreset, openPanel } from "./layouts";
@@ -239,28 +233,42 @@ function KeysChip() {
   const keysTarget = useKeys((s) => s.target);
   const keysStatus = useKeys((s) => s.status);
   const recent = useKeys((s) => s.recent);
-  // the chip's name follows the synth editor too (D132)
-  useKeys((s) => s.editor);
+  // the name follows the synth editor in focus, and what the editors edit (D132)
+  useKeys((s) => s.focused);
+  useKeys((s) => s.editors);
   const followEditor = useSettings((s) => s.keysFollowEditor);
   const tracks = useStore((s) => s.project.tracks);
-  const selectedTrackId = useStore((s) => s.selectedTrackId);
+  useStore((s) => s.selectedTrackId);
 
-  const name = keysTargetName();
+  const playing = keysDescription();
   const isSound = keysTarget.kind === "sound";
   const isLoading = keysStatus === "loading";
 
   const openMenu = () => {
     const notesTracks = tracks.filter((t) => t.mode === "notes");
+    // following the synth editor, it's the only choice that's checked (D132)
+    const usual = !followEditor;
     const items: import("../components/Menu").MenuItem[] = [
+      // what plays now, exactly, and from where
       {
-        label: "Follow selected track",
-        checked: keysTarget.kind === "selected",
-        onSelect: () => setKeysTarget({ kind: "selected" }),
+        render: () => (
+          <div className="px-3 py-1.5 text-[11px]" data-testid="keys-now">
+            <div className="label">Playing</div>
+            <div className="text-ink">{playing.name}</div>
+            {playing.from && <div className="text-dim">{playing.from}</div>}
+          </div>
+        ),
       },
+      { separator: true },
       {
-        label: "Follow the synth editor",
+        label: "Follow the synth editor in focus",
         checked: followEditor,
         onSelect: () => useSettings.getState().set({ keysFollowEditor: !followEditor }),
+      },
+      {
+        label: "Follow selected track",
+        checked: usual && keysTarget.kind === "selected",
+        onSelect: () => setKeysTarget({ kind: "selected" }),
       },
     ];
     if (notesTracks.length > 0) {
@@ -268,7 +276,7 @@ function KeysChip() {
       for (const t of notesTracks) {
         items.push({
           label: t.name,
-          checked: keysTarget.kind === "track" && keysTarget.id === t.id,
+          checked: usual && keysTarget.kind === "track" && keysTarget.id === t.id,
           onSelect: () => setKeysTarget({ kind: "track", id: t.id }),
         });
       }
@@ -278,35 +286,31 @@ function KeysChip() {
       for (const r of recent) {
         items.push({
           label: r.name,
-          checked: keysTarget.kind === "sound" && keysTarget.id === r.id,
+          checked: usual && keysTarget.kind === "sound" && keysTarget.id === r.id,
           onSelect: () => setKeysTarget(r),
         });
       }
     }
-    if (isSound) {
+    if (isSound && usual) {
       items.push({ separator: true });
       items.push({ label: "Add as a track", onSelect: () => addKeysSoundAsTrack() });
     }
     dropdown(chipRef.current!, items);
   };
 
-  const selectedTrackName = tracks.find((t) => t.id === selectedTrackId)?.name;
-  const label =
-    keysTarget.kind === "selected" && !keysEditor() ? (selectedTrackName ?? "No track") : name;
-
   return (
     <button
       ref={chipRef}
       className="field hidden @[800px]:inline-flex"
-      title="Keys target: what the keyboard, MIDI and pads play"
+      title={`Keys: ${playing.name}${playing.from ? ` (${playing.from})` : ""}`}
       data-hint="transport.keys"
       data-testid="keys-chip"
       onClick={openMenu}
     >
       <Keyboard size={11} />
-      <span className="label">Keys</span>
-      <span className="num max-w-[80px] truncate" style={{ opacity: isLoading ? 0.5 : 1 }}>
-        {isLoading ? "Loading…" : label}
+      <span className="label">{playing.editor ? "Keys · Editor" : "Keys"}</span>
+      <span className="num max-w-[110px] truncate" style={{ opacity: isLoading ? 0.5 : 1 }}>
+        {isLoading ? "Loading…" : playing.name}
       </span>
     </button>
   );

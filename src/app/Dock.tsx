@@ -16,7 +16,7 @@ import { applyPreset, openPanel, restoreLayout, saveLayout } from "./layouts";
 import { PanelFrame, togglePanelFullscreen } from "./PanelFrame";
 import { PANELS, panelDef } from "./panels";
 import { dock, useShell } from "./shell";
-import { activateKeysEditor } from "../state/keys";
+import { focusKeysEditor, forgetKeysEditor } from "../state/keys";
 import { toast } from "../components/Toast";
 
 const theme: DockviewTheme = {
@@ -135,12 +135,16 @@ export function Dock() {
         }, 1000);
       }
     }
+    const active = api.activePanel?.id;
+    if (active?.startsWith("synth-editor")) focusKeysEditor(active);
     let timer = 0;
     const subs = [
       // the keys can follow the synth editor you're in (D132)
+      // (the editor in focus: the synth editor panel activated last, while it's open)
       api.onDidActivePanelChange(({ panel }) => {
-        if (panel?.id.startsWith("synth-editor")) activateKeysEditor(panel.id);
+        if (panel?.id.startsWith("synth-editor")) focusKeysEditor(panel.id);
       }),
+      api.onDidRemovePanel((panel) => forgetKeysEditor(panel.id)),
       api.onDidLayoutChange(() => {
         clearTimeout(timer);
         timer = window.setTimeout(() => saveLayout(api), 400);

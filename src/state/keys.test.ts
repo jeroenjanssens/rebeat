@@ -69,8 +69,9 @@ const {
   setKeysTarget,
   useKeys,
   registerKeysEditor,
-  activateKeysEditor,
-  keysTargetName,
+  focusKeysEditor,
+  forgetKeysEditor,
+  keysDescription,
 } = await import("./keys");
 const { useSettings } = await import("./settings");
 
@@ -184,23 +185,29 @@ describe("following the synth editor (D132)", () => {
     setKeysTarget({ kind: "selected" });
   });
 
-  it("plays the active editor's track only while following is on", () => {
+  it("plays the editor in focus only while following is on, and says so", () => {
     const off = registerKeysEditor({
       panelId: "synth-editor:x",
       name: "Lead",
       trackId: drumTrack.id,
     });
-    useSettings.getState().set({ keysFollowEditor: false });
+    focusKeysEditor("synth-editor:x");
     noteOn(60, 0.8, "midi");
     expect(holdNote).toHaveBeenLastCalledWith(voiceTrack, 60, 0.8);
     useSettings.getState().set({ keysFollowEditor: true });
-    expect(keysTargetName()).toBe("Lead (editor)");
+    expect(keysDescription()).toMatchObject({
+      name: drumTrack.source || drumTrack.name,
+      from: `Synth editor · ${drumTrack.name}`,
+      editor: true,
+    });
+    // picking another target stops following
+    setKeysTarget({ kind: "selected" });
+    expect(useSettings.getState().keysFollowEditor).toBe(false);
     off();
-    expect(useKeys.getState().editor).toBeNull();
-    useSettings.getState().set({ keysFollowEditor: false });
+    forgetKeysEditor("synth-editor:x");
   });
 
-  it("plays a library sound's editor through its own voice, and follows the last activated", () => {
+  it("follows the editor in focus, not the one opened last", () => {
     const hold = vi.fn(() => vi.fn());
     const offA = registerKeysEditor({ panelId: "synth-editor:lib:a", name: "Pad", hold });
     const offB = registerKeysEditor({
@@ -209,16 +216,21 @@ describe("following the synth editor (D132)", () => {
       trackId: voiceTrack.id,
     });
     useSettings.getState().set({ keysFollowEditor: true });
-    expect(useKeys.getState().editor?.panelId).toBe("synth-editor:lib:a");
+    focusKeysEditor("synth-editor:lib:a");
+    // B registering again (its track renamed…) doesn't take the focus
+    registerKeysEditor({ panelId: "synth-editor:t", name: "Bass", trackId: voiceTrack.id });
     noteOn(62, 0.5, "midi");
     expect(hold).toHaveBeenCalledWith(62, 0.5);
     expect(holdNote).not.toHaveBeenCalled();
-    activateKeysEditor("synth-editor:t");
+    expect(keysDescription()).toMatchObject({ name: "Pad", from: "Synth editor · library" });
+    focusKeysEditor("synth-editor:t");
     noteOn(64, 0.5, "midi");
     expect(holdNote).toHaveBeenCalledWith(voiceTrack, 64, 0.5);
-    offB();
-    expect(useKeys.getState().editor?.panelId).toBe("synth-editor:lib:a");
+    // the focused editor closed: back to the usual target
+    forgetKeysEditor("synth-editor:t");
+    expect(useKeys.getState().focused).toBeNull();
     offA();
+    offB();
     useSettings.getState().set({ keysFollowEditor: false });
   });
 });

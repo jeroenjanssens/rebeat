@@ -32,10 +32,12 @@ export type KeysSource = "midi" | "screen" | "computer" | "piano-roll";
 
 /**
  * A synth editor the keys can follow (D132): its track, or a library sound's own voice (D91).
- * Editors register while they're open; the last one activated is the one followed.
+ * Editors register while they're open; the one in focus (the synth editor panel activated
+ * last, while it's open) is the one followed.
  */
 export interface KeysEditor {
   panelId: string;
+  /** The sound's name (a library synth's; a track's comes from the track). */
   name: string;
   trackId?: string;
   hold?: (pitch: number, velocity: number) => () => void;
@@ -46,8 +48,10 @@ const editors = new Map<string, KeysEditor>();
 
 interface KeysState {
   target: KeysTarget;
-  /** The synth editor activated last (still open). */
-  editor: { panelId: string; name: string } | null;
+  /** The synth editor panel in focus (activated last, still open), and a counter that moves
+   * when editors register or change, so what shows the keys' name redraws. */
+  focused: string | null;
+  editors: number;
   /** "loading" while a library sound's voice gets its samples. */
   status: "ready" | "loading" | "error";
   /** Recent library sounds put on the keys (newest first, at most 8). */
@@ -56,12 +60,16 @@ interface KeysState {
 
 export const useKeys = create<KeysState>()(() => ({
   target: { kind: "selected" },
-  editor: null,
+  focused: null,
+  editors: 0,
   status: "ready",
   recent: [],
 }));
 
 export function setKeysTarget(target: KeysTarget) {
+  // picking a target is picking it instead of the synth editor
+  if (useSettings.getState().keysFollowEditor)
+    useSettings.getState().set({ keysFollowEditor: false });
   const prev = useKeys.getState().target;
   // leaving a sound target: dispose the Keys channel
   if (prev.kind === "sound" && target.kind !== "sound") disposeKeysChannel();
@@ -113,31 +121,29 @@ async function ensureKeysChannel(target: Extract<KeysTarget, { kind: "sound" }>)
 /** A synth editor that's open: it registers (and again when what it edits changes). */
 export function registerKeysEditor(e: KeysEditor): () => void {
   editors.set(e.panelId, e);
-  const k = useKeys.getState();
-  if (!k.editor || k.editor.panelId === e.panelId) activateKeysEditor(e.panelId);
+  useKeys.setState((k) => ({ editors: k.editors + 1 }));
   return () => {
     if (editors.get(e.panelId) !== e) return;
     editors.delete(e.panelId);
-    if (useKeys.getState().editor?.panelId === e.panelId) {
-      // the next open editor, if any
-      const next = [...editors.keys()].pop();
-      useKeys.setState({ editor: null });
-      if (next) activateKeysEditor(next);
-    }
+    useKeys.setState((k) => ({ editors: k.editors + 1 }));
   };
 }
 
-/** A synth editor tab became the active panel. */
-export function activateKeysEditor(panelId: string) {
-  const e = editors.get(panelId);
-  if (e) useKeys.setState({ editor: { panelId, name: e.name } });
+/** A synth editor panel came into focus (the dock's active panel). */
+export function focusKeysEditor(panelId: string) {
+  if (useKeys.getState().focused !== panelId) useKeys.setState({ focused: panelId });
+}
+
+/** A panel was closed: if it was the editor in focus, none is. */
+export function forgetKeysEditor(panelId: string) {
+  if (useKeys.getState().focused === panelId) useKeys.setState({ focused: null });
 }
 
 /** The synth editor the keys play now, if they follow one. */
 export function keysEditor(): KeysEditor | undefined {
   const k = useKeys.getState();
-  if (!useSettings.getState().keysFollowEditor || !k.editor) return undefined;
-  return editors.get(k.editor.panelId);
+  if (!useSettings.getState().keysFollowEditor || !k.focused) return undefined;
+  return editors.get(k.focused);
 }
 
 /** Whether notes from a keyboard go to the keys (and not to the pads by position). */
@@ -157,13 +163,29 @@ export function keysTrack(): Track | undefined {
   return s.project.tracks.find((x) => x.id === id);
 }
 
-/** What the keys play, for the chip, the Controller panel and the MiniLab display. */
-export function keysTargetName(): string {
+/**
+ * What the keys play, for the chip, its menu and the device display: the exact sound, and where
+ * it comes from ("Synth editor · BASS", "Track BASS", "Library").
+ */
+export function keysDescription(): { name: string; from: string; editor: boolean } {
   const ed = keysEditor();
-  if (ed) return `${ed.name} (editor)`;
+  if (ed) {
+    const track = ed.trackId ? keysTrack() : undefined;
+    return track
+      ? { name: track.source || track.name, from: `Synth editor · ${track.name}`, editor: true }
+      : { name: ed.name, from: "Synth editor · library", editor: true };
+  }
   const t = useKeys.getState().target;
-  if (t.kind === "sound") return t.name;
-  return keysTrack()?.name ?? "Nothing";
+  if (t.kind === "sound") return { name: t.name, from: "Library", editor: false };
+  const track = keysTrack();
+  if (!track) return { name: "Nothing", from: "", editor: false };
+  return { name: track.source || track.name, from: `Track ${track.name}`, editor: false };
+}
+
+/** What the keys play, in one line ("Acid Bass · Synth editor · BASS"). */
+export function keysTargetName(): string {
+  const d = keysDescription();
+  return d.from ? `${d.name} · ${d.from}` : d.name;
 }
 
 // ---------- sustain and held notes ----------

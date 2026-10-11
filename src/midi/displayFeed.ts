@@ -2,8 +2,9 @@
  * Display feed (WS-E, D126): keeps the MiniLab 3's OLED screen (and the Controller panel's
  * mirrored display) current with what Rebeat is doing:
  *
- *  - When the keys target changes → show the track/sound name.
- *  - When the selected track changes → show its name and sound.
+ *  - What the keys play (the exact sound, and from where: the synth editor in focus, a track,
+ *    the library) whenever it changes.
+ *  - When the selected track changes and the keys don't follow it: its name and sound.
  *  - When a mapped knob turns → show its name and value briefly (transient, ~1.5 s),
  *    then restore the last non-transient text.
  *
@@ -15,7 +16,7 @@
  * lazy-imported inside functions so unit-test-imported code never pulls them in.
  */
 import { showOnDisplay, useDisplay, type DisplayText } from "./display";
-import { useKeys, keysTargetName } from "../state/keys";
+import { useKeys, keysDescription } from "../state/keys";
 import { useStore } from "../state/store";
 import { useSettings } from "../state/settings";
 import { onControllerEvent } from "./controllerEvents";
@@ -28,19 +29,32 @@ export function startDisplayFeed(): void {
   if (started) return;
   started = true;
 
-  // ── 1. Keys target changes ────────────────────────────────────────────────
-  useKeys.subscribe((state, prev) => {
-    if (state.target === prev.target) return;
-    const name = keysTargetName();
-    showLastingText({ line1: name, line2: "Keys" });
+  // ── 1. What the keys play: the exact sound, and where from (the synth editor in focus…) ──
+  let lastKeys = "";
+  const showKeys = () => {
+    const d = keysDescription();
+    const key = `${d.name}|${d.from}`;
+    if (key === lastKeys) return false;
+    lastKeys = key;
+    showLastingText({ line1: d.name, line2: d.from || "Keys" });
+    return true;
+  };
+  useKeys.subscribe(() => void showKeys());
+  useSettings.subscribe((s, prev) => {
+    if (s.keysFollowEditor !== prev.keysFollowEditor) showKeys();
   });
 
-  // ── 2. Selected track changes ─────────────────────────────────────────────
+  // ── 2. Selected track changes: what the keys play now, or else the track ──
   let lastTrackId: string | null = null;
   useStore.subscribe((state) => {
     const id = state.selectedTrackId;
-    if (id === lastTrackId) return;
+    if (id === lastTrackId) {
+      // a track renamed or given another sound: the keys' name may have changed
+      showKeys();
+      return;
+    }
     lastTrackId = id;
+    if (showKeys()) return;
     const track = id ? state.project.tracks.find((t) => t.id === id) : undefined;
     if (!track) return;
     showLastingText({ line1: track.name, line2: track.source ?? "" });
