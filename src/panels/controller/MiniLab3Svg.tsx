@@ -266,7 +266,11 @@ export function MiniLab3Svg({ labels, onKeyDown, onPadDown }: MiniLab3SvgProps) 
         const vel = live.padVel[i];
         const el = svg.querySelector<SVGElement>(`[data-pad="${i}"]`);
         if (el) {
-          el.style.fill = vel > 0 ? PAD_COLORS[i] : "";
+          // hit: the face lights up in its color, brighter the harder
+          el.style.fill =
+            vel > 0
+              ? `color-mix(in oklab, ${PAD_COLORS[i]} ${Math.round(45 + (vel / 127) * 50)}%, #0a0a10)`
+              : "";
         }
       }
 
@@ -365,6 +369,11 @@ export function MiniLab3Svg({ labels, onKeyDown, onPadDown }: MiniLab3SvgProps) 
       style={{ width: "100%", height: "100%", display: "block" }}
       aria-label="MiniLab 3 controller"
     >
+      <defs>
+        <filter id="ml3-glow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="2" />
+        </filter>
+      </defs>
       {/* ── Body ──────────────────────────────────────────────────────── */}
       <rect
         x={0}
@@ -734,8 +743,20 @@ export function MiniLab3Svg({ labels, onKeyDown, onPadDown }: MiniLab3SvgProps) 
             onPointerUp={() => handlePadPointerUp(i)}
             onPointerLeave={() => handlePadPointerUp(i)}
           >
-            {/* outer rim (always colored) */}
-            <rect x={px} y={PAD_Y} width={PAD_W} height={PAD_H} rx={5} fill={color} stroke="none" />
+            {/* a light bezel, and the rim's colored glow (the pads are backlit) */}
+            <rect x={px} y={PAD_Y} width={PAD_W} height={PAD_H} rx={6} fill="#d4d4d8" />
+            <rect
+              x={px + 1.5}
+              y={PAD_Y + 1.5}
+              width={PAD_W - 3}
+              height={PAD_H - 3}
+              rx={5}
+              fill="none"
+              stroke={color}
+              strokeWidth={3}
+              opacity={0.85}
+              filter="url(#ml3-glow)"
+            />
             {/* inner dark face (data-pad used for live brightness) */}
             <rect
               data-pad={i}
