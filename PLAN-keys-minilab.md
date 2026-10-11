@@ -334,3 +334,40 @@ Why this split:
 - **Q6.** On `main` (see the status), with local commits; nothing is pushed without asking.
 - The end-to-end tests are written along the way but run once at the end (so the per-worktree
   Playwright port isn't needed).
+
+## 5. Follow-up (2026-10-11): the device's look, the encoder, the keys follow the synth editor
+
+Jeroen's findings with the device: the faders are smooth now; the Controller panel is almost
+right; the black encoder doesn't step through Playable. And a new wish: the keys can play the
+synth of the synth editor that's open and selected.
+
+1. **The Controller panel looks like the photo** (musicstore.de's top view of the white MiniLab
+   3). Redraw `MiniLab3Svg.tsx` in the photo's own proportions (body about 1158 × 715):
+   - left: Shift (black face in a white bezel) and Hold ("Chord" under it), Oct − and Oct +
+     ("← Transpose →" under them), the two tall white touch strips (↑ — ↓ and ↑ with a bar)
+   - a black panel with the OLED at its top and the black encoder in it
+   - 8 white knobs in two rows of 4 (numbered 1–8 below), 4 faders on the right (black slots,
+     white caps with a black line, numbered 1–4)
+   - 8 square black pads in a row with glowing rims in Arturia mode's colors (blue, blue, blue,
+     orange, blue, green, red, yellow) and their labels (Arp, Pad, Prog, loop, stop, play,
+     record, Tap); a pressed pad glows brighter
+   - "MINILAB3", "MIDI CH 1 … 16" and "ARTURIA" above the keys; 15 white and 10 black keys
+   - the device's colors (white body, black and white), whatever the theme; the accent only
+     for what's pressed and for mapping labels
+   Live state and interaction stay as they are. Check with a screenshot next to the photo.
+2. **The encoder.** A map's mappings are written when you pick the map, so a map that gained
+   slots in an update (the encoder, its click, Shift) never reached settings saved before.
+   On startup (and when MIDI starts), add the active map's missing slots to the settings
+   (never touching slots you learned again). Unit test. Also show in the Monitor what an
+   unmapped CC on a known controller probably is.
+3. **The keys follow the synth editor (D132).** A new choice in the Keys chip: **Follow the
+   synth editor**, saved in the settings. While it's on and a synth editor tab is the active
+   one (or the last active one, while it's still open), the keys play what that editor edits:
+   its track (a `synth-editor:<track>` tab, or the selected track for the plain one) or its
+   library sound (`synth-editor:lib:<key>`, through that sound's own voice, D91). Otherwise
+   the keys' usual target. The chip says so ("Keys: Acid (editor)"). Hints, guide, unit tests
+   for the resolution, an e2e spec.
+
+Parallel: (1) is an agent in its own worktree (made from local `main`); (2) and (3) are done in
+the main checkout at the same time (no shared files with (1)). Then merge, docs (D132, AGENTS),
+the full checks and one e2e run.
