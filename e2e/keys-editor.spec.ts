@@ -39,12 +39,8 @@ test("the keys follow the synth editor you're in (D132)", async ({ page }) => {
   await page.getByTestId("edit-synth").click();
   await expect(page.getByTestId("synth-editor")).toBeVisible();
   await select(page, "Kick");
-  // off: a note on channel 1 goes to the pads by position (note 60: no track), so it's silent
-  await page.evaluate(() => (window as never as W).__midi([0x90, 48, 100]));
-  expect(await peak(page)).toBeLessThan(0.01);
-  await page.evaluate(() => (window as never as W).__midi([0x80, 48, 0]));
-  await page.waitForTimeout(600);
-
+  // off: the keys play the selected track (the kick)
+  await expect(page.getByTestId("keys-chip")).toContainText(/kick/i);
   await page.getByTestId("keys-chip").click();
   await page.locator(".menu .menu-item", { hasText: "Follow the synth editor in focus" }).click();
   await expect(page.getByTestId("keys-chip")).toContainText("Editor");
