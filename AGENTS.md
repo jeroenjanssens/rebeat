@@ -604,7 +604,7 @@ onPatchEdit` hook, debounced `saveSoundSoon`).
   with a seeded Math.random (`kits.ts: seeded`); unseeded, their levels moved by up to 2.5 dB on
   every reload.
 - **Vite's dev server reloads every open page when a watched file changes**, so `e2e/` and
-  `test-results/` are ignored (`vite.config.ts`); tests that write files would reload the app.
+  `test-results/` are ignored (`vite.config.ts`); tests that write files would reload the app. A dependency Vite finds only on first use is optimized then, and that reloads every page too: list such lazy imports in `optimizeDeps.include` (the beatbox model's `onnxruntime-web/wasm` is).
 - **Stop is a panic (D99).** `transport.stop()` calls `engine.panic()` unless "Let effects ring
   out after stop" is on. Anything new that makes or holds sound must stop at once: instrument
   voices implement `panic()` (return true if they can only be muted), effects with memory are in
