@@ -37,7 +37,7 @@ import {
   withMapping,
   type TargetContext,
 } from "../midi/mapping";
-import { detectController, slotKind } from "../midi/controllers";
+import { detectController, mapById, missingSlots, slotKind } from "../midi/controllers";
 import { emitControllerEvent, type ControlKind } from "../midi/controllerEvents";
 import { browsePlayable } from "../library/playable";
 
@@ -208,8 +208,11 @@ export async function startMidi(sysex = false): Promise<boolean> {
     }
     return m;
   });
-  if (fixed.some((m, i) => m !== s.midiMappings[i])) {
-    s.set({ midiMappings: fixed });
+  // and add the slots the map gained since you picked it (the MiniLab 3's encoder)
+  const map = mapById(s.midiController);
+  const added = map ? missingSlots(map, fixed, (p) => `${p}-${crypto.randomUUID()}`) : [];
+  if (added.length || fixed.some((m, i) => m !== s.midiMappings[i])) {
+    s.set({ midiMappings: [...fixed, ...added] });
   }
 
   refreshPorts();
@@ -545,7 +548,8 @@ function applyMapping(map: MidiMapping, m: MidiMessage, scope: "project" | "glob
           ? m.value - recent.values[recent.values.length - 2]
           : 0
         : relativeDelta(mode, m.value);
-    if (delta !== 0) browsePlayable(delta, bySection);
+    // one sound per message, as Arturia's own scripts do (fast turns send bigger steps)
+    if (delta !== 0) browsePlayable(Math.sign(delta), bySection);
     const action = `${map.label}: browse ${bySection ? "section" : "sound"}`;
     report(m, action, { kind: "encoder", index: 0, slot: map.slot, value: m.value });
     return action;

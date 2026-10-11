@@ -217,6 +217,20 @@ export function mappingsOf(map: ControllerMap, uid: (p: string) => string): Midi
   );
 }
 
+/**
+ * A map's slots that the saved mappings don't have yet (a map that gained slots in an update,
+ * such as the MiniLab 3's encoder): a map's mappings are written when you pick it, so settings
+ * saved before never got them. Slots you learned again are kept as they are.
+ */
+export function missingSlots(
+  map: ControllerMap,
+  saved: MidiMapping[],
+  uid: (p: string) => string,
+): MidiMapping[] {
+  const have = new Set(saved.map((m) => m.slot).filter(Boolean));
+  return mappingsOf(map, uid).filter((m) => !have.has(m.slot));
+}
+
 /** The known controller among these input names, if any. */
 export function detectController(names: string[]): ControllerMap | undefined {
   return CONTROLLER_MAPS.find((m) => names.some((n) => m.ports.test(n)));

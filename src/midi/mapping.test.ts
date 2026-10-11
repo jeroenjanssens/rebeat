@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { MidiMapping } from "../model/project";
 import { emptyProject, hitsTrack } from "../templates/builder";
-import { CONTROLLER_MAPS, detectController, mapById, mappingsOf, slotKind } from "./controllers";
+import {
+  CONTROLLER_MAPS,
+  detectController,
+  mapById,
+  mappingsOf,
+  missingSlots,
+  slotKind,
+} from "./controllers";
 import {
   detectMode,
   findMapping,
@@ -140,6 +147,19 @@ describe("controller maps (D124)", () => {
       expect(ms).toHaveLength(map.slots.filter((x) => x.number !== null).length);
       expect(ms.every((x) => x.slot && x.label.startsWith(map.name))).toBe(true);
     }
+  });
+
+  it("adds the slots a map gained to mappings saved before, keeping learned ones", () => {
+    const map = mapById("minilab3")!;
+    let n = 0;
+    // saved before the encoder, its click and Shift were in the map; knob 1 learned again
+    const old = mappingsOf(map, () => `old${n++}`)
+      .filter((m) => !["encoder", "encoder-click", "shift"].includes(m.slot!))
+      .map((m) => (m.slot === "knob1" ? { ...m, number: 99 } : m));
+    const added = missingSlots(map, old, () => `new${n++}`);
+    expect(added.map((m) => m.slot).sort()).toEqual(["encoder", "encoder-click", "shift"]);
+    expect(added.find((m) => m.slot === "encoder")).toMatchObject({ number: 28, mode: "rel64" });
+    expect(missingSlots(map, [...old, ...added], () => "x")).toEqual([]);
   });
 
   it("knows a MiniLab 3 by its ports", () => {
