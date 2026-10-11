@@ -187,3 +187,46 @@ test("the notes you play read as an equation with their chord", async ({ page })
   for (const n of [60, 64]) await send(page, "Minilab3 MIDI", [0x80, n, 0]);
   await expect(line).toHaveText("");
 });
+
+test("chord pads make a chord on one key, its added keys lit (D137)", async ({ page }) => {
+  await midiDevices(page, ["Minilab3 MIDI"]);
+  await page.getByTestId("midi-use-detected").click();
+  await page.keyboard.press("Escape");
+  // the keys play a Notes track
+  await page.evaluate(() => {
+    const s = (window as never as W).__rebeat.store.getState();
+    const tracks = s.project.tracks as unknown as { id: string; mode: string }[];
+    const notes = tracks.find((t) => t.mode === "notes");
+    if (notes) s.setUi({ selectedTrackId: notes.id });
+  });
+  await openControllerPanel(page);
+  await page.getByTestId("pad-mode").getByRole("button", { name: "Chord" }).click();
+  await expect(page.locator('[data-hint="controller.chordpad.2"]')).toContainText("Maj");
+
+  const line = page.getByTestId("controller-notes");
+  const pad = (n: number, down: boolean) =>
+    send(page, "Minilab3 MIDI", [down ? 0x99 : 0x89, 36 + n, down ? 100 : 0]);
+  await pad(2, true); // Maj
+  await pad(5, true); // m7
+  await send(page, "Minilab3 MIDI", [0x90, 60, 100]);
+  await expect(line).toHaveText(/C4\s*\+\s*E4\s*\+\s*G4\s*\+\s*A#4\s*=\s*C7/);
+  await expect(page.locator('[data-key][data-generated="true"]')).toHaveCount(3);
+  await expect(line.locator("[data-added]")).toHaveCount(3);
+
+  // letting go of m7 while the key is held: the triad
+  await pad(5, false);
+  await expect(line).toHaveText(/C4\s*\+\s*E4\s*\+\s*G4\s*=\s*C$/);
+  // a new key takes the chord over
+  await send(page, "Minilab3 MIDI", [0x90, 65, 100]);
+  await expect(line).toHaveText(/F4\s*\+\s*A4\s*\+\s*C5\s*=\s*F$/);
+
+  await send(page, "Minilab3 MIDI", [0x80, 60, 0]);
+  await send(page, "Minilab3 MIDI", [0x80, 65, 0]);
+  await pad(2, false);
+  await expect(line).toHaveText("");
+  await expect(page.locator('[data-key][data-generated="true"]')).toHaveCount(0);
+
+  // back in Drum mode the pads play tracks again
+  await page.getByTestId("pad-mode").getByRole("button", { name: "Drum" }).click();
+  await expect(page.locator('[data-hint="controller.pad.2"]')).toBeVisible();
+});

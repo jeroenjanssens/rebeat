@@ -219,9 +219,16 @@ export function padInput(track: Track, velocity: number, notes?: number[]) {
 export function playedNotes(midi: number): number[] {
   const s = get();
   const key = pageKey(s.project, slotPattern(s.project, s.editSlotId));
-  const root = s.scaleLock ? snapToKey(midi, key) : midi;
+  const root = keyRoot(midi);
   if (s.chordMode === "off") return [root];
   return chordInKey(root, key, s.chordMode === "seventh" ? 4 : 3);
+}
+
+/** A played note snapped to the page's key when scale lock is on (the root of its chord). */
+export function keyRoot(midi: number): number {
+  const s = get();
+  if (!s.scaleLock) return midi;
+  return snapToKey(midi, pageKey(s.project, slotPattern(s.project, s.editSlotId)));
 }
 
 // ── Live note recording (called by WS-A's keys.ts) ───────────────────────────────────────────

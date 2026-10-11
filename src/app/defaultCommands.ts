@@ -2,7 +2,7 @@ import * as clock from "../engine/transport";
 import { platform } from "../platform";
 import { clearSelection, fnClick, fnPress, fnRelease } from "../state/actions";
 import { cursorToggle, moveCursor, velocityDigit } from "../state/input";
-import { addKeysSoundAsTrack, setKeysTarget, useKeys } from "../state/keys";
+import { addKeysSoundAsTrack, setKeysTarget, setPadMode, useKeys } from "../state/keys";
 import { browsePlayable } from "../library/playable";
 import { THEMES, useSettings } from "../state/settings";
 import { useStore } from "../state/store";
@@ -553,6 +553,12 @@ export function defaultCommands(): Command[] {
       title: "Keys: add library sound as a track",
       category: "Keys",
       run: () => addKeysSoundAsTrack(),
+    },
+    {
+      id: "pads.mode",
+      title: "Pads: switch between Drum and Chord mode",
+      category: "Keys",
+      run: () => setPadMode(useSettings.getState().padMode === "chord" ? "drum" : "chord"),
     },
     // ---- playable browsing ----
     {

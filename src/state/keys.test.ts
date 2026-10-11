@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // --- engine mock ---
 const holdNoteRelease = vi.fn();
-const holdNote = vi.fn((_t: unknown, _p: unknown, _v: unknown) => holdNoteRelease);
+const holdNote = vi.fn((_t: unknown, _p: unknown, _v: unknown): (() => void) => holdNoteRelease);
 const liveVoiceSynth = vi.fn((_t: unknown) => undefined);
 const audioNow = vi.fn(() => 0);
 const createKeysChannel = vi.fn((_t: unknown) => ({
@@ -40,6 +40,7 @@ vi.mock("./input", () => ({
   recordNoteOff,
   padInput,
   playedNotes,
+  keyRoot: (pitch: number) => pitch,
 }));
 
 // --- model/tracks mock ---
@@ -72,6 +73,10 @@ const {
   focusKeysEditor,
   forgetKeysEditor,
   keysDescription,
+  chordPadDown,
+  chordPadUp,
+  setPadMode,
+  releaseAllKeys,
 } = await import("./keys");
 const { useSettings } = await import("./settings");
 
@@ -232,5 +237,86 @@ describe("following the synth editor (D132)", () => {
     offA();
     offB();
     useSettings.getState().set({ keysFollowEditor: false });
+  });
+});
+
+describe("chord pads (D137)", () => {
+  const MAJ = 2;
+  const M7 = 5;
+  /** Each held note gets its own release, so we can tell which ones stopped. */
+  const stopped: number[] = [];
+  const pitches = () => holdNote.mock.calls.map((c) => c[1] as number);
+  const sounding = () => useKeys.getState().sounding.map((s) => [s.key, s.notes]);
+
+  beforeEach(() => {
+    keysSustain(false);
+    releaseAllKeys();
+    vi.clearAllMocks();
+    stopped.length = 0;
+    holdNote.mockImplementation((_t, p) => () => void stopped.push(p as number));
+    setKeysTarget({ kind: "selected" });
+    setPadMode("chord");
+  });
+  afterEach(() => {
+    chordPadUp(MAJ);
+    chordPadUp(M7);
+    setPadMode("drum");
+    holdNote.mockImplementation(() => holdNoteRelease);
+  });
+
+  it("makes a key the chord of the pads held, and records every note", () => {
+    chordPadDown(MAJ);
+    const release = noteOn(60, 0.8, "midi");
+    expect(pitches()).toEqual([60, 64, 67]);
+    expect(recordNoteOn).toHaveBeenCalledTimes(3);
+    expect(sounding()).toEqual([[60, [60, 64, 67]]]);
+    release();
+    expect(stopped.sort()).toEqual([60, 64, 67]);
+    expect(sounding()).toEqual([]);
+  });
+
+  it("plays the key alone in Drum mode or without a chord type", () => {
+    noteOn(60, 0.8, "midi")();
+    chordPadDown(M7);
+    noteOn(62, 0.8, "midi")();
+    setPadMode("drum");
+    chordPadDown(MAJ);
+    noteOn(64, 0.8, "midi")();
+    expect(pitches()).toEqual([60, 62, 64]);
+  });
+
+  it("plays one chord at a time: the newest key takes it over", () => {
+    chordPadDown(MAJ);
+    const first = noteOn(60, 0.8, "midi");
+    noteOn(65, 0.8, "midi");
+    expect(stopped.sort()).toEqual([60, 64, 67]);
+    expect(sounding()).toEqual([
+      [60, []],
+      [65, [65, 69, 72]],
+    ]);
+    // letting go of the first key doesn't stop the new chord
+    first();
+    expect(stopped).toHaveLength(3);
+  });
+
+  it("changes the chord at once when a pad goes down or up while a key is held", () => {
+    chordPadDown(MAJ);
+    noteOn(60, 0.8, "midi");
+    chordPadDown(M7);
+    expect(pitches()).toEqual([60, 64, 67, 70]);
+    expect(stopped).toEqual([]);
+    chordPadUp(MAJ);
+    // no chord type: the key plays on its own again
+    expect(stopped.sort()).toEqual([64, 67, 70]);
+    expect(sounding()).toEqual([[60, [60]]]);
+  });
+
+  it("keeps a released chord sounding while the sustain pedal is down", () => {
+    chordPadDown(MAJ);
+    keysSustain(true);
+    noteOn(60, 0.8, "midi")();
+    expect(stopped).toEqual([]);
+    keysSustain(false);
+    expect(stopped.sort()).toEqual([60, 64, 67]);
   });
 });

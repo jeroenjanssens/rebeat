@@ -96,6 +96,56 @@ const hints: Hints = {
     text: "Turns the selected track's eighth SOUND knob. Until you move it, it's drawn faint where its value is: MIDI can't ask the device where its controls are.",
     guide: "performance-your-controller",
   },
+  "controller.padMode.drum": {
+    title: "Drum pads",
+    text: "Pads 1–8 play tracks 1–8 of the drum machine (the usual way).",
+    guide: "performance-chord-pads",
+  },
+  "controller.padMode.chord": {
+    title: "Chord pads",
+    text: "Pads 1–4 pick a chord type (Dim, Min, Maj, Sus) and pads 5–8 add 6, m7, M7 or 9, like the Orchid's chord buttons. Hold them and play one key: it plays the chord with that key as its root. Two chord types together make a secret chord.",
+    guide: "performance-chord-pads",
+  },
+  "controller.chordpad.0": {
+    title: "Dim",
+    text: "Hold and play a key: a diminished chord on it (C E♭ G♭). With 6 it's a diminished seventh, with m7 half-diminished. With Sus: a power chord; with Min or Maj: a minor or major chord with a ♭6.",
+    guide: "performance-chord-pads",
+  },
+  "controller.chordpad.1": {
+    title: "Min",
+    text: "Hold and play a key: a minor chord on it (C E♭ G). With Sus: m(add4); with Maj: 7♯9; with Dim: m(♭6).",
+    guide: "performance-chord-pads",
+  },
+  "controller.chordpad.2": {
+    title: "Maj",
+    text: "Hold and play a key: a major chord on it (C E G). With Sus: augmented; with Min: 7♯9; with Dim: (♭6).",
+    guide: "performance-chord-pads",
+  },
+  "controller.chordpad.3": {
+    title: "Sus",
+    text: "Hold and play a key: a suspended chord on it (sus4: C F G). With Dim: a power chord; with Maj: augmented; with Min: m(add4).",
+    guide: "performance-chord-pads",
+  },
+  "controller.chordpad.4": {
+    title: "6",
+    text: "Adds the sixth to the chord you hold (A on C). With a chord type pad only.",
+    guide: "performance-chord-pads",
+  },
+  "controller.chordpad.5": {
+    title: "m7",
+    text: "Adds the minor seventh (B♭ on C): Maj + m7 is a dominant 7, Min + m7 a minor 7. With a chord type pad only.",
+    guide: "performance-chord-pads",
+  },
+  "controller.chordpad.6": {
+    title: "M7",
+    text: "Adds the major seventh (B on C): Maj + M7 is a major 7. With a chord type pad only.",
+    guide: "performance-chord-pads",
+  },
+  "controller.chordpad.7": {
+    title: "9",
+    text: "Adds the ninth, an octave above the root (D on C). With m7 it makes a 9 chord. With a chord type pad only.",
+    guide: "performance-chord-pads",
+  },
   "controller.pad.0": {
     title: "Pad 1",
     text: "Plays track 1 (bank A). Click to trigger it now. Shift + pad switches to bank B (tracks 9–16). On the MiniLab 3: Shift + Pad 3 switches ARTURIA/DAW mode.",

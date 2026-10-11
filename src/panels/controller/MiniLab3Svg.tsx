@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { onControllerEvent, type ControllerEvent } from "../../midi/controllerEvents";
 import { useDisplay } from "../../midi/display";
 import { noteName } from "../../model/notes";
+import { CHORD_PADS } from "../../model/padChords";
 import { onFrame } from "../../render/raf";
 
 // ── Layout constants (all in SVG user units = body pixels) ─────────────────
@@ -120,6 +121,13 @@ const PAD_COLORS = [
 ] as const;
 const PAD_LABELS = ["Arp", "Pad", "Prog", "↺", "■", "▶", "●", "Tap"] as const;
 
+/**
+ * A key the keys play for you (a chord's other notes, D137): lit in a secondary color, a paler
+ * accent, next to the full accent of the keys you press.
+ */
+const generatedFill = (white: boolean) =>
+  `color-mix(in oklab, var(--accent) 38%, ${white ? WHITE_KEY : BLACK_KEY})`;
+
 // ── Keys ──────────────────────────────────────────────────────────────────
 const KEYS_Y = 393;
 const KEYS_X = 63;
@@ -206,17 +214,29 @@ interface MiniLab3SvgProps {
   labels: ControlLabels;
   onKeyDown?: (midi: number, velocity: number) => () => void;
   onPadDown?: (index: number) => () => void;
+  /** The pads are the chord pads (Chord mode, D137): they're labeled as such. */
+  chordPads?: boolean;
+  /** Notes the keys play that no key pressed (a chord's other notes), as MIDI notes. */
+  generated?: readonly number[];
 }
 
 // ── Component ─────────────────────────────────────────────────────────────
 
-export function MiniLab3Svg({ labels, onKeyDown, onPadDown }: MiniLab3SvgProps) {
+export function MiniLab3Svg({
+  labels,
+  onKeyDown,
+  onPadDown,
+  chordPads = false,
+  generated = [],
+}: MiniLab3SvgProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const liveRef = useRef<LiveState>(makeLiveState());
   // the labels (and the values they control) for the frame loop, which runs outside React
   const labelsRef = useRef(labels);
+  const generatedRef = useRef(generated);
   useEffect(() => {
     labelsRef.current = labels;
+    generatedRef.current = generated;
     liveRef.current.dirty = true;
   });
   const heldKeys = useRef<Map<number, () => void>>(new Map());
@@ -270,20 +290,26 @@ export function MiniLab3Svg({ labels, onKeyDown, onPadDown }: MiniLab3SvgProps) 
       if (!live.dirty) return;
       live.dirty = false;
 
-      // Keys
+      // Keys: pressed ones in the accent, the ones a chord adds in a paler accent
+      const extra = new Set(generatedRef.current.map((n) => n - live.shift));
       for (let i = 0; i < KEY_LAYOUT.length; i++) {
         const k = KEY_LAYOUT[i];
         const vel = live.keyVel[k.midi];
+        const added = vel === 0 && extra.has(k.midi);
         const el = svg.querySelector<SVGElement>(`[data-key="${k.midi}"]`);
         if (el) {
           el.style.fill =
             vel > 0
               ? `color-mix(in oklab, var(--accent) ${Math.round(40 + (vel / 127) * 60)}%, ${k.white ? WHITE_KEY : BLACK_KEY})`
-              : "";
+              : added
+                ? generatedFill(k.white)
+                : "";
+          if (added) el.dataset.generated = "true";
+          else delete el.dataset.generated;
         }
-        // while a key is down: the note it plays (the device's octave included)
+        // while a key sounds: the note it plays (the device's octave included)
         const label = svg.querySelector<SVGTextElement>(`[data-key-note="${k.midi}"]`);
-        if (label) label.textContent = vel > 0 ? noteName(k.midi + live.shift) : "";
+        if (label) label.textContent = vel > 0 || added ? noteName(k.midi + live.shift) : "";
       }
 
       // Pads — inner face brightens on hit (uses pad's own color)
@@ -297,6 +323,9 @@ export function MiniLab3Svg({ labels, onKeyDown, onPadDown }: MiniLab3SvgProps) 
               ? `color-mix(in oklab, ${PAD_COLORS[i]} ${Math.round(45 + (vel / 127) * 50)}%, #0a0a10)`
               : "";
         }
+        // its label turns white on the lit face, so it stays readable
+        const text = svg.querySelector<SVGElement>(`[data-pad-label="${i}"]`);
+        if (text) text.style.fill = vel > 0 ? "#ffffff" : "";
       }
 
       // Knob needles (faint, at the value they control, until the device sends one)
@@ -766,11 +795,11 @@ export function MiniLab3Svg({ labels, onKeyDown, onPadDown }: MiniLab3SvgProps) 
       {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => {
         const px = PAD_START_X + i * PAD_STEP;
         const color = PAD_COLORS[i];
-        const padLabel = PAD_LABELS[i];
+        const padLabel = chordPads ? CHORD_PADS[i] : PAD_LABELS[i];
         return (
           <g
             key={i}
-            data-hint={`controller.pad.${i}`}
+            data-hint={chordPads ? `controller.chordpad.${i}` : `controller.pad.${i}`}
             style={{ cursor: onPadDown ? "pointer" : undefined }}
             onPointerDown={(e) => handlePadPointerDown(i, e)}
             onPointerUp={() => handlePadPointerUp(i)}
@@ -803,11 +832,12 @@ export function MiniLab3Svg({ labels, onKeyDown, onPadDown }: MiniLab3SvgProps) 
             />
             {/* pad label at bottom inside, in rim color */}
             <text
+              data-pad-label={i}
               x={px + PAD_W / 2}
               y={PAD_Y + PAD_H - 8}
               textAnchor="middle"
-              fontSize="10"
-              fontWeight="500"
+              fontSize={chordPads ? 15 : 10}
+              fontWeight={chordPads ? 600 : 500}
               fill={color}
               style={{ pointerEvents: "none", userSelect: "none" }}
             >

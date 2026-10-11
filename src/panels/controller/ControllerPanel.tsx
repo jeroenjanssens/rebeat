@@ -11,7 +11,7 @@ import { resolveTarget, readTarget } from "../../midi/mapping";
 import { soundDefs } from "../../library/synthTrack";
 import { useStore } from "../../state/store";
 import { useSettings } from "../../state/settings";
-import { noteOn } from "../../state/keys";
+import { chordPadDown, chordPadUp, noteOn, setPadMode, useKeys } from "../../state/keys";
 import { padInput } from "../../state/input";
 import * as engine from "../../engine/engine";
 import { MiniLab3Svg } from "./MiniLab3Svg";
@@ -19,6 +19,7 @@ import { GenericControllerView } from "./GenericControllerView";
 import { onControllerEvent } from "../../midi/controllerEvents";
 import { chordName } from "../../model/chords";
 import { noteName } from "../../model/notes";
+import { CHORD_PADS } from "../../model/padChords";
 
 /** The notes held down: the device's keys, and keys clicked in the picture. */
 function useHeldNotes() {
@@ -44,8 +45,25 @@ function useHeldNotes() {
   return [held, change] as const;
 }
 
+/** What sounds from the keys, low to high; `added`: a chord's note no key pressed (D137). */
+type Sounding = { pitch: number; added: boolean }[];
+
+/**
+ * What the keys play now: every note of the keys that went through the keys (a chord's added
+ * notes too), plus keys that are down but play elsewhere (pads by position), as they are.
+ * A key a newer chord took over plays nothing, so it isn't in the sum.
+ */
+function useSounding(held: number[]): Sounding {
+  const sounding = useKeys((s) => s.sounding);
+  const mine = sounding.filter((k) => k.source === "midi" || k.source === "screen");
+  const keyed = new Set(mine.map((k) => k.key));
+  const all = new Set([...mine.flatMap((k) => k.notes), ...held.filter((n) => !keyed.has(n))]);
+  return [...all].sort((a, b) => a - b).map((pitch) => ({ pitch, added: !held.includes(pitch) }));
+}
+
 /** What you're playing as an equation (D135): "A3 + C4 + E4 = Am". */
-function NotesEquation({ notes }: { notes: number[] }) {
+function NotesEquation({ sounding }: { sounding: Sounding }) {
+  const notes = sounding.map((n) => n.pitch);
   const chord = chordName(notes);
   return (
     <div
@@ -53,10 +71,15 @@ function NotesEquation({ notes }: { notes: number[] }) {
       data-testid="controller-notes"
       data-hint="controller.notes"
     >
-      {notes.map((n, i) => (
-        <span key={n} className="flex items-center gap-2">
+      {sounding.map(({ pitch, added }, i) => (
+        <span key={pitch} className="flex items-center gap-2">
           {i > 0 && <span className="text-faint">+</span>}
-          <span className="font-semibold text-ink">{noteName(n)}</span>
+          <span
+            className={added ? "font-semibold text-accent opacity-60" : "font-semibold text-ink"}
+            data-added={added || undefined}
+          >
+            {noteName(pitch)}
+          </span>
         </span>
       ))}
       {chord && (
@@ -103,6 +126,48 @@ function knobLabels(
       pos: raw,
     };
   });
+}
+
+// ── Pad mode (D137) ──────────────────────────────────────────────────────
+
+/** Drum (pads 1–8 play tracks 1–8) or Chord (they're the Orchid-style chord pads). */
+function PadModeSwitch() {
+  const padMode = useSettings((s) => s.padMode);
+  return (
+    <div className="segmented" data-testid="pad-mode">
+      {(["drum", "chord"] as const).map((m) => (
+        <button
+          key={m}
+          data-active={padMode === m}
+          data-hint={m === "drum" ? "controller.padMode.drum" : "controller.padMode.chord"}
+          onClick={() => setPadMode(m)}
+        >
+          {m === "drum" ? "Drum" : "Chord"}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** The chord pads as a row, for controllers without a picture: which ones are held. */
+function ChordPadsRow() {
+  const pads = useKeys((s) => s.pads);
+  return (
+    <div className="flex shrink-0 items-center justify-center gap-1" data-testid="chord-pads">
+      {CHORD_PADS.map((label, i) => (
+        <span
+          key={label}
+          data-hint={`controller.chordpad.${i}`}
+          data-active={pads.includes(i) || undefined}
+          className={`num rounded border px-2 py-0.5 text-[11px] ${
+            pads.includes(i) ? "border-accent text-accent" : "border-line text-dim"
+          } ${i === 4 ? "ml-2" : ""}`}
+        >
+          {label}
+        </span>
+      ))}
+    </div>
+  );
 }
 
 // ── Pad play helper ──────────────────────────────────────────────────────
@@ -164,7 +229,9 @@ export function ControllerPanel() {
     };
   });
 
+  const padMode = useSettings((s) => s.padMode);
   const [held, changeHeld] = useHeldNotes();
+  const sounding = useSounding(held);
   const handleKeyDown = useCallback(
     (midi: number, velocity: number): (() => void) => {
       changeHeld(midi, true);
@@ -177,9 +244,14 @@ export function ControllerPanel() {
     [changeHeld],
   );
 
-  const handlePadDown = useCallback((index: number): (() => void) => {
-    return playPad(index);
-  }, []);
+  const handlePadDown = useCallback(
+    (index: number): (() => void) => {
+      if (padMode !== "chord") return playPad(index);
+      chordPadDown(index);
+      return () => chordPadUp(index);
+    },
+    [padMode],
+  );
 
   // No MIDI or no controller map
   if (midiStatus === "off" || midiStatus === "denied") {
@@ -223,6 +295,9 @@ export function ControllerPanel() {
             (map: {activeMap.name}, connected: {detected.name})
           </span>
         )}
+        <span className="flex-1" />
+        <span className="label">Pads</span>
+        <PadModeSwitch />
       </div>
 
       {/* Device picture or generic slots */}
@@ -232,12 +307,15 @@ export function ControllerPanel() {
             labels={{ knobs: kLabels, faders: fLabels, encoder: "Browse" }}
             onKeyDown={handleKeyDown}
             onPadDown={handlePadDown}
+            chordPads={padMode === "chord"}
+            generated={sounding.filter((n) => n.added).map((n) => n.pitch)}
           />
         ) : (
           <GenericControllerView map={activeMap} />
         )}
       </div>
-      <NotesEquation notes={held} />
+      {!isMiniLab && padMode === "chord" && <ChordPadsRow />}
+      <NotesEquation sounding={sounding} />
     </div>
   );
 }

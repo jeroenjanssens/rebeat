@@ -72,11 +72,24 @@ The [Controller](panel:controller) panel shows a live top-down picture of your c
 
 - **Arturia MiniLab 3**: the device as it looks from above, in its own colors. Keys light up as you play them (shaded by velocity) and show the note they play (A3, C4…, with the device's octave), pads light up in their color while held, knobs and faders move in real time. The MiniLab's screen is mirrored in its black panel.
 - **Where the knobs and faders are**: MIDI has no way to ask a controller where its knobs and faders are (they only send when they move), so until you move one, it's drawn faint where the value it controls is; after that it follows the device. The pitch strip rests in the middle. Turn on **Pickup** in Settings → MIDI so an untouched fader doesn't make its value jump when you first move it.
-- **The notes you're playing**: under the picture, the keys held down read like an equation, low to high: **A3 + C4 + E4 = Am**. When they make a chord, its name follows the equals sign. Rebeat knows about 90 chord symbols: triads and power chords, sixths, sevenths, added tones, sus chords, 9ths, 11ths, 13ths and altered dominants (C7♯9, C7♭9♭13…). A seventh chord may leave out its fifth and a 13th its ninth, as players usually do (C E B♭ is still C7). When the same notes can be read two ways, the simpler reading with the lowest note as the root wins (C E G A is C6, A C E G is Am7). A bass that isn't the root comes after a slash (C/E, D7/C).
+- **The notes you're playing**: under the picture, the keys held down read like an equation, low to high: **A3 + C4 + E4 = Am**. When they make a chord, its name follows the equals sign. Rebeat knows about 90 chord symbols: triads and power chords, sixths, sevenths, added tones, sus chords, 9ths, 11ths, 13ths and altered dominants (C7♯9, C7♭9♭13…). A seventh chord may leave out its fifth and a 13th its ninth, as players usually do (C E B♭ is still C7). When the same notes can be read two ways, the simpler reading with the lowest note as the root wins (C E G A is C6, A C E G is Am7). A bass that isn't the root comes after a slash (C/E, D7/C). The notes a chord adds for you ([chord pads](#performance-chord-pads), or chord mode in the pad view) are in a paler color, here and on the keys.
 - **Other maps**: the slots are shown as a labeled list with the current values.
 - **No map selected**: a prompt to plug in a controller and pick its map.
 
 You can click or tap the keys and pads directly in the panel — they play exactly as if you pressed them on the device. Hovering a control shows what it's mapped to and the current value.
+
+### Chord pads {#performance-chord-pads}
+
+The **Pads** switch at the top of the Controller panel sets what your controller's pads 1–8 do:
+
+- **Drum** (the default): they play tracks 1–8 of the drum machine.
+- **Chord**: they're chord buttons, after the Telepathic Instruments **Orchid**. Pads 1–4 are the chord types **Dim**, **Min**, **Maj** and **Sus** (sus4); pads 5–8 add **6**, **m7** (minor seventh), **M7** (major seventh) and **9**. Hold a chord type, add any extensions, and play one key: the key is the root and the lowest note, and the chord is built up from it. Maj + m7 on C plays C7, Min + m7 + 9 plays Cm9, Dim + 6 a diminished seventh.
+
+Without a chord type held, a key plays on its own. One chord sounds at a time: a new key takes the chord over. Pressing or letting go of a pad while you hold a key changes the chord at once. Chords record into a Notes track like keys you play yourself, and **scale lock** still moves the root into the key.
+
+Two chord types held together play a **secret chord**, as on the Orchid (firmware 3.84): Dim + Sus a power chord (C5), Maj + Sus augmented, Min + Sus m(add4), Min + Dim m(♭6), Maj + Dim (♭6), Maj + Min 7♯9. With three or four held, the first two you pressed count. These follow the Orchid manual's table as others have quoted it; they haven't been checked on a device.
+
+On a MiniLab 3 the pads show their chord labels in the picture; other controllers get a row of the eight chord pads under their slots. Pads beyond the eighth (bank B, a second row) still play tracks 9–16. The command **Pads: switch between Drum and Chord mode** does the same as the switch, so you can give it a shortcut or map a button to it.
 
 ## Launchpad and Push
 

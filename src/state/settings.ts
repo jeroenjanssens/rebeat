@@ -113,6 +113,8 @@ export interface Settings {
   keysMix: { volume: number; sendA: number; sendB: number };
   /** The keys play what the active synth editor edits (D132). */
   keysFollowEditor: boolean;
+  /** What a controller's pads 1–8 do (D137): play tracks 1–8 (Drum) or make chords (Chord). */
+  padMode: "drum" | "chord";
   previewVolume: number;
   /** When nothing plays yet, the first loop recording sets the tempo (loop-pedal style). */
   freeFirstLoop: boolean;
@@ -176,6 +178,7 @@ export const DEFAULT_SETTINGS: Settings = {
   midiMiniLabHandshake: false,
   keysMix: { volume: 0.8, sendA: 0, sendB: 0 },
   keysFollowEditor: false,
+  padMode: "drum",
   previewVolume: 0.8,
   freeFirstLoop: false,
   onboarded: false,

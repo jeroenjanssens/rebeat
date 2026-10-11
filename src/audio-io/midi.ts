@@ -11,7 +11,16 @@ import { trigger } from "../engine/engine";
 import { uid } from "../model/id";
 import type { MidiMapping, MidiMode } from "../model/project";
 import { platform } from "../platform";
-import { keysControl, keysSustain, keysTakeNotes, keysTargetName, noteOn } from "../state/keys";
+import {
+  chordPadDown,
+  chordPadUp,
+  keysControl,
+  keysSustain,
+  keysTakeNotes,
+  keysTargetName,
+  noteOn,
+} from "../state/keys";
+import { CHORD_PADS } from "../model/padChords";
 import { padInput } from "../state/input";
 import { useSettings } from "../state/settings";
 import { useStore } from "../state/store";
@@ -450,6 +459,8 @@ function handle(e: MIDIMessageEvent, device: string) {
   if (m.type === "noteon")
     return report(m, playNote(m.channel, m.number, m.value / 127), noteEvent(m, true));
   if (m.type === "noteoff") {
+    if (releaseChordPad(m.channel, m.number))
+      return report(m, "Chord pad released", noteEvent(m, false));
     releaseNote(m.number);
     return report(m, "Note released", noteEvent(m, false));
   }
@@ -660,6 +671,17 @@ export function connectedController() {
 /** Notes held on a MIDI keyboard: they sound until the key goes up. */
 const held = new Map<number, () => void>();
 
+/** Chord pads held on a controller ("channel:note" → pad index), D137. */
+const chordPadsHeld = new Map<string, number>();
+
+function releaseChordPad(channel: number, note: number): boolean {
+  const pad = chordPadsHeld.get(`${channel}:${note}`);
+  if (pad === undefined) return false;
+  chordPadsHeld.delete(`${channel}:${note}`);
+  chordPadUp(pad);
+  return true;
+}
+
 function releaseNote(note: number) {
   const release = held.get(note);
   held.delete(note);
@@ -680,6 +702,12 @@ function playNote(channel: number, note: number, velocity: number): string {
     // noteOn handles scale lock, chord mode, live voice, recording and sustain
     held.set(note, noteOn(note, velocity, "midi"));
     return `Played on ${targetName}`;
+  }
+  // Chord mode (D137): pads 1–8 are the chord pads; the others still play their tracks
+  if (route.to === "pad" && route.index < 8 && useSettings.getState().padMode === "chord") {
+    chordPadDown(route.index);
+    chordPadsHeld.set(`${channel}:${note}`, route.index);
+    return `Chord pad: ${CHORD_PADS[route.index]}`;
   }
   const track = route.to === "pad" ? s.project.tracks[route.index] : undefined;
   if (!track) return `Pad ${note - 35}: no track ${note - 35}`;
