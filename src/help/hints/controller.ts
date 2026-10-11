@@ -156,6 +156,11 @@ const hints: Hints = {
     text: "Sets the master output level. Until you move it, it's drawn faint where its value is: MIDI can't ask the device where its controls are.",
     guide: "performance-your-controller",
   },
+  "controller.notes": {
+    title: "The notes you're playing",
+    text: "The keys held down, low to high, as an equation: A3 + C4 + E4 = Am. When they make a chord, its name comes after the equals sign (an inversion shows its bass: C/E).",
+    guide: "performance-your-controller",
+  },
 };
 
 export default hints;

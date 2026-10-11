@@ -72,6 +72,7 @@ The [Controller](panel:controller) panel shows a live top-down picture of your c
 
 - **Arturia MiniLab 3**: the device as it looks from above, in its own colors. Keys light up as you play them (shaded by velocity) and show the note they play (A3, C4…, with the device's octave), pads light up in their color while held, knobs and faders move in real time. The MiniLab's screen is mirrored in its black panel.
 - **Where the knobs and faders are**: MIDI has no way to ask a controller where its knobs and faders are (they only send when they move), so until you move one, it's drawn faint where the value it controls is; after that it follows the device. The pitch strip rests in the middle. Turn on **Pickup** in Settings → MIDI so an untouched fader doesn't make its value jump when you first move it.
+- **The notes you're playing**: under the picture, the keys held down read like an equation, low to high: **A3 + C4 + E4 = Am**. When they make a chord (triads, sevenths, sus, 6, 9…), its name follows the equals sign; an inversion shows its bass (C/E).
 - **Other maps**: the slots are shown as a labeled list with the current values.
 - **No map selected**: a prompt to plug in a controller and pick its map.
 

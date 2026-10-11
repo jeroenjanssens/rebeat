@@ -172,3 +172,18 @@ test("a key that's down shows the note it plays", async ({ page }) => {
   await send(page, "Minilab3 MIDI", [0x80, 60, 0]);
   await expect.poll(notes).toEqual([]);
 });
+
+test("the notes you play read as an equation with their chord", async ({ page }) => {
+  await midiDevices(page, ["Minilab3 MIDI"]);
+  await page.getByTestId("midi-use-detected").click();
+  await page.keyboard.press("Escape");
+  await openControllerPanel(page);
+  const line = page.getByTestId("controller-notes");
+  for (const n of [57, 60, 64]) await send(page, "Minilab3 MIDI", [0x90, n, 100]);
+  await expect(line).toHaveText(/A3\s*\+\s*C4\s*\+\s*E4\s*=\s*Am/);
+  await send(page, "Minilab3 MIDI", [0x80, 57, 0]);
+  await expect(line).toHaveText(/C4\s*\+\s*E4/);
+  await expect(page.getByTestId("controller-chord")).toHaveCount(0);
+  for (const n of [60, 64]) await send(page, "Minilab3 MIDI", [0x80, n, 0]);
+  await expect(line).toHaveText("");
+});

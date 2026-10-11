@@ -3,7 +3,7 @@
  * For the Arturia MiniLab 3 it shows an SVG of the device; for other maps it shows a generic
  * slot list; with no controller connected it shows a "Plug in a controller" prompt.
  */
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Plug } from "lucide-react";
 import { useMidi, targetContext, connectedController } from "../../audio-io/midi";
 import { mapById } from "../../midi/controllers";
@@ -16,6 +16,60 @@ import { padInput } from "../../state/input";
 import * as engine from "../../engine/engine";
 import { MiniLab3Svg } from "./MiniLab3Svg";
 import { GenericControllerView } from "./GenericControllerView";
+import { onControllerEvent } from "../../midi/controllerEvents";
+import { chordName } from "../../model/chords";
+import { noteName } from "../../model/notes";
+
+/** The notes held down: the device's keys, and keys clicked in the picture. */
+function useHeldNotes() {
+  const [held, setHeld] = useState<number[]>([]);
+  const change = useCallback(
+    (note: number, down: boolean) =>
+      setHeld((h) =>
+        down
+          ? h.includes(note)
+            ? h
+            : [...h, note].sort((a, b) => a - b)
+          : h.filter((n) => n !== note),
+      ),
+    [],
+  );
+  useEffect(
+    () =>
+      onControllerEvent((e) => {
+        if (e.control.kind === "key") change(e.control.index, !!e.down);
+      }),
+    [change],
+  );
+  return [held, change] as const;
+}
+
+/** What you're playing as an equation (D135): "A3 + C4 + E4 = Am". */
+function NotesEquation({ notes }: { notes: number[] }) {
+  const chord = chordName(notes);
+  return (
+    <div
+      className="num flex h-7 shrink-0 items-center justify-center gap-2 text-[15px]"
+      data-testid="controller-notes"
+      data-hint="controller.notes"
+    >
+      {notes.map((n, i) => (
+        <span key={n} className="flex items-center gap-2">
+          {i > 0 && <span className="text-faint">+</span>}
+          <span className="font-semibold text-ink">{noteName(n)}</span>
+        </span>
+      ))}
+      {chord && (
+        <>
+          <span className="text-faint">=</span>
+          <span className="font-semibold text-accent" data-testid="controller-chord">
+            {chord}
+          </span>
+        </>
+      )}
+    </div>
+  );
+}
 
 // ── Label helpers ────────────────────────────────────────────────────────
 
@@ -110,9 +164,18 @@ export function ControllerPanel() {
     };
   });
 
-  const handleKeyDown = useCallback((midi: number, velocity: number): (() => void) => {
-    return noteOn(midi, velocity, "screen");
-  }, []);
+  const [held, changeHeld] = useHeldNotes();
+  const handleKeyDown = useCallback(
+    (midi: number, velocity: number): (() => void) => {
+      changeHeld(midi, true);
+      const release = noteOn(midi, velocity, "screen");
+      return () => {
+        release();
+        changeHeld(midi, false);
+      };
+    },
+    [changeHeld],
+  );
 
   const handlePadDown = useCallback((index: number): (() => void) => {
     return playPad(index);
@@ -174,6 +237,7 @@ export function ControllerPanel() {
           <GenericControllerView map={activeMap} />
         )}
       </div>
+      <NotesEquation notes={held} />
     </div>
   );
 }

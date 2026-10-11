@@ -3,7 +3,7 @@
 This file is the fast way in. It explains what Rebeat is, how the code is organized, how the
 pieces talk to each other, how to verify a change, and the gotchas that cost time before.
 `PLAN.md` is the long-form record: the product spec (§1–§3), the original architecture (§4),
-and every design decision (§6, D1–D134). When this file and the code disagree, the code wins.
+and every design decision (§6, D1–D135). When this file and the code disagree, the code wins.
 Please fix this file in the same change.
 
 Status (2026-10-10): every phase of the original roadmap is built, plus several feature batches
@@ -129,7 +129,7 @@ src/
                        - fixtures/v6/ (every example and template as schema 6 saved it, gzipped)
                        - synth.ts (patch v2, macros), synthV1.ts (old patches, read only)
                        - patchParams.ts (the synth editor's knob table), randomize.ts
-                       - notes, noteOps (piano roll), timing (polyrhythms), tempo, midiFile, effects
+                       - notes, chords (names of held notes), noteOps (piano roll), timing (polyrhythms), tempo, midiFile, effects
   state/               zustand stores:
                        - store.ts: project + undo + UI state
                        - settings.ts: persisted user settings
@@ -662,7 +662,7 @@ likely to need:
 | Stop, removing kits, tab icons, themes, Pump, song | D99–D104                  |
 | Beatbox: model, data, panel, calibration, convert  | D105–D118                 |
 | MIDI controllers: maps, roles, relative, buttons   | D119–D125                 |
-| The keys, recording notes, faders, CPU, zoom       | D126–D134                 |
+| The keys, recording notes, faders, CPU, zoom       | D126–D135                 |
 
 Feature batches and their acceptance criteria are in PLAN.md §0.6b–§0.6h. Known limitations are
 in §0.7.
