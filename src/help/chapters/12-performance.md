@@ -51,12 +51,12 @@ Settings → MIDI lists both kinds of mappings, where you can change a control's
 - **Mackie Control**: inputs named MCU (or ones you tick) run the transport: Play, Stop, Record, Cycle (loop or song), rewind and forward (pages), the jog wheel.
 - The **Monitor** at the bottom lists the last messages and what Rebeat did with each: the first place to look when something doesn't respond.
 
-| Controller                      | Knobs                                                                                                         | Pads                                                | Transport                                                 |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- | --------------------------------------------------------- |
-| **Arturia MiniLab 3**           | ARTURIA mode (Shift + Pad 3): CC 74–77, 93, 18, 19, 16; faders CC 82, 83, 85, 17; main encoder CC 28 (browse) | channel 10, bank A tracks 1–8, bank B 9–16          | DAW mode, Shift + Pads 5–7 (its MCU port)                 |
-| **Akai MPK Mini MK3**           | factory program: CC 70–77 (not confirmed: learn them if they don't respond)                                   | channel 10, banks A and B                           | none on the device; learn buttons if you map pads to them |
-| **Novation Launchkey Mini MK3** | CC 21–28                                                                                                      | Drum mode, channel 10, notes 36–51                  | only in DAW mode: learn them                              |
-| **Novation Launchkey Mini MK4** | no factory assignment: **Learn every control**                                                                | Drum mode, channel 10, bottom row 1–8, top row 9–16 | Play sends MIDI Start, Shift + Play Stop                  |
+| Controller                      | Knobs                                                                                                                                                       | Pads                                                | Transport                                                 |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- | --------------------------------------------------------- |
+| **Arturia MiniLab 3**           | ARTURIA mode (Shift + Pad 3): CC 74–77, 93, 18, 19, 16; faders CC 82, 83, 85, 17; main encoder CC 114 (browse), with Shift CC 112, click CC 115; Shift CC 9 | channel 10, bank A tracks 1–8, bank B 9–16          | DAW mode, Shift + Pads 5–7 (its MCU port)                 |
+| **Akai MPK Mini MK3**           | factory program: CC 70–77 (not confirmed: learn them if they don't respond)                                                                                 | channel 10, banks A and B                           | none on the device; learn buttons if you map pads to them |
+| **Novation Launchkey Mini MK3** | CC 21–28                                                                                                                                                    | Drum mode, channel 10, notes 36–51                  | only in DAW mode: learn them                              |
+| **Novation Launchkey Mini MK4** | no factory assignment: **Learn every control**                                                                                                              | Drum mode, channel 10, bottom row 1–8, top row 9–16 | Play sends MIDI Start, Shift + Play Stop                  |
 
 The **Arturia MiniLab 3** has a few extras:
 
@@ -83,13 +83,32 @@ You can click or tap the keys and pads directly in the panel — they play exact
 The **Pads** switch at the top of the Controller panel sets what your controller's pads 1–8 do:
 
 - **Drum** (the default): they play tracks 1–8 of the drum machine.
+- **Key**: [Key mode](#performance-key-mode), below.
 - **Chord**: they're chord buttons, after the Telepathic Instruments **Orchid**. Pads 1–4 are the chord types **Dim**, **Min**, **Maj** and **Sus** (sus4); pads 5–8 add **6**, **m7** (minor seventh), **M7** (major seventh) and **9**. Hold a chord type, add any extensions, and play one key: the key is the root and the lowest note, and the chord is built up from it. Maj + m7 on C plays C7, Min + m7 + 9 plays Cm9, Dim + 6 a diminished seventh.
 
 Without a chord type held, a key plays on its own. One chord sounds at a time: a new key takes the chord over. Pressing or letting go of a pad while you hold a key changes the chord at once. Chords record into a Notes track like keys you play yourself, and **scale lock** still moves the root into the key.
 
 Two chord types held together play a **secret chord**, as on the Orchid (firmware 3.84): Dim + Sus a power chord (C5), Maj + Sus augmented, Min + Sus m(add4), Min + Dim m(♭6), Maj + Dim (♭6), Maj + Min 7♯9. With three or four held, the first two you pressed count. These follow the Orchid manual's table as others have quoted it; they haven't been checked on a device.
 
-On a MiniLab 3 the pads show their chord labels in the picture; other controllers get a row of the eight chord pads under their slots. Pads beyond the eighth (bank B, a second row) still play tracks 9–16. The command **Pads: switch between Drum and Chord mode** does the same as the switch, so you can give it a shortcut or map a button to it.
+On a MiniLab 3 the pads show their chord labels in the picture; other controllers get a row of the eight chord pads under their slots. Pads beyond the eighth (bank B, a second row) still play tracks 9–16. The commands **Pads: Drum mode**, **Pads: Chord mode**, **Pads: Key mode** and **Pads: next mode** do the same as the switch, so you can give them a shortcut or map a button to them.
+
+### Key mode {#performance-key-mode}
+
+In **Key** mode, like the Orchid's Key Mode, every key plays the chord that belongs to it in a key you choose: in C major, C plays C, D plays Dm, B plays Bdim. One finger plays a whole progression. A key outside the key is moved to the nearest note in it first (C♯ plays C in C major). Key mode has its own key, saved in your settings: the song's key isn't touched.
+
+- **Pads 5–8** add the key's own sixth, seventh or ninth: G with m7 (or M7) plays G7 in C major, C plays Cmaj7.
+- **Pads 1–4** play their chord on the key exactly as you pressed it, so you can borrow chords from outside the key (B♭ with Maj in C major); two of them make a secret chord, as in Chord mode.
+- **The key**: the **Key** chip in the Controller panel picks a root and a scale (major, minor, Dorian, Phrygian, Lydian, Mixolydian, harmonic minor), or copies the page's key.
+- **Transpose** moves everything the keys play by semitones, in every pad mode. Click its number to go back to 0. It starts at 0 in every session.
+
+On a MiniLab 3, the **black knob** (the main encoder) is the Key dial in Key mode:
+
+- **Turn** it to change the root, a semitone a step; **Shift + turn** for the scale.
+- **Press and turn** to transpose; **click** it to go back to 0.
+- **Hold it and play a key** to make that note the root (hold Min or Maj too for a minor or major key).
+- **Knob: At once / On press** (in the panel): at once, every step changes the key; on press, turning picks a key, shown next to the active one ("→ D minor"), and a click on the knob selects it.
+
+In Drum and Chord mode the knob browses sounds, as before.
 
 ## Launchpad and Push
 

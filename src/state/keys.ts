@@ -16,7 +16,8 @@ import {
   editorSynth,
   playKeysSample,
 } from "../engine/engine";
-import { noteName } from "../model/notes";
+import { noteName, type Key } from "../model/notes";
+import { keyModeChord, sameKey, stepKeyRoot, stepKeyScale } from "../model/keyMode";
 import { padChord } from "../model/padChords";
 import type { Track } from "../model/types";
 import { player } from "../model/tracks";
@@ -65,6 +66,10 @@ interface KeysState {
   sounding: KeyNotes[];
   /** The chord pads held (pad index 0..7, in the order pressed), D137. */
   pads: number[];
+  /** Semitones added to everything the keys play (D138); not saved, 0 in every new session. */
+  transpose: number;
+  /** The key the Key dial picked, which a press selects (Key dial "On press", D138). */
+  pendingKey: Key | null;
 }
 
 /** A key that's down and what it plays: itself, a chord, or nothing (another key took over). */
@@ -83,6 +88,8 @@ export const useKeys = create<KeysState>()(() => ({
   recent: [],
   sounding: [],
   pads: [],
+  transpose: 0,
+  pendingKey: null,
 }));
 
 export function setKeysTarget(target: KeysTarget) {
@@ -305,15 +312,27 @@ function keyNotes(out: Output, key: number): number[] {
   return out.kind === "sample" || out.kind === "voice" ? playedNotes(key) : [key];
 }
 
-// ---------- chord pads (D137) ----------
+// ---------- chord pads (D137) and Key mode (D138) ----------
 
 let chordPads: number[] = [];
 
-const chordMode = () => useSettings.getState().padMode === "chord";
+/**
+ * The chord a key plays in the pads' mode, or null (it plays as a plain key): in Chord mode with
+ * a chord type held (its root moved into the page's key by scale lock), in Key mode always.
+ */
+function padNotes(key: number): number[] | null {
+  const s = useSettings.getState();
+  if (s.padMode === "chord") return padChord(keyRoot(key), chordPads);
+  if (s.padMode === "key") return keyModeChord(key, s.keyModeKey, chordPads);
+  return null;
+}
 
-/** The chord the pads held make on a key (its root snapped by scale lock), or null. */
-function padChordOn(key: number): number[] | null {
-  return chordMode() ? padChord(keyRoot(key), chordPads) : null;
+/** What a key plays now: its chord or itself, transposed (D138). */
+function notesOf(out: Output, key: number): { notes: number[]; chord: boolean } {
+  const chord = padNotes(key);
+  const t = useKeys.getState().transpose;
+  const notes = (chord ?? keyNotes(out, key)).map((n) => n + t).filter((n) => n >= 0 && n <= 127);
+  return { notes: [...new Set(notes)], chord: !!chord };
 }
 
 /** A chord pad went down (pad index 0..7): the chord being held changes with it. */
@@ -331,14 +350,88 @@ export function chordPadUp(pad: number) {
   revoice();
 }
 
-/** Drum (pads 1–8 play tracks 1–8) or Chord (they're the chord pads), D137. */
-export function setPadMode(mode: "drum" | "chord") {
+/** Drum (pads 1–8 play tracks 1–8), Chord (the chord pads, D137) or Key (Key mode, D138). */
+export function setPadMode(mode: "drum" | "chord" | "key") {
   useSettings.getState().set({ padMode: mode });
-  if (mode === "drum" && chordPads.length) {
+  if (mode === "drum") {
     chordPads = [];
     useKeys.setState({ pads: [] });
-    revoice();
   }
+  if (mode !== "key") useKeys.setState({ pendingKey: null });
+  revoice();
+}
+
+// ---------- Key mode's key, transpose and the Key dial (D138) ----------
+
+/** Key mode's own key (saved in the settings, not the project's). */
+export function setKeyModeKey(key: Key) {
+  useSettings.getState().set({ keyModeKey: { root: key.root, scale: key.scale } });
+  useKeys.setState({ pendingKey: null });
+  revoice();
+}
+
+/** Transpose what the keys play, −12..12 semitones (for this session). */
+export function setTranspose(semitones: number) {
+  const t = Math.max(-12, Math.min(12, Math.round(semitones)));
+  if (t === useKeys.getState().transpose) return;
+  useKeys.setState({ transpose: t });
+  revoice();
+}
+
+/** At once: a turn of the Key dial changes the key; On press: it picks one a press selects. */
+export function setKeyDial(mode: "instant" | "press") {
+  useSettings.getState().set({ keyDial: mode });
+  useKeys.setState({ pendingKey: null });
+}
+
+/** Select the key the Key dial picked (On press). */
+export function selectPendingKey() {
+  const k = useKeys.getState().pendingKey;
+  if (k) setKeyModeKey(k);
+}
+
+let dialDown = false;
+/** Whether the Key dial turned, or a key was played, while it was pressed (so it isn't a click). */
+let dialUsed = false;
+
+/** The Key dial turned a step: the root, or the scale with Shift; while pressed, the transpose. */
+export function keyDialTurn(step: number, scale: boolean) {
+  if (dialDown) {
+    dialUsed = true;
+    return setTranspose(useKeys.getState().transpose + step);
+  }
+  const s = useSettings.getState();
+  const from =
+    s.keyDial === "press" ? (useKeys.getState().pendingKey ?? s.keyModeKey) : s.keyModeKey;
+  const next = scale ? stepKeyScale(from, step) : stepKeyRoot(from, step);
+  if (s.keyDial === "instant") return setKeyModeKey(next);
+  useKeys.setState({ pendingKey: sameKey(next, s.keyModeKey) ? null : next });
+}
+
+/** The Key dial went down or up. A click (no turn and no key while down) selects the key it
+ * picked, or else brings the transpose back to 0. */
+export function keyDialPress(isDown: boolean) {
+  if (isDown) {
+    dialDown = true;
+    dialUsed = false;
+    return;
+  }
+  if (!dialDown) return;
+  dialDown = false;
+  if (dialUsed) return;
+  if (useKeys.getState().pendingKey) selectPendingKey();
+  else setTranspose(0);
+}
+
+/** Quick key select: a key played while the Key dial is down becomes Key mode's root (with Min
+ * held: minor, with Maj: major), as on the Orchid. */
+function quickKeySelect(pitch: number): boolean {
+  if (!dialDown || useSettings.getState().padMode !== "key") return false;
+  dialUsed = true;
+  const k = useSettings.getState().keyModeKey;
+  const scale = chordPads.includes(1) ? "minor" : chordPads.includes(2) ? "major" : k.scale;
+  setKeyModeKey({ root: ((pitch % 12) + 12) % 12, scale });
+  return true;
 }
 
 // ---------- note on / off ----------
@@ -358,13 +451,14 @@ const down: Pressed[] = [];
 
 /** Start a held note on the keys' target; the returned function releases it. */
 export function noteOn(pitch: number, velocity: number, source: KeysSource): () => void {
+  if (quickKeySelect(pitch)) return () => {};
   const out = output();
   if (!out) return () => {};
-  const chord = padChordOn(pitch);
+  const { notes, chord } = notesOf(out, pitch);
   // one chord at a time: a new key takes the chord over from the others (as on the Orchid)
   if (chord) for (const p of down) end(p);
   const p: Pressed = { key: pitch, velocity, source, out, voices: new Map(), ended: false };
-  for (const n of chord ?? keyNotes(out, pitch)) p.voices.set(n, startNote(out, n, velocity));
+  for (const n of notes) p.voices.set(n, startNote(out, n, velocity));
   if ((out.kind === "sample" || out.kind === "voice") && out.track.mode !== "notes")
     padInput(out.track, velocity);
   down.push(p);
@@ -394,20 +488,24 @@ function end(p: Pressed) {
   whenReleased(() => voices.forEach(stopNote));
 }
 
-/** The chord pads changed: the newest key that still plays takes the new chord at once (notes
- * that stay keep sounding); without a chord type it plays as a plain key again. */
+/**
+ * The pads, the pad mode, Key mode's key or the transpose changed: the keys that are down play
+ * what they'd play now, at once (notes that stay keep sounding). When the newest one makes a
+ * chord, it takes over from the others; without one, keys play as plain keys again.
+ */
 function revoice() {
-  const p = down.findLast((q) => !q.ended);
-  if (!p) return publish();
-  const chord = padChordOn(p.key);
-  if (chord) for (const q of down) if (q !== p) end(q);
-  const want = chord ?? keyNotes(p.out, p.key);
-  for (const [n, v] of p.voices)
-    if (!want.includes(n)) {
-      stopNote(v);
-      p.voices.delete(n);
-    }
-  for (const n of want) if (!p.voices.has(n)) p.voices.set(n, startNote(p.out, n, p.velocity));
+  const newest = down.findLast((q) => !q.ended);
+  if (newest && padNotes(newest.key)) for (const q of down) if (q !== newest) end(q);
+  for (const p of down) {
+    if (p.ended) continue;
+    const want = notesOf(p.out, p.key).notes;
+    for (const [n, v] of p.voices)
+      if (!want.includes(n)) {
+        stopNote(v);
+        p.voices.delete(n);
+      }
+    for (const n of want) if (!p.voices.has(n)) p.voices.set(n, startNote(p.out, n, p.velocity));
+  }
   publish();
 }
 

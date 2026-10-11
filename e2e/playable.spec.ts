@@ -59,8 +59,8 @@ test("the MiniLab 3's main encoder browses Playable: the keys and the display fo
   await applyMiniLabMap(page);
   await goPlayable(page);
   const before = await chipText(page);
-  // CC 28, offset 64: 65 = one step clockwise
-  await send(page, "MiniLab3 MIDI", [0xb0, 28, 65]);
+  // CC 114, offset 64: 65 = one step clockwise
+  await send(page, "MiniLab3 MIDI", [0xb0, 114, 65]);
   await expect.poll(() => chipText(page), { timeout: 3000 }).not.toBe(before);
   // the display got SysEx with text (Arturia's id: 00 20 6B)
   await expect

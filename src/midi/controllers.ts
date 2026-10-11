@@ -27,6 +27,9 @@ export interface MapSlot {
    * Only "knob" and "encoder" slots are sniffed for relative mode; faders are always absolute.
    */
   kind?: SlotKind;
+  /** Numbers the map had for this slot before (wrong ones, fixed in an update): saved
+   * mappings with one of them get the current number. A number you learned yourself is kept. */
+  formerly?: number[];
 }
 
 export interface ControllerMap {
@@ -92,11 +95,14 @@ export const CONTROLLER_MAPS: ControllerMap[] = [
     // ARTURIA mode, from the MiniLab 3 manual 1.0.5 (§5.4): knobs = Analog Lab's macros and
     // effects, faders = its EQ and master volume; the touch strips send pitch bend and CC 1.
     //
-    // Main encoder (the large knob, ARTURIA mode):
-    //   CC 28 (0x1C) rotate, rel64 — confirmed: MaksPV/minilab3-mixxx-config (MIDI dump 2026-09-21)
-    //   CC 118 (0x76) push — confirmed same source; sends like a button (127 press, 0 release)
-    //   CC 27 (0x1B) Shift button — confirmed same source
-    // Encoder turn = browse library (browse:sound); Shift held = browse by section (browse:section).
+    // Main encoder (the large black knob, ARTURIA mode), as seen on Jeroen's MiniLab 3's MIDI
+    // monitor (2026-10-11); the community dump (MaksPV/minilab3-mixxx-config, 2026-09-21) had
+    // CC 28, 118 and 27, which never arrived:
+    //   CC 114 (0x72) turn, rel64 (64 ± steps)
+    //   CC 112 (0x70) turn with Shift held: the device sends another CC, rel64
+    //   CC 115 (0x73) push, like a button (127 press, 0 release)
+    //   CC 9 Shift button
+    // Turn = browse the library (browse:sound); Shift + turn = by section (browse:section).
     slots: [
       ...knobs([74, 71, 76, 77, 93, 18, 19, 16], 0, "absolute"),
       ...faders([82, 83, 85, 17], 0),
@@ -106,10 +112,11 @@ export const CONTROLLER_MAPS: ControllerMap[] = [
         label: "Main encoder (browse)",
         type: "cc",
         channel: 0,
-        number: 28, // 0x1C, confirmed
+        number: 114, // 0x72, seen on the device
         mode: "rel64",
         target: "browse:sound",
         kind: "encoder",
+        formerly: [28],
       },
       // Encoder click → add track (WS-A registers keys.add-track)
       {
@@ -117,10 +124,22 @@ export const CONTROLLER_MAPS: ControllerMap[] = [
         label: "Main encoder click (add track)",
         type: "cc",
         channel: 0,
-        number: 118, // 0x76, confirmed
+        number: 115, // 0x73, seen on the device
         mode: "absolute",
         target: `command:${ADD_TRACK_CMD}`,
         kind: "button",
+        formerly: [118],
+      },
+      // Encoder turned with Shift held: the device sends its own CC
+      {
+        slot: "encoder-shift",
+        label: "Main encoder with Shift (browse by section)",
+        type: "cc",
+        channel: 0,
+        number: 112, // 0x70, seen on the device
+        mode: "rel64",
+        target: "browse:section",
+        kind: "encoder",
       },
       // Shift button — used as modifier for browse:section; held state tracked internally
       {
@@ -128,16 +147,18 @@ export const CONTROLLER_MAPS: ControllerMap[] = [
         label: "Shift (modifier)",
         type: "cc",
         channel: 0,
-        number: 27, // 0x1B, confirmed
+        number: 9, // seen on the device
         mode: "absolute",
         target: "modifier:shift",
         kind: "button",
+        formerly: [27],
       },
     ],
     checklist: [
       "Put the MiniLab in ARTURIA mode: hold Shift and press Pad 3 until the display says Arturia.",
       "The pads play your step tracks (bank A: tracks 1–8, Shift + Pad 2 for bank B: 9–16).",
       "Turn the large encoder to browse sounds; Shift + turn jumps by section.",
+      "In the pads' Key mode the large encoder is the Key dial: turn for the root, Shift + turn for the scale, press and turn to transpose, click to select the key it picked (or to undo the transpose).",
       "For Play, Stop and Record, switch to DAW mode (Shift + Pad 3) and use Shift + Pads 5–7: Rebeat listens to the MiniLab's MCU port.",
     ],
     unconfirmed:
@@ -229,6 +250,18 @@ export function missingSlots(
 ): MidiMapping[] {
   const have = new Set(saved.map((m) => m.slot).filter(Boolean));
   return mappingsOf(map, uid).filter((m) => !have.has(m.slot));
+}
+
+/**
+ * Saved mappings with a number the map has since corrected (a slot's `formerly`), set to the
+ * map's current number; the others as they are (the same objects, so callers can tell).
+ */
+export function correctedSlots(map: ControllerMap, saved: MidiMapping[]): MidiMapping[] {
+  return saved.map((m) => {
+    const slot = map.slots.find((s) => s.slot === m.slot);
+    if (!slot || slot.number === null || !slot.formerly?.includes(m.number)) return m;
+    return { ...m, number: slot.number };
+  });
 }
 
 /** The known controller among these input names, if any. */

@@ -23,7 +23,7 @@ const hints: Hints = {
   },
   "controller.encoder": {
     title: "Main encoder",
-    text: "The MiniLab 3's main encoder browses the Playable sound list. Turn to move through sounds, click to add the current sound as a track.",
+    text: "The MiniLab 3's main encoder (the black knob) browses the Playable sound list: turn to move through sounds, click to add the current sound as a track. In the pads' Key mode it's the Key dial: turn for the root, Shift + turn for the scale, press and turn to transpose.",
     guide: "performance-your-controller",
   },
   "controller.strip.0": {
@@ -105,6 +105,76 @@ const hints: Hints = {
     title: "Chord pads",
     text: "Pads 1–4 pick a chord type (Dim, Min, Maj, Sus) and pads 5–8 add 6, m7, M7 or 9, like the Orchid's chord buttons. Hold them and play one key: it plays the chord with that key as its root. Two chord types together make a secret chord.",
     guide: "performance-chord-pads",
+  },
+  "controller.padMode.key": {
+    title: "Key mode",
+    text: "Every key plays the chord that belongs to it in Key mode's key (in C major: D plays Dm, B plays Bdim), like the Orchid's Key Mode. Pads 5–8 add the key's own sixth, seventh or ninth; pads 1–4 play their chord on the key as pressed, to borrow chords.",
+    guide: "performance-key-mode",
+  },
+  "controller.keyMode.key": {
+    title: "Key mode's key",
+    text: "The key Key mode plays in, its own (the song's key isn't touched). Pick a root and a scale, or copy the page's key. On a MiniLab 3, turn the black knob to change the root, Shift + turn to change the scale.",
+    guide: "performance-key-mode",
+  },
+  "controller.keyMode.pending": {
+    title: "The key a press selects",
+    text: "The key you turned the knob to. Press the knob (or click here) to select it; turn back to the active key to drop it.",
+    guide: "performance-key-mode",
+  },
+  "controller.keyDial.instant": {
+    title: "Knob: at once",
+    text: "Turning the black knob changes Key mode's key with every step.",
+    guide: "performance-key-mode",
+  },
+  "controller.keyDial.press": {
+    title: "Knob: on press",
+    text: "Turning the black knob picks a key, shown next to the active one; pressing the knob selects it, as on the Orchid.",
+    guide: "performance-key-mode",
+  },
+  "controller.transpose": {
+    title: "Transpose",
+    text: "Moves everything the keys play up or down by semitones, chords included, in every pad mode (−12 to +12). Click the number to go back to 0. On a MiniLab 3 in Key mode: press and turn the black knob. It starts at 0 in every session.",
+    guide: "performance-key-mode",
+  },
+  "controller.keypad.0": {
+    title: "Dim (Key mode)",
+    text: "Hold and play a key: a diminished chord on the key as you pressed it, outside the key if you like. With another chord type: a secret chord, as in Chord mode.",
+    guide: "performance-key-mode",
+  },
+  "controller.keypad.1": {
+    title: "Min (Key mode)",
+    text: "Hold and play a key: a minor chord on the key as you pressed it, to borrow a chord from outside the key. While holding the black knob, a key with Min held selects that minor key.",
+    guide: "performance-key-mode",
+  },
+  "controller.keypad.2": {
+    title: "Maj (Key mode)",
+    text: "Hold and play a key: a major chord on the key as you pressed it (B♭ in C major). While holding the black knob, a key with Maj held selects that major key.",
+    guide: "performance-key-mode",
+  },
+  "controller.keypad.3": {
+    title: "Sus (Key mode)",
+    text: "Hold and play a key: a sus4 chord on the key as you pressed it.",
+    guide: "performance-key-mode",
+  },
+  "controller.keypad.4": {
+    title: "6 (Key mode)",
+    text: "Adds the key's own sixth above the chord's root.",
+    guide: "performance-key-mode",
+  },
+  "controller.keypad.5": {
+    title: "m7 (Key mode)",
+    text: "Adds the key's own seventh: G7 on G in C major, Cmaj7 on C. Same as M7 in Key mode.",
+    guide: "performance-key-mode",
+  },
+  "controller.keypad.6": {
+    title: "M7 (Key mode)",
+    text: "Adds the key's own seventh: Cmaj7 on C in C major, G7 on G. Same as m7 in Key mode.",
+    guide: "performance-key-mode",
+  },
+  "controller.keypad.7": {
+    title: "9 (Key mode)",
+    text: "Adds the key's own ninth, an octave above the root.",
+    guide: "performance-key-mode",
   },
   "controller.chordpad.0": {
     title: "Dim",

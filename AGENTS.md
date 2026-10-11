@@ -3,7 +3,7 @@
 This file is the fast way in. It explains what Rebeat is, how the code is organized, how the
 pieces talk to each other, how to verify a change, and the gotchas that cost time before.
 `PLAN.md` is the long-form record: the product spec (§1–§3), the original architecture (§4),
-and every design decision (§6, D1–D137). When this file and the code disagree, the code wins.
+and every design decision (§6, D1–D138). When this file and the code disagree, the code wins.
 Please fix this file in the same change.
 
 Status (2026-10-10): every phase of the original roadmap is built, plus several feature batches
@@ -129,7 +129,8 @@ src/
                        - fixtures/v6/ (every example and template as schema 6 saved it, gzipped)
                        - synth.ts (patch v2, macros), synthV1.ts (old patches, read only)
                        - patchParams.ts (the synth editor's knob table), randomize.ts
-                       - notes, chords (names of held notes), padChords (the chord pads, D137), noteOps
+                       - notes, chords (names of held notes), padChords (the chord pads, D137), keyMode
+                         (Key mode's chords, D138), noteOps
                          (piano roll), timing (polyrhythms), tempo, midiFile, effects
   state/               zustand stores:
                        - store.ts: project + undo + UI state
@@ -138,7 +139,8 @@ src/
                          recordNoteOn/Off, Overdub/Replace, Snap)
                        - keys.ts (D126): what every keyboard plays (a track or a library sound),
                          noteOn → release, sustain, bend/mod; live voices and the Keys channel;
-                         the chord pads (D137) and what each key down plays (`sounding`)
+                         the chord pads (D137), Key mode, transpose and the Key dial (D138), and
+                         what each key down plays (`sounding`)
                        - trackActions, effectActions, clipActions
   engine/              audio (no React):
                        - context.ts (native AudioContext + Tone)
@@ -472,7 +474,8 @@ onPatchEdit` hook, debounced `saveSoundSoon`).
 
 - `audio-io/midi.ts` (logic without the browser in `midi/mapping.ts`, D119–D125):
   - notes on the pads channel (10 by default) play tracks by position from note 36 (recorded
-    as pad hits; in the pads' Chord mode, pads 1–8 are the chord pads instead, D137); other channels play the keys (`state/keys.ts`, D126: the selected or locked
+    as pad hits; in the pads' Chord and Key modes, pads 1–8 are the chord pads instead, D137,
+    and in Key mode the MiniLab's encoder and its click are the Key dial, D138); other channels play the keys (`state/keys.ts`, D126: the selected or locked
     Notes track, or a library sound), or tracks by position when the keys have no Notes track
   - mappings: this project's first (`project.midiMappings`, track ids), then global ones
     (`settings.midiMappings`, roles: `selected:sound:<n>`, `selected:volume`, `track#<n>:…`),
@@ -668,6 +671,7 @@ likely to need:
 | MIDI controllers: maps, roles, relative, buttons   | D119–D125                 |
 | The keys, recording notes, faders, CPU, zoom       | D126–D136                 |
 | Chord pads (the Orchid's buttons on pads 1–8)      | D137                      |
+| Key mode, the Key dial (black knob), transpose     | D138                      |
 
 Feature batches and their acceptance criteria are in PLAN.md §0.6b–§0.6h. Known limitations are
 in §0.7.

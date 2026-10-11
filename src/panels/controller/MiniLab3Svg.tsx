@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { onControllerEvent, type ControllerEvent } from "../../midi/controllerEvents";
 import { useDisplay } from "../../midi/display";
-import { noteName } from "../../model/notes";
+import { inKey, noteName, type Key } from "../../model/notes";
 import { CHORD_PADS } from "../../model/padChords";
 import { onFrame } from "../../render/raf";
 
@@ -161,6 +161,9 @@ function buildKeys(): KeyLayout[] {
 
 const KEY_LAYOUT = buildKeys();
 
+/** The size of the note names on the white keys (drawing units); the equation matches it. */
+const KEY_LABEL_SIZE = 22;
+
 // ── Live state ────────────────────────────────────────────────────────────
 
 interface LiveState {
@@ -214,10 +217,14 @@ interface MiniLab3SvgProps {
   labels: ControlLabels;
   onKeyDown?: (midi: number, velocity: number) => () => void;
   onPadDown?: (index: number) => () => void;
-  /** The pads are the chord pads (Chord mode, D137): they're labeled as such. */
-  chordPads?: boolean;
+  /** What the pads do: tracks (Drum), the chord pads (Chord, D137) or Key mode's pads (D138). */
+  padMode?: "drum" | "chord" | "key";
   /** Notes the keys play that no key pressed (a chord's other notes), as MIDI notes. */
   generated?: readonly number[];
+  /** Key mode's key: the keys in it get a dot (the root a bigger one), D138. */
+  scaleKey?: Key | null;
+  /** The size the note names on the keys are drawn at, in CSS pixels, when it changes. */
+  onLabelPx?: (px: number) => void;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────
@@ -226,19 +233,38 @@ export function MiniLab3Svg({
   labels,
   onKeyDown,
   onPadDown,
-  chordPads = false,
+  padMode = "drum",
   generated = [],
+  scaleKey = null,
+  onLabelPx,
 }: MiniLab3SvgProps) {
+  const chordPads = padMode !== "drum";
   const svgRef = useRef<SVGSVGElement>(null);
   const liveRef = useRef<LiveState>(makeLiveState());
   // the labels (and the values they control) for the frame loop, which runs outside React
   const labelsRef = useRef(labels);
   const generatedRef = useRef(generated);
+  const scaleKeyRef = useRef(scaleKey);
   useEffect(() => {
     labelsRef.current = labels;
     generatedRef.current = generated;
+    scaleKeyRef.current = scaleKey;
     liveRef.current.dirty = true;
   });
+
+  // the note names' size on screen (the drawing scales with the panel), for the equation
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg || !onLabelPx) return;
+    const measure = () => {
+      const r = svg.getBoundingClientRect();
+      if (r.width > 0) onLabelPx(KEY_LABEL_SIZE * Math.min(r.width / W, r.height / H));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(svg);
+    return () => ro.disconnect();
+  }, [onLabelPx]);
   const heldKeys = useRef<Map<number, () => void>>(new Map());
   const heldPads = useRef<Map<number, () => void>>(new Map());
 
@@ -310,6 +336,18 @@ export function MiniLab3Svg({
         // while a key sounds: the note it plays (the device's octave included)
         const label = svg.querySelector<SVGTextElement>(`[data-key-note="${k.midi}"]`);
         if (label) label.textContent = vel > 0 || added ? noteName(k.midi + live.shift) : "";
+        // Key mode: a dot on the keys in its key, a bigger one on the root
+        const dot = svg.querySelector<SVGCircleElement>(`[data-key-dot="${k.midi}"]`);
+        if (dot) {
+          const key = scaleKeyRef.current;
+          const note = k.midi + live.shift;
+          const on = !!key && inKey(note, key);
+          const root = on && (((note - key.root) % 12) + 12) % 12 === 0;
+          dot.style.display = on ? "" : "none";
+          dot.setAttribute("r", root ? "8" : "5");
+          if (on) dot.dataset.inKey = root ? "root" : "true";
+          else delete dot.dataset.inKey;
+        }
       }
 
       // Pads — inner face brightens on hit (uses pad's own color)
@@ -799,7 +837,13 @@ export function MiniLab3Svg({
         return (
           <g
             key={i}
-            data-hint={chordPads ? `controller.chordpad.${i}` : `controller.pad.${i}`}
+            data-hint={
+              padMode === "key"
+                ? `controller.keypad.${i}`
+                : padMode === "chord"
+                  ? `controller.chordpad.${i}`
+                  : `controller.pad.${i}`
+            }
             style={{ cursor: onPadDown ? "pointer" : undefined }}
             onPointerDown={(e) => handlePadPointerDown(i, e)}
             onPointerUp={() => handlePadPointerUp(i)}
@@ -1013,6 +1057,19 @@ export function MiniLab3Svg({
           onPointerLeave={() => handleKeyPointerUp(k.midi)}
         />
       ))}
+      {/* Key mode's in-key dots (shown by the frame loop) */}
+      {KEY_LAYOUT.map((k) => (
+        <circle
+          key={k.midi}
+          data-key-dot={k.midi}
+          cx={KEYS_X + (k.x + k.w / 2) * WHITE_W}
+          cy={k.white ? KEYS_Y + KEYS_H - 64 : KEYS_Y + BLACK_KEY_H - 48}
+          r={5}
+          fill="var(--accent)"
+          opacity={0.75}
+          style={{ display: "none", pointerEvents: "none" }}
+        />
+      ))}
       {/* The notes of the keys that are down (filled in by the frame loop) */}
       {KEY_LAYOUT.map((k) => (
         <text
@@ -1021,7 +1078,7 @@ export function MiniLab3Svg({
           x={KEYS_X + (k.x + k.w / 2) * WHITE_W}
           y={k.white ? KEYS_Y + KEYS_H - 22 : KEYS_Y + BLACK_KEY_H - 16}
           textAnchor="middle"
-          fontSize={k.white ? 22 : 16}
+          fontSize={k.white ? KEY_LABEL_SIZE : 16}
           fontWeight="600"
           fill="#ffffff"
           stroke="rgba(0,0,0,0.45)"

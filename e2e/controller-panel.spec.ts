@@ -230,3 +230,74 @@ test("chord pads make a chord on one key, its added keys lit (D137)", async ({ p
   await page.getByTestId("pad-mode").getByRole("button", { name: "Drum" }).click();
   await expect(page.locator('[data-hint="controller.pad.2"]')).toBeVisible();
 });
+
+test("Key mode: a key plays its chord in the key, the black knob turns the key (D138)", async ({
+  page,
+}) => {
+  await midiDevices(page, ["Minilab3 MIDI"]);
+  await page.getByTestId("midi-use-detected").click();
+  await page.keyboard.press("Escape");
+  await page.evaluate(() => {
+    const s = (window as never as W).__rebeat.store.getState();
+    const tracks = s.project.tracks as unknown as { id: string; mode: string }[];
+    const notes = tracks.find((t) => t.mode === "notes");
+    if (notes) s.setUi({ selectedTrackId: notes.id });
+  });
+  await openControllerPanel(page);
+  await page.getByTestId("pad-mode").getByRole("button", { name: "Key" }).click();
+
+  const midi = (bytes: number[]) => send(page, "Minilab3 MIDI", bytes);
+  const line = page.getByTestId("controller-notes");
+  const chip = page.getByTestId("key-mode-key");
+  await expect(chip).toContainText("C major");
+
+  // one key, its chord in C major; the keys in C major get dots, the Cs bigger ones
+  await midi([0x90, 62, 100]);
+  await expect(line).toHaveText(/D4\s*\+\s*F4\s*\+\s*A4\s*=\s*Dm$/);
+  await midi([0x80, 62, 0]);
+  await expect(page.locator("[data-key-dot][data-in-key]")).toHaveCount(15);
+  await expect(page.locator('[data-key-dot][data-in-key="root"]')).toHaveCount(3);
+  // the m7 pad adds the key's seventh
+  await midi([0x99, 41, 100]);
+  await midi([0x90, 67, 100]);
+  await expect(line).toHaveText(/G4\s*\+\s*B4\s*\+\s*D5\s*\+\s*F5\s*=\s*G7$/);
+  await midi([0x80, 67, 0]);
+  await midi([0x89, 41, 0]);
+
+  // the equation is as big as the note names on the keys
+  const sizes = await page.evaluate(() => {
+    const svg = document.querySelector('[aria-label="MiniLab 3 controller"]')!;
+    const r = svg.getBoundingClientRect();
+    const label = 22 * Math.min(r.width / 1158, r.height / 715);
+    const eq = document.querySelector('[data-testid="controller-notes"]')!;
+    return { label, eq: parseFloat(getComputedStyle(eq).fontSize) };
+  });
+  expect(Math.abs(sizes.eq - Math.max(15, sizes.label))).toBeLessThan(1);
+
+  // the black knob: turn = root, Shift + turn = scale
+  await midi([0xb0, 114, 65]);
+  await midi([0xb0, 114, 65]);
+  await expect(chip).toContainText("D major");
+  // Shift + turn: the MiniLab sends CC 112
+  await midi([0xb0, 112, 65]);
+  await expect(chip).toContainText("D minor");
+  // press and turn: transpose; a click: back to 0
+  const transpose = page.getByTestId("transpose-value");
+  await midi([0xb0, 115, 127]);
+  await midi([0xb0, 114, 65]);
+  await midi([0xb0, 115, 0]);
+  await expect(transpose).toHaveText("+1");
+  await midi([0xb0, 115, 127]);
+  await midi([0xb0, 115, 0]);
+  await expect(transpose).toHaveText("0");
+
+  // On press: a turn picks a key next to the active one, a click selects it
+  await page.getByTestId("key-dial").getByRole("button", { name: "On press" }).click();
+  await midi([0xb0, 114, 65]);
+  await expect(page.getByTestId("key-mode-pending")).toContainText("E♭ minor");
+  await expect(chip).toContainText("D minor");
+  await midi([0xb0, 115, 127]);
+  await midi([0xb0, 115, 0]);
+  await expect(chip).toContainText("E♭ minor");
+  await expect(page.getByTestId("key-mode-pending")).toHaveCount(0);
+});

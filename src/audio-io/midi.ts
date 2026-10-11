@@ -14,6 +14,8 @@ import { platform } from "../platform";
 import {
   chordPadDown,
   chordPadUp,
+  keyDialPress,
+  keyDialTurn,
   keysControl,
   keysSustain,
   keysTakeNotes,
@@ -39,7 +41,13 @@ import {
   withMapping,
   type TargetContext,
 } from "../midi/mapping";
-import { detectController, mapById, missingSlots, slotKind } from "../midi/controllers";
+import {
+  correctedSlots,
+  detectController,
+  mapById,
+  missingSlots,
+  slotKind,
+} from "../midi/controllers";
 import { emitControllerEvent, type ControlKind } from "../midi/controllerEvents";
 import { browsePlayable } from "../library/playable";
 
@@ -150,7 +158,7 @@ function isDuplicate(m: MidiMessage): boolean {
 }
 
 // ---------- D129: shift modifier tracking ----------
-// Per-device shift state (e.g. MiniLab 3's Shift button CC 27).
+// Per-device shift state (e.g. MiniLab 3's Shift button CC 9).
 const shiftHeld = new Map<string, boolean>();
 
 function isShiftHeld(device: string): boolean {
@@ -204,14 +212,15 @@ export async function startMidi(sysex = false): Promise<boolean> {
 
   // D129: reset any fader mappings that were mistakenly sniffed as relative
   const s = useSettings.getState();
-  const fixed = s.midiMappings.map((m) => {
+  const map = mapById(s.midiController);
+  // and correct the numbers the map has fixed since (the MiniLab 3's encoder: CC 28 → 114)
+  const fixed = (map ? correctedSlots(map, s.midiMappings) : s.midiMappings).map((m) => {
     if (m.slot && slotKind(m.slot) === "fader" && m.mode !== "absolute") {
       return { ...m, mode: "absolute" as MidiMode };
     }
     return m;
   });
   // and add the slots the map gained since you picked it (the MiniLab 3's encoder)
-  const map = mapById(s.midiController);
   const added = map ? missingSlots(map, fixed, (p) => `${p}-${crypto.randomUUID()}`) : [];
   if (added.length || fixed.some((m, i) => m !== s.midiMappings[i])) {
     s.set({ midiMappings: [...fixed, ...added] });
@@ -552,6 +561,13 @@ function applyMapping(map: MidiMapping, m: MidiMessage, scope: "project" | "glob
           ? m.value - recent.values[recent.values.length - 2]
           : 0
         : relativeDelta(mode, m.value);
+    // Key mode (D138): the encoder is the Key dial (the root; Shift: the scale; pressed: transpose)
+    if (useSettings.getState().padMode === "key") {
+      if (delta !== 0) keyDialTurn(Math.sign(delta), bySection);
+      const action = `${map.label}: Key dial`;
+      report(m, action, { kind: "encoder", index: 0, slot: map.slot, value: m.value });
+      return action;
+    }
     // one sound per message, as Arturia's own scripts do (fast turns send bigger steps)
     if (delta !== 0) browsePlayable(Math.sign(delta), bySection);
     const action = `${map.label}: browse ${bySection ? "section" : "sound"}`;
@@ -560,6 +576,16 @@ function applyMapping(map: MidiMapping, m: MidiMessage, scope: "project" | "glob
   }
 
   const slotEv = slotEventFromMapping(map);
+
+  // Key mode (D138): the encoder's click is the Key dial's press (a click selects, press and turn
+  // transposes), so it doesn't add a track
+  if (map.slot === "encoder-click" && useSettings.getState().padMode === "key") {
+    const down = m.type === "noteon" || (m.type === "cc" && m.value >= 64);
+    keyDialPress(down);
+    const action = `${map.label}: Key dial ${down ? "pressed" : "released"}`;
+    report(m, action, { ...slotEv, value: m.value, down });
+    return action;
+  }
 
   if (target.startsWith("command:")) {
     const id = target.slice(8);
@@ -703,8 +729,8 @@ function playNote(channel: number, note: number, velocity: number): string {
     held.set(note, noteOn(note, velocity, "midi"));
     return `Played on ${targetName}`;
   }
-  // Chord mode (D137): pads 1–8 are the chord pads; the others still play their tracks
-  if (route.to === "pad" && route.index < 8 && useSettings.getState().padMode === "chord") {
+  // Chord and Key mode (D137, D138): pads 1–8 are the chord pads; the others still play tracks
+  if (route.to === "pad" && route.index < 8 && useSettings.getState().padMode !== "drum") {
     chordPadDown(route.index);
     chordPadsHeld.set(`${channel}:${note}`, route.index);
     return `Chord pad: ${CHORD_PADS[route.index]}`;

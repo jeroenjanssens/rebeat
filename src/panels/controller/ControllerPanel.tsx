@@ -3,23 +3,36 @@
  * For the Arturia MiniLab 3 it shows an SVG of the device; for other maps it shows a generic
  * slot list; with no controller connected it shows a "Plug in a controller" prompt.
  */
-import { useCallback, useEffect, useState } from "react";
-import { Plug } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ChevronDown, Minus, Plug, Plus } from "lucide-react";
 import { useMidi, targetContext, connectedController } from "../../audio-io/midi";
 import { mapById } from "../../midi/controllers";
 import { resolveTarget, readTarget } from "../../midi/mapping";
 import { soundDefs } from "../../library/synthTrack";
-import { useStore } from "../../state/store";
 import { useSettings } from "../../state/settings";
-import { chordPadDown, chordPadUp, noteOn, setPadMode, useKeys } from "../../state/keys";
+import {
+  chordPadDown,
+  chordPadUp,
+  noteOn,
+  selectPendingKey,
+  setKeyDial,
+  setKeyModeKey,
+  setPadMode,
+  setTranspose,
+  useKeys,
+} from "../../state/keys";
+import { useEditPattern, useStore } from "../../state/store";
+import { dropdown, type MenuItem } from "../../components/Menu";
 import { padInput } from "../../state/input";
 import * as engine from "../../engine/engine";
 import { MiniLab3Svg } from "./MiniLab3Svg";
 import { GenericControllerView } from "./GenericControllerView";
 import { onControllerEvent } from "../../midi/controllerEvents";
 import { chordName } from "../../model/chords";
-import { noteName } from "../../model/notes";
+import { keyName, noteName, pitchClassName, SCALES } from "../../model/notes";
+import { pageKey } from "../../model/project";
 import { CHORD_PADS } from "../../model/padChords";
+import { KEY_MODE_SCALES, keyModeKeyFrom } from "../../model/keyMode";
 
 /** The notes held down: the device's keys, and keys clicked in the picture. */
 function useHeldNotes() {
@@ -61,18 +74,20 @@ function useSounding(held: number[]): Sounding {
   return [...all].sort((a, b) => a - b).map((pitch) => ({ pitch, added: !held.includes(pitch) }));
 }
 
-/** What you're playing as an equation (D135): "A3 + C4 + E4 = Am". */
-function NotesEquation({ sounding }: { sounding: Sounding }) {
+/** What you're playing as an equation (D135): "A3 + C4 + E4 = Am", at the size of the note
+ * names on the keys (D138). */
+function NotesEquation({ sounding, size }: { sounding: Sounding; size: number }) {
   const notes = sounding.map((n) => n.pitch);
   const chord = chordName(notes);
   return (
     <div
-      className="num flex h-7 shrink-0 items-center justify-center gap-2 text-[15px]"
+      className="num flex shrink-0 items-center justify-center gap-[0.4em] leading-tight"
+      style={{ fontSize: `${size}px`, minHeight: `${Math.round(size * 1.4)}px` }}
       data-testid="controller-notes"
       data-hint="controller.notes"
     >
       {sounding.map(({ pitch, added }, i) => (
-        <span key={pitch} className="flex items-center gap-2">
+        <span key={pitch} className="flex items-center gap-[0.4em]">
           {i > 0 && <span className="text-faint">+</span>}
           <span
             className={added ? "font-semibold text-accent opacity-60" : "font-semibold text-ink"}
@@ -128,36 +143,154 @@ function knobLabels(
   });
 }
 
-// ── Pad mode (D137) ──────────────────────────────────────────────────────
+// ── Pad mode (D137, D138) ────────────────────────────────────────────────
 
-/** Drum (pads 1–8 play tracks 1–8) or Chord (they're the Orchid-style chord pads). */
+const PAD_MODES = [
+  { id: "drum", label: "Drum", hint: "controller.padMode.drum" },
+  { id: "chord", label: "Chord", hint: "controller.padMode.chord" },
+  { id: "key", label: "Key", hint: "controller.padMode.key" },
+] as const;
+
+/** Drum (pads 1–8 play tracks 1–8), Chord (the Orchid-style chord pads) or Key (Key mode). */
 function PadModeSwitch() {
   const padMode = useSettings((s) => s.padMode);
   return (
     <div className="segmented" data-testid="pad-mode">
-      {(["drum", "chord"] as const).map((m) => (
+      {PAD_MODES.map((m) => (
         <button
-          key={m}
-          data-active={padMode === m}
-          data-hint={m === "drum" ? "controller.padMode.drum" : "controller.padMode.chord"}
-          onClick={() => setPadMode(m)}
+          key={m.id}
+          data-active={padMode === m.id}
+          data-hint={m.hint}
+          onClick={() => setPadMode(m.id)}
         >
-          {m === "drum" ? "Drum" : "Chord"}
+          {m.label}
         </button>
       ))}
     </div>
   );
 }
 
+/** Key mode's key: a chip with a menu of roots and scales, and "Use the page's key". */
+function KeyModeChip() {
+  const ref = useRef<HTMLButtonElement>(null);
+  const key = useSettings((s) => s.keyModeKey);
+  const project = useStore((s) => s.project);
+  const pattern = useEditPattern();
+  const items = (): MenuItem[] => [
+    {
+      render: (close) => (
+        <div className="px-2 py-1.5">
+          <div className="label mb-1.5">Root</div>
+          <div className="grid grid-cols-6 gap-1">
+            {Array.from({ length: 12 }, (_, i) => (
+              <button
+                key={i}
+                className="tool-btn !h-6 border border-line"
+                data-active={key.root === i}
+                onClick={() => {
+                  setKeyModeKey({ ...key, root: i });
+                  close();
+                }}
+              >
+                {pitchClassName(i, true)}
+              </button>
+            ))}
+          </div>
+        </div>
+      ),
+    },
+    { separator: true },
+    ...KEY_MODE_SCALES.map((id) => ({
+      label: SCALES[id].name,
+      checked: key.scale === id,
+      onSelect: () => setKeyModeKey({ ...key, scale: id }),
+    })),
+    { separator: true },
+    {
+      label: `Use the page's key (${keyName(pageKey(project, pattern))})`,
+      onSelect: () => setKeyModeKey(keyModeKeyFrom(pageKey(project, pattern))),
+    },
+  ];
+  return (
+    <button
+      ref={ref}
+      className="field"
+      data-testid="key-mode-key"
+      data-hint="controller.keyMode.key"
+      onClick={() => dropdown(ref.current!, items())}
+    >
+      <span className="label">Key</span>
+      <span className="num text-ink">{keyName(key)}</span>
+      <ChevronDown size={12} className="text-dim" />
+    </button>
+  );
+}
+
+/** Key mode's row: the active key and the one a press would select, how the knob turns, and
+ * the transpose (D138). */
+function KeyModeRow() {
+  const dial = useSettings((s) => s.keyDial);
+  const pending = useKeys((s) => s.pendingKey);
+  const transpose = useKeys((s) => s.transpose);
+  return (
+    <div className="flex shrink-0 flex-wrap items-center gap-2 px-1" data-testid="key-mode">
+      <KeyModeChip />
+      {dial === "press" && pending && (
+        <button
+          className="tool-btn !h-6 gap-1 border border-dashed border-accent"
+          data-testid="key-mode-pending"
+          data-hint="controller.keyMode.pending"
+          onClick={selectPendingKey}
+        >
+          <span className="text-faint">→</span>
+          <span className="num text-accent">{keyName(pending)}</span>
+          <span className="text-faint text-[11px]">press the knob</span>
+        </button>
+      )}
+      <span className="flex-1" />
+      <span className="label">Knob</span>
+      <div className="segmented" data-testid="key-dial">
+        {(["instant", "press"] as const).map((m) => (
+          <button
+            key={m}
+            data-active={dial === m}
+            data-hint={m === "instant" ? "controller.keyDial.instant" : "controller.keyDial.press"}
+            onClick={() => setKeyDial(m)}
+          >
+            {m === "instant" ? "At once" : "On press"}
+          </button>
+        ))}
+      </div>
+      <span className="label">Transpose</span>
+      <div className="flex items-center" data-testid="transpose" data-hint="controller.transpose">
+        <button className="tool-btn !h-6" onClick={() => setTranspose(transpose - 1)}>
+          <Minus size={12} />
+        </button>
+        <button
+          className="num w-8 text-center text-[12px] text-ink"
+          title="Back to 0"
+          data-testid="transpose-value"
+          onClick={() => setTranspose(0)}
+        >
+          {transpose > 0 ? `+${transpose}` : transpose}
+        </button>
+        <button className="tool-btn !h-6" onClick={() => setTranspose(transpose + 1)}>
+          <Plus size={12} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /** The chord pads as a row, for controllers without a picture: which ones are held. */
-function ChordPadsRow() {
+function ChordPadsRow({ keyMode }: { keyMode: boolean }) {
   const pads = useKeys((s) => s.pads);
   return (
     <div className="flex shrink-0 items-center justify-center gap-1" data-testid="chord-pads">
       {CHORD_PADS.map((label, i) => (
         <span
           key={label}
-          data-hint={`controller.chordpad.${i}`}
+          data-hint={keyMode ? `controller.keypad.${i}` : `controller.chordpad.${i}`}
           data-active={pads.includes(i) || undefined}
           className={`num rounded border px-2 py-0.5 text-[11px] ${
             pads.includes(i) ? "border-accent text-accent" : "border-line text-dim"
@@ -230,8 +363,11 @@ export function ControllerPanel() {
   });
 
   const padMode = useSettings((s) => s.padMode);
+  const keyModeKey = useSettings((s) => s.keyModeKey);
   const [held, changeHeld] = useHeldNotes();
   const sounding = useSounding(held);
+  // the equation's size: the note names' on the keys (a fixed 22 px without a picture)
+  const [labelPx, setLabelPx] = useState(22);
   const handleKeyDown = useCallback(
     (midi: number, velocity: number): (() => void) => {
       changeHeld(midi, true);
@@ -246,7 +382,7 @@ export function ControllerPanel() {
 
   const handlePadDown = useCallback(
     (index: number): (() => void) => {
-      if (padMode !== "chord") return playPad(index);
+      if (padMode === "drum") return playPad(index);
       chordPadDown(index);
       return () => chordPadUp(index);
     },
@@ -299,23 +435,30 @@ export function ControllerPanel() {
         <span className="label">Pads</span>
         <PadModeSwitch />
       </div>
+      {padMode === "key" && <KeyModeRow />}
 
       {/* Device picture or generic slots */}
       <div className="min-h-0 flex-1 overflow-hidden" data-hint="controller.picture">
         {isMiniLab ? (
           <MiniLab3Svg
-            labels={{ knobs: kLabels, faders: fLabels, encoder: "Browse" }}
+            labels={{
+              knobs: kLabels,
+              faders: fLabels,
+              encoder: padMode === "key" ? "Key" : "Browse",
+            }}
             onKeyDown={handleKeyDown}
             onPadDown={handlePadDown}
-            chordPads={padMode === "chord"}
+            padMode={padMode}
             generated={sounding.filter((n) => n.added).map((n) => n.pitch)}
+            scaleKey={padMode === "key" ? keyModeKey : null}
+            onLabelPx={setLabelPx}
           />
         ) : (
           <GenericControllerView map={activeMap} />
         )}
       </div>
-      {!isMiniLab && padMode === "chord" && <ChordPadsRow />}
-      <NotesEquation sounding={sounding} />
+      {!isMiniLab && padMode !== "drum" && <ChordPadsRow keyMode={padMode === "key"} />}
+      <NotesEquation sounding={sounding} size={isMiniLab ? Math.max(15, labelPx) : 22} />
     </div>
   );
 }

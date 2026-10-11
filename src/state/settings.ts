@@ -113,8 +113,14 @@ export interface Settings {
   keysMix: { volume: number; sendA: number; sendB: number };
   /** The keys play what the active synth editor edits (D132). */
   keysFollowEditor: boolean;
-  /** What a controller's pads 1–8 do (D137): play tracks 1–8 (Drum) or make chords (Chord). */
-  padMode: "drum" | "chord";
+  /** What a controller's pads 1–8 do: play tracks 1–8 (Drum), make chords (Chord, D137), or
+   * add to Key mode's chords (Key, D138). */
+  padMode: "drum" | "chord" | "key";
+  /** Key mode's own key (D138), independent of the project. */
+  keyModeKey: { root: number; scale: string };
+  /** The Key dial (the MiniLab's black knob in Key mode): a turn changes the key at once, or
+   * picks one that a press selects (D138). */
+  keyDial: "instant" | "press";
   previewVolume: number;
   /** When nothing plays yet, the first loop recording sets the tempo (loop-pedal style). */
   freeFirstLoop: boolean;
@@ -179,6 +185,8 @@ export const DEFAULT_SETTINGS: Settings = {
   keysMix: { volume: 0.8, sendA: 0, sendB: 0 },
   keysFollowEditor: false,
   padMode: "drum",
+  keyModeKey: { root: 0, scale: "major" },
+  keyDial: "instant",
   previewVolume: 0.8,
   freeFirstLoop: false,
   onboarded: false,

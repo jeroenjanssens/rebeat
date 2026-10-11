@@ -7,6 +7,7 @@ import {
   mapById,
   mappingsOf,
   missingSlots,
+  correctedSlots,
   slotKind,
 } from "./controllers";
 import {
@@ -154,12 +155,33 @@ describe("controller maps (D124)", () => {
     let n = 0;
     // saved before the encoder, its click and Shift were in the map; knob 1 learned again
     const old = mappingsOf(map, () => `old${n++}`)
-      .filter((m) => !["encoder", "encoder-click", "shift"].includes(m.slot!))
+      .filter((m) => !["encoder", "encoder-click", "encoder-shift", "shift"].includes(m.slot!))
       .map((m) => (m.slot === "knob1" ? { ...m, number: 99 } : m));
     const added = missingSlots(map, old, () => `new${n++}`);
-    expect(added.map((m) => m.slot).sort()).toEqual(["encoder", "encoder-click", "shift"]);
-    expect(added.find((m) => m.slot === "encoder")).toMatchObject({ number: 28, mode: "rel64" });
+    expect(added.map((m) => m.slot).sort()).toEqual([
+      "encoder",
+      "encoder-click",
+      "encoder-shift",
+      "shift",
+    ]);
+    expect(added.find((m) => m.slot === "encoder")).toMatchObject({ number: 114, mode: "rel64" });
     expect(missingSlots(map, [...old, ...added], () => "x")).toEqual([]);
+  });
+
+  it("corrects a slot's number the map has fixed, keeping one you learned", () => {
+    const map = mapById("minilab3")!;
+    let n = 0;
+    const saved = mappingsOf(map, () => `id${n++}`).map((m) =>
+      m.slot === "encoder" ? { ...m, number: 28 } : m.slot === "knob1" ? { ...m, number: 99 } : m,
+    );
+    const fixed = correctedSlots(map, saved);
+    expect(fixed.find((m) => m.slot === "encoder")!.number).toBe(114);
+    expect(fixed.find((m) => m.slot === "knob1")!.number).toBe(99);
+    // untouched mappings stay the same objects
+    expect(fixed.filter((m, i) => m !== saved[i])).toHaveLength(1);
+    // learned again on another CC: kept
+    const learned = saved.map((m) => (m.slot === "encoder" ? { ...m, number: 20 } : m));
+    expect(correctedSlots(map, learned).find((m) => m.slot === "encoder")!.number).toBe(20);
   });
 
   it("knows a MiniLab 3 by its ports", () => {
@@ -227,27 +249,33 @@ describe("detectMode — fader protection (D129)", () => {
 describe("MiniLab 3 map — new encoder slots", () => {
   const minilab = mapById("minilab3")!;
 
-  it("has the main encoder on CC 28 with rel64 and browse:sound target", () => {
+  it("has the main encoder on CC 114 (formerly 28) with rel64 and browse:sound target", () => {
     const enc = minilab.slots.find((s) => s.slot === "encoder");
     expect(enc).toBeDefined();
-    expect(enc?.number).toBe(28);
+    expect(enc?.number).toBe(114);
+    expect(enc?.formerly).toEqual([28]);
     expect(enc?.mode).toBe("rel64");
     expect(enc?.target).toBe("browse:sound");
     expect(enc?.kind).toBe("encoder");
   });
 
-  it("has the encoder click on CC 118 targeting keys.add-track", () => {
+  it("has Shift + turn on its own CC 112, browsing by section", () => {
+    const enc = minilab.slots.find((s) => s.slot === "encoder-shift");
+    expect(enc).toMatchObject({ number: 112, mode: "rel64", target: "browse:section" });
+  });
+
+  it("has the encoder click on CC 115 targeting keys.add-track", () => {
     const click = minilab.slots.find((s) => s.slot === "encoder-click");
     expect(click).toBeDefined();
-    expect(click?.number).toBe(118);
+    expect(click?.number).toBe(115);
     expect(click?.target).toBe("command:keys.add-track");
     expect(click?.kind).toBe("button");
   });
 
-  it("has the Shift button on CC 27 targeting modifier:shift", () => {
+  it("has the Shift button on CC 9 targeting modifier:shift", () => {
     const shift = minilab.slots.find((s) => s.slot === "shift");
     expect(shift).toBeDefined();
-    expect(shift?.number).toBe(27);
+    expect(shift?.number).toBe(9);
     expect(shift?.target).toBe("modifier:shift");
     expect(shift?.kind).toBe("button");
   });

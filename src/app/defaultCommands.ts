@@ -2,7 +2,14 @@ import * as clock from "../engine/transport";
 import { platform } from "../platform";
 import { clearSelection, fnClick, fnPress, fnRelease } from "../state/actions";
 import { cursorToggle, moveCursor, velocityDigit } from "../state/input";
-import { addKeysSoundAsTrack, setKeysTarget, setPadMode, useKeys } from "../state/keys";
+import {
+  addKeysSoundAsTrack,
+  selectPendingKey,
+  setKeysTarget,
+  setPadMode,
+  setTranspose,
+  useKeys,
+} from "../state/keys";
 import { browsePlayable } from "../library/playable";
 import { THEMES, useSettings } from "../state/settings";
 import { useStore } from "../state/store";
@@ -556,9 +563,43 @@ export function defaultCommands(): Command[] {
     },
     {
       id: "pads.mode",
-      title: "Pads: switch between Drum and Chord mode",
+      title: "Pads: next mode (Drum, Chord, Key)",
       category: "Keys",
-      run: () => setPadMode(useSettings.getState().padMode === "chord" ? "drum" : "chord"),
+      run: () => {
+        const order = ["drum", "chord", "key"] as const;
+        const at = order.indexOf(useSettings.getState().padMode);
+        setPadMode(order[(at + 1) % order.length]);
+      },
+    },
+    ...(["drum", "chord", "key"] as const).map((m) => ({
+      id: `pads.${m}`,
+      title: `Pads: ${m[0].toUpperCase()}${m.slice(1)} mode`,
+      category: "Keys",
+      run: () => setPadMode(m),
+    })),
+    {
+      id: "keys.transpose-up",
+      title: "Keys: transpose up a semitone",
+      category: "Keys",
+      run: () => setTranspose(useKeys.getState().transpose + 1),
+    },
+    {
+      id: "keys.transpose-down",
+      title: "Keys: transpose down a semitone",
+      category: "Keys",
+      run: () => setTranspose(useKeys.getState().transpose - 1),
+    },
+    {
+      id: "keys.transpose-reset",
+      title: "Keys: no transpose",
+      category: "Keys",
+      run: () => setTranspose(0),
+    },
+    {
+      id: "keys.select-picked-key",
+      title: "Key mode: select the key the knob picked",
+      category: "Keys",
+      run: () => selectPendingKey(),
     },
     // ---- playable browsing ----
     {

@@ -77,6 +77,11 @@ const {
   chordPadUp,
   setPadMode,
   releaseAllKeys,
+  setKeyModeKey,
+  setTranspose,
+  setKeyDial,
+  keyDialTurn,
+  keyDialPress,
 } = await import("./keys");
 const { useSettings } = await import("./settings");
 
@@ -318,5 +323,88 @@ describe("chord pads (D137)", () => {
     expect(stopped).toEqual([]);
     keysSustain(false);
     expect(stopped.sort()).toEqual([60, 64, 67]);
+  });
+});
+
+describe("Key mode, transpose and the Key dial (D138)", () => {
+  const MIN = 1;
+  const M7 = 5;
+  const sounding = () => useKeys.getState().sounding.map((s) => s.notes);
+  const key = () => useSettings.getState().keyModeKey;
+
+  beforeEach(() => {
+    keysSustain(false);
+    releaseAllKeys();
+    vi.clearAllMocks();
+    holdNote.mockImplementation(() => holdNoteRelease);
+    setKeysTarget({ kind: "selected" });
+    setPadMode("key");
+    setKeyDial("instant");
+    setKeyModeKey({ root: 0, scale: "major" });
+    setTranspose(0);
+  });
+  afterEach(() => {
+    releaseAllKeys();
+    chordPadUp(M7);
+    chordPadUp(MIN);
+    setTranspose(0);
+    setPadMode("drum");
+  });
+
+  it("plays the key's chord on every key, and the pads add to it", () => {
+    noteOn(62, 0.8, "midi");
+    expect(sounding()).toEqual([[62, 65, 69]]);
+    chordPadDown(M7);
+    expect(sounding()).toEqual([[62, 65, 69, 72]]);
+  });
+
+  it("transposes everything the keys play, chords and held keys alike", () => {
+    noteOn(60, 0.8, "midi");
+    setTranspose(2);
+    expect(sounding()).toEqual([[62, 66, 69]]);
+    setTranspose(40);
+    expect(useKeys.getState().transpose).toBe(12);
+  });
+
+  it("turns the key at once, the scale with Shift, and transposes while pressed", () => {
+    keyDialTurn(1, false);
+    expect(key()).toEqual({ root: 1, scale: "major" });
+    keyDialTurn(1, true);
+    expect(key()).toEqual({ root: 1, scale: "minor" });
+    keyDialPress(true);
+    keyDialTurn(-1, false);
+    keyDialTurn(-1, false);
+    keyDialPress(false);
+    expect(useKeys.getState().transpose).toBe(-2);
+    expect(key()).toEqual({ root: 1, scale: "minor" });
+    // a click alone brings the transpose back to 0
+    keyDialPress(true);
+    keyDialPress(false);
+    expect(useKeys.getState().transpose).toBe(0);
+  });
+
+  it("On press: a turn picks a key, a click selects it", () => {
+    setKeyDial("press");
+    keyDialTurn(2, false);
+    expect(key()).toEqual({ root: 0, scale: "major" });
+    expect(useKeys.getState().pendingKey).toEqual({ root: 2, scale: "major" });
+    // turning back to the active key drops the pick
+    keyDialTurn(-2, false);
+    expect(useKeys.getState().pendingKey).toBeNull();
+    keyDialTurn(7, false);
+    keyDialPress(true);
+    keyDialPress(false);
+    expect(key()).toEqual({ root: 7, scale: "major" });
+    expect(useKeys.getState().pendingKey).toBeNull();
+  });
+
+  it("a key played while the dial is down selects the key (Min held: minor)", () => {
+    chordPadDown(MIN);
+    keyDialPress(true);
+    noteOn(57, 0.8, "midi")();
+    keyDialPress(false);
+    expect(key()).toEqual({ root: 9, scale: "minor" });
+    expect(holdNote).not.toHaveBeenCalled();
+    expect(useKeys.getState().transpose).toBe(0);
   });
 });

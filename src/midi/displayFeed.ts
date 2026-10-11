@@ -21,6 +21,7 @@ import { useStore } from "../state/store";
 import { useSettings } from "../state/settings";
 import { onControllerEvent } from "./controllerEvents";
 import { soundDefs } from "../library/synthTrack";
+import { keyName } from "../model/notes";
 
 let started = false;
 
@@ -85,15 +86,31 @@ export function startDisplayFeed(): void {
     const paramLabel = resolveParamLabel(e.target);
     if (!paramLabel) return;
 
-    const pct = `${Math.round(e.targetValue * 100)}%`;
-    showOnDisplay({ line1: paramLabel, line2: pct, transient: true });
+    showTransient(paramLabel, `${Math.round(e.targetValue * 100)}%`);
+  });
 
+  /** Text for about 1.5 s, then the lasting text again. */
+  function showTransient(line1: string, line2: string) {
+    if (!useSettings.getState().midiShowDisplayNames) return;
+    showOnDisplay({ line1, line2, transient: true });
     if (transientTimer !== null) clearTimeout(transientTimer);
     transientTimer = setTimeout(() => {
       transientTimer = null;
       // Restore the lasting text if the current text is still transient.
       if (useDisplay.getState().text.transient) showOnDisplay(lastingText);
     }, 1500);
+  }
+
+  // ── 3b. Key mode (D138): the key the Key dial turns to, the transpose ──
+  useSettings.subscribe((s, prev) => {
+    if (s.padMode === "key" && (s.keyModeKey !== prev.keyModeKey || prev.padMode !== "key"))
+      showTransient("Key", keyName(s.keyModeKey));
+  });
+  useKeys.subscribe((k, prev) => {
+    if (k.pendingKey && k.pendingKey !== prev.pendingKey)
+      showTransient("Key: press to select", keyName(k.pendingKey));
+    if (k.transpose !== prev.transpose)
+      showTransient("Transpose", k.transpose > 0 ? `+${k.transpose}` : `${k.transpose}`);
   });
 
   // ── 4. Auto-start the MiniLab 3 display writer ───────────────────────────
