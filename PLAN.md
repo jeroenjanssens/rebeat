@@ -12,7 +12,7 @@
 
 ### 0.1 Where we are
 
-- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D132), and the build order is in §7.
+- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D133), and the build order is in §7.
 - Every phase in §7 is built, tested (unit + Playwright e2e) and pushed. The mockup (Phase M) became the app: its components, model and store were kept and extended; `src/mock/` was replaced by the real engine.
 - The desktop app (Phase 10) runs and packages locally (unsigned); signing/notarization need certificates (see `.github/workflows/desktop.yml`).
 
@@ -1318,6 +1318,7 @@ Format: **Dn — Question.** Default ✅, alternatives.
 - **D130 — An honest CPU meter.** It shows the worst of the audio thread's load (AudioRenderCapacity, where the browser has it), the main thread's busy share (long animation frames) and the scheduler's lateness against its lookahead, labeled with which it is. Alt: the old rAF timing (it read about 1%); hiding the meter.
 - **D131 — Zoom levels and Fit.** The drum machine's zoom is Fit (the default: the steps fill the width) or a level that sets the pad width exactly; − / +, Ctrl/Cmd + wheel and the commands step through 50–250%, and the readout is a dropdown with a field for any value (25–400%), saved in the settings. Alt: multiplying by 1.15 (levels like 132%, and clamps that hid the change).
 - **D132 — The keys follow the synth editor.** A choice in the Keys menu (saved): while it's on (and then the only choice ticked), the keys play what the synth editor panel in focus edits (the one activated last, while it's open): its track, or a library synth through that sound's own voice (D91); with no editor open, their usual target. The menu's top, the chip and the device display say exactly what plays and where from ("Synth editor · BASS", "Track BASS", "Library"). Alt: always follow the editor; a per-editor "play with the keys" button.
+- **D133 — Any sample on the keys, the scope sees everything, unknown positions.** Every sample can go on the keys; it plays as it is on its base key (its detected pitch, by YIN on its first second; else C4), higher keys higher; Playable lists every sample (a Pitched only chip filters). Library sounds and previews skip the master's chain but end in its output stage, so the master scope and meters show everything you hear (still not exported). MIDI can't ask a controller where its controls are, so the Controller panel draws a knob or fader faint at the value it controls until the device sends it; Pickup avoids jumps. Alt: the sample's musical key as its root; previews through the master chain; asking the device by SysEx (Arturia's SysEx reads settings, not positions).
 - **D35 — Build order.** ✅ The phases in §7, starting with the mockup (Phase M), each ending with something you can play with.
 
 ---
