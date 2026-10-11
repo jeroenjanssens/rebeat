@@ -121,6 +121,9 @@ export interface Settings {
   /** The Key dial (the MiniLab's black knob in Key mode): a turn changes the key at once, or
    * picks one that a press selects (D138). */
   keyDial: "instant" | "press";
+  /** Bass voicing (D139): when the pads make a chord, its root also plays this many octaves
+   * below it (0 = off, 1–3), never below C1. */
+  bassOctaves: 0 | 1 | 2 | 3;
   previewVolume: number;
   /** When nothing plays yet, the first loop recording sets the tempo (loop-pedal style). */
   freeFirstLoop: boolean;
@@ -187,6 +190,7 @@ export const DEFAULT_SETTINGS: Settings = {
   padMode: "drum",
   keyModeKey: { root: 0, scale: "major" },
   keyDial: "instant",
+  bassOctaves: 0,
   previewVolume: 0.8,
   freeFirstLoop: false,
   onboarded: false,

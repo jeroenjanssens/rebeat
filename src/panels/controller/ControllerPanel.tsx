@@ -15,6 +15,7 @@ import {
   chordPadUp,
   noteOn,
   selectPendingKey,
+  setBassOctaves,
   setKeyDial,
   setKeyModeKey,
   setPadMode,
@@ -226,16 +227,17 @@ function KeyModeChip() {
   );
 }
 
-/** Key mode's row: the active key and the one a press would select, how the knob turns, and
- * the transpose (D138). */
-function KeyModeRow() {
+/** The row for the pads' Chord and Key modes: in Key mode the active key and the one a press
+ * would select, and how the knob turns (D138); the bass (D139) and the transpose in both. */
+function PadChordsRow({ keyMode }: { keyMode: boolean }) {
   const dial = useSettings((s) => s.keyDial);
+  const bass = useSettings((s) => s.bassOctaves);
   const pending = useKeys((s) => s.pendingKey);
   const transpose = useKeys((s) => s.transpose);
   return (
-    <div className="flex shrink-0 flex-wrap items-center gap-2 px-1" data-testid="key-mode">
-      <KeyModeChip />
-      {dial === "press" && pending && (
+    <div className="flex shrink-0 flex-wrap items-center gap-2 px-1" data-testid="pad-chords-row">
+      {keyMode && <KeyModeChip />}
+      {keyMode && dial === "press" && pending && (
         <button
           className="tool-btn !h-6 gap-1 border border-dashed border-accent"
           data-testid="key-mode-pending"
@@ -248,16 +250,30 @@ function KeyModeRow() {
         </button>
       )}
       <span className="flex-1" />
-      <span className="label">Knob</span>
-      <div className="segmented" data-testid="key-dial">
-        {(["instant", "press"] as const).map((m) => (
-          <button
-            key={m}
-            data-active={dial === m}
-            data-hint={m === "instant" ? "controller.keyDial.instant" : "controller.keyDial.press"}
-            onClick={() => setKeyDial(m)}
-          >
-            {m === "instant" ? "At once" : "On press"}
+      {keyMode && (
+        <>
+          <span className="label">Knob</span>
+          <div className="segmented" data-testid="key-dial">
+            {(["instant", "press"] as const).map((m) => (
+              <button
+                key={m}
+                data-active={dial === m}
+                data-hint={
+                  m === "instant" ? "controller.keyDial.instant" : "controller.keyDial.press"
+                }
+                onClick={() => setKeyDial(m)}
+              >
+                {m === "instant" ? "At once" : "On press"}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+      <span className="label">Bass</span>
+      <div className="segmented" data-testid="bass" data-hint="controller.bass">
+        {([0, 1, 2, 3] as const).map((n) => (
+          <button key={n} data-active={bass === n} onClick={() => setBassOctaves(n)}>
+            {n === 0 ? "Off" : `−${n}`}
           </button>
         ))}
       </div>
@@ -435,7 +451,7 @@ export function ControllerPanel() {
         <span className="label">Pads</span>
         <PadModeSwitch />
       </div>
-      {padMode === "key" && <KeyModeRow />}
+      {padMode !== "drum" && <PadChordsRow keyMode={padMode === "key"} />}
 
       {/* Device picture or generic slots */}
       <div className="min-h-0 flex-1 overflow-hidden" data-hint="controller.picture">

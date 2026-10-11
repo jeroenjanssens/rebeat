@@ -88,6 +88,8 @@ The **Pads** switch at the top of the Controller panel sets what your controller
 
 Without a chord type held, a key plays on its own. One chord sounds at a time: a new key takes the chord over. Pressing or letting go of a pad while you hold a key changes the chord at once. Chords record into a Notes track like keys you play yourself, and **scale lock** still moves the root into the key.
 
+**Bass** (in the panel, for Chord and Key mode): **Off**, **−1**, **−2** or **−3** adds the chord's root that many octaves below it, on the same sound, like the Orchid's bass. It never goes below C1 (an octave lower is felt more than heard); it shows in the equation and on the keys like the chord's other notes, and it's recorded with them. **Transpose** is in the same row.
+
 Two chord types held together play a **secret chord**, as on the Orchid (firmware 3.84): Dim + Sus a power chord (C5), Maj + Sus augmented, Min + Sus m(add4), Min + Dim m(♭6), Maj + Dim (♭6), Maj + Min 7♯9. With three or four held, the first two you pressed count. These follow the Orchid manual's table as others have quoted it; they haven't been checked on a device.
 
 On a MiniLab 3 the pads show their chord labels in the picture; other controllers get a row of the eight chord pads under their slots. Pads beyond the eighth (bank B, a second row) still play tracks 9–16. The commands **Pads: Drum mode**, **Pads: Chord mode**, **Pads: Key mode** and **Pads: next mode** do the same as the switch, so you can give them a shortcut or map a button to them.

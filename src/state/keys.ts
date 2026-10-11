@@ -327,12 +327,23 @@ function padNotes(key: number): number[] | null {
   return null;
 }
 
-/** What a key plays now: its chord or itself, transposed (D138). */
+/** The lowest a bass note goes (C1): an octave lower is felt more than heard. */
+const BASS_FLOOR = 24;
+
+/** What a key plays now: its chord or itself, transposed (D138), and a chord's bass (D139). */
 function notesOf(out: Output, key: number): { notes: number[]; chord: boolean } {
   const chord = padNotes(key);
   const t = useKeys.getState().transpose;
-  const notes = (chord ?? keyNotes(out, key)).map((n) => n + t).filter((n) => n >= 0 && n <= 127);
-  return { notes: [...new Set(notes)], chord: !!chord };
+  const notes = (chord ?? keyNotes(out, key)).map((n) => n + t);
+  const octaves = useSettings.getState().bassOctaves;
+  if (chord && octaves > 0) {
+    // the chord's root (its lowest note), that many octaves down, but not below C1
+    const root = notes[0];
+    let bass = root - 12 * octaves;
+    while (bass < BASS_FLOOR) bass += 12;
+    if (bass < root) notes.unshift(bass);
+  }
+  return { notes: [...new Set(notes.filter((n) => n >= 0 && n <= 127))], chord: !!chord };
 }
 
 /** A chord pad went down (pad index 0..7): the chord being held changes with it. */
@@ -375,6 +386,12 @@ export function setTranspose(semitones: number) {
   const t = Math.max(-12, Math.min(12, Math.round(semitones)));
   if (t === useKeys.getState().transpose) return;
   useKeys.setState({ transpose: t });
+  revoice();
+}
+
+/** Bass voicing (D139): the chord's root this many octaves below it (0 = off). */
+export function setBassOctaves(octaves: 0 | 1 | 2 | 3) {
+  useSettings.getState().set({ bassOctaves: octaves });
   revoice();
 }
 

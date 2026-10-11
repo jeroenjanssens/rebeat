@@ -216,6 +216,12 @@ test("chord pads make a chord on one key, its added keys lit (D137)", async ({ p
   // letting go of m7 while the key is held: the triad
   await pad(5, false);
   await expect(line).toHaveText(/C4\s*\+\s*E4\s*\+\s*G4\s*=\s*C$/);
+  // the bass: the root an octave below, as the chord's other notes
+  await page.getByTestId("bass").getByRole("button", { name: "−1" }).click();
+  await expect(line).toHaveText(/C3\s*\+\s*C4\s*\+\s*E4\s*\+\s*G4\s*=\s*C$/);
+  await expect(line.locator("[data-added]")).toHaveCount(3);
+  await page.getByTestId("bass").getByRole("button", { name: "Off" }).click();
+  await expect(line).toHaveText(/C4\s*\+\s*E4\s*\+\s*G4\s*=\s*C$/);
   // a new key takes the chord over
   await send(page, "Minilab3 MIDI", [0x90, 65, 100]);
   await expect(line).toHaveText(/F4\s*\+\s*A4\s*\+\s*C5\s*=\s*F$/);

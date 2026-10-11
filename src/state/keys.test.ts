@@ -82,6 +82,7 @@ const {
   setKeyDial,
   keyDialTurn,
   keyDialPress,
+  setBassOctaves,
 } = await import("./keys");
 const { useSettings } = await import("./settings");
 
@@ -406,5 +407,52 @@ describe("Key mode, transpose and the Key dial (D138)", () => {
     expect(key()).toEqual({ root: 9, scale: "minor" });
     expect(holdNote).not.toHaveBeenCalled();
     expect(useKeys.getState().transpose).toBe(0);
+  });
+});
+
+describe("bass voicing (D139)", () => {
+  const MAJ = 2;
+  const sounding = () => useKeys.getState().sounding.map((s) => s.notes);
+
+  beforeEach(() => {
+    keysSustain(false);
+    releaseAllKeys();
+    vi.clearAllMocks();
+    holdNote.mockImplementation(() => holdNoteRelease);
+    setKeysTarget({ kind: "selected" });
+    setPadMode("chord");
+    chordPadDown(MAJ);
+  });
+  afterEach(() => {
+    releaseAllKeys();
+    chordPadUp(MAJ);
+    setBassOctaves(0);
+    setTranspose(0);
+    setPadMode("drum");
+  });
+
+  it("adds the chord's root octaves below it, and changes a held chord at once", () => {
+    setBassOctaves(1);
+    noteOn(60, 0.8, "midi");
+    expect(sounding()).toEqual([[48, 60, 64, 67]]);
+    setBassOctaves(2);
+    expect(sounding()).toEqual([[36, 60, 64, 67]]);
+    setBassOctaves(0);
+    expect(sounding()).toEqual([[60, 64, 67]]);
+  });
+
+  it("never goes below C1, moves with the transpose, and leaves plain keys alone", () => {
+    setBassOctaves(3);
+    noteOn(48, 0.8, "midi")();
+    noteOn(40, 0.8, "midi")(); // E2: E−1 would be below C1, so E1
+    setTranspose(2);
+    noteOn(60, 0.8, "midi");
+    expect(sounding()).toEqual([[26, 62, 66, 69]]);
+    const bass = holdNote.mock.calls.map((c) => c[1]).filter((p) => (p as number) < 40);
+    expect(bass).toEqual([24, 28, 26]);
+    releaseAllKeys();
+    chordPadUp(MAJ);
+    noteOn(60, 0.8, "midi");
+    expect(sounding()).toEqual([[62]]);
   });
 });

@@ -131,9 +131,14 @@ const hints: Hints = {
     text: "Turning the black knob picks a key, shown next to the active one; pressing the knob selects it, as on the Orchid.",
     guide: "performance-key-mode",
   },
+  "controller.bass": {
+    title: "Bass",
+    text: "When the pads make a chord (Chord and Key mode), its root also plays 1, 2 or 3 octaves below it, on the same sound, like the Orchid's bass. It never goes below C1. Off: just the chord.",
+    guide: "performance-chord-pads",
+  },
   "controller.transpose": {
     title: "Transpose",
-    text: "Moves everything the keys play up or down by semitones, chords included, in every pad mode (−12 to +12). Click the number to go back to 0. On a MiniLab 3 in Key mode: press and turn the black knob. It starts at 0 in every session.",
+    text: "Moves everything the keys play up or down by semitones, chords included, in every pad mode (−12 to +12; shown in Chord and Key mode). Click the number to go back to 0. On a MiniLab 3 in Key mode: press and turn the black knob. It starts at 0 in every session.",
     guide: "performance-key-mode",
   },
   "controller.keypad.0": {
