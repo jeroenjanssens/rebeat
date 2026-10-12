@@ -92,6 +92,62 @@ In Next mode a menu picks one of the famous progressions that fit the key; pad 1
 holds its next chord (following where you are), the other pads the usual suggestions. The
 menu shows each one's roman numerals, its chords in the key and what it is.
 
+## 3c. Auto: the progression plays itself (proposed 2026-10-12, D162)
+
+In Next mode, with a progression picked, **▶ Auto** plays it by itself: the chord changes on its
+own, in time, and **■ Stop** ends it. You play over it (or record it: a quick way to write a
+song's chords).
+
+### How often the chord changes ("harmonic rhythm")
+
+- **Change every 1, 2, 3, 4, 6 or 8 patterns** when a pattern is on, **bars** when none is
+  (`settings.autoEvery`, default 1). Counting the pattern's own length keeps every change on the
+  pattern's first hit: one-bar patterns change per bar, Bossa, Clave and Montuno (two bars) never
+  in their middle, the Waltz (three beats) never drifts against a 4/4 bar.
+- Without a pattern, a bar is the song's time signature (4/4: 16 sixteenths, 3/4: 12, 6/8: 12).
+
+### When it starts, and on which clock
+
+- One clock with the patterns and the arp (`state/perform.ts`'s grid, D151–D153): the change
+  happens at the step where the pattern starts over, just before that step's hits, so the new
+  chord comes in on the hit, never between hits.
+- While the song plays, Auto starts on the song's next bar and stays on its grid; while stopped,
+  at once, at the song's tempo.
+- It starts at the progression's next chord (pad 1's), so you can play a few chords by hand and
+  then let it carry on.
+
+### What sounds
+
+- The progression's chord is held for you (as Latch would): it plays through Voicing, Smooth,
+  Bass, Transpose and all the play styles (a pattern, the arp, a strum), and records with Rec on.
+- Without a pattern or arp the chord is simply held until the next one (a pad).
+- **Loop** (default on) goes round again; off, it stops after the last chord.
+- **While Auto plays, the keys play single notes over it** (a melody, on the same sound), not
+  chords: proposed, see question 1. Pads 2–8 stay suggestions: pressing one plays it over the
+  progression for as long as it's held (a passing chord), then Auto goes on.
+
+### Starting and stopping
+
+- **▶ Auto / ■ Stop** in the Pad 1 row; the command **Auto progression: start/stop** (a shortcut,
+  or MIDI-learn any button); the transport's Stop stops it too (D99). On the MiniLab: the display
+  shows the chord and the next one ("Am → F"), and pad 1 blinks in the bar before a change.
+- The progression strip shows the chord playing and, under it, how far it is to the next change.
+
+### Free + Auto (question 2)
+
+Without a progression picked, Auto could follow the best suggestion every time: a progression that
+writes itself, different every run (with Adventure for how wild).
+
+### Settings
+
+`autoEvery: 1 | 2 | 3 | 4 | 6 | 8`, `autoLoop: boolean`; running or not isn't saved.
+
+### Tests
+
+Unit: the change points for patterns of 12, 16 and 32 sixteenths and every N; the start on the
+next bar while playing; Loop off stops after the last chord; Stop clears. E2E: Auto on the Royal
+road at a fast tempo walks F G Em Am (the equation), Stop silences, a recorded run lands on bars.
+
 ## 4. Step 3 (later): play-along
 
 Suggestions from the song: the chords of a Notes track (or a chord track) at the playhead, the
