@@ -16,7 +16,8 @@
  * Pad lights (D144), same source, "DAW mode" there; sent for every mode as the display is:
  *   F0 00 20 6B 7F 42  02 [mode] 16 [pad id] [r] [g] [b]  F7
  * pad ids 0x04–0x0B are pads 1–8 (bank A), r g b 0..127. While Shift is held nothing is sent,
- * so the MiniLab's own colors for the pads' second functions show.
+ * so the MiniLab's own colors for the pads' second functions show. The MiniLab paints a pressed
+ * pad its own color (orange) and leaves it so: a pad's color is sent again after it's let go.
  * Non-printable characters (< 0x20 or > 0x7E) are replaced with 0x20 (space).
  *
  * The display accepts messages on the regular MIDI port (not the MCU port).
@@ -216,6 +217,36 @@ function sendPads(force = false) {
     );
 }
 
+/** One pad's color again (the MiniLab paints a pad its own color while it's pressed and leaves
+ * it so, D165). */
+function resendPad(i: number) {
+  if (shiftDown || !padsOn) return;
+  const out = findOutput();
+  if (!out) return;
+  const { project } = useStore.getState();
+  const suggested = useKeys.getState().suggestions.map((s) => ROLE_COLORS[s.role]);
+  const [r, g, b] = deviceRgb(
+    padColors(project.tracks, useSettings.getState().padMode, suggested)[i],
+  );
+  for (const mode of DISPLAY_MODES)
+    out.send(
+      new Uint8Array([
+        0xf0,
+        ...ARTURIA_MANUFACTURER,
+        0x7f,
+        0x42,
+        0x02,
+        mode,
+        0x16,
+        PAD_IDS[i],
+        r,
+        g,
+        b,
+        0xf7,
+      ]),
+    );
+}
+
 function sendPadsSoon(force = false) {
   if (padTimer !== null) clearTimeout(padTimer);
   padTimer = setTimeout(() => {
@@ -246,6 +277,13 @@ export async function startMiniLab3Pads(): Promise<boolean> {
       sendPadsSoon();
   });
   const offShift = onControllerEvent((e) => {
+    // a pad let go: its color again, now and once the device is done with it (D165)
+    if (e.control.kind === "pad" && !e.down && e.control.index < 8) {
+      const i = e.control.index;
+      setTimeout(() => resendPad(i), 40);
+      setTimeout(() => resendPad(i), 250);
+      return;
+    }
     if (e.control.slot !== "shift") return;
     shiftDown = !!e.down;
     // the device lit its own colors under Shift: put ours back

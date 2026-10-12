@@ -816,3 +816,25 @@ test("Next mode: pick a progression and pad 1 plays it through (D161)", async ({
   await page.locator('[data-testid="progression-option"]', { hasText: "Free" }).click();
   await expect(page.getByTestId("progression-chords")).toHaveCount(0);
 });
+
+test("a pad let go gets its color again (the MiniLab paints it its own color while pressed, D165)", async ({
+  page,
+}) => {
+  await midiDevices(page, ["Minilab3 MIDI"]);
+  await page.getByTestId("midi-use-detected").click();
+  await page.keyboard.press("Escape");
+  const padMsgs = () =>
+    page.evaluate(
+      () =>
+        (
+          (window as never as { __midiSent: Record<string, number[][]> }).__midiSent[
+            "Minilab3 MIDI"
+          ] ?? []
+        ).filter((m) => m[0] === 0xf0 && m[8] === 0x16 && m[9] === 0x06).length,
+    );
+  await expect.poll(padMsgs).toBeGreaterThan(0); // the pads were painted
+  const before = await padMsgs();
+  await send(page, "Minilab3 MIDI", [0x99, 38, 100]); // pad 3 down
+  await send(page, "Minilab3 MIDI", [0x89, 38, 0]); // and up
+  await expect.poll(padMsgs).toBeGreaterThan(before);
+});
