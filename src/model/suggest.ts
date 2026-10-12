@@ -305,26 +305,169 @@ const MINOR_MOVES: Moves = {
   IIImaj7: [["VI", 0.6, "down a third"]],
 };
 
-/** Famous progressions: when what you played matches one, its next chord gets the name. */
-const PROGRESSIONS: { name: string; minor: boolean; chords: string[] }[] = [
-  { name: "the four-chord pop progression", minor: false, chords: ["I", "V", "vi", "IV"] },
-  { name: "the fifties progression", minor: false, chords: ["I", "vi", "IV", "V"] },
-  { name: "the jazz turnaround", minor: false, chords: ["I", "vi", "ii", "V"] },
-  { name: "ii–V–I", minor: false, chords: ["ii", "V", "I"] },
-  { name: "the three-chord song", minor: false, chords: ["I", "IV", "V"] },
-  { name: "the mixolydian rock progression", minor: false, chords: ["I", "♭VII", "IV"] },
-  { name: "the royal road (J-pop)", minor: false, chords: ["IV", "V", "iii", "vi"] },
+/** A famous progression (D158, D161): what it's called, its chords as roman numerals, what it
+ * is. The suggestions name it when you continue one; in Next mode you can pick one for pad 1. */
+export interface Progression {
+  id: string;
+  /** For the menu: "Four chords". */
+  title: string;
+  /** In a sentence: "the four-chord pop progression". */
+  name: string;
+  minor: boolean;
+  chords: string[];
+  about: string;
+}
+
+/** The progressions, the most played first (major keys, then minor). */
+export const PROGRESSIONS: Progression[] = [
   {
+    id: "four",
+    title: "Four chords",
+    name: "the four-chord pop progression",
+    minor: false,
+    chords: ["I", "V", "vi", "IV"],
+    about: "The backbone of countless pop and rock songs: home, tension, the sad turn, the lift.",
+  },
+  {
+    id: "sadpop",
+    title: "Sad pop",
+    name: "the sad pop progression",
+    minor: false,
+    chords: ["vi", "IV", "I", "V"],
+    about: "The four chords started on vi: the same chords, but it feels minor and wistful.",
+  },
+  {
+    id: "fifties",
+    title: "Fifties (doo-wop)",
+    name: "the fifties progression",
+    minor: false,
+    chords: ["I", "vi", "IV", "V"],
+    about: "The doo-wop ballads of the 1950s and the love songs that followed them.",
+  },
+  {
+    id: "three",
+    title: "Three chords",
+    name: "the three-chord song",
+    minor: false,
+    chords: ["I", "IV", "V"],
+    about: "Folk, country, punk and rock 'n' roll: three chords and the truth.",
+  },
+  {
+    id: "royalroad",
+    title: "Royal road (J-pop)",
+    name: "the royal road (J-pop)",
+    minor: false,
+    chords: ["IV", "V", "iii", "vi"],
+    about: "Japan's ōdō shinkō, behind countless J-pop and anime songs: yearning and bittersweet.",
+  },
+  {
+    id: "pachelbel",
+    title: "Pachelbel's canon",
     name: "Pachelbel's canon",
     minor: false,
     chords: ["I", "V", "vi", "iii", "IV", "I", "IV", "V"],
+    about: "The chords of the Canon in D, borrowed by many pop songs since.",
   },
-  { name: "the 12-bar blues", minor: false, chords: ["I", "IV", "I", "V", "IV", "I"] },
-  { name: "the Andalusian cadence", minor: true, chords: ["i", "VII", "VI", "V"] },
-  { name: "the minor three-chord song", minor: true, chords: ["i", "iv", "v"] },
-  { name: "the epic minor progression", minor: true, chords: ["i", "VI", "III", "VII"] },
-  { name: "the minor climb", minor: true, chords: ["i", "VI", "VII"] },
+  {
+    id: "blues",
+    title: "12-bar blues",
+    name: "the 12-bar blues",
+    minor: false,
+    chords: ["I", "IV", "I", "V", "IV", "I"],
+    about: "The blues, chord by chord: four bars of I, two of IV, two of I, V, IV, two of I.",
+  },
+  {
+    id: "twofive",
+    title: "ii–V–I",
+    name: "ii–V–I",
+    minor: false,
+    chords: ["ii", "V", "I"],
+    about: "The cadence at the heart of jazz: away, tension, home.",
+  },
+  {
+    id: "turnaround",
+    title: "Jazz turnaround",
+    name: "the jazz turnaround",
+    minor: false,
+    chords: ["I", "vi", "ii", "V"],
+    about: "The end of a jazz chorus that leads back to the top (rhythm changes).",
+  },
+  {
+    id: "circle",
+    title: "Circle of fifths",
+    name: "the circle progression",
+    minor: false,
+    chords: ["vi", "ii", "V", "I"],
+    about: "Each chord a fifth below the last, falling home: jazz standards and soul.",
+  },
+  {
+    id: "mixo",
+    title: "Mixolydian rock",
+    name: "the mixolydian rock progression",
+    minor: false,
+    chords: ["I", "♭VII", "IV"],
+    about: "Classic and arena rock: the borrowed ♭VII gives it swagger.",
+  },
+  {
+    id: "epic",
+    title: "Epic resolution",
+    name: "the epic resolution",
+    minor: false,
+    chords: ["♭VI", "♭VII", "I"],
+    about: "Two borrowed chords climbing home: film scores, power ballads, video game victories.",
+  },
+  {
+    id: "creep",
+    title: "Major to minor iv",
+    name: "the I–III–IV–iv progression",
+    minor: false,
+    chords: ["I", "V/vi", "IV", "iv"],
+    about: "The bittersweet borrowed iv at the end, famous from Radiohead's Creep.",
+  },
+  {
+    id: "andalusian",
+    title: "Andalusian cadence",
+    name: "the Andalusian cadence",
+    minor: true,
+    chords: ["i", "VII", "VI", "V"],
+    about: "Flamenco's falling steps down to the dominant: dramatic, also in rock and pop.",
+  },
+  {
+    id: "epicminor",
+    title: "Epic minor",
+    name: "the epic minor progression",
+    minor: true,
+    chords: ["i", "VI", "III", "VII"],
+    about: "The anthem of film scores and arena pop in a minor key.",
+  },
+  {
+    id: "climb",
+    title: "Minor climb",
+    name: "the minor climb",
+    minor: true,
+    chords: ["i", "VI", "VII"],
+    about: "Rising back to home: epic rock and EDM drops.",
+  },
+  {
+    id: "minorthree",
+    title: "Minor three chords",
+    name: "the minor three-chord song",
+    minor: true,
+    chords: ["i", "iv", "v"],
+    about: "The minor blues and folk progression.",
+  },
+  {
+    id: "dorian",
+    title: "Dorian vamp",
+    name: "the dorian vamp",
+    minor: true,
+    chords: ["i", "IV"],
+    about: "Two chords back and forth with the bright IV: funk, soul and Latin grooves.",
+  },
 ];
+
+export const progressionById = (id: string | null | undefined) =>
+  PROGRESSIONS.find((p) => p.id === id) ?? null;
 
 /** Whether a key is minor-like (a minor third over its root): its chords follow the minor table. */
 export function isMinorKey(key: Key): boolean {
@@ -371,7 +514,16 @@ export function suggestNext(
   key: Key,
   adventure: 0 | 1 | 2,
   count = 8,
+  progression: Progression | null = null,
 ): Suggestion[] {
+  // a progression picked (Next mode, D161): its next chord first, the others after it
+  if (progression && progression.minor === isMinorKey(key)) {
+    const next = progressionChords(progression, key)[progressionIndex(progression, history, key)];
+    const rest = suggestNext(history, key, adventure, count + 1).filter(
+      (s) => s.roman !== next.roman,
+    );
+    return [next, ...rest].slice(0, count);
+  }
   const minor = isMinorKey(key);
   const degrees = (minor ? MINOR : MAJOR).filter((g) => g.level <= adventure);
   const moves = minor ? MINOR_MOVES : MAJOR_MOVES;
@@ -397,22 +549,27 @@ export function suggestNext(
     add(minor ? "i" : "I", 1, "home");
   }
 
-  // continuing a famous progression (any rotation): the longer the match, the bigger the bonus
+  // continuing a famous progression (any rotation): the longer the match, the bigger the bonus,
+  // and a little more when it matches from the progression's own start (C G Am: four chords,
+  // not the sad pop rotation of it); one name per chord, the best match's
   const known = ids.filter((x): x is string => !!x);
+  const best = new Map<string, { score: number; name: string }>();
   for (const p of PROGRESSIONS) {
     if (p.minor !== minor) continue;
     const n = p.chords.length;
     for (let m = Math.min(known.length, n - 1); m >= 2; m--) {
       const tail = known.slice(-m);
-      let hit = -1;
-      for (let s = 0; s < n && hit < 0; s++)
-        if (tail.every((c, i) => p.chords[(s + i) % n] === c)) hit = (s + m) % n;
-      if (hit >= 0) {
-        add(p.chords[hit], 0.6 + 0.2 * (m - 2), p.name, true);
-        break;
-      }
+      let start = -1;
+      for (let st = 0; st < n && start < 0; st++)
+        if (tail.every((c, i) => p.chords[(st + i) % n] === c)) start = st;
+      if (start < 0) continue;
+      const next = p.chords[(start + m) % n];
+      const score = 0.6 + 0.2 * (m - 2) + (start === 0 ? 0.1 : 0);
+      if (score > (best.get(next)?.score ?? 0)) best.set(next, { score, name: p.name });
+      break;
     }
   }
+  for (const [id, b] of best) add(id, b.score, b.name, true);
 
   // fill up with the key's own chords (then the level's borrowed ones), so the pads are full
   for (const g of degrees)
@@ -429,21 +586,55 @@ export function suggestNext(
     .filter((x): x is { g: Degree; score: number; why: string; named?: boolean } => !!x.g)
     .sort((a, b) => b.score - a.score)
     .slice(0, count)
-    .map(({ g, score, why, named }) => {
-      const root = pc(key.root + g.at);
-      const name = pitchClassName(root, flats || g.id.startsWith("♭")) + SUFFIX[g.quality];
-      return {
-        root,
-        quality: g.quality,
-        pads: PADS[g.quality],
-        keyPads: keyModePads(root, g.quality, key),
-        name,
-        roman: g.id,
-        role: g.role,
-        why: named ? `${g.id}: continues ${why}` : `${g.id}: ${why}`,
-        score,
-      };
-    });
+    .map(({ g, score, why, named }) =>
+      toSuggestion(g, score, named ? `${g.id}: continues ${why}` : `${g.id}: ${why}`, key, flats),
+    );
+}
+
+function toSuggestion(g: Degree, score: number, why: string, key: Key, flats: boolean): Suggestion {
+  const root = pc(key.root + g.at);
+  return {
+    root,
+    quality: g.quality,
+    pads: PADS[g.quality],
+    keyPads: keyModePads(root, g.quality, key),
+    name: pitchClassName(root, flats || g.id.startsWith("♭")) + SUFFIX[g.quality],
+    roman: g.id,
+    role: g.role,
+    why,
+    score,
+  };
+}
+
+/** The progressions that fit a key (major ones in a major key, minor ones in a minor key). */
+export function progressionsFor(key: Key): Progression[] {
+  return PROGRESSIONS.filter((p) => p.minor === isMinorKey(key));
+}
+
+/**
+ * Where you are in a progression after `history` (D161): the index of its next chord. The
+ * longest run of your last chords that matches it (cyclically) says where; without a match, its
+ * first chord.
+ */
+export function progressionIndex(p: Progression, history: readonly Played[], key: Key): number {
+  const ids = history.map((h) => romanOf(h.root, h.quality, key));
+  const n = p.chords.length;
+  for (let m = Math.min(ids.length, n); m >= 1; m--) {
+    const tail = ids.slice(-m);
+    for (let e = 0; e < n; e++)
+      if (tail.every((c, i) => p.chords[(((e - m + 1 + i) % n) + n) % n] === c)) return (e + 1) % n;
+  }
+  return 0;
+}
+
+/** A progression's chords as suggestions in a key (to show them, and to play the next one). */
+export function progressionChords(p: Progression, key: Key): Suggestion[] {
+  const all = isMinorKey(key) ? MINOR : MAJOR;
+  const flats = keyUsesFlats(key);
+  return p.chords.map((id) => {
+    const g = all.find((x) => x.id === id)!;
+    return toSuggestion(g, 10, `${id}: next in ${p.name}`, key, flats);
+  });
 }
 
 /** The scale's own chord on `root` (a triad, or a seventh), as a quality. */

@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { isMinorKey, qualityOf, romanOf, suggestNext, type Played } from "./suggest";
+import {
+  PROGRESSIONS,
+  isMinorKey,
+  progressionById,
+  progressionChords,
+  progressionIndex,
+  progressionsFor,
+  qualityOf,
+  romanOf,
+  suggestNext,
+  type Played,
+} from "./suggest";
 
 const C_MAJOR = { root: 0, scale: "major" };
 const A_MINOR = { root: 9, scale: "minor" };
@@ -77,5 +88,50 @@ describe("suggesting the next chord (D158)", () => {
     const f = suggestNext([chord(0, "maj")], C_MAJOR, 1).find((s) => s.name === "F")!;
     expect(f.keyPads).toEqual([]); // the key's own chord
     expect(f.role).toBe("away");
+  });
+});
+
+describe("a progression picked for pad 1 (D161)", () => {
+  const four = progressionById("four")!;
+  it("puts its next chord first, wherever you are in it", () => {
+    expect(names([], C_MAJOR, 1)[0]).toBe("C"); // nothing played: home anyway
+    expect(suggestNext([], C_MAJOR, 1, 8, four)[0].name).toBe("C"); // its first chord
+    expect(suggestNext([chord(0, "maj")], C_MAJOR, 1, 8, four)[0].name).toBe("G");
+    expect(suggestNext([chord(0, "maj"), chord(7, "maj")], C_MAJOR, 1, 8, four)[0].name).toBe("Am");
+    // jumping in on vi: on to IV, then round to I
+    expect(suggestNext([chord(9, "min")], C_MAJOR, 1, 8, four)[0].name).toBe("F");
+    expect(suggestNext([chord(5, "maj")], C_MAJOR, 1, 8, four)[0].name).toBe("C");
+    // a chord from outside it: from its start
+    expect(suggestNext([chord(4, "min")], C_MAJOR, 1, 8, four)[0].name).toBe("C");
+  });
+
+  it("plays its chords even beyond the adventure level, and the others follow", () => {
+    const mixo = progressionById("mixo")!;
+    const s = suggestNext([chord(0, "maj")], C_MAJOR, 0, 8, mixo);
+    expect(s[0].name).toBe("B♭");
+    expect(s[0].why).toMatch(/mixolydian/);
+    expect(s.slice(1).map((x) => x.name)).not.toContain("B♭");
+    expect(s).toHaveLength(7);
+  });
+
+  it("lists the major ones in a major key, the minor ones in a minor key", () => {
+    expect(progressionsFor(C_MAJOR).map((p) => p.id)).toContain("royalroad");
+    expect(progressionsFor(C_MAJOR).map((p) => p.id)).not.toContain("andalusian");
+    expect(progressionsFor(A_MINOR).map((p) => p.id)).toContain("andalusian");
+    expect(progressionChords(progressionById("royalroad")!, C_MAJOR).map((c) => c.name)).toEqual([
+      "F",
+      "G",
+      "Em",
+      "Am",
+    ]);
+    // a minor progression in a major key is ignored
+    expect(suggestNext([], C_MAJOR, 1, 8, progressionById("andalusian"))[0].name).toBe("C");
+  });
+
+  it("knows where you are in a progression with repeated chords (the blues)", () => {
+    const blues = progressionById("blues")!;
+    const h = [chord(0, "maj"), chord(5, "maj"), chord(0, "maj")];
+    expect(PROGRESSIONS.length).toBeGreaterThanOrEqual(18);
+    expect(blues.chords[progressionIndex(blues, h, C_MAJOR)]).toBe("V");
   });
 });
