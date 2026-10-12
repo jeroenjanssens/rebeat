@@ -13,11 +13,29 @@ import {
   progressionsFor,
 } from "../../model/suggest";
 import { keyName } from "../../model/notes";
-import { chordHistory, setNextProgression, suggestionKey, useKeys } from "../../state/keys";
+import {
+  AUTO_EVERY,
+  autoUnit,
+  chordHistory,
+  setNextProgression,
+  suggestionKey,
+  toggleAuto,
+  useKeys,
+} from "../../state/keys";
+import { audioNow } from "../../engine/engine";
 import { useSettings } from "../../state/settings";
 
 export function ProgressionPicker() {
   const id = useSettings((s) => s.nextProgression);
+  const auto = useKeys((s) => s.auto);
+  const every = useSettings((s) => s.autoEvery);
+  const loop = useSettings((s) => s.autoLoop);
+  const withPlay = useSettings((s) => s.autoWithPlay);
+  useSettings((s) => s.playStyle);
+  const unit = autoUnit();
+  const unitName = (n: number) =>
+    unit.pattern ? (n === 1 ? "pattern" : "patterns") : n === 1 ? "bar" : "bars";
+  const set = useSettings.getState().set;
   useSettings((s) => s.keyModeKey);
   // the suggestions change after every chord: where we are in the progression too
   useKeys((s) => s.suggestions);
@@ -94,7 +112,7 @@ export function ProgressionPicker() {
           {chords.map((c, i) => (
             <span
               key={i}
-              className="num rounded px-1 text-[11px]"
+              className="num relative overflow-hidden rounded px-1 text-[11px]"
               data-next={i === at || undefined}
               style={
                 i === at
@@ -104,10 +122,70 @@ export function ProgressionPicker() {
               title={c.roman}
             >
               {c.name}
+              {/* Auto: how far it is to this chord's change */}
+              {i === at && auto.running && auto.nextAt !== null && (
+                <span
+                  key={auto.nextAt}
+                  className="auto-progress"
+                  style={{ animationDuration: `${Math.max(0.05, auto.nextAt - audioNow())}s` }}
+                />
+              )}
             </span>
           ))}
         </span>
       )}
+      {/* Auto (D162): the progression plays itself */}
+      <div className="segmented" data-hint="controller.auto">
+        <button
+          data-testid="auto"
+          data-active={auto.running || auto.armed}
+          data-armed={auto.armed || undefined}
+          aria-pressed={auto.running || auto.armed}
+          className={auto.armed && !auto.running ? "auto-armed" : undefined}
+          onClick={toggleAuto}
+        >
+          {auto.running ? "■ Stop" : auto.armed ? "● Armed: starts with Play" : "▶ Auto"}
+        </button>
+      </div>
+      <span className="label">Every</span>
+      <div className="flex items-center" data-testid="auto-every" data-hint="controller.auto.every">
+        <button
+          className="tool-btn !h-6"
+          aria-label="Less often"
+          onClick={() => {
+            const i = AUTO_EVERY.indexOf(every as (typeof AUTO_EVERY)[number]);
+            set({ autoEvery: AUTO_EVERY[Math.max(0, i - 1)] });
+          }}
+        >
+          −
+        </button>
+        <span className="num px-1 text-[12px] text-ink" data-testid="auto-every-value">
+          {every} {unitName(every)}
+        </span>
+        <button
+          className="tool-btn !h-6"
+          aria-label="More often"
+          onClick={() => {
+            const i = AUTO_EVERY.indexOf(every as (typeof AUTO_EVERY)[number]);
+            set({ autoEvery: AUTO_EVERY[Math.min(AUTO_EVERY.length - 1, i + 1)] });
+          }}
+        >
+          +
+        </button>
+      </div>
+      <div className="segmented" data-hint="controller.auto.options">
+        <button data-active={loop} aria-pressed={loop} onClick={() => set({ autoLoop: !loop })}>
+          Loop
+        </button>
+        <button
+          data-active={withPlay}
+          aria-pressed={withPlay}
+          data-testid="auto-with-play"
+          onClick={() => set({ autoWithPlay: !withPlay })}
+        >
+          With Play
+        </button>
+      </div>
     </div>
   );
 }

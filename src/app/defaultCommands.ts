@@ -10,6 +10,7 @@ import {
   setTranspose,
   useKeys,
   toggleLatch,
+  toggleAuto,
 } from "../state/keys";
 import { browsePlayable } from "../library/playable";
 import { THEMES, useSettings } from "../state/settings";
@@ -83,6 +84,12 @@ export function defaultCommands(): Command[] {
       title: "Latch the keys",
       category: "Keys",
       run: toggleLatch,
+    },
+    {
+      id: "keys.auto",
+      title: "Auto progression: start/stop",
+      category: "Keys",
+      run: toggleAuto,
     },
     {
       id: "page.next",

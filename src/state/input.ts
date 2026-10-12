@@ -4,7 +4,7 @@
  * (clears a step the first time you play onto it per loop pass). Snap on = starts and lengths
  * snap to Q's grid; Snap off = exact timing stored as Note.offset (D127, D128).
  */
-import { position } from "../engine/transport";
+import { position, positionAt } from "../engine/transport";
 import { audioContext } from "../engine/context";
 import { chordInKey, snapToKey } from "../model/notes";
 import { pageKey, slotPattern } from "../model/project";
@@ -30,10 +30,17 @@ const QUANTIZE_QUARTERS: Record<string, number> = {
   "1/32": 0.125,
 };
 
-function writeStep(trackId: string, index: number, fn: (s: Step) => void, key: string) {
+function writeStep(
+  trackId: string,
+  index: number,
+  fn: (s: Step) => void,
+  key: string,
+  slotId?: string,
+) {
   get().commit((p) => {
     const s = get();
-    const lane = slotPattern(p, s.playing ? s.playSlotId : s.editSlotId).lanes[trackId];
+    const slot = slotId ?? (s.playing ? s.playSlotId : s.editSlotId);
+    const lane = slotPattern(p, slot).lanes[trackId];
     if (lane && stepped(p, trackId)) fn(lane.steps[index]);
   }, key);
 }
@@ -104,6 +111,8 @@ interface InflightNote {
   startExact: number;
   /** Loop-progress at note-on, to detect wraps on note-off. */
   startProgress: number;
+  /** The page (slot) it was recorded in: a timed note's own (D164). */
+  slotId: string;
 }
 
 let nextNoteId = 0;
@@ -286,17 +295,20 @@ export function recordNoteOn(
 
   if (!s.recording) return null;
 
-  const slot = s.project.slots.find((x) => x.id === s.playSlotId);
+  // a note with a time (the play styles, Auto) goes in the page playing then (D164), at its exact
+  // place on the grid; a key, where it's heard now (latency corrected)
+  const timed = timing.at !== undefined;
+  const pos = timed ? positionAt(timing.at!) : { ...position(), slotId: s.playSlotId };
+  const slot = s.project.slots.find((x) => x.id === pos.slotId);
   if (!slot) return null;
   const pattern = s.project.patterns[slot.patternId];
   const lane = pattern.lanes[trackId];
   if (!lane) return null;
   if (track.mode !== "notes") return null;
 
-  const pos = position();
   detectLoopWrap(pos.progress);
 
-  const { exact, len, laneQ, grid } = computeStepPos(
+  const step = computeStepPos(
     pattern.stepSize,
     lane.stepSizeOverride,
     pattern.stepCount,
@@ -305,11 +317,12 @@ export function recordNoteOn(
     pos.progress,
     s.quantize,
   );
+  const { len, laneQ, grid } = step;
   const { snap, recordMode } = useSettings.getState();
   // the hit's position, and the note's own delay after it, in lane steps
   const laneStepSec = (60 / s.project.bpm) * laneQ;
-  const dt = timing.at === undefined ? 0 : timing.at - (audioContext().currentTime ?? 0);
-  const hit = exact + dt / laneStepSec;
+  const ratio = STEP_SIZE_QUARTERS[pattern.stepSize] / laneQ;
+  const hit = timed ? pos.progress * pattern.stepCount * ratio : step.exact;
   const spread = (timing.spread ?? 0) / laneStepSec;
 
   let stepIndex: number;
@@ -354,6 +367,7 @@ export function recordNoteOn(
       st.velocity = Math.max(noteVel, ...kept.map((n) => n.velocity));
     },
     `rec-${trackId}`,
+    slot.id,
   );
 
   inflightNotes.set(id, {
@@ -362,6 +376,7 @@ export function recordNoteOn(
     pitch,
     stepIndex,
     startExact: hit + spread,
+    slotId: slot.id,
     startProgress: pos.progress,
   });
 
@@ -381,13 +396,14 @@ export function recordNoteOff(id: number | null, at?: number): void {
   const s = get();
   if (!s.playing || !s.recording) return;
 
-  const slot = s.project.slots.find((x) => x.id === s.playSlotId);
+  // the note's own page; with a time, where the song is then (D164)
+  const slot = s.project.slots.find((x) => x.id === inf.slotId);
   if (!slot) return;
   const pattern = s.project.patterns[slot.patternId];
   const lane = pattern.lanes[inf.trackId];
   if (!lane) return;
 
-  const pos = position();
+  const pos = at === undefined ? { ...position(), slotId: s.playSlotId } : positionAt(at);
   const patternQ = STEP_SIZE_QUARTERS[pattern.stepSize];
   const laneQ = STEP_SIZE_QUARTERS[lane.stepSizeOverride ?? pattern.stepSize];
   const ratio = patternQ / laneQ;
@@ -400,13 +416,13 @@ export function recordNoteOff(id: number | null, at?: number): void {
   const ctx = audioContext();
   const latency = ctx.outputLatency || ctx.baseLatency || 0;
   const laneStepSec = (60 / s.project.bpm) * laneQ;
+  // a timed note-off is exactly on the grid; a key's is where it's heard (latency corrected)
   const nowExact =
-    pos.progress * pattern.stepCount * ratio -
-    latency / laneStepSec +
-    (at === undefined ? 0 : at - (ctx.currentTime ?? 0)) / laneStepSec;
+    pos.progress * pattern.stepCount * ratio - (at === undefined ? latency / laneStepSec : 0);
 
-  // Length = distance from note-on to note-off; wraps across page if note-off is earlier
-  let rawLen = nowExact - inf.startExact;
+  // Length = distance from note-on to note-off; wraps across page if note-off is earlier; a note
+  // whose page has ended (song mode) is cut at the page's end
+  let rawLen = pos.slotId !== inf.slotId ? len - inf.startExact : nowExact - inf.startExact;
   if (rawLen <= 0) rawLen += len; // wrapped around
   rawLen = Math.max(rawLen, 0.05); // at least 0.05 steps
   rawLen = Math.min(rawLen, len); // at most page length
@@ -420,8 +436,7 @@ export function recordNoteOff(id: number | null, at?: number): void {
 
   // Update the note's length in the step (same undo key → merges with the note-on write)
   get().commit((p) => {
-    const sl = get();
-    const pat = slotPattern(p, sl.playSlotId);
+    const pat = slotPattern(p, inf.slotId);
     const ln = pat.lanes[inf.trackId];
     if (!ln || !stepped(p, inf.trackId)) return;
     const step = ln.steps[inf.stepIndex];

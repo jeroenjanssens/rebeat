@@ -727,6 +727,35 @@ body {
 .progression-item:hover {
   background: color-mix(in oklab, var(--accent) 18%, transparent);
 }
+/* Auto (D162): a bar filling up to the next chord change, and an armed button blinking */
+.auto-progress {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.85);
+  transform-origin: left;
+  animation-name: auto-progress;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+}
+@keyframes auto-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+.auto-armed {
+  animation: auto-armed 1s steps(2, jump-none) infinite;
+}
+@keyframes auto-armed {
+  50% {
+    opacity: 0.45;
+  }
+}
 .menu-sep {
   height: 1px;
   margin: 4px 2px;

@@ -234,3 +234,92 @@ test("the keys light up as their notes sound: a strum one by one, an arpeggio a 
   expect(await page.evaluate(() => (window as never as { __most: number }).__most)).toBe(1);
   expect(new Set((await lit()).slice(3).map((l) => l.key)).size).toBe(3);
 });
+
+/** The Controller panel in Next mode on the Royal road in C major, the keys on a Notes track. */
+async function autoSetup(page: Page, more: object = {}) {
+  await midiDevices(page, ["Minilab3 MIDI"]);
+  await page.getByTestId("midi-use-detected").click();
+  await page.keyboard.press("Escape");
+  await page.evaluate(() =>
+    (window as never as W).__rebeat
+      .commands()
+      .find((c) => c.id === "panel.controller")!
+      .run(),
+  );
+  await page.getByTestId("controller-panel").waitFor();
+  const trackId = await page.evaluate(async (more) => {
+    const r = (window as never as W).__rebeat;
+    const s = r.store.getState();
+    const t = s.project.tracks.find((x) => x.mode === "notes")!;
+    s.setUi({ selectedTrackId: t.id });
+    (await r.settings()).getState().set({
+      keyModeKey: { root: 0, scale: "major" },
+      padMode: "next",
+      nextProgression: "royalroad",
+      autoEvery: 1,
+      ...more,
+    });
+    return t.id;
+  }, more);
+  return trackId;
+}
+
+test("Auto walks the progression by itself and stops (D162)", async ({ page }) => {
+  await autoSetup(page, { autoWithPlay: false });
+  await page.evaluate(() => {
+    (window as never as W).__rebeat.store
+      .getState()
+      .commit((p) => void ((p as unknown as { bpm: number }).bpm = 240));
+  });
+  const line = page.getByTestId("controller-notes");
+  await page.getByTestId("auto").click();
+  await expect(page.getByTestId("auto")).toHaveText(/Stop/);
+  for (const chord of [/=\s*F$/, /=\s*G$/, /=\s*Em$/, /=\s*Am$/])
+    await expect(line).toHaveText(chord, { timeout: 4000 });
+  await page.getByTestId("auto").click();
+  await expect(page.getByTestId("auto")).toHaveText(/Auto/);
+  await expect(page.locator('[data-key][data-sounding="true"]')).toHaveCount(0);
+});
+
+test("Auto armed starts with Play after the count-in and records a chord per bar (D163)", async ({
+  page,
+}) => {
+  const trackId = await autoSetup(page, { autoWithPlay: true, countInBars: 1, snap: true });
+  // a four-bar page, its Notes lane empty, a count-in, a fast tempo
+  await page.evaluate((id) => {
+    const s = (window as never as W).__rebeat.store.getState();
+    s.commit((p) => {
+      const pp = p as unknown as { bpm: number; countIn: boolean; playMode: string };
+      pp.bpm = 200;
+      pp.countIn = true;
+      pp.playMode = "loop";
+      for (const pat of Object.values(p.patterns)) {
+        (pat as unknown as { stepCount: number; stepSize: string }).stepCount = 64;
+        (pat as unknown as { stepSize: string }).stepSize = "1/16";
+        const lane = pat.lanes[id];
+        if (lane) for (const st of lane.steps) Object.assign(st, { on: false, notes: undefined });
+      }
+    });
+    s.setUi({ recording: true });
+  }, trackId);
+  await page.getByTestId("auto").click();
+  await expect(page.getByTestId("auto")).toHaveAttribute("data-armed", "true");
+  await page.keyboard.press("Space");
+  // four bars at 200 bpm: 4.8 s after the count-in (1.2 s)
+  await page.waitForTimeout(6500);
+  await page.keyboard.press("Space");
+  const steps = await recorded(page, trackId);
+  // a chord per bar, nothing else (the first one not twice, D164)
+  expect(steps.map((x) => x.i)).toEqual([0, 16, 32, 48]);
+  const at = (step: number) =>
+    steps
+      .find((s) => s.i === step)
+      ?.notes.map((n) => n.pitch % 12)
+      .sort((a, b) => a - b);
+  expect(at(0)).toEqual([0, 5, 9]); // F A C
+  expect(at(16)).toEqual([2, 7, 11]); // G B D
+  expect(at(32)).toEqual([4, 7, 11]); // E G B
+  expect(at(48)).toEqual([0, 4, 9]); // A C E
+  // stopped with the song: armed again for the next take
+  await expect(page.getByTestId("auto")).toHaveAttribute("data-armed", "true");
+});

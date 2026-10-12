@@ -187,6 +187,21 @@ const hints: Hints = {
     text: "In Next mode, pick a famous progression (four chords, the fifties, the J-pop royal road, the jazz turnaround, mixolydian rock, the 12-bar blues…) and pad 1 always holds its next chord: press pad 1 again and again to play it through. It follows where you are: play a chord of it on the keys and pad 1 goes on from there. The chords show next to it, the next one lit. Free: pad 1 is the best suggestion.",
     guide: "performance-suggestions",
   },
+  "controller.auto": {
+    title: "Auto",
+    text: "Plays the progression by itself: pad 1's chord changes on its own, in time, through Voicing, Bass and the play styles, while you play a melody on the keys (and passing chords on pads 2–8: held, they replace the chord until you let go). With the song stopped and With Play on, it waits (armed) and starts with Play, after the count-in, from the progression's first chord: press Rec too to record it, take after take. ■ Stop ends it, and so does the transport's Stop. Without a progression it follows the best suggestion, a progression that writes itself.",
+    guide: "performance-suggestions",
+  },
+  "controller.auto.every": {
+    title: "Change every",
+    text: "How often Auto moves to the next chord: every 1, 2, 3, 4, 6 or 8 patterns when a pattern plays (so a change never lands in the middle of its rhythm: a two-bar Bossa changes every two bars, a three-beat Waltz never drifts), or bars when none does.",
+    guide: "performance-suggestions",
+  },
+  "controller.auto.options": {
+    title: "Loop, With Play",
+    text: "Loop: after the last chord, round again (off: Auto stops there). With Play: pressing Auto while the song is stopped arms it, and it starts with the song (after the count-in), from the top, every time you press Play; off: it starts at once.",
+    guide: "performance-suggestions",
+  },
   "controller.suggest": {
     title: "Suggest",
     text: "After each chord you play, Rebeat suggests what could come next, and marks the key to press for the three best (in Chord mode, the pad to hold too): the bigger the dot, the better. The colors say what a chord does: green home, blue away from home, red tension (it wants to resolve), purple color (borrowed or secondary chords). The MiniLab's display shows them too.",

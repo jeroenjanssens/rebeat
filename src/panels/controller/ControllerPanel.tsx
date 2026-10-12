@@ -83,7 +83,10 @@ type Sounding = { pitch: number; added: boolean }[];
  */
 function useSounding(held: number[]): Sounding {
   const sounding = useKeys((s) => s.sounding);
-  const mine = sounding.filter((k) => k.source === "midi" || k.source === "screen");
+  // what the keys play from MIDI and the picture, and Auto's chord (D162: no key is down for it)
+  const mine = sounding.filter(
+    (k) => k.source === "midi" || k.source === "screen" || k.source === "auto",
+  );
   const keyed = new Set(mine.map((k) => k.key));
   const all = new Set([...mine.flatMap((k) => k.notes), ...held.filter((n) => !keyed.has(n))]);
   return [...all].sort((a, b) => a - b).map((pitch) => ({ pitch, added: !held.includes(pitch) }));

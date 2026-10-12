@@ -118,6 +118,39 @@ export function position() {
   };
 }
 
+/**
+ * Where the song is at an audio time (D164): the page (slot) and the step playing then, from the
+ * steps scheduled so far (they go 120 ms ahead), so a note recorded with its time lands in its own
+ * page, after a count-in and across page changes too. Before the first step: its page, at 0.
+ */
+export function positionAt(time: number) {
+  const s = useStore.getState();
+  let cur: ScheduledStep | undefined;
+  for (let i = history.length - 1; i >= 0; i--)
+    if (history[i].time <= time + 1e-6) {
+      cur = history[i];
+      break;
+    }
+  if (!cur) {
+    const first = history[0];
+    const slotId = first?.slotId ?? s.playSlotId;
+    const slot = s.project.slots.find((x) => x.id === slotId) ?? s.project.slots[0];
+    return {
+      slotId: slot.id,
+      pattern: first?.pattern ?? s.project.patterns[slot.patternId],
+      pageStep: 0,
+      progress: 0,
+    };
+  }
+  const frac = Math.min(1, Math.max(0, (time - cur.time) / cur.dur));
+  return {
+    slotId: cur.slotId,
+    pattern: cur.pattern,
+    pageStep: cur.pageStep,
+    progress: (cur.pageStep + frac) / cur.pattern.stepCount,
+  };
+}
+
 /** The most recent scheduled steps (newest last). */
 export function scheduledSteps(): readonly ScheduledStep[] {
   return history;

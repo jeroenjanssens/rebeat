@@ -14,14 +14,17 @@ import { useSettings } from "./settings";
 let mockProgress = 0;
 let mockLatency = 0;
 
-vi.mock("../engine/transport", () => ({
-  position: () => {
+vi.mock("../engine/transport", () => {
+  const at = (t: number) => {
     const s = useStore.getState();
     const slot = s.project.slots.find((x) => x.id === s.playSlotId) ?? s.project.slots[0];
     const pattern = s.project.patterns[slot.patternId];
-    return { pattern, pageStep: 0, progress: mockProgress, time: 0 };
-  },
-}));
+    // the audio clock is at 0: a time ahead is that far into the page (16ths at the tempo)
+    const pageSec = (pattern.stepCount * 60) / s.project.bpm / 4;
+    return { slotId: slot.id, pattern, pageStep: 0, progress: mockProgress + t / pageSec, time: t };
+  };
+  return { position: () => at(0), positionAt: at };
+});
 
 vi.mock("../engine/context", () => ({
   audioContext: () => ({ outputLatency: mockLatency, baseLatency: 0 }),

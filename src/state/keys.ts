@@ -870,7 +870,7 @@ function revoice() {
 function publish() {
   const rhythm = rhythmOn();
   useKeys.setState({
-    sounding: [...down, ...latched].map((p) => ({
+    sounding: [...down, ...latched, ...(autoPress ? [autoPress] : [])].map((p) => ({
       key: p.key,
       // with a rhythm on, what the key holds (the rhythm plays it)
       notes: p.ended ? [] : rhythm ? chordOf(p).notes : [...p.voices.keys()].sort((a, b) => a - b),
@@ -1055,15 +1055,22 @@ function aheadOfRhythm(_now: number, horizon: number): boolean {
   return auto.running;
 }
 
+/** Auto's state for the panel, only when it changes (the scheduler calls this every tick). */
 function publishAuto() {
-  useKeys.setState({
-    auto: {
-      running: auto.running,
-      armed: auto.armed,
-      nextAt: auto.running ? auto.nextAt : null,
-      dur: changeDur(),
-    },
-  });
+  const next = {
+    running: auto.running,
+    armed: auto.armed,
+    nextAt: auto.running ? auto.nextAt : null,
+    dur: changeDur(),
+  };
+  const cur = useKeys.getState().auto;
+  if (
+    cur.running !== next.running ||
+    cur.armed !== next.armed ||
+    cur.nextAt !== next.nextAt ||
+    Math.abs(cur.dur - next.dur) > 1e-9
+  )
+    useKeys.setState({ auto: next });
 }
 
 /** Start Auto at `at`; from the progression's first chord (a take with the song) or pad 1's. */
