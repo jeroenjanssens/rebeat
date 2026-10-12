@@ -139,6 +139,7 @@ test("Latch keeps the chord after the key is let go; knobs 3, 4, 7 set the style
 
   // Latch: the note goes on after the key is up, until Latch goes off
   await page.getByTestId("play-latch").click();
+  await expect(page.getByTestId("ml3-hold")).toHaveAttribute("data-lit", "true");
   await send([0x90, 60, 100]);
   await send([0x80, 60, 0]);
   await expect(line).toHaveText(/C\d/);

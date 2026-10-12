@@ -229,6 +229,8 @@ interface MiniLab3SvgProps {
   scaleKey?: Key | null;
   /** The size the note names on the keys are drawn at, in CSS pixels, when it changes. */
   onLabelPx?: (px: number) => void;
+  /** Latch is on (D151): the Hold button is drawn lit. */
+  holdLit?: boolean;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────
@@ -242,6 +244,7 @@ export function MiniLab3Svg({
   generated = [],
   scaleKey = null,
   onLabelPx,
+  holdLit = false,
 }: MiniLab3SvgProps) {
   const chordPads = padMode !== "drum";
   // Shift held on the device: the pads show their second functions in the MiniLab's colors
@@ -483,7 +486,11 @@ export function MiniLab3Svg({
   const whiteKeys = KEY_LAYOUT.filter((k) => k.white);
   const blackKeys = KEY_LAYOUT.filter((k) => !k.white);
 
-  const whiteButton = (b: { x: number; y: number; w: number; h: number }, label: string) => (
+  const whiteButton = (
+    b: { x: number; y: number; w: number; h: number },
+    label: string,
+    lit = false,
+  ) => (
     <>
       <rect
         x={b.x}
@@ -491,7 +498,7 @@ export function MiniLab3Svg({
         width={b.w}
         height={b.h}
         rx={4}
-        fill={BTN_WHITE_FILL}
+        fill={lit ? "color-mix(in oklab, var(--accent) 45%, white)" : BTN_WHITE_FILL}
         stroke={BTN_EDGE}
         strokeWidth="1"
       />
@@ -579,9 +586,9 @@ export function MiniLab3Svg({
         </text>
       </g>
 
-      <g data-hint="controller.btn.1">
-        <title>Hold: sustain current notes</title>
-        {whiteButton(HOLD, "Hold")}
+      <g data-hint="controller.btn.1" data-testid="ml3-hold" data-lit={holdLit || undefined}>
+        <title>Hold (lit: Latch is on)</title>
+        {whiteButton(HOLD, "Hold", holdLit)}
         <text
           x={HOLD.x + HOLD.w / 2}
           y={HOLD.y + HOLD.h + 12}

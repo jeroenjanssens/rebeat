@@ -43,7 +43,7 @@ const hints: Hints = {
   },
   "controller.btn.1": {
     title: "Hold button",
-    text: "Hold keeps the current notes or pads sounding so your hands are free.",
+    text: "The MiniLab's Hold button sends nothing to Rebeat; it's lit while Latch (in the Play row) keeps what the keys play going.",
     guide: "performance-your-controller",
   },
   "controller.btn.2": {
