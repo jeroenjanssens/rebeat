@@ -92,7 +92,7 @@ In Next mode a menu picks one of the famous progressions that fit the key; pad 1
 holds its next chord (following where you are), the other pads the usual suggestions. The
 menu shows each one's roman numerals, its chords in the key and what it is.
 
-## 3c. Auto: the progression plays itself (proposed 2026-10-12, D162)
+## 3c. Auto: the progression plays itself (agreed 2026-10-12, D162–D163)
 
 In Next mode, with a progression picked, **▶ Auto** plays it by itself: the chord changes on its
 own, in time, and **■ Stop** ends it. You play over it (or record it: a quick way to write a
@@ -123,8 +123,8 @@ song's chords).
 - Without a pattern or arp the chord is simply held until the next one (a pad).
 - **Loop** (default on) goes round again; off, it stops after the last chord.
 - **While Auto plays, the keys play single notes over it** (a melody, on the same sound), not
-  chords: proposed, see question 1. Pads 2–8 stay suggestions: pressing one plays it over the
-  progression for as long as it's held (a passing chord), then Auto goes on.
+  chords (Jeroen, 2026-10-12). **Pads 2–8 are passing chords**: held, one replaces the
+  progression's chord until it's let go, then Auto goes on where it was (Jeroen).
 
 ### Starting and stopping
 
@@ -133,20 +133,44 @@ song's chords).
   shows the chord and the next one ("Am → F"), and pad 1 blinks in the bar before a change.
 - The progression strip shows the chord playing and, under it, how far it is to the next change.
 
-### Free + Auto (question 2)
+### Free + Auto
 
-Without a progression picked, Auto could follow the best suggestion every time: a progression that
-writes itself, different every run (with Adventure for how wild).
+Without a progression picked, Auto follows the best suggestion every time (Jeroen): a progression
+that writes itself, different every run, as adventurous as Adventure says.
+
+### Recording with Auto (D163)
+
+How recording works today: with Rec on and the song playing, what the keys play records into the
+keys' track (the selected or locked Notes track; the bass into its own track, D154). Arming is
+for Clip tracks (the looper's audio). Auto records the same way: what it plays goes through the
+keys, so it lands in the keys' track, on the grid (each chord at its exact hit time, D149).
+
+- **Start with the song** (`settings.autoWithPlay`, on): pressing ▶ Auto while the song is
+  stopped **arms** it (the button says "Armed: starts with Play" and blinks). Play (with Rec on to
+  record) starts Auto **exactly on the song's first step, after the count-in** (the transport's
+  `playStartTime`), from the progression's **first chord**, so every take starts the same.
+- **Stays armed**: when the song stops, Auto stops and waits again; the next Play starts it from
+  the top (take after take). ■ Stop disarms it.
+- While the song plays, ▶ Auto starts on the next bar (as before).
+- **The page must be long enough**: a progression takes chords × every × the pattern's (or a bar's)
+  length; on a shorter page, the recording would wrap onto itself. The row then says "takes 4
+  bars, the page has 2" with **Fit the page** (sets the page's step count, at most 128 steps; in
+  song mode across pages: later).
+- The count-in shows on the MiniLab's display ("Auto in 3…"); the first chord lands on bar 1.
+- Overdub/Replace and Snap work as for anything recorded.
 
 ### Settings
 
-`autoEvery: 1 | 2 | 3 | 4 | 6 | 8`, `autoLoop: boolean`; running or not isn't saved.
+`autoEvery: 1 | 2 | 3 | 4 | 6 | 8`, `autoLoop: boolean`, `autoWithPlay: boolean`; running or
+armed isn't saved.
 
 ### Tests
 
 Unit: the change points for patterns of 12, 16 and 32 sixteenths and every N; the start on the
-next bar while playing; Loop off stops after the last chord; Stop clears. E2E: Auto on the Royal
-road at a fast tempo walks F G Em Am (the equation), Stop silences, a recorded run lands on bars.
+next bar while playing; Loop off stops after the last chord; Stop clears; Free follows the best
+suggestion; a passing chord and back; the keys as single notes while Auto plays. E2E: Auto on the
+Royal road at a fast tempo walks F G Em Am (the equation), Stop silences; armed, Play with Rec on
+and a count-in records F G Em Am on bars 1–4 of the keys' track; the page warning and Fit the page.
 
 ## 4. Step 3 (later): play-along
 
