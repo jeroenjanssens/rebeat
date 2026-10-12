@@ -43,6 +43,11 @@ export interface ControllerMap {
   /** Input port names that are this controller. */
   ports: RegExp;
   padsChannel: PadsChannel;
+  /**
+   * Pads 1–8 that send CCs instead of notes (press 127, release 0, any channel), by pad: they
+   * do what pad notes do (D147).
+   */
+  padCCs?: number[];
   slots: MapSlot[];
   /** Steps to put the device in the mode the map expects. */
   checklist: string[];
@@ -112,6 +117,8 @@ export const CONTROLLER_MAPS: ControllerMap[] = [
     name: "Arturia MiniLab 3",
     ports: /minilab ?3/i,
     padsChannel: 9,
+    // what Jeroen's MiniLab 3 pads send (2026-10-12), with and without Shift (D147)
+    padCCs: [56, 57, 58, 59, 62, 63, 60, 61],
     // ARTURIA mode, from the MiniLab 3 manual 1.0.5 (§5.4): knobs = Analog Lab's macros and
     // effects, faders = its EQ and master volume; the touch strips send pitch bend and CC 1.
     //

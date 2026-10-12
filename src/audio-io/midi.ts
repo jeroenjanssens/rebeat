@@ -458,6 +458,11 @@ function handle(e: MIDIMessageEvent, device: string) {
     if (done) return report(m, done);
   }
 
+  if (m.type === "cc") {
+    const pad = mapById(useSettings.getState().midiController)?.padCCs?.indexOf(m.number) ?? -1;
+    if (pad >= 0) return padCC(m, pad);
+  }
+
   if (m.type === "cc" || m.type === "noteon" || m.type === "noteoff") {
     const s = useSettings.getState();
     const found = findMapping(
@@ -839,7 +844,6 @@ function shiftPad(m: MidiMessage): string | null {
 }
 
 function playNote(channel: number, note: number, velocity: number): string {
-  const s = useStore.getState();
   const route = routeNote(channel, note, useSettings.getState().midiPadsChannel, keysTakeNotes());
 
   if (!route) return "Nothing (below the pads' notes)";
@@ -857,13 +861,53 @@ function playNote(channel: number, note: number, velocity: number): string {
     chordPadsHeld.set(`${channel}:${note}`, route.index);
     return `Chord pad: ${CHORD_PADS[route.index]}`;
   }
-  const track = route.to === "pad" ? s.project.tracks[route.index] : undefined;
-  if (!track) return `Pad ${note - 35}: no track ${note - 35}`;
+  if (route.to !== "pad") return `Pad ${note - 35}: no track ${note - 35}`;
+  return playPadTrack(route.index, velocity);
+}
+
+/** A pad playing the track at its position (Drum mode). */
+function playPadTrack(index: number, velocity: number): string {
+  const track = useStore.getState().project.tracks[index];
+  if (!track) return `Pad ${index + 1}: no track ${index + 1}`;
   if (track.mode === "clip" || track.mute)
     return `Pad: ${track.name} is ${track.mute ? "muted" : "a Clip track"}`;
   trigger(track, velocity, { stepDur: 0.12 });
   padInput(track, velocity);
   return `Pad: ${track.name}`;
+}
+
+/** Pads that send CCs and are down, and what their press did (to undo it on release). */
+const padCCsDown = new Map<number, "shift" | "chord" | "track">();
+
+/**
+ * A pad that sends a CC (D147): 127 is a press, 0 a release. It does what a pad's note does
+ * (with Shift: pads 4–8's functions; Chord and Key mode: the chord pads; Drum mode: its track).
+ * A press while it's down or a release while it's up is a repeat (the MiniLab sends each
+ * message twice), and does nothing.
+ */
+function padCC(m: MidiMessage, index: number) {
+  const down = m.value > 0;
+  const ev = { kind: "pad" as const, index, value: m.value, down };
+  const was = padCCsDown.get(index);
+  if (down === (was !== undefined)) return report(m, `Pad ${index + 1} (repeat)`);
+  if (!down) {
+    padCCsDown.delete(index);
+    if (was === "chord") chordPadUp(index);
+    return report(m, `Pad ${index + 1} released`, ev);
+  }
+  if (isShiftHeld(m.device) && index >= 3 && index <= 7) {
+    const [name, command] = SHIFT_PADS[index - 3];
+    runCommand(command);
+    padCCsDown.set(index, "shift");
+    return report(m, `Shift + Pad ${index + 1}: ${name}`, ev);
+  }
+  if (useSettings.getState().padMode !== "drum") {
+    chordPadDown(index);
+    padCCsDown.set(index, "chord");
+    return report(m, `Chord pad: ${CHORD_PADS[index]}`, ev);
+  }
+  padCCsDown.set(index, "track");
+  return report(m, playPadTrack(index, m.value / 127), ev);
 }
 
 /** Mod wheel, aftertouch and pitch bend go to the keys' voice. */

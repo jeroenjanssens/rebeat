@@ -505,3 +505,57 @@ test("a turning knob lights up in the accent for a moment", async ({ page }) => 
   await expect(cap).toHaveAttribute("data-turning", "true");
   await expect(cap).not.toHaveAttribute("data-turning", "true");
 });
+
+test("pads that send CCs (56–63, each message twice) play tracks, chord pads and Shift's functions (D147)", async ({
+  page,
+}) => {
+  await midiDevices(page, ["Minilab3 MIDI"]);
+  await page.getByTestId("midi-use-detected").click();
+  await page.keyboard.press("Escape");
+  await page.evaluate(() => {
+    const s = (window as never as W).__rebeat.store.getState();
+    const tracks = s.project.tracks as unknown as { id: string; mode: string }[];
+    const notes = tracks.find((t) => t.mode === "notes");
+    if (notes) s.setUi({ selectedTrackId: notes.id });
+  });
+  await openControllerPanel(page);
+  const twice = async (b: number[]) => {
+    await send(page, "Minilab3 MIDI", b);
+    await send(page, "Minilab3 MIDI", b);
+  };
+  // Drum mode: pad 1 (CC 56) lights while held
+  const face = page.locator('[data-pad="0"]');
+  await twice([0xb0, 56, 127]);
+  await expect.poll(() => face.evaluate((el) => (el as SVGElement).style.fill)).not.toBe("");
+  await twice([0xb0, 56, 0]);
+  await expect.poll(() => face.evaluate((el) => (el as SVGElement).style.fill)).toBe("");
+
+  // Chord mode: pad 3 (CC 58) is Maj; let go, a key plays alone again
+  await page.getByTestId("pad-mode").getByRole("button", { name: "Chord" }).click();
+  const line = page.getByTestId("controller-notes");
+  await twice([0xb0, 58, 127]);
+  await send(page, "Minilab3 MIDI", [0x90, 60, 100]);
+  await expect(line).toHaveText(/C4\s*\+\s*E4\s*\+\s*G4\s*=\s*C$/);
+  await send(page, "Minilab3 MIDI", [0x80, 60, 0]);
+  await twice([0xb0, 58, 0]);
+  await send(page, "Minilab3 MIDI", [0x90, 62, 100]);
+  await expect(line).toHaveText(/^D4$/);
+  await send(page, "Minilab3 MIDI", [0x80, 62, 0]);
+
+  // Shift + pad 6 (CC 63) plays, Shift + pad 5 (CC 62) stops
+  const playing = () =>
+    page.evaluate(
+      () =>
+        (
+          window as never as { __rebeat: { store: { getState(): { playing: boolean } } } }
+        ).__rebeat.store.getState().playing,
+    );
+  await send(page, "Minilab3 MIDI", [0xb0, 9, 127]);
+  await twice([0xb0, 63, 127]);
+  await twice([0xb0, 63, 0]);
+  await expect.poll(playing).toBe(true);
+  await twice([0xb0, 62, 127]);
+  await twice([0xb0, 62, 0]);
+  await expect.poll(playing).toBe(false);
+  await send(page, "Minilab3 MIDI", [0xb0, 9, 0]);
+});
