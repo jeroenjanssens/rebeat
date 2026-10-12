@@ -104,13 +104,6 @@ const PAD_INSET = 5;
 /** What's printed on the pads: their Shift functions (Arp, Pad, Prog, loop, stop, play, rec, tap). */
 const PAD_LABELS = ["Arp", "Pad", "Prog", "⇄", "■", "▶", "●", "Tap"] as const;
 
-/**
- * A key the keys play for you (a chord's other notes, D137): lit in a secondary color, a paler
- * accent, next to the full accent of the keys you press.
- */
-const generatedFill = (white: boolean) =>
-  `color-mix(in oklab, var(--accent) 38%, ${white ? WHITE_KEY : BLACK_KEY})`;
-
 // ── Text row ───────────────────────────────────────────────────────────────
 const TEXT_ROW_Y = 503;
 const MIDI_CH_X0 = 247.5;
@@ -198,8 +191,8 @@ interface LiveState {
   shift: number;
   /** How many of the keys' notes sound on each pitch (D156), and light changes still to come
    * (at their audio times). */
-  audible: Map<number, number>;
-  lightQueue: { pitch: number | null; on: boolean; at: number }[];
+  audible: Map<number, number[]>;
+  lightQueue: { pitch: number | null; on: boolean; at: number; velocity: number }[];
   dirty: boolean;
 }
 
@@ -317,8 +310,8 @@ export function MiniLab3Svg({
   // What the keys play, as it sounds (D156): a strum's notes one by one, an arpeggio's steps
   useEffect(() => {
     const live = liveRef.current;
-    return onKeysLight((pitch, on, at) => {
-      live.lightQueue.push({ pitch, on, at });
+    return onKeysLight((pitch, on, at, velocity) => {
+      live.lightQueue.push({ pitch, on, at, velocity });
       live.dirty = true;
     });
   }, []);
@@ -389,41 +382,46 @@ export function MiniLab3Svg({
         for (const e of due) {
           if (e.pitch === null) live.audible.clear();
           else {
-            const n = (live.audible.get(e.pitch) ?? 0) + (e.on ? 1 : -1);
-            if (n > 0) live.audible.set(e.pitch, n);
+            // the velocities of the notes sounding on this pitch (two voices can share one)
+            const vels = [...(live.audible.get(e.pitch) ?? [])];
+            if (e.on) vels.push(e.velocity);
+            else if (vels.indexOf(e.velocity) >= 0) vels.splice(vels.indexOf(e.velocity), 1);
+            else vels.pop();
+            if (vels.length) live.audible.set(e.pitch, vels);
             else live.audible.delete(e.pitch);
           }
         }
         if (live.lightQueue.length) live.dirty = true; // keep looking until they're all due
       }
 
-      // Keys: a key you hold that sounds in the accent, a note the keys add (a chord's, an
-      // arpeggio's, a pattern's) in a paler accent while it sounds, a key you hold that doesn't
-      // sound right now (its turn in a strum, between arp steps) faintly
+      // Keys (D157): a key you play, sounding, in the theme's accent; a note the software plays
+      // (a chord's, an arpeggio's, a pattern's) in its second accent; both as opaque as the note
+      // is loud (velocity 1 = fully). A key you hold that doesn't sound now (its turn in a strum,
+      // between arp steps) gets a ring in the accent instead, so it never looks like a soft note.
       for (let i = 0; i < KEY_LAYOUT.length; i++) {
         const k = KEY_LAYOUT[i];
-        const vel = live.keyVel[k.midi];
-        const sounding = live.audible.has(k.midi + live.shift);
-        const added = vel === 0 && sounding;
+        const held = live.keyVel[k.midi] > 0;
+        const vels = live.audible.get(k.midi + live.shift);
+        const sounding = !!vels;
         const el = svg.querySelector<SVGElement>(`[data-key="${k.midi}"]`);
         if (el) {
           const under = k.white ? WHITE_KEY : BLACK_KEY;
-          el.style.fill =
-            vel > 0 && sounding
-              ? `color-mix(in oklab, var(--accent) ${Math.round(40 + (vel / 127) * 60)}%, ${under})`
-              : vel > 0
-                ? `color-mix(in oklab, var(--accent) 18%, ${under})`
-                : added
-                  ? generatedFill(k.white)
-                  : "";
-          if (added) el.dataset.generated = "true";
+          const pct = sounding ? Math.round(Math.max(...vels) * 100) : 0;
+          el.style.fill = sounding
+            ? `color-mix(in oklab, var(${held ? "--accent" : "--accent-2"}) ${pct}%, ${under})`
+            : "";
+          el.style.stroke = held && !sounding ? "var(--accent)" : "";
+          el.style.strokeWidth = held && !sounding ? "3" : "";
+          if (sounding && !held) el.dataset.generated = "true";
           else delete el.dataset.generated;
           if (sounding) el.dataset.sounding = "true";
           else delete el.dataset.sounding;
+          if (held && !sounding) el.dataset.waiting = "true";
+          else delete el.dataset.waiting;
         }
         // while a key sounds or is held: the note it plays (the device's octave included)
         const label = svg.querySelector<SVGTextElement>(`[data-key-note="${k.midi}"]`);
-        if (label) label.textContent = vel > 0 || sounding ? noteName(k.midi + live.shift) : "";
+        if (label) label.textContent = held || sounding ? noteName(k.midi + live.shift) : "";
         // Key mode: a dot on the keys in its key, a bigger one on the root
         const dot = svg.querySelector<SVGCircleElement>(`[data-key-dot="${k.midi}"]`);
         if (dot) {

@@ -2,6 +2,12 @@
 
 /* ---------- design tokens ---------- */
 
+/* The second accent (D157): notes the software plays on the keys. Each theme's lit color, unless
+   the theme sets its own (where lit is the accent, or too close to it to tell apart). */
+:root {
+  --accent-2: var(--lit);
+}
+
 :root,
 [data-theme="studio-dark"] {
   color-scheme: dark;
@@ -44,6 +50,7 @@
   --accent: #a78bfa;
   --select: #e0e7ff;
   --lit: #a78bfa;
+  --accent-2: #f472b6;
   --pad-off-mix: 18%;
   --pad-on-min: 45%;
   --head: rgba(167, 139, 250, 0.16);
@@ -94,6 +101,7 @@
   --accent: #fb923c;
   --select: #fff7ed;
   --lit: #fb923c;
+  --accent-2: #38bdf8;
   --pad-off-mix: 14%;
   --pad-on-min: 42%;
   --head: rgba(251, 146, 60, 0.14);
@@ -119,6 +127,7 @@
   --accent: #ffd60a;
   --select: #ffffff;
   --lit: #ffd60a;
+  --accent-2: #00e5ff;
   --pad-off-mix: 22%;
   --pad-on-min: 60%;
   --head: rgba(255, 255, 255, 0.22);
@@ -170,6 +179,7 @@
   --accent: #2dd4bf;
   --select: #e6fffb;
   --lit: #38bdf8;
+  --accent-2: #fb7185;
   --pad-off-mix: 15%;
   --pad-on-min: 45%;
   --head: rgba(255, 255, 255, 0.1);
@@ -220,6 +230,7 @@
   --accent: #fbbf24;
   --select: #ffffff;
   --lit: #f97316;
+  --accent-2: #60a5fa;
   --pad-off-mix: 15%;
   --pad-on-min: 45%;
   --head: rgba(255, 255, 255, 0.1);
@@ -395,6 +406,7 @@
   --accent: #c2410c;
   --select: #1f1710;
   --lit: #b45309;
+  --accent-2: #0f766e;
   --pad-off-mix: 14%;
   --pad-on-min: 55%;
   --head: rgba(0, 0, 0, 0.08);
@@ -518,6 +530,7 @@
   --color-faint: var(--text-faint);
   --color-accent: var(--accent);
   --color-lit: var(--lit);
+  --color-accent-2: var(--accent-2);
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
 }

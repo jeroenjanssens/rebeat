@@ -99,7 +99,7 @@ function NotesEquation({ sounding, size }: { sounding: Sounding; size: number })
         <span key={pitch} className="flex items-center gap-[0.4em]">
           {i > 0 && <span className="text-faint">+</span>}
           <span
-            className={added ? "font-semibold text-accent opacity-60" : "font-semibold text-ink"}
+            className={added ? "font-semibold text-accent-2" : "font-semibold text-ink"}
             data-added={added || undefined}
           >
             {noteName(pitch)}

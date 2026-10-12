@@ -300,8 +300,9 @@ interface Voice {
   recordId: number | null;
   pending?: boolean;
   cancel?: () => void;
-  /** The note it plays and when it started sounding (for the lights, `onKeysLight`). */
+  /** The note it plays, how loud, and when it started sounding (for the lights). */
   pitch?: number;
+  velocity?: number;
   startedAt?: number;
 }
 
@@ -310,7 +311,7 @@ interface Voice {
  * Controller panel lights its key then, so a strum, a slop, an arpeggio or a pattern shows as it
  * sounds. `pitch` null: everything stopped (Stop).
  */
-export type KeysLight = (pitch: number | null, on: boolean, at: number) => void;
+export type KeysLight = (pitch: number | null, on: boolean, at: number, velocity: number) => void;
 const lights = new Set<KeysLight>();
 
 export function onKeysLight(fn: KeysLight): () => void {
@@ -318,8 +319,8 @@ export function onKeysLight(fn: KeysLight): () => void {
   return () => void lights.delete(fn);
 }
 
-function light(pitch: number | null, on: boolean, at: number) {
-  for (const fn of lights) fn(pitch, on, at);
+function light(pitch: number | null, on: boolean, at: number, velocity = 0) {
+  for (const fn of lights) fn(pitch, on, at, velocity);
 }
 
 /**
@@ -336,8 +337,8 @@ interface NoteTiming {
 
 function startNote(out: Output, pitch: number, velocity: number, t: NoteTiming = {}): Voice {
   const at = t.at ?? audioNow();
-  light(pitch, true, at);
-  return { ...voiceFor(out, pitch, velocity, t), pitch, startedAt: at };
+  light(pitch, true, at, velocity);
+  return { ...voiceFor(out, pitch, velocity, t), pitch, velocity, startedAt: at };
 }
 
 function voiceFor(out: Output, pitch: number, velocity: number, t: NoteTiming): Voice {
@@ -378,7 +379,8 @@ function stopNote(v: Voice, at?: number) {
   }
   v.release(at);
   recordNoteOff(v.recordId, at);
-  if (v.pitch !== undefined) light(v.pitch, false, Math.max(at ?? audioNow(), v.startedAt ?? 0));
+  if (v.pitch !== undefined)
+    light(v.pitch, false, Math.max(at ?? audioNow(), v.startedAt ?? 0), v.velocity);
 }
 
 /** Play a note through the Keys channel (library sound target). */

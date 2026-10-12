@@ -3,7 +3,7 @@
 This file is the fast way in. It explains what Rebeat is, how the code is organized, how the
 pieces talk to each other, how to verify a change, and the gotchas that cost time before.
 `PLAN.md` is the long-form record: the product spec (§1–§3), the original architecture (§4),
-and every design decision (§6, D1–D156). When this file and the code disagree, the code wins.
+and every design decision (§6, D1–D157). When this file and the code disagree, the code wins.
 Please fix this file in the same change.
 
 Status (2026-10-12): every phase of the original roadmap is built, plus several feature batches
@@ -693,7 +693,7 @@ likely to need:
 | Relative knobs: a step per notch                   | D146                      |
 | Pads that send CCs (MiniLab 3: 56–63)              | D147                      |
 | Knob 2 the transpose, the bass a stepper           | D148                      |
-| Play styles: strum, slop, arp, latch, patterns…    | D149–D156                 |
+| Play styles: strum, slop, arp, latch, patterns…    | D149–D157                 |
 
 Feature batches and their acceptance criteria are in PLAN.md §0.6b–§0.6h. Known limitations are
 in §0.7.

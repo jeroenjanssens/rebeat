@@ -673,3 +673,43 @@ test("in Chord and Key mode the knobs' cards explain the keys' settings", async 
   await expect(card).toContainText("makes the strum slower");
   await expect(knob3.locator("title")).toContainText("right is a slower strum");
 });
+
+test("your keys in the accent, the software's in the second accent, as opaque as they're loud (D157)", async ({
+  page,
+}) => {
+  await midiDevices(page, ["Minilab3 MIDI"]);
+  await page.getByTestId("midi-use-detected").click();
+  await page.keyboard.press("Escape");
+  await page.evaluate(() => {
+    const s = (window as never as W).__rebeat.store.getState();
+    const tracks = s.project.tracks as unknown as { id: string; mode: string }[];
+    s.setUi({ selectedTrackId: tracks.find((t) => t.mode === "notes")!.id });
+  });
+  await openControllerPanel(page);
+  await page.getByTestId("pad-mode").getByRole("button", { name: "Chord" }).click();
+  const fill = (midi: number) =>
+    page.locator(`[data-key="${midi}"]`).evaluate((el) => (el as SVGElement).style.fill);
+  // the device's keys start an octave up (C3 = drawing key 48 at octave 0): play C4 = 60 → key 48
+  await send(page, "Minilab3 MIDI", [0x99, 38, 127]); // Maj
+  await send(page, "Minilab3 MIDI", [0x90, 60, 127]);
+  await expect.poll(() => fill(48)).toMatch(/var\(--accent\) 100%/);
+  await expect.poll(() => fill(52)).toMatch(/var\(--accent-2\) 100%/);
+  await send(page, "Minilab3 MIDI", [0x80, 60, 0]);
+  await send(page, "Minilab3 MIDI", [0x90, 60, 64]);
+  await expect.poll(() => fill(48)).toMatch(/var\(--accent\) 50%/);
+  await expect.poll(() => fill(55)).toMatch(/var\(--accent-2\) 50%/);
+  await send(page, "Minilab3 MIDI", [0x80, 60, 0]);
+  await send(page, "Minilab3 MIDI", [0x89, 38, 0]);
+
+  // a key you hold that doesn't sound (between arp steps): a ring, no fill
+  await page.evaluate(async () => {
+    const w = window as never as {
+      __rebeat: { settings(): Promise<{ getState(): { set(p: object): void } }> };
+    };
+    (await w.__rebeat.settings()).getState().set({ playStyle: { arp: { on: true, rate: "1/4" } } });
+  });
+  await page.getByTestId("pad-mode").getByRole("button", { name: "Drum" }).click();
+  for (const n of [60, 64, 67]) await send(page, "Minilab3 MIDI", [0x90, n, 100]);
+  await expect(page.locator('[data-key][data-waiting="true"]')).toHaveCount(2);
+  for (const n of [60, 64, 67]) await send(page, "Minilab3 MIDI", [0x80, n, 0]);
+});
