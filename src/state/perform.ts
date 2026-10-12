@@ -8,6 +8,7 @@
 import { audioNow, onPanic } from "../engine/engine";
 import { startTicker } from "../engine/ticker";
 import { playStartTime } from "../engine/transport";
+import { laneNotes, type ChordInfo, type ChordPattern } from "../model/patterns";
 import {
   arpNote,
   balanceFactors,
@@ -96,10 +97,15 @@ export interface Pool {
   chord: number[];
   bass: number[];
   velocity: number;
+  /** The chord's root (a MIDI note) and its tones above it, for hits that pick notes (D176). */
+  root?: number;
+  tones?: number[];
 }
 
 /** A note the rhythm plays, with its hit's time and its own delay after it (for recording). */
 export interface TimedNote {
+  /** On its musical grid (the rhythm's notes): recorded where it is, not snapped (D175). */
+  onGrid?: boolean;
   pitch: number;
   velocity: number;
   start: number;
@@ -115,6 +121,8 @@ export interface RhythmPlayer {
   play(n: TimedNote): () => void;
   /** Hold a bass note from `at` until cut (the arpeggiator's bass). */
   hold(pitch: number, velocity: number, at: number): () => void;
+  /** The next chord's root (pitch class) and when it comes, when it's known (Auto's, D176). */
+  next?(): { root: number; at: number } | null;
 }
 
 let player: RhythmPlayer | null = null;
@@ -137,6 +145,9 @@ const rhythm = {
   last: null as number | null,
   /** Alternate strums: down next? */
   down: false,
+  /** A walking bass's place in its chord (D176), and that chord's root. */
+  walk: 0,
+  walkRoot: NaN as number,
   /** Notes still sounding, and the arpeggiator's held bass. */
   sounding: new Set<() => void>(),
   bass: new Map<number, () => void>(),
@@ -144,7 +155,10 @@ const rhythm = {
 
 /** A grid step, in seconds: a 16th on a pattern, else the arp's rate. */
 function stepDur(s: PlayStyle): number {
-  const quarters = s.pattern.on ? 0.25 : STEP_SIZE_QUARTERS[s.arp.rate];
+  // a pattern's step is a beat over its division (16ths, 8th or 16th triplets, D175)
+  const quarters = s.pattern.on
+    ? 1 / patternById(s.pattern.id).division
+    : STEP_SIZE_QUARTERS[s.arp.rate];
   return (quarters * 60) / useStore.getState().project.bpm;
 }
 
@@ -173,6 +187,8 @@ export function pokeRhythm() {
     rhythm.running = true;
     rhythm.count = 0;
     rhythm.last = null;
+    rhythm.walk = 0;
+    rhythm.walkRoot = NaN;
     const now = audioNow();
     alignGrid(now, stepDur(s), now + 0.003);
     ensureTicking();
@@ -217,30 +233,69 @@ function step(k: number, t: number, s: PlayStyle) {
   const pool = player!.pool();
   if (!pool || (!pool.chord.length && !pool.bass.length)) return stopRhythm();
   if (s.pattern.on) {
-    for (const h of patternHits(patternById(s.pattern.id), k)) {
-      const chord =
-        h.part === "bass"
-          ? []
-          : s.arp.on
-            ? [nextArpNote(pool, s)].filter((n) => n !== null)
-            : pool.chord;
-      // a bass hit without a bass plays the chord's lowest note
-      const bass =
-        h.part === "chord"
-          ? []
-          : pool.bass.length
-            ? pool.bass
-            : h.part === "bass"
-              ? pool.chord.slice(0, 1)
-              : [];
+    const pat = patternById(s.pattern.id);
+    for (const h of patternHits(pat, k)) {
       const len = h.length * rhythm.dur * 0.92;
-      emit(bass, chord as number[], t, len, pool.velocity * h.vel, s, h.at % 4 === 0);
+      const vel = pool.velocity * h.vel;
+      const onBeat = h.at % pat.division === 0;
+      if (h.part === "all" || h.part === "chord" || h.part === "bass") {
+        const chord =
+          h.part === "bass"
+            ? []
+            : s.arp.on
+              ? [nextArpNote(pool, s)].filter((n) => n !== null)
+              : pool.chord;
+        // a bass hit without a bass plays the chord's lowest note
+        const bass =
+          h.part === "chord"
+            ? []
+            : pool.bass.length
+              ? pool.bass
+              : h.part === "bass"
+                ? pool.chord.slice(0, 1)
+                : [];
+        emit(bass, chord as number[], t, len, vel, s, onBeat);
+        continue;
+      }
+      // a hit that picks its notes (D176): chord tones, broken chords, a walking bass
+      const info = chordInfo(pool);
+      if (info.root !== rhythm.walkRoot) {
+        rhythm.walkRoot = info.root;
+        rhythm.walk = 0;
+      }
+      const approach = h.part === "walk" ? approachTo(pat, k, t) : null;
+      const picked = laneNotes(h.part, info, rhythm.walk, approach);
+      if (h.part === "walk") rhythm.walk++;
+      if (picked.bass) emit(picked.notes, [], t, len, vel, s, onBeat);
+      else emit([], picked.notes, t, len, vel, s, onBeat);
     }
     return;
   }
   holdBass(pool, t);
   const n = nextArpNote(pool, s);
   if (n !== null) emit([], [n], t, rhythm.dur * s.arp.gate, pool.velocity, s, k % 2 === 0);
+}
+
+/** What a hit picks its notes from: the pool, its root and tones (the lowest note without). */
+function chordInfo(pool: Pool): ChordInfo {
+  const root = pool.root ?? pool.chord[0] ?? pool.bass[0] ?? 60;
+  const tones =
+    pool.tones ??
+    [...new Set(pool.chord.map((n) => (((n - root) % 12) + 12) % 12))].sort((a, b) => a - b);
+  return { notes: pool.chord, bass: pool.bass, root, tones };
+}
+
+/**
+ * A walking bass's approach (D176): the next chord's root, when it's known and this is the walk's
+ * last hit before it comes (no other walk hit between this step and the change).
+ */
+function approachTo(pat: ChordPattern, k: number, t: number): number | null {
+  const next = player?.next?.();
+  if (!next || next.at <= t + 1e-6) return null;
+  const until = Math.round((next.at - t) / rhythm.dur);
+  for (let i = 1; i < until; i++)
+    if (patternHits(pat, k + i).some((h) => h.part === "walk")) return null;
+  return next.root;
 }
 
 /** The arpeggiator's bass: held while the chord is, not arpeggiated. */
@@ -280,6 +335,7 @@ function emit(
     const start = t + spread;
     const end = Math.max(start + 0.02, t + length);
     const cut = player!.play({
+      onGrid: true,
       pitch: n.pitch,
       velocity: Math.max(0.05, Math.min(1, velocity * bal[i] * slop.vel)),
       start,

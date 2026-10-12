@@ -32,6 +32,7 @@ import { keyModeChord, sameKey, stepKeyRoot, stepKeyScale } from "../model/keyMo
 import { BASS_OCTAVES, padChord, voiceChord, VOICING_RANGE } from "../model/padChords";
 import {
   balanceFactors,
+  patternBeats,
   patternById,
   sanitizePlayStyle,
   slopFor,
@@ -377,6 +378,8 @@ interface NoteTiming {
   hitAt?: number;
   spread?: number;
   record?: boolean;
+  /** On its musical grid (the rhythm's notes): recorded where it is, not snapped (D175). */
+  onGrid?: boolean;
 }
 
 function startNote(out: Output, pitch: number, velocity: number, t: NoteTiming = {}): Voice {
@@ -396,7 +399,7 @@ function voiceFor(out: Output, pitch: number, velocity: number, t: NoteTiming): 
     case "voice": {
       const release = holdNote(out.track, pitch, velocity, t.at);
       const notes = out.track.mode === "notes" && (t.record ?? true);
-      const timing = { at: t.hitAt ?? t.at, spread: t.spread };
+      const timing = { at: t.hitAt ?? t.at, spread: t.spread, onGrid: t.onGrid };
       return { release, recordId: notes ? recordNoteOn(out.track, pitch, velocity, timing) : null };
     }
   }
@@ -1026,18 +1029,19 @@ let autoPress: Pressed | null = null;
 const AUTO_VELOCITY = 0.8;
 export const AUTO_EVERY = [1, 2, 3, 4, 6, 8] as const;
 
-/** A unit Auto counts in, in 16ths: the pattern's length (D153) when one plays, else a bar. */
-export function autoUnit(): { steps: number; pattern: boolean } {
+/** A unit Auto counts in, in beats (quarter notes): the pattern's length when one plays (any
+ * division, D175), else a bar. */
+export function autoUnit(): { beats: number; pattern: boolean } {
   const st = playStyle();
-  if (st.pattern.on) return { steps: patternById(st.pattern.id).length, pattern: true };
+  if (st.pattern.on) return { beats: patternBeats(patternById(st.pattern.id)), pattern: true };
   const [beats, unit] = useStore.getState().project.timeSignature ?? [4, 4];
-  return { steps: (beats * 16) / unit, pattern: false };
+  return { beats: (beats * 4) / unit, pattern: false };
 }
 
 /** Seconds between Auto's chord changes. */
 function changeDur(): number {
   const every = Math.max(1, useSettings.getState().autoEvery);
-  return (every * autoUnit().steps * 60) / useStore.getState().project.bpm / 4;
+  return (every * autoUnit().beats * 60) / useStore.getState().project.bpm;
 }
 
 /** A root note for a suggestion: its pitch class in the octave nearest the last key. */
@@ -1080,11 +1084,23 @@ function autoChord(at: number) {
   refreshSuggestions();
 }
 
+/** Whether Auto is placing a chord now: what that starts (the rhythm's first flush) mustn't
+ * come back in and place the next one at the same time. */
+let placing = false;
+
 function aheadOfRhythm(_now: number, horizon: number): boolean {
   if (!auto.running) return false;
-  while (auto.running && auto.nextAt <= horizon) {
-    autoChord(auto.nextAt);
-    auto.nextAt += changeDur();
+  if (placing) return true;
+  placing = true;
+  try {
+    while (auto.running && auto.nextAt <= horizon) {
+      // the next change moves on first: a chord that starts the rhythm flushes it at once
+      const at = auto.nextAt;
+      auto.nextAt += changeDur();
+      autoChord(at);
+    }
+  } finally {
+    placing = false;
   }
   publishAuto();
   return auto.running;
@@ -1250,7 +1266,14 @@ setRhythmPlayer({
           if (!bass.includes(n)) bass.push(n);
         } else if (!chord.includes(n)) chord.push(n);
     }
-    return { chord, bass, velocity: keys.at(-1)!.velocity };
+    // the chord's root and tones, as built (before voicing): a chord's first note is its root;
+    // plain keys, the lowest held (D176)
+    const newest = keys.filter((p) => !p.melody).at(-1);
+    const raw = newest ? (newest.forced ?? padNotes(newest.key)) : null;
+    const t = useKeys.getState().transpose;
+    const root = raw ? raw[0] + t : Math.min(...chord, ...bass);
+    const tones = raw ? raw.map((n) => n - raw[0]) : undefined;
+    return { chord, bass, velocity: keys.at(-1)!.velocity, root, tones };
   },
   play(n) {
     const newest = active()
@@ -1265,7 +1288,13 @@ setRhythmPlayer({
       v = null;
     };
     const cancelStart = schedule(n.start, (at) => {
-      v = startNote(out, n.pitch, n.velocity, { at, hitAt: n.hitAt, spread: n.spread, record });
+      v = startNote(out, n.pitch, n.velocity, {
+        at,
+        hitAt: n.hitAt,
+        spread: n.spread,
+        record,
+        onGrid: n.onGrid,
+      });
     });
     const cancelEnd = schedule(n.end, (at) => {
       if (v) stopNote(v, at);
@@ -1276,6 +1305,11 @@ setRhythmPlayer({
       cancelEnd();
       off();
     };
+  },
+  next() {
+    if (!auto.running) return null;
+    const n = autoNext();
+    return n ? { root: n.root, at: auto.nextAt } : null;
   },
   hold(pitch, velocity, at) {
     const out = bassOutput() || active().at(-1)?.out;

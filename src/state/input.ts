@@ -113,6 +113,8 @@ interface InflightNote {
   startProgress: number;
   /** The page (slot) it was recorded in: a timed note's own (D164). */
   slotId: string;
+  /** On its musical grid (D175): its length isn't snapped either. */
+  onGrid?: boolean;
 }
 
 let nextNoteId = 0;
@@ -259,6 +261,9 @@ export function keyRoot(midi: number): number {
 export interface RecordTiming {
   at?: number;
   spread?: number;
+  /** On its musical grid (a pattern's or the arp's note, D175): recorded where it is, never
+   * snapped (a triplet stays a triplet). */
+  onGrid?: boolean;
 }
 
 export function recordNoteOn(
@@ -328,9 +333,10 @@ export function recordNoteOn(
   let stepIndex: number;
   let noteOffset: number | undefined;
 
-  const at = snap ? Math.round(hit / grid) * grid + spread : hit + spread;
+  const snapped = snap && !timing.onGrid;
+  const at = snapped ? Math.round(hit / grid) * grid + spread : hit + spread;
   stepIndex = Math.round(at);
-  if (!snap || spread !== 0) {
+  if (!snapped || spread !== 0) {
     const rawOffset = at - stepIndex;
     if (Math.abs(rawOffset) >= 0.001) {
       noteOffset = Math.max(-0.5, Math.min(0.5, rawOffset));
@@ -377,6 +383,7 @@ export function recordNoteOn(
     stepIndex,
     startExact: hit + spread,
     slotId: slot.id,
+    onGrid: timing.onGrid,
     startProgress: pos.progress,
   });
 
@@ -428,7 +435,7 @@ export function recordNoteOff(id: number | null, at?: number): void {
   rawLen = Math.min(rawLen, len); // at most page length
 
   let noteLen: number;
-  if (snap) {
+  if (snap && !inf.onGrid) {
     noteLen = Math.max(grid, Math.round(rawLen / grid) * grid);
   } else {
     noteLen = Math.max(0.05, rawLen);

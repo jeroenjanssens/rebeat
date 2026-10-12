@@ -274,6 +274,16 @@ describe("recordNoteOn: timed notes from the play styles (D149)", () => {
     expect(notes.find((n) => n.pitch === 64)?.offset).toBeCloseTo(0.3, 5);
   });
 
+  it("an on-grid note (a pattern's triplet) keeps its place with Snap on (D175)", () => {
+    const p = setupPlaying(120, "1/16");
+    const track = notesTrack(p);
+    mockProgress = 4 / 16;
+    // a third of a beat later: 1⅓ sixteenths
+    recordNoteOn(track, 60, 0.8, { at: (4 / 3) * stepSec(p), onGrid: true });
+    const n = notesAt(track.id, 5).find((x) => x.pitch === 60);
+    expect(n?.offset).toBeCloseTo(1 / 3, 3);
+  });
+
   it("a note-off at a time sets the length to it", () => {
     const p = setupPlaying(120, "1/16");
     const track = notesTrack(p);

@@ -159,7 +159,7 @@ test("Latch keeps the chord after the key is let go; knobs 3, 4, 7 set the style
   await expect(page.getByTestId("play-arp")).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByTestId("arp-rate")).toContainText("1/32");
   await send([0xb0, 19, 127]);
-  await expect(page.getByTestId("pattern-name")).toContainText("Pulse");
+  await expect(page.getByTestId("pattern-name")).toContainText("Travis picking");
   await send([0xb0, 19, 0]);
   await expect(page.getByTestId("play-pattern")).toHaveAttribute("aria-pressed", "false");
   await send([0xb0, 77, 0]);

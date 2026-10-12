@@ -197,7 +197,7 @@ export function ProgressionPicker() {
           Sync to song
         </button>
       </div>
-      {fits && <TakeRoom chords={chords.length} every={every} unit={unit.steps} />}
+      {fits && <TakeRoom chords={chords.length} every={every} unit={unit.beats * 4} />}
     </div>
   );
 }

@@ -784,9 +784,9 @@ describe("Auto: the progression plays itself (D162)", () => {
 
   it("counts in patterns when one plays: the waltz changes every three beats", () => {
     keysApi.setPlayStyle({ pattern: { on: true, id: "waltz" } });
-    expect(keysApi.autoUnit()).toEqual({ steps: 12, pattern: true });
+    expect(keysApi.autoUnit()).toEqual({ beats: 3, pattern: true });
     keysApi.setPlayStyle({ pattern: { on: false } });
-    expect(keysApi.autoUnit()).toEqual({ steps: 16, pattern: false });
+    expect(keysApi.autoUnit()).toEqual({ beats: 4, pattern: false });
   });
 
   it("the keys play a melody over it, and the chord goes on", () => {
@@ -852,5 +852,86 @@ describe("Auto: the progression plays itself (D162)", () => {
     expect(holdNote).not.toHaveBeenCalled();
     stopAuto();
     expect(useKeys.getState().auto.armed).toBe(false);
+  });
+});
+
+describe("patterns that pick notes, in triplets too (D175, D176)", () => {
+  const MAJ = 2;
+  const { setPlayStyle, startAuto, stopAuto, setNextProgression, forgetChords } = keysApi;
+  const { flushPerform } = performApi;
+  const beat = () => 60 / project.bpm;
+  const starts = () =>
+    holdNote.mock.calls.map((c) => ({ pitch: c[1] as number, at: (c as unknown[])[3] as number }));
+
+  beforeEach(() => {
+    keysSustain(false);
+    releaseAllKeys();
+    vi.clearAllMocks();
+    holdNote.mockImplementation(() => holdNoteRelease);
+    setKeysTarget({ kind: "selected" });
+    useSettings.getState().set({ playStyle: performModel.DEFAULT_PLAY_STYLE, autoSync: false });
+    setPadMode("chord");
+    chordPadDown(MAJ);
+  });
+  afterEach(() => {
+    stopAuto();
+    releaseAllKeys();
+    chordPadUp(MAJ);
+    useSettings.getState().set({ playStyle: performModel.DEFAULT_PLAY_STYLE });
+    setPadMode("drum");
+    flushPerform(1000);
+  });
+
+  it("a triplet shuffle: long-short, a third of a beat apart", () => {
+    setPlayStyle({ pattern: { on: true, id: "shuffle" } });
+    noteOn(60, 0.9, "midi");
+    for (let i = 0; i <= 6; i++) flushPerform((i * beat()) / 3);
+    const times = [...new Set(starts().map((s) => Math.round((s.at / beat()) * 3)))];
+    // hits on triplet 0 and 2 of every beat
+    expect(times.slice(0, 4)).toEqual([0, 2, 3, 5]);
+  });
+
+  it("Alberti bass plays low, high, mid, high of the chord", () => {
+    setPlayStyle({ pattern: { on: true, id: "alberti" } });
+    noteOn(60, 0.9, "midi");
+    for (let i = 0; i <= 4; i++) flushPerform((i * beat()) / 4);
+    expect(
+      starts()
+        .slice(0, 4)
+        .map((s) => s.pitch),
+    ).toEqual([60, 67, 64, 67]);
+  });
+
+  it("the root–fifth bass plays the root and the fifth under the chord", () => {
+    setPlayStyle({ pattern: { on: true, id: "rootfifth" } });
+    noteOn(60, 0.9, "midi");
+    for (let i = 0; i <= 8; i++) flushPerform((i * beat()) / 2);
+    const bass = starts()
+      .filter((s) => s.pitch < 60)
+      .map((s) => s.pitch);
+    expect(bass.slice(0, 2)).toEqual([48, 55]);
+  });
+
+  it("a walking bass leans into Auto's next chord", () => {
+    setPlayStyle({ pattern: { on: true, id: "walking" } });
+    setPadMode("next");
+    setKeyModeKey({ root: 0, scale: "major" });
+    setNextProgression("four"); // C G Am F
+    // the chords around middle C (Auto roots them near the last key), then from the top
+    noteOn(60, 0.8, "midi")();
+    forgetChords();
+    vi.clearAllMocks();
+    holdNote.mockImplementation(() => holdNoteRelease);
+    startAuto();
+    for (let i = 0; i <= 16; i++) flushPerform((i * beat()) / 4);
+    // the walk is under the chord (C4 E4 G4): below 60
+    const walk = starts()
+      .filter((s) => s.pitch < 60)
+      .map((s) => s.pitch % 12);
+    // C E G, then a half step from G (F♯ below or A♭ above), then G
+    expect(walk.slice(0, 3)).toEqual([0, 4, 7]);
+    expect([6, 8]).toContain(walk[3]);
+    expect(walk[4]).toBe(7);
+    setNextProgression(null);
   });
 });
