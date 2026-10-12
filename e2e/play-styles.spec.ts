@@ -265,7 +265,7 @@ async function autoSetup(page: Page, more: object = {}) {
 }
 
 test("Auto walks the progression by itself and stops (D162)", async ({ page }) => {
-  await autoSetup(page, { autoWithPlay: false });
+  await autoSetup(page, { autoSync: false });
   await page.evaluate(() => {
     (window as never as W).__rebeat.store
       .getState()
@@ -284,7 +284,7 @@ test("Auto walks the progression by itself and stops (D162)", async ({ page }) =
 test("Auto armed starts with Play after the count-in and records a chord per bar (D163)", async ({
   page,
 }) => {
-  const trackId = await autoSetup(page, { autoWithPlay: true, countInBars: 1, snap: true });
+  const trackId = await autoSetup(page, { autoSync: true, countInBars: 1, snap: true });
   // a four-bar page, its Notes lane empty, a count-in, a fast tempo
   await page.evaluate((id) => {
     const s = (window as never as W).__rebeat.store.getState();
@@ -327,7 +327,7 @@ test("Auto armed starts with Play after the count-in and records a chord per bar
 test("room for a take: Fit the page, or in song mode Add pages and record a chord per page (D163, D164)", async ({
   page,
 }) => {
-  const trackId = await autoSetup(page, { autoWithPlay: true, snap: true });
+  const trackId = await autoSetup(page, { autoSync: true, snap: true });
   // one one-bar page, its Notes lane empty, no count-in, a fast tempo
   const reset = (mode: string) =>
     page.evaluate(

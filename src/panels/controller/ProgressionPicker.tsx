@@ -40,7 +40,7 @@ export function ProgressionPicker() {
   const auto = useKeys((s) => s.auto);
   const every = useSettings((s) => s.autoEvery);
   const loop = useSettings((s) => s.autoLoop);
-  const withPlay = useSettings((s) => s.autoWithPlay);
+  const sync = useSettings((s) => s.autoSync);
   useSettings((s) => s.playStyle);
   const unit = autoUnit();
   const unitName = (n: number) =>
@@ -154,7 +154,7 @@ export function ProgressionPicker() {
           className={auto.armed && !auto.running ? "auto-armed" : undefined}
           onClick={toggleAuto}
         >
-          {auto.running ? "■ Stop" : auto.armed ? "● Armed: starts with Play" : "▶ Auto"}
+          {auto.running ? "■ Stop" : auto.armed ? "● Starts with Play" : "▶ Auto"}
         </button>
       </div>
       <span className="label">Every</span>
@@ -188,12 +188,13 @@ export function ProgressionPicker() {
           Loop
         </button>
         <button
-          data-active={withPlay}
-          aria-pressed={withPlay}
-          data-testid="auto-with-play"
-          onClick={() => set({ autoWithPlay: !withPlay })}
+          data-active={sync}
+          aria-pressed={sync}
+          data-testid="auto-sync"
+          title="Tied to the song: armed while it's stopped (it starts with Play, after the count-in), on its next bar while it plays, stopping with it. Off: Auto plays on its own."
+          onClick={() => set({ autoSync: !sync })}
         >
-          With Play
+          Sync to song
         </button>
       </div>
       {fits && <TakeRoom chords={chords.length} every={every} unit={unit.steps} />}

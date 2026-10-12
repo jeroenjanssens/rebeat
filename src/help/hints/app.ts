@@ -111,6 +111,11 @@ const hints: Hints = {
     text: "What the keyboard, MIDI notes and the on-screen pads play. By default it follows the selected track; click to lock it to a specific track or pick a library sound — it then plays through the Keys strip in the mixer, not through a track. With Follow the synth editor in focus on, the keys play what the focused synth editor edits (its track, or a library synth); the menu's top says exactly what plays and from where.",
     guide: "keys-target",
   },
+  "transport.editSound": {
+    title: "Edit sound",
+    text: "Opens the editor for what the keys play: the synth editor for a synth (a library synth, one of yours, or a track's), the sample editor for a sample, the Inspector for a track's sampled instrument. Greyed out when there's nothing to edit (a library piano has no editor of its own: put it on a track to shape it with its SOUND knobs); its tooltip says why.",
+    guide: "performance-your-controller",
+  },
 
   // ── App-wide controls ────────────────────────────────────────────────────
   "app.palette": {

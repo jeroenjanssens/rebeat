@@ -748,6 +748,10 @@ body {
     transform: scaleX(1);
   }
 }
+/* a pad queued for Auto's next change blinks (D171) */
+.pad-queued {
+  animation: auto-armed 0.5s steps(2, jump-none) infinite;
+}
 .auto-armed {
   animation: auto-armed 1s steps(2, jump-none) infinite;
 }

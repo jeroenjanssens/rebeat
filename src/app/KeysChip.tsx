@@ -1,11 +1,20 @@
 import { useRef } from "react";
-import { Keyboard } from "lucide-react";
+import { Keyboard, SlidersHorizontal } from "lucide-react";
 import { dropdown, type MenuItem } from "../components/Menu";
-import { addKeysSoundAsTrack, keysDescription, setKeysTarget, useKeys } from "../state/keys";
+import {
+  addKeysSoundAsTrack,
+  keysDescription,
+  keysEditor,
+  keysTrack,
+  setKeysTarget,
+  useKeys,
+} from "../state/keys";
+import { focusPanel, openSampleEditor, openSynthEditor } from "./openers";
+import { sampleOf } from "../model/tracks";
 import { useSettings } from "../state/settings";
 import { useStore } from "../state/store";
 import { FAMILIES, type Family } from "../library/instruments";
-import { allInstruments } from "../library/userInstruments";
+import { allInstruments, findInstrument } from "../library/userInstruments";
 import { useLibrary } from "../library/library";
 
 /**
@@ -169,6 +178,80 @@ export function KeysChip({
       <span className="num max-w-[110px] truncate" style={{ opacity: isLoading ? 0.5 : 1 }}>
         {isLoading ? "Loading…" : playing.name}
       </span>
+    </button>
+  );
+}
+
+/** What the Edit button next to the keys opens for what they play now (D173), and why not. */
+function editTarget(): { label: string; open: () => void } | { label: string; open: null } {
+  const ed = keysEditor();
+  if (ed) return { label: "The keys play the synth editor in focus", open: null };
+  const { target } = useKeys.getState();
+  if (target.kind === "sound") {
+    if (target.source === "sample")
+      return {
+        label: `Edit ${target.name} in the sample editor`,
+        open: () => openSampleEditor(target.id),
+      };
+    const entry = findInstrument(target.id);
+    if (entry?.source.source === "synth")
+      return {
+        label: `Edit ${entry.name} in the synth editor`,
+        open: () => void import("../panels/library/open").then((m) => m.openInstrument(entry)),
+      };
+    if (entry?.source.source === "sample" && entry.source.sampleId)
+      return {
+        label: `Edit ${entry.name} in the sample editor`,
+        open: () => openSampleEditor(entry.source.sampleId!),
+      };
+    return {
+      label: `${target.name} has no editor of its own: put it on a track to shape it with its SOUND knobs`,
+      open: null,
+    };
+  }
+  const track = keysTrack();
+  if (!track) return { label: "The keys play nothing to edit", open: null };
+  if (track.sound?.source === "synth")
+    return {
+      label: `Edit ${track.name}'s synth in the synth editor`,
+      open: () => openSynthEditor(track.id),
+    };
+  const sample = sampleOf(track);
+  if (track.sound?.source === "sample" && sample)
+    return { label: `Edit ${track.name}'s sample`, open: () => openSampleEditor(sample) };
+  return {
+    label: `Shape ${track.name} with its SOUND knobs in the Inspector`,
+    open: () => {
+      useStore.getState().setUi({ selectedTrackId: track.id });
+      focusPanel("inspector");
+    },
+  };
+}
+
+/**
+ * Edit sound (D173): the editor for what the keys play, next to the Keys chip: the synth editor
+ * for a synth (a library one, yours, or a track's), the sample editor for a sample, the Inspector
+ * for a track's sampled instrument; greyed out with the reason otherwise.
+ */
+export function EditSoundButton({ className = "" }: { className?: string }) {
+  // redraw when what the keys play changes
+  useKeys((s) => s.target);
+  useKeys((s) => s.focused);
+  useSettings((s) => s.keysFollowEditor);
+  useStore((s) => s.selectedTrackId);
+  useStore((s) => s.project.tracks);
+  const t = editTarget();
+  return (
+    <button
+      className={`tool-btn ${className}`}
+      data-testid="edit-sound"
+      data-hint="transport.editSound"
+      title={t.label}
+      aria-label={t.label}
+      disabled={!t.open}
+      onClick={() => t.open?.()}
+    >
+      <SlidersHorizontal size={13} />
     </button>
   );
 }

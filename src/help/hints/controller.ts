@@ -189,7 +189,7 @@ const hints: Hints = {
   },
   "controller.auto": {
     title: "Auto",
-    text: "Plays the progression by itself: pad 1's chord changes on its own, in time, through Voicing, Bass and the play styles, while you play a melody on the keys (and passing chords on pads 2–8: held, they replace the chord until you let go). With the song stopped and With Play on, it waits (armed) and starts with Play, after the count-in, from the progression's first chord: press Rec too to record it, take after take. ■ Stop ends it, and so does the transport's Stop. Without a progression it follows the best suggestion, a progression that writes itself.",
+    text: "Plays the progression by itself: pad 1's chord changes on its own, in time, through Voicing, Bass and the play styles, while you play a melody on the keys. A pad pressed while it plays comes in at the next change, in time (it blinks until then; press it again to take it back), and the progression goes on after it. It plays on its own, the song stopped; with Sync to song on, it's tied to the song (armed until Play, after the count-in, from the first chord: press Rec too to record it, take after take). ■ Stop ends it, and so does the transport's Stop. Without a progression it follows the best suggestion, a progression that writes itself.",
     guide: "performance-suggestions",
   },
   "controller.auto.every": {
@@ -198,8 +198,8 @@ const hints: Hints = {
     guide: "performance-suggestions",
   },
   "controller.auto.options": {
-    title: "Loop, With Play",
-    text: "Loop: after the last chord, round again (off: Auto stops there). With Play: pressing Auto while the song is stopped arms it, and it starts with the song (after the count-in), from the top, every time you press Play; off: it starts at once.",
+    title: "Loop, Sync to song",
+    text: "Loop: after the last chord, round again (off: Auto stops there). Sync to song: Auto is tied to the song: while it's stopped, ▶ Auto arms it and it starts with Play (after the count-in), from the top, take after take; while it plays, from its next bar; and it stops with the song. Off (the default): Auto plays on its own, at once, without the song.",
     guide: "performance-suggestions",
   },
   "controller.auto.room": {

@@ -753,7 +753,7 @@ describe("Auto: the progression plays itself (D162)", () => {
     setKeysTarget({ kind: "selected" });
     setKeyModeKey({ root: 0, scale: "major" });
     useSettings.getState().set({
-      autoWithPlay: false,
+      autoSync: false,
       autoEvery: 1,
       autoLoop: true,
       playStyle: performModel.DEFAULT_PLAY_STYLE,
@@ -800,17 +800,29 @@ describe("Auto: the progression plays itself (D162)", () => {
     up();
   });
 
-  it("a passing chord replaces it while held, then it comes back", () => {
+  it("a pad pressed during Auto comes in at the next change, then the progression goes on (D171)", () => {
     startAuto();
     flushPerform(0); // F
-    const up = playSuggestion(1, 0.8, "screen");
-    const passing = holdNote.mock.calls.at(-1)![1] as number;
-    expect(passing % 12).not.toBe(5);
+    const second = useKeys.getState().suggestions[1]; // not G (pad 1)
     vi.clearAllMocks();
     holdNote.mockImplementation(() => holdNoteRelease);
-    up();
-    // F again
-    expect(chordsPlayed().map(name)).toEqual(["F"]);
+    playSuggestion(1, 0.8, "screen");
+    // not now
+    expect(holdNote).not.toHaveBeenCalled();
+    expect(useKeys.getState().auto.queued).toBe(1);
+    flushPerform(bar()); // the change: the queued chord instead of G
+    expect(chordsPlayed().map(name)).toEqual([second.name[0]]);
+    expect(useKeys.getState().auto.queued).toBeNull();
+    flushPerform(2 * bar()); // then on with the progression: Em
+    expect(chordsPlayed().map(name).at(-1)).toBe("E");
+  });
+
+  it("a queued pad pressed again isn't queued any more", () => {
+    startAuto();
+    flushPerform(0);
+    playSuggestion(2, 0.8, "screen");
+    playSuggestion(2, 0.8, "screen");
+    expect(useKeys.getState().auto.queued).toBeNull();
   });
 
   it("with Loop off, stops after the last chord", () => {
@@ -832,8 +844,8 @@ describe("Auto: the progression plays itself (D162)", () => {
     expect(played).toHaveLength(3);
   });
 
-  it("armed with Play: waits while the song is stopped", () => {
-    useSettings.getState().set({ autoWithPlay: true });
+  it("synced to the song: armed while it's stopped (D172)", () => {
+    useSettings.getState().set({ autoSync: true });
     startAuto();
     expect(useKeys.getState().auto).toMatchObject({ armed: true, running: false });
     flushPerform(0);

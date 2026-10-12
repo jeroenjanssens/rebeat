@@ -240,6 +240,8 @@ interface MiniLab3SvgProps {
   marks?: readonly { pitch: number; rank: number; name: string; color: string; title: string }[];
   /** The best suggestion's pads (Chord and Key mode): a dot on each. */
   padMarks?: readonly { index: number; color: string }[];
+  /** A pad queued for Auto's next change (D171): it blinks until then. */
+  queuedPad?: number | null;
   /** The pads' colors (D144): the tracks' in Drum mode, blue and purple for the chord pads. */
   padColors?: readonly (string | null)[];
   /** Key mode's key: the keys in it get a dot (the root a bigger one), D138. */
@@ -264,6 +266,7 @@ export function MiniLab3Svg({
   nextLabels,
   marks = [],
   padMarks = [],
+  queuedPad = null,
 }: MiniLab3SvgProps) {
   const chordPads = padMode !== "drum";
   // the device's octave, for the markers (React draws them; the frame loop draws the rest)
@@ -892,6 +895,8 @@ export function MiniLab3Svg({
                     : `controller.pad.${i}`
             }
             data-pad-color={lit ?? "none"}
+            data-queued={queuedPad === i || undefined}
+            className={queuedPad === i ? "pad-queued" : undefined}
             style={{ cursor: onPadDown ? "pointer" : undefined }}
             onPointerDown={(e) => handlePadPointerDown(i, e)}
             onPointerUp={() => handlePadPointerUp(i)}

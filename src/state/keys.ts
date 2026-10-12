@@ -20,6 +20,9 @@ import { noteName, type Key } from "../model/notes";
 import { playStartTime } from "../engine/transport";
 import {
   progressionById,
+  progressionChords,
+  progressionIndex,
+  progressionsFor,
   qualityOf,
   suggestNext,
   type Played,
@@ -107,7 +110,14 @@ interface KeysState {
   suggestions: Suggestion[];
   lastKey: number | null;
   /** Auto (D162): running or armed, its next change (audio time) and the time between changes. */
-  auto: { running: boolean; armed: boolean; nextAt: number | null; dur: number };
+  auto: {
+    running: boolean;
+    armed: boolean;
+    nextAt: number | null;
+    dur: number;
+    /** The pad queued for the next change (D171), or null. */
+    queued: number | null;
+  };
 }
 
 /** A key that's down and what it plays: itself, a chord, or nothing (another key took over). */
@@ -132,7 +142,7 @@ export const useKeys = create<KeysState>()(() => ({
   latched: false,
   suggestions: [],
   lastKey: null,
-  auto: { running: false, armed: false, nextAt: null, dur: 2 },
+  auto: { running: false, armed: false, nextAt: null, dur: 2, queued: null },
 }));
 
 export function setKeysTarget(target: KeysTarget) {
@@ -906,8 +916,21 @@ export function refreshSuggestions() {
   history = history.filter((h) => now - h.at < 30_000).slice(-4);
   const show = s.padMode === "next" || (s.suggest && s.padMode !== "drum");
   const level = Math.max(0, Math.min(2, s.suggestAdventure)) as 0 | 1 | 2;
-  // Next mode (D161): a progression picked puts its next chord on pad 1
+  // Next mode (D161): a progression picked puts its next chord on pad 1; while Auto plays it,
+  // the chord Auto plays next (its own count, D171)
   const prog = s.padMode === "next" ? progressionById(s.nextProgression) : null;
+  const running = auto.running && prog && progressionsFor(suggestKey()).includes(prog);
+  if (show && running) {
+    const next = progressionChords(prog, suggestKey())[auto.index % prog.chords.length];
+    const rest = suggestNext(
+      history.map((h) => h.played),
+      suggestKey(),
+      level,
+      9,
+    ).filter((x) => x.roman !== next.roman);
+    useKeys.setState({ suggestions: [next, ...rest].slice(0, 8) });
+    return;
+  }
   useKeys.setState({
     suggestions: show
       ? suggestNext(
@@ -945,21 +968,16 @@ export function playSuggestion(i: number, velocity: number, source: KeysSource):
   const chord = padChord(root, sug.pads);
   if (!chord) return () => {};
   if (auto.running) {
-    // pad 1 over Auto: on to the next chord now; pads 2–8: a passing chord while held (D162)
-    if (i === 0) {
-      autoChord(audioNow());
-      return () => {};
+    // a pad during Auto comes in at the next change, in time (D171); again: no longer queued
+    if (auto.queuedPad === i) {
+      auto.queued = null;
+      auto.queuedPad = null;
+    } else {
+      auto.queued = sug;
+      auto.queuedPad = i;
     }
-    auto.passing++;
-    const up = press(root, velocity, source, chord);
-    return () => {
-      up();
-      auto.passing = Math.max(0, auto.passing - 1);
-      // Auto's chord again, where it was
-      const cur = lastAutoChord;
-      if (auto.running && auto.passing === 0 && cur)
-        press(cur.root, AUTO_VELOCITY, "auto", cur.chord, { auto: true, at: audioNow() });
-    };
+    publishAuto();
+    return () => {};
   }
   return press(root, velocity, source, chord);
 }
@@ -996,7 +1014,11 @@ const auto = {
   withSong: false,
   nextAt: 0,
   count: 0,
-  passing: 0,
+  /** Where it is in the progression (its own count: a queued chord takes a chord's place). */
+  index: 0,
+  /** A pad pressed during Auto: its chord comes in at the next change (D171), and which pad. */
+  queued: null as Suggestion | null,
+  queuedPad: null as number | null,
 };
 /** The chord Auto is playing (no key is down for it). */
 let autoPress: Pressed | null = null;
@@ -1024,26 +1046,39 @@ function rootNear(pc: number): number {
   return near - 6 + ((((pc - (near - 6)) % 12) + 12) % 12);
 }
 
-/** Auto's next chord, at `at`: pad 1's (the progression's next, or the best suggestion). */
+/** The progression Auto plays, if one is picked and fits the key. */
+function autoProgression() {
+  const prog = progressionById(useSettings.getState().nextProgression);
+  return prog && progressionsFor(suggestKey()).includes(prog) ? prog : null;
+}
+
+/** The chord Auto plays at its next change: a queued one, else the progression's next (its own
+ * count), else the best suggestion (Free). */
+function autoNext(): Suggestion | undefined {
+  if (auto.queued) return auto.queued;
+  const prog = autoProgression();
+  if (prog) return progressionChords(prog, suggestKey())[auto.index % prog.chords.length];
+  return useKeys.getState().suggestions[0];
+}
+
+/** Auto's next chord, at `at`. */
 function autoChord(at: number) {
   const s = useSettings.getState();
-  const prog = progressionById(s.nextProgression);
+  const prog = autoProgression();
   // Loop off: after the progression's last chord, stop at what would be the next change
   if (!s.autoLoop && prog && auto.count >= prog.chords.length) return stopAuto(at);
   auto.count++;
-  // a passing chord held: Auto keeps time, silently (it comes back when it's let go)
-  if (auto.passing > 0) return;
-  const sug = useKeys.getState().suggestions[0];
+  const sug = autoNext();
+  // a queued chord takes the progression's next chord's place; the progression goes on after it
+  if (prog) auto.index++;
+  auto.queued = null;
+  auto.queuedPad = null;
   if (!sug) return;
   const root = rootNear(sug.root);
   const chord = padChord(root, sug.pads);
-  if (!chord) return;
-  lastAutoChord = { root, chord };
-  press(root, AUTO_VELOCITY, "auto", chord, { auto: true, at });
+  if (chord) press(root, AUTO_VELOCITY, "auto", chord, { auto: true, at });
+  refreshSuggestions();
 }
-
-/** Auto's chord, to come back to after a passing chord. */
-let lastAutoChord: { root: number; chord: number[] } | null = null;
 
 function aheadOfRhythm(_now: number, horizon: number): boolean {
   if (!auto.running) return false;
@@ -1062,11 +1097,13 @@ function publishAuto() {
     armed: auto.armed,
     nextAt: auto.running ? auto.nextAt : null,
     dur: changeDur(),
+    queued: auto.queuedPad,
   };
   const cur = useKeys.getState().auto;
   if (
     cur.running !== next.running ||
     cur.armed !== next.armed ||
+    cur.queued !== next.queued ||
     cur.nextAt !== next.nextAt ||
     Math.abs(cur.dur - next.dur) > 1e-9
   )
@@ -1076,10 +1113,13 @@ function publishAuto() {
 /** Start Auto at `at`; from the progression's first chord (a take with the song) or pad 1's. */
 function beginAuto(at: number, fromTop: boolean) {
   if (fromTop) forgetChords();
+  const prog = autoProgression();
+  auto.index = prog && !fromTop ? progressionIndex(prog, chordHistory(), suggestKey()) : 0;
   auto.running = true;
   auto.nextAt = at;
   auto.count = 0;
-  auto.passing = 0;
+  auto.queued = null;
+  auto.queuedPad = null;
   setAhead(aheadOfRhythm);
   publishAuto();
 }
@@ -1092,11 +1132,14 @@ function beginAuto(at: number, fromTop: boolean) {
 export function startAuto() {
   if (auto.running) return;
   const playing = !!useStore.getState().playing;
-  if (!playing && useSettings.getState().autoWithPlay) {
+  // Sync to song (D172): tied to the song: armed while it's stopped, from its next bar while it
+  // plays, stopping with it; off: on its own, at once (on the song's next bar if it plays)
+  const sync = useSettings.getState().autoSync;
+  if (sync && !playing) {
     auto.armed = true;
     return publishAuto();
   }
-  auto.withSong = playing;
+  auto.withSong = sync;
   beginAuto(playing ? nextBar() : audioNow() + 0.02, false);
 }
 

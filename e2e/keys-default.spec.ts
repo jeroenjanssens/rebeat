@@ -59,3 +59,55 @@ test("the Keys menu opens the library: a family, then its sounds (D167)", async 
   await item("Supersaw").click();
   await expect(chip).toContainText("Supersaw");
 });
+
+test("Edit sound opens the editor for what the keys play (D173)", async ({ page }) => {
+  await page.addInitScript(() => {
+    (window as { __REBEAT_TEST_MIC__?: boolean }).__REBEAT_TEST_MIC__ = true;
+    if (!localStorage.getItem("rebeat.settings"))
+      localStorage.setItem(
+        "rebeat.settings",
+        JSON.stringify({ state: { onboarded: true }, version: 1 }),
+      );
+  });
+  await page.goto("/");
+  await page.getByTestId("audio-overlay").click();
+  await page.locator('[data-testid="audio-status"][data-status="running"]').waitFor();
+  const edit = page.getByTestId("edit-sound").first();
+  // the Grand Piano has no editor of its own
+  await expect(edit).toBeDisabled();
+  await expect(edit).toHaveAttribute("title", /no editor of its own/);
+  // a library synth: its synth editor
+  const item = (text: string) => page.locator(".menu .menu-item", { hasText: text }).first();
+  await page.getByTestId("keys-chip").click();
+  await item("Library ▸").click();
+  await item("Synths ▸").click();
+  await item("Supersaw").click();
+  await expect(edit).toBeEnabled();
+  await edit.click();
+  await expect(page.locator(".dv-tab", { hasText: "Supersaw" })).toBeVisible();
+  // a track that plays a synth: its synth editor
+  const name = await page.evaluate(() => {
+    const s = (
+      window as never as {
+        __rebeat: {
+          store: {
+            getState(): {
+              project: {
+                tracks: { id: string; name: string; mode: string; sound?: { source: string } }[];
+              };
+              setUi(u: object): void;
+            };
+          };
+        };
+      }
+    ).__rebeat.store.getState();
+    const t = s.project.tracks.find((x) => x.mode === "notes" && x.sound?.source === "synth")!;
+    s.setUi({ selectedTrackId: t.id });
+    return t.name;
+  });
+  await page.getByTestId("keys-chip").click();
+  await item("Follow selected track").click();
+  await expect(edit).toHaveAttribute("title", new RegExp(`Edit ${name}'s synth`));
+  await edit.click();
+  await expect(page.getByTestId("synth-editor").first()).toBeVisible();
+});

@@ -39,7 +39,7 @@ import { ROLE_COLORS, ROLE_NAMES } from "../../model/suggest";
 import { PlayStylesRow } from "./PlayStylesRow";
 import { ProgressionPicker } from "./ProgressionPicker";
 import { PATTERNS, patternById, sanitizePlayStyle } from "../../model/perform";
-import { KeysChip } from "../../app/KeysChip";
+import { EditSoundButton, KeysChip } from "../../app/KeysChip";
 import { padColors } from "../../midi/padColors";
 import { GenericControllerView } from "./GenericControllerView";
 import { onControllerEvent } from "../../midi/controllerEvents";
@@ -597,6 +597,7 @@ export function ControllerPanel() {
   // the next chords (D158, D159): markers on the keys, the pads in Next mode
   const suggestions = useKeys((s) => s.suggestions);
   const lastKey = useKeys((s) => s.lastKey);
+  const autoQueued = useKeys((s) => s.auto.queued);
   const suggestOn = useSettings((s) => s.suggest);
   const projectKey = useStore((s) => s.project.key);
   useEffect(() => refreshSuggestions(), [padMode, suggestOn, keyModeKey, projectKey]);
@@ -695,6 +696,7 @@ export function ControllerPanel() {
         )}
         <span className="flex-1" />
         <KeysChip testId="controller-keys-chip" />
+        <EditSoundButton />
         <span className="label">Pads</span>
         <PadModeSwitch />
       </div>
@@ -722,6 +724,7 @@ export function ControllerPanel() {
             nextLabels={padMode === "next" ? suggestions.map((s) => s.name) : undefined}
             marks={marks}
             padMarks={padMarks}
+            queuedPad={padMode === "next" ? autoQueued : null}
             onLabelPx={setLabelPx}
             holdLit={playStyle.latch}
           />
