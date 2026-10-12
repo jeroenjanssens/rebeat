@@ -27,7 +27,12 @@ vi.mock("../engine/engine", () => ({
   createKeysChannel,
   disposeKeysChannel,
   getKeysChannel,
+  onPanic: vi.fn(),
 }));
+
+// the play styles' clock: unit tests drive it with flushPerform
+vi.mock("../engine/transport", () => ({ playStartTime: () => 0 }));
+vi.mock("../engine/ticker", () => ({ startTicker: () => () => {} }));
 
 // --- input mock ---
 const recordNoteOn = vi.fn((_t: unknown, _p: unknown, _v: unknown) => 0);
@@ -85,6 +90,9 @@ const {
   setBassOctaves,
   setChordVoicing,
 } = await import("./keys");
+const keysApi = await import("./keys");
+const performApi = await import("./perform");
+const performModel = await import("../model/perform");
 const { useSettings } = await import("./settings");
 
 describe("noteOn → voice track", () => {
@@ -95,13 +103,16 @@ describe("noteOn → voice track", () => {
 
   it("calls holdNote and returns a release function", () => {
     const release = noteOn(60, 0.8, "midi");
-    expect(holdNote).toHaveBeenCalledWith(voiceTrack, 60, 0.8);
+    expect(holdNote).toHaveBeenCalledWith(voiceTrack, 60, 0.8, undefined);
     expect(typeof release).toBe("function");
   });
 
   it("calls recordNoteOn with the track and pitch", () => {
     noteOn(60, 0.8, "midi");
-    expect(recordNoteOn).toHaveBeenCalledWith(voiceTrack, 60, 0.8);
+    expect(recordNoteOn).toHaveBeenCalledWith(voiceTrack, 60, 0.8, {
+      at: undefined,
+      spread: undefined,
+    });
   });
 
   it("release calls the holdNote release and recordNoteOff", () => {
@@ -205,7 +216,7 @@ describe("following the synth editor (D132)", () => {
     });
     focusKeysEditor("synth-editor:x");
     noteOn(60, 0.8, "midi");
-    expect(holdNote).toHaveBeenLastCalledWith(voiceTrack, 60, 0.8);
+    expect(holdNote).toHaveBeenLastCalledWith(voiceTrack, 60, 0.8, undefined);
     useSettings.getState().set({ keysFollowEditor: true });
     expect(keysDescription()).toMatchObject({
       name: drumTrack.source || drumTrack.name,
@@ -237,7 +248,7 @@ describe("following the synth editor (D132)", () => {
     expect(keysDescription()).toMatchObject({ name: "Pad", from: "Synth editor · library" });
     focusKeysEditor("synth-editor:t");
     noteOn(64, 0.5, "midi");
-    expect(holdNote).toHaveBeenCalledWith(voiceTrack, 64, 0.5);
+    expect(holdNote).toHaveBeenCalledWith(voiceTrack, 64, 0.5, undefined);
     // the focused editor closed: back to the usual target
     forgetKeysEditor("synth-editor:t");
     expect(useKeys.getState().focused).toBeNull();
@@ -507,5 +518,133 @@ describe("chord voicing and the bass knob (D140)", () => {
     setChordVoicing(2);
     noteOn(60, 0.8, "midi");
     expect(sounding()).toEqual([[60]]);
+  });
+});
+
+describe("play styles (D149–D154)", () => {
+  const MAJ = 2;
+  const { setPlayStyle, toggleLatch, setSmoothVoicing, setBassTrack, setBassMode } = keysApi;
+  const { flushPerform } = performApi;
+  const { DEFAULT_PLAY_STYLE } = performModel;
+  /** holdNote's calls as [pitch, at, velocity]. */
+  const holds = () =>
+    holdNote.mock.calls.map((c) => [c[1], (c as unknown[])[3], c[2]] as [number, number, number]);
+  const step = () => (0.25 * 60) / project.bpm; // a 16th
+
+  beforeEach(() => {
+    keysSustain(false);
+    releaseAllKeys();
+    vi.clearAllMocks();
+    holdNote.mockImplementation(() => holdNoteRelease);
+    setKeysTarget({ kind: "selected" });
+    useSettings.getState().set({ playStyle: DEFAULT_PLAY_STYLE });
+    setPadMode("chord");
+    chordPadDown(MAJ);
+  });
+  afterEach(() => {
+    releaseAllKeys();
+    chordPadUp(MAJ);
+    useSettings.getState().set({ playStyle: DEFAULT_PLAY_STYLE, smoothVoicing: false });
+    setBassTrack(null);
+    setBassMode("auto");
+    setBassOctaves(0);
+    setPadMode("drum");
+    flushPerform(100);
+  });
+
+  it("strums a chord: the lowest note at once, the others later, up", () => {
+    setPlayStyle({ strum: { on: true, time: 0.06, direction: "up" } });
+    noteOn(60, 0.8, "midi");
+    expect(holds()).toEqual([[60, undefined, 0.8]]);
+    flushPerform(0);
+    const h = holds();
+    expect(h.map((x) => x[0])).toEqual([60, 64, 67]);
+    expect(h[1][1]).toBeGreaterThan(0);
+    expect(h[2][1]).toBeCloseTo(0.06);
+  });
+
+  it("strums down from the highest; a key let go early cancels what hasn't started", () => {
+    setPlayStyle({ strum: { on: true, time: 0.2, direction: "down" } });
+    const up = noteOn(60, 0.8, "midi");
+    expect(holds().map((x) => x[0])).toEqual([67]);
+    up();
+    flushPerform(0.5);
+    expect(holds().map((x) => x[0])).toEqual([67]);
+  });
+
+  it("balances a chord: the bass and the top full, the inner notes softer", () => {
+    setBassOctaves(1);
+    setPlayStyle({ balance: 1 });
+    noteOn(60, 1, "midi");
+    const v = new Map(holds().map(([p, , vel]) => [p, vel]));
+    expect(v.get(48)).toBe(1);
+    expect(v.get(67)).toBe(1);
+    expect(v.get(64)).toBeCloseTo(0.65);
+    expect(v.get(60)).toBeCloseTo(0.65);
+  });
+
+  it("arpeggiates a held chord on its grid, the bass held", () => {
+    setBassOctaves(1);
+    setPlayStyle({ arp: { on: true, rate: "1/16", mode: "up" } });
+    noteOn(60, 0.8, "midi");
+    // the bass and the first note at once
+    expect(holds().map((x) => x[0])).toEqual([48, 60]);
+    flushPerform(step());
+    flushPerform(2 * step());
+    expect(holds().map((x) => x[0])).toEqual([48, 60, 64, 67]);
+    const at = holds().map((x) => x[1]);
+    expect(at[3] - at[2]).toBeCloseTo(step(), 3);
+  });
+
+  it("latches: what the keys play goes on after they're let go, until Latch goes off", () => {
+    setPlayStyle({ latch: true });
+    const up = noteOn(60, 0.8, "midi");
+    up();
+    expect(holdNoteRelease).not.toHaveBeenCalled();
+    expect(useKeys.getState().latched).toBe(true);
+    // a new key after all were up: a new chord
+    const up2 = noteOn(62, 0.8, "midi");
+    expect(holdNoteRelease).toHaveBeenCalledTimes(3);
+    up2();
+    toggleLatch();
+    expect(holdNoteRelease).toHaveBeenCalledTimes(6);
+    expect(useKeys.getState().latched).toBe(false);
+  });
+
+  it("plays a pattern: Oom-pah's bass on 1, the chord on 2", () => {
+    setPlayStyle({ pattern: { on: true, id: "oompah" } });
+    noteOn(60, 1, "midi");
+    // beat 1: a bass hit without a bass plays the chord's lowest note
+    expect(holds().map((x) => x[0])).toEqual([60]);
+    for (let k = 1; k <= 4; k++) flushPerform(k * step());
+    expect(holds().map((x) => x[0])).toEqual([60, 60, 64, 67]);
+  });
+
+  it("voices smoothly: C, then F as C F A", () => {
+    setSmoothVoicing(true);
+    const up = noteOn(60, 0.8, "midi");
+    up();
+    noteOn(65, 0.8, "midi");
+    expect(useKeys.getState().sounding.at(-1)?.notes).toEqual([60, 65, 69]);
+  });
+
+  it("plays the bass on its own track", () => {
+    setBassOctaves(1);
+    setBassTrack(drumTrack.id === voiceTrack.id ? null : voiceTrack.id);
+    noteOn(60, 0.8, "midi");
+    const bassCall = holdNote.mock.calls.find((c) => c[1] === 48);
+    expect(bassCall?.[0]).toBe(voiceTrack);
+  });
+
+  it("splits the keyboard: below the split the bass alone, chords above without a bass", () => {
+    setBassOctaves(1);
+    setBassMode("split", 48);
+    noteOn(40, 0.8, "midi");
+    noteOn(60, 0.8, "midi");
+    expect(
+      holds()
+        .map((x) => x[0])
+        .sort((a, b) => a - b),
+    ).toEqual([40, 60, 64, 67]);
   });
 });

@@ -19,6 +19,25 @@ import {
 import { noteName, type Key } from "../model/notes";
 import { keyModeChord, sameKey, stepKeyRoot, stepKeyScale } from "../model/keyMode";
 import { padChord, voiceChord, VOICING_RANGE } from "../model/padChords";
+import {
+  balanceFactors,
+  sanitizePlayStyle,
+  slopFor,
+  smoothVoicing,
+  strumOffsets,
+  type PlayStyle,
+} from "../model/perform";
+import {
+  onPerformPanic,
+  playStyle,
+  pokeRhythm,
+  rhythmOn,
+  schedule,
+  setRhythmPlayer,
+  stopRhythm,
+  strumDown,
+  type Pool,
+} from "./perform";
 import type { Track } from "../model/types";
 import { player } from "../model/tracks";
 import { recordNoteOff, recordNoteOn, playedNotes, padInput, keyRoot } from "./input";
@@ -70,6 +89,10 @@ interface KeysState {
   transpose: number;
   /** The key the Key dial picked, which a press selects (Key dial "On press", D138). */
   pendingKey: Key | null;
+  /** The voicing of the last chord (Smooth picks it, D152), or null. */
+  voicingUsed: number | null;
+  /** Whether Latch holds something now (D151). */
+  latched: boolean;
 }
 
 /** A key that's down and what it plays: itself, a chord, or nothing (another key took over). */
@@ -90,6 +113,8 @@ export const useKeys = create<KeysState>()(() => ({
   pads: [],
   transpose: 0,
   pendingKey: null,
+  voicingUsed: null,
+  latched: false,
 }));
 
 export function setKeysTarget(target: KeysTarget) {
@@ -268,42 +293,83 @@ function output(): Output | null {
   return null;
 }
 
-/** One sounding note: what stops it, and its recording (Notes tracks). */
+/** One sounding note: what stops it, and its recording (Notes tracks). A note waiting for its
+ * time (a strum's, a slop's) is `pending`, and `cancel` takes it off the schedule. */
 interface Voice {
-  release: () => void;
+  release: (at?: number) => void;
   recordId: number | null;
+  pending?: boolean;
+  cancel?: () => void;
 }
 
-function startNote(out: Output, pitch: number, velocity: number): Voice {
+/**
+ * When a note starts (D149): `at` (audio time; default now), its hit's time and its own delay
+ * after it (for recording, `RecordTiming`), and whether it's recorded (live recording only for
+ * notes the styles play; a key's own notes record as before).
+ */
+interface NoteTiming {
+  at?: number;
+  hitAt?: number;
+  spread?: number;
+  record?: boolean;
+}
+
+function startNote(out: Output, pitch: number, velocity: number, t: NoteTiming = {}): Voice {
   switch (out.kind) {
     case "editor":
       return { release: out.hold(pitch, velocity), recordId: null };
     case "keys":
-      return { release: keysChannelNote(pitch, velocity), recordId: null };
+      return { release: keysChannelNote(pitch, velocity, t.at), recordId: null };
     case "sample":
-      return { release: playKeysSample(out.track, pitch, velocity), recordId: null };
+      return { release: playKeysSample(out.track, pitch, velocity, "track", t.at), recordId: null };
     case "voice": {
-      const release = holdNote(out.track, pitch, velocity);
-      const notes = out.track.mode === "notes";
-      return { release, recordId: notes ? recordNoteOn(out.track, pitch, velocity) : null };
+      const release = holdNote(out.track, pitch, velocity, t.at);
+      const notes = out.track.mode === "notes" && (t.record ?? true);
+      const timing = { at: t.hitAt ?? t.at, spread: t.spread };
+      return { release, recordId: notes ? recordNoteOn(out.track, pitch, velocity, timing) : null };
     }
   }
 }
 
-function stopNote(v: Voice) {
-  v.release();
-  recordNoteOff(v.recordId);
+/** Start a note `delay` seconds from now (a strum's or a slop's), recorded at its time. */
+function startNoteLater(out: Output, pitch: number, velocity: number, delay: number): Voice {
+  const hitAt = audioNow();
+  const v: Voice = { release: () => {}, recordId: null, pending: true };
+  v.cancel = schedule(hitAt + delay, (at) => {
+    const record = useStore.getState().playing;
+    Object.assign(v, startNote(out, pitch, velocity, { at, hitAt, spread: delay, record }), {
+      pending: false,
+    });
+  });
+  return v;
+}
+
+function stopNote(v: Voice, at?: number) {
+  if (v.pending) {
+    v.cancel?.();
+    v.pending = false;
+    return;
+  }
+  v.release(at);
+  recordNoteOff(v.recordId, at);
 }
 
 /** Play a note through the Keys channel (library sound target). */
-function keysChannelNote(pitch: number, velocity: number): () => void {
+function keysChannelNote(pitch: number, velocity: number, at = audioNow()): (end?: number) => void {
   const kc = getKeysChannel();
   if (!kc) return () => {};
   // a library sample plays like a pad, to its end, at the key's pitch (D134)
   if (useKeys.getState().target.kind === "sound" && kc.track.sound?.source === "sample")
-    return playKeysSample(kc.track, pitch, velocity, "keys");
-  const release = kc.voice.hold?.(pitch, velocity, audioNow()) ?? (() => {});
-  return () => release(audioNow());
+    return playKeysSample(kc.track, pitch, velocity, "keys", at);
+  const release = kc.voice.hold?.(pitch, velocity, at) ?? (() => {});
+  return (end = audioNow()) => release(Math.max(end, at));
+}
+
+/** The bass's own track (D154), if one is set and plays notes. */
+function bassOutput(): Output | null {
+  const id = useSettings.getState().bassTrack;
+  const track = id ? useStore.getState().project.tracks.find((t) => t.id === id) : undefined;
+  return track && player(track) === "voice" ? { kind: "voice", track } : null;
 }
 
 /** What a key plays without chord pads: on a track, snapped to the key and/or its in-key chord
@@ -330,27 +396,61 @@ function padNotes(key: number): number[] | null {
 /** The lowest a bass note goes (C1): an octave lower is felt more than heard. */
 const BASS_FLOOR = 24;
 
+/** What a key plays: all its notes (low to high), whether they're a chord, which are the bass,
+ * and the voicing used (Smooth picks it, D152). */
+interface KeyChord {
+  notes: number[];
+  chord: boolean;
+  bass: number[];
+  voicing: number | null;
+}
+
+const inMidi = (n: number) => n >= 0 && n <= 127;
+
 /**
- * What a key plays now: its chord or itself, transposed (D138); a chord in its voicing (D140),
- * with its bass (D139): the root, octaves down, below the chord's lowest note, not below C1.
+ * What a key plays now: its chord or itself, transposed (D138); a chord in its voicing (D140; with
+ * Smooth, the one closest to `prev`, the chord before, D152), with its bass (D139): the root,
+ * octaves down, below the chord's lowest note, not below C1. In split mode (D154) a key below the
+ * split is the bass alone, and chords get no bass of their own.
  */
-function notesOf(out: Output, key: number): { notes: number[]; chord: boolean } {
-  const chord = padNotes(key);
+function notesOf(out: Output, key: number, prev: number[] | null = null): KeyChord {
+  const s = useSettings.getState();
   const t = useKeys.getState().transpose;
+  if (isSplitBass(key)) {
+    const n = key + t;
+    return { notes: inMidi(n) ? [n] : [], chord: false, bass: inMidi(n) ? [n] : [], voicing: null };
+  }
+  const chord = padNotes(key);
   let notes = (chord ?? keyNotes(out, key)).map((n) => n + t);
+  const bass: number[] = [];
+  let voicing: number | null = null;
   if (chord) {
-    const s = useSettings.getState();
     const root = notes[0]; // chords are built up from their root
-    notes = voiceChord(notes, s.chordVoicing);
-    if (s.bassOctaves > 0) {
+    voicing = s.smoothVoicing ? smoothVoicing(prev, notes, s.chordVoicing) : s.chordVoicing;
+    notes = voiceChord(notes, voicing);
+    if (s.bassOctaves > 0 && s.bassMode !== "split") {
       const low = notes[0];
-      let bass = root - 12 * s.bassOctaves;
-      while (bass >= low) bass -= 12;
-      while (bass < BASS_FLOOR) bass += 12;
-      if (bass < low) notes.unshift(bass);
+      let b = root - 12 * s.bassOctaves;
+      while (b >= low) b -= 12;
+      while (b < BASS_FLOOR) b += 12;
+      if (b < low) {
+        notes.unshift(b);
+        bass.push(b);
+      }
     }
   }
-  return { notes: [...new Set(notes.filter((n) => n >= 0 && n <= 127))], chord: !!chord };
+  return {
+    notes: [...new Set(notes.filter(inMidi))],
+    chord: !!chord,
+    bass: bass.filter(inMidi),
+    voicing,
+  };
+}
+
+/** Split mode (D154): the keys below the split play the bass alone. */
+function isSplitBass(key: number): boolean {
+  const s = useSettings.getState();
+  return s.bassMode === "split" && key < s.bassSplit;
 }
 
 /** A chord pad went down (pad index 0..7): the chord being held changes with it. */
@@ -468,7 +568,8 @@ function quickKeySelect(pitch: number): boolean {
 
 // ---------- note on / off ----------
 
-/** A key that's down. `ended`: a newer key took over the chord, so it plays nothing now. */
+/** A key that's down (or latched). `ended`: a newer key took over the chord, so it plays
+ * nothing now. */
 interface Pressed {
   key: number;
   velocity: number;
@@ -476,80 +577,273 @@ interface Pressed {
   out: Output;
   voices: Map<number, Voice>;
   ended: boolean;
+  /** The chord sounding before this key (for Smooth voicing, D152). */
+  prev: number[] | null;
 }
 
 /** The keys that are down, oldest first. */
 const down: Pressed[] = [];
+/** Keys let go while Latch was on: what they play goes on (D151). */
+let latched: Pressed[] = [];
+/** The last chord the keys played, and when (Smooth voicing starts afresh after a pause). */
+let lastChord: { notes: number[]; at: number } | null = null;
+
+const active = () => [...latched, ...down].filter((p) => !p.ended);
 
 /** Start a held note on the keys' target; the returned function releases it. */
 export function noteOn(pitch: number, velocity: number, source: KeysSource): () => void {
   if (quickKeySelect(pitch)) return () => {};
   const out = output();
   if (!out) return () => {};
-  const { notes, chord } = notesOf(out, pitch);
+  const style = playStyle();
+  // Latch: a key after all were up starts a new set (keys while others are down add to it)
+  if (style.latch && down.length === 0) endLatched();
+  // Split (D154): one bass note at a time, the last one wins
+  if (isSplitBass(pitch)) for (const q of active()) if (isSplitBass(q.key)) end(q);
+  const now = performance.now();
+  const prev = lastChord && now - lastChord.at < 4000 ? lastChord.notes : null;
+  const kc = notesOf(out, pitch, prev);
   // one chord at a time: a new key takes the chord over from the others (as on the Orchid)
-  if (chord) for (const p of down) end(p);
-  const p: Pressed = { key: pitch, velocity, source, out, voices: new Map(), ended: false };
-  for (const n of notes) p.voices.set(n, startNote(out, n, velocity));
+  if (kc.chord) for (const q of active()) if (!isSplitBass(q.key)) end(q);
+  if (kc.chord) {
+    lastChord = { notes: kc.notes.filter((n) => !kc.bass.includes(n)), at: now };
+    useKeys.setState({ voicingUsed: kc.voicing });
+  }
+  const p: Pressed = { key: pitch, velocity, source, out, voices: new Map(), ended: false, prev };
+  if (rhythmOn(style)) {
+    // the rhythm plays it; while stopped, step entry writes the chord as it is (D149)
+    stepEntry(out, kc.notes, velocity);
+  } else startVoices(p, kc, style, kc.notes);
   if ((out.kind === "sample" || out.kind === "voice") && out.track.mode !== "notes")
     padInput(out.track, velocity);
   down.push(p);
   publish();
+  pokeRhythm();
   let up = false;
   return () => {
     if (up) return;
     up = true;
     down.splice(down.indexOf(p), 1);
+    if (!p.ended) {
+      if (playStyle().latch) latched.push(p);
+      else end(p);
+    }
     publish();
-    if (!p.ended) end(p);
+    pokeRhythm();
   };
+}
+
+/**
+ * Start some of a key's notes (`which`, of `kc.notes`) as held notes, through the styles that
+ * don't need a grid (D150): Strum spreads them, Slop moves them later and varies them, Balance
+ * shapes their velocities. Bass notes play on the bass's track when it has one (D154).
+ */
+function startVoices(p: Pressed, kc: KeyChord, style: PlayStyle, which: number[]) {
+  const notes = [...which].sort((a, b) => a - b);
+  const offs = style.strum.on ? strumOffsets(notes.length, style.strum.time, strumDown(style)) : [];
+  const all = [...kc.notes].sort((a, b) => a - b);
+  const bal = balanceFactors(all.length, style.balance);
+  const bassOut = bassOutput();
+  notes.forEach((n, i) => {
+    const slop = style.slop.on
+      ? slopFor(style.slop.amount, Math.random(), Math.random())
+      : { delay: 0, vel: 1 };
+    const delay = (offs[i] ?? 0) + slop.delay;
+    const vel = Math.max(0.05, Math.min(1, p.velocity * bal[all.indexOf(n)] * slop.vel));
+    const out = kc.bass.includes(n) && bassOut ? bassOut : p.out;
+    p.voices.set(n, delay > 0.0005 ? startNoteLater(out, n, vel, delay) : startNote(out, n, vel));
+  });
+}
+
+/** While stopped, a key writes its notes as they are on the cursor's step (step entry); the
+ * styles are a performance, recorded when playing (D149). */
+function stepEntry(out: Output, notes: number[], velocity: number) {
+  if (useStore.getState().playing) return;
+  if (out.kind === "voice" && out.track.mode === "notes")
+    for (const n of notes) recordNoteOn(out.track, n, velocity);
 }
 
 /** Let go of every key that's down (a stuck key: its key-up never came). */
 export function releaseAllKeys() {
   for (const p of down.splice(0)) end(p);
+  endLatched();
   publish();
+  pokeRhythm();
+}
+
+/** Let go of what's latched. */
+function endLatched() {
+  for (const p of latched.splice(0)) end(p);
 }
 
 /** Stop what a key plays (when the pedal comes up, if it's down). */
 function end(p: Pressed) {
   if (p.ended) return;
   p.ended = true;
+  latched = latched.filter((q) => q !== p);
   const voices = [...p.voices.values()];
   p.voices.clear();
-  whenReleased(() => voices.forEach(stopNote));
+  whenReleased(() => voices.forEach((v) => stopNote(v)));
 }
 
 /**
  * The pads, the pad mode, Key mode's key or the transpose changed: the keys that are down play
- * what they'd play now, at once (notes that stay keep sounding). When the newest one makes a
- * chord, it takes over from the others; without one, keys play as plain keys again.
+ * what they'd play now, at once (notes that stay keep sounding; new ones are strummed). When the
+ * newest one makes a chord, it takes over from the others; without one, keys play as plain keys
+ * again. With a rhythm on, the rhythm plays what they hold now.
  */
 function revoice() {
-  const newest = down.findLast((q) => !q.ended);
-  if (newest && padNotes(newest.key)) for (const q of down) if (q !== newest) end(q);
-  for (const p of down) {
-    if (p.ended) continue;
-    const want = notesOf(p.out, p.key).notes;
+  const newest = active().at(-1);
+  if (newest && !isSplitBass(newest.key) && padNotes(newest.key))
+    for (const q of active()) if (q !== newest && !isSplitBass(q.key)) end(q);
+  const style = playStyle();
+  for (const p of active()) {
+    const kc = notesOf(p.out, p.key, p.prev);
+    if (rhythmOn(style)) continue;
     for (const [n, v] of p.voices)
-      if (!want.includes(n)) {
+      if (!kc.notes.includes(n)) {
         stopNote(v);
         p.voices.delete(n);
       }
-    for (const n of want) if (!p.voices.has(n)) p.voices.set(n, startNote(p.out, n, p.velocity));
+    startVoices(
+      p,
+      kc,
+      style,
+      kc.notes.filter((n) => !p.voices.has(n)),
+    );
   }
   publish();
+  pokeRhythm();
 }
 
 function publish() {
+  const rhythm = rhythmOn();
   useKeys.setState({
-    sounding: down.map((p) => ({
+    sounding: [...down, ...latched].map((p) => ({
       key: p.key,
-      notes: [...p.voices.keys()].sort((a, b) => a - b),
+      // with a rhythm on, what the key holds (the rhythm plays it)
+      notes: p.ended
+        ? []
+        : rhythm
+          ? notesOf(p.out, p.key, p.prev).notes
+          : [...p.voices.keys()].sort((a, b) => a - b),
       source: p.source,
     })),
+    latched: latched.some((p) => !p.ended),
   });
 }
+
+// ---------- play styles (D149–D154) ----------
+
+/** Change how the keys play; what's held plays the new way at once. */
+export function setPlayStyle(patch: {
+  [K in keyof PlayStyle]?: Partial<PlayStyle[K]> | PlayStyle[K];
+}) {
+  const cur = playStyle();
+  const next = { ...cur } as Record<string, unknown>;
+  for (const [k, v] of Object.entries(patch))
+    next[k] =
+      v !== null && typeof v === "object"
+        ? { ...(cur[k as keyof PlayStyle] as object), ...(v as object) }
+        : v;
+  const wasRhythm = rhythmOn(cur);
+  useSettings.getState().set({ playStyle: sanitizePlayStyle(next) });
+  const style = playStyle();
+  if (!style.latch && cur.latch) endLatched();
+  if (rhythmOn(style) !== wasRhythm) {
+    // from held notes to a rhythm, or back: what's held starts over the new way
+    if (rhythmOn(style))
+      for (const p of active()) {
+        for (const v of p.voices.values()) stopNote(v);
+        p.voices.clear();
+      }
+    else stopRhythm();
+  }
+  revoice();
+}
+
+/** Latch on or off (the command `keys.latch`, the panel's toggle). */
+export function toggleLatch() {
+  setPlayStyle({ latch: !playStyle().latch });
+}
+
+export function setSmoothVoicing(on: boolean) {
+  useSettings.getState().set({ smoothVoicing: on });
+  revoice();
+}
+
+export function setBassTrack(id: string | null) {
+  useSettings.getState().set({ bassTrack: id });
+  revoice();
+}
+
+export function setBassMode(mode: "auto" | "split", split?: number) {
+  useSettings
+    .getState()
+    .set({ bassMode: mode, ...(split !== undefined ? { bassSplit: split } : {}) });
+  revoice();
+}
+
+// The rhythm engine (state/perform.ts) asks the keys what they hold and plays it through them
+setRhythmPlayer({
+  pool(): Pool | null {
+    const keys = active();
+    if (!keys.length) return null;
+    const chord: number[] = [];
+    const bass: number[] = [];
+    for (const p of keys) {
+      const kc = notesOf(p.out, p.key, p.prev);
+      for (const n of kc.notes)
+        if (kc.bass.includes(n)) {
+          if (!bass.includes(n)) bass.push(n);
+        } else if (!chord.includes(n)) chord.push(n);
+    }
+    return { chord, bass, velocity: keys.at(-1)!.velocity };
+  },
+  play(n) {
+    const newest = active().at(-1);
+    const out = (n.bass && bassOutput()) || newest?.out;
+    if (!out) return () => {};
+    let v: Voice | null = null;
+    const record = useStore.getState().playing;
+    const off = () => {
+      if (v) stopNote(v, Math.max(audioNow(), n.start));
+      v = null;
+    };
+    const cancelStart = schedule(n.start, (at) => {
+      v = startNote(out, n.pitch, n.velocity, { at, hitAt: n.hitAt, spread: n.spread, record });
+    });
+    const cancelEnd = schedule(n.end, (at) => {
+      if (v) stopNote(v, at);
+      v = null;
+    });
+    return () => {
+      cancelStart();
+      cancelEnd();
+      off();
+    };
+  },
+  hold(pitch, velocity, at) {
+    const out = bassOutput() || active().at(-1)?.out;
+    if (!out) return () => {};
+    let v: Voice | null = null;
+    const record = useStore.getState().playing;
+    const cancel = schedule(at, (t) => {
+      v = startNote(out, pitch, velocity, { at: t, record });
+    });
+    return () => {
+      cancel();
+      if (v) stopNote(v);
+      v = null;
+    };
+  },
+});
+
+// Stop (a panic, D99) lets go of what's latched too
+onPerformPanic(() => {
+  endLatched();
+  publish();
+});
 
 /** Pitch bend (−1..1), mod wheel and aftertouch (0..1) for the keys' voice. */
 export function keysControl(name: "modwheel" | "aftertouch" | "pitchbend", value: number) {

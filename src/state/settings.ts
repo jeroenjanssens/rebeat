@@ -1,4 +1,5 @@
 /** User settings (not per project): theme, UI scale, audio devices, shortcuts, layout. */
+import { DEFAULT_PLAY_STYLE, type PlayStyle } from "../model/perform";
 import { create } from "zustand";
 import type { MidiMapping } from "../model/project";
 import type { PadsChannel } from "../midi/mapping";
@@ -128,6 +129,17 @@ export interface Settings {
   bassOctaves: 0 | 1 | 2 | 3;
   /** Chord voicing (D140): inversions of every chord the pads make, −8..8 (0 = root position). */
   chordVoicing: number;
+  /** How the keys play (D149–D153): strum, slop, the arpeggiator, a pattern, latch, balance.
+   * Read it through `sanitizePlayStyle`: older settings may lack parts. */
+  playStyle: PlayStyle;
+  /** Smooth voicing (D152): each chord the voicing closest to the one before. */
+  smoothVoicing: boolean;
+  /** The bass on its own track (D154): a Notes track's id, or null for the chord's sound. */
+  bassTrack: string | null;
+  /** Auto: the root with every chord; split: keys below `bassSplit` play the bass alone. */
+  bassMode: "auto" | "split";
+  /** The first key that plays chords in split mode (MIDI note); the keys below it are the bass. */
+  bassSplit: number;
   previewVolume: number;
   /** When nothing plays yet, the first loop recording sets the tempo (loop-pedal style). */
   freeFirstLoop: boolean;
@@ -197,6 +209,11 @@ export const DEFAULT_SETTINGS: Settings = {
   keyDial: "instant",
   bassOctaves: 0,
   chordVoicing: 0,
+  playStyle: DEFAULT_PLAY_STYLE,
+  smoothVoicing: false,
+  bassTrack: null,
+  bassMode: "auto",
+  bassSplit: 48,
   previewVolume: 0.8,
   freeFirstLoop: false,
   onboarded: false,
