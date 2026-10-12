@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CATALOG, FAMILIES, catalogId, gmName } from "./instruments";
+import { CATALOG, FAMILIES, catalogId, gmName, sustainsByLooping } from "./instruments";
 
 describe("instrument catalog", () => {
   it("has unique ids that match the sources", () => {
@@ -37,5 +37,15 @@ describe("instrument catalog", () => {
     const trumpet = CATALOG.find((c) => c.id === "smplr:sf:trumpet")!;
     expect(trumpet.group).toBe("Brass");
     expect(CATALOG.find((c) => c.id === "smplr:sf:acoustic_bass")!.low).toBe(true);
+  });
+});
+
+describe("held notes of streamed instruments (D143)", () => {
+  it("loops the samples of instruments that sustain, not of those that die away", () => {
+    for (const p of ["church_organ", "string_ensemble_1", "brass_section", "flute", "pad_2_warm"])
+      expect(sustainsByLooping(`sf:${p}`)).toBe(true);
+    for (const p of ["acoustic_grand_piano", "pizzicato_strings", "orchestral_harp", "marimba"])
+      expect(sustainsByLooping(`sf:${p}`)).toBe(false);
+    expect(sustainsByLooping("piano")).toBe(false);
   });
 });

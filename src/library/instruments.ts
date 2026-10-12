@@ -199,6 +199,38 @@ export const CATALOG: CatalogInstrument[] = [
   })),
 ];
 
+/** GM groups whose notes go on as long as they're held (bowed, blown, organs, synth leads and pads). */
+const SUSTAINED_GM_GROUPS = new Set([
+  "Organ",
+  "Strings",
+  "Ensemble",
+  "Brass",
+  "Reed",
+  "Pipe",
+  "Synth lead",
+  "Synth pad",
+]);
+const PLUCKED_OR_STRUCK = new Set([
+  "pizzicato_strings",
+  "orchestral_harp",
+  "timpani",
+  "orchestra_hit",
+]);
+const SUSTAINED_ETHNIC = new Set(["bagpipe", "fiddle", "shanai"]);
+
+/**
+ * Whether a streamed preset's notes loop their sample while they last (D143). The General MIDI
+ * samples are about 2 s long, so an organ or a string section went silent under a held key;
+ * pianos, plucks and mallets die away by themselves and would replay their attack if looped.
+ */
+export function sustainsByLooping(preset: string): boolean {
+  if (!preset.startsWith("sf:")) return false;
+  const name = preset.slice(3);
+  const i = GM_NAMES.indexOf(name as (typeof GM_NAMES)[number]);
+  if (i < 0 || PLUCKED_OR_STRUCK.has(name)) return false;
+  return SUSTAINED_GM_GROUPS.has(GM_GROUPS[Math.floor(i / 8)]) || SUSTAINED_ETHNIC.has(name);
+}
+
 /** The catalog id of a sound ("synth:acid", "smplr:piano", "user:…"), or null for samples. */
 export function catalogId(src: Sound): string | null {
   if (src.from) return src.from;

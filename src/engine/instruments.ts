@@ -10,7 +10,7 @@ import { effectivePatch, patchOf, voiceSound } from "../library/synthTrack";
 import { sanitizePatch } from "../model/synth";
 import { workletSynth, type WorkletSynth } from "./synth/node";
 import { markBusy, markDownloaded } from "../library/downloads";
-import { CATALOG } from "../library/instruments";
+import { CATALOG, sustainsByLooping } from "../library/instruments";
 import { toUnit } from "../model/params";
 import { noteName } from "../model/notes";
 import type { Note, Sound, Track } from "../model/types";
@@ -235,6 +235,8 @@ function smplrVoice(src: Sound, dest: Tone.Gain): InstrumentVoice {
   const preset = src.preset ?? "";
   // smplr wants a native node; the channel input is a Tone.Gain around one
   const destination = dest.input as unknown as AudioNode;
+  // organs, strings, brass…: their samples are short, so they loop for as long as a note lasts
+  const loop = sustainsByLooping(preset);
   let inst: Smplr | null = null;
   let disposed = false;
   let state: "ready" | "loading" | "error" = "loading";
@@ -267,11 +269,12 @@ function smplrVoice(src: Sound, dest: Tone.Gain): InstrumentVoice {
           velocity: Math.round(n.velocity * 127),
           time,
           duration: n.length * step * 0.95,
+          loop,
         });
     },
     hold(pitch, velocity, time) {
       if (state !== "ready" || !inst) return () => {};
-      const stop = inst.start({ note: pitch, velocity: Math.round(velocity * 127), time });
+      const stop = inst.start({ note: pitch, velocity: Math.round(velocity * 127), time, loop });
       return (end) => stop(end);
     },
     releaseAll: () => inst?.stop(),
