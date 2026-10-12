@@ -17,6 +17,7 @@ import {
   playKeysSample,
 } from "../engine/engine";
 import { noteName, type Key } from "../model/notes";
+import { playStartTime } from "../engine/transport";
 import {
   progressionById,
   qualityOf,
@@ -28,6 +29,7 @@ import { keyModeChord, sameKey, stepKeyRoot, stepKeyScale } from "../model/keyMo
 import { BASS_OCTAVES, padChord, voiceChord, VOICING_RANGE } from "../model/padChords";
 import {
   balanceFactors,
+  patternById,
   sanitizePlayStyle,
   slopFor,
   smoothVoicing,
@@ -40,6 +42,7 @@ import {
   pokeRhythm,
   rhythmOn,
   schedule,
+  setAhead,
   setRhythmPlayer,
   stopRhythm,
   strumDown,
@@ -58,7 +61,7 @@ export type KeysTarget =
   | { kind: "sound"; source: "catalog" | "sample"; id: string; name: string };
 
 /** Where a held note came from (for the monitor and the Controller panel). */
-export type KeysSource = "midi" | "screen" | "computer" | "piano-roll";
+export type KeysSource = "midi" | "screen" | "computer" | "piano-roll" | "auto";
 
 /**
  * A synth editor the keys can follow (D132): its track, or a library sound's own voice (D91).
@@ -103,6 +106,8 @@ interface KeysState {
   /** The next chords to play (D158), best first; the last key played (to mark the nearest). */
   suggestions: Suggestion[];
   lastKey: number | null;
+  /** Auto (D162): running or armed, its next change (audio time) and the time between changes. */
+  auto: { running: boolean; armed: boolean; nextAt: number | null; dur: number };
 }
 
 /** A key that's down and what it plays: itself, a chord, or nothing (another key took over). */
@@ -127,6 +132,7 @@ export const useKeys = create<KeysState>()(() => ({
   latched: false,
   suggestions: [],
   lastKey: null,
+  auto: { running: false, armed: false, nextAt: null, dur: 2 },
 }));
 
 export function setKeysTarget(target: KeysTarget) {
@@ -387,8 +393,13 @@ function voiceFor(out: Output, pitch: number, velocity: number, t: NoteTiming): 
 }
 
 /** Start a note `delay` seconds from now (a strum's or a slop's), recorded at its time. */
-function startNoteLater(out: Output, pitch: number, velocity: number, delay: number): Voice {
-  const hitAt = audioNow();
+function startNoteLater(
+  out: Output,
+  pitch: number,
+  velocity: number,
+  delay: number,
+  hitAt = audioNow(),
+): Voice {
   const v: Voice = { release: () => {}, recordId: null, pending: true };
   v.cancel = schedule(hitAt + delay, (at) => {
     const record = useStore.getState().playing;
@@ -477,9 +488,14 @@ function notesOf(
   key: number,
   prev: number[] | null = null,
   forced: number[] | null = null,
+  melody = false,
 ): KeyChord {
   const s = useSettings.getState();
   const t = useKeys.getState().transpose;
+  if (melody) {
+    const n = key + t;
+    return { notes: inMidi(n) ? [n] : [], chord: false, bass: [], voicing: null };
+  }
   if (!forced && isSplitBass(key)) {
     const n = key + t;
     return { notes: inMidi(n) ? [n] : [], chord: false, bass: inMidi(n) ? [n] : [], voicing: null };
@@ -650,10 +666,14 @@ interface Pressed {
   prev: number[] | null;
   /** A suggestion's chord (D159): what it plays instead of the key's own. */
   forced: number[] | null;
+  /** A melody note over Auto (D162): the key on its own, never a chord. */
+  melody?: boolean;
+  /** One of Auto's chords (no key is down for it). */
+  auto?: boolean;
 }
 
 /** What a key that's down plays now. */
-const chordOf = (p: Pressed) => notesOf(p.out, p.key, p.prev, p.forced);
+const chordOf = (p: Pressed) => notesOf(p.out, p.key, p.prev, p.forced, p.melody);
 /** Whether a key that's down is a split's bass key (D154). */
 const splitBass = (p: Pressed) => !p.forced && isSplitBass(p.key);
 
@@ -664,12 +684,14 @@ let latched: Pressed[] = [];
 /** The last chord the keys played, and when (Smooth voicing starts afresh after a pause). */
 let lastChord: { notes: number[]; at: number } | null = null;
 
-const active = () => [...latched, ...down].filter((p) => !p.ended);
+const active = () =>
+  [...latched, ...down, ...(autoPress ? [autoPress] : [])].filter((p) => !p.ended);
 
 /** Start a held note on the keys' target; the returned function releases it. */
 export function noteOn(pitch: number, velocity: number, source: KeysSource): () => void {
   if (quickKeySelect(pitch)) return () => {};
-  return press(pitch, velocity, source, null);
+  // while Auto plays the chords, the keys play a melody over them (D162)
+  return press(pitch, velocity, source, null, { melody: auto.running });
 }
 
 /**
@@ -681,27 +703,32 @@ function press(
   velocity: number,
   source: KeysSource,
   forced: number[] | null,
+  opts: { melody?: boolean; auto?: boolean; at?: number } = {},
 ): () => void {
   const out = output();
   if (!out) return () => {};
   const style = playStyle();
+  const { melody = false, auto: isAuto = false, at } = opts;
   // Latch: a key after all were up starts a new set (keys while others are down add to it)
-  if (style.latch && down.length === 0) endLatched();
+  if (style.latch && down.length === 0 && !melody && !isAuto) endLatched();
   // Split (D154): one bass note at a time, the last one wins
-  if (!forced && isSplitBass(pitch)) for (const q of active()) if (splitBass(q)) end(q);
+  if (!forced && !melody && isSplitBass(pitch)) for (const q of active()) if (splitBass(q)) end(q);
   const now = performance.now();
   const prev = lastChord && now - lastChord.at < 4000 ? lastChord.notes : null;
-  const kc = notesOf(out, pitch, prev, forced);
-  // one chord at a time: a new key takes the chord over from the others (as on the Orchid)
-  if (kc.chord) for (const q of active()) if (!splitBass(q)) end(q);
+  const kc = notesOf(out, pitch, prev, forced, melody);
+  // one chord at a time: a new key takes the chord over from the others (as on the Orchid);
+  // Auto's next chord takes over at its change, a melody note over it never does
+  if (kc.chord)
+    for (const q of active()) if (!splitBass(q) && !q.melody) end(q, isAuto ? at : undefined);
   if (kc.chord) {
     lastChord = { notes: kc.notes.filter((n) => !kc.bass.includes(n)), at: now };
     useKeys.setState({ voicingUsed: kc.voicing });
-    // what you played, for the next suggestions (D158): the chord as pressed, before transpose
+    // what you played, for the next suggestions (D158): the chord as pressed, before transpose;
+    // a passing chord over Auto doesn't move its progression on
     const raw = forced ?? padNotes(pitch);
-    if (raw) remember(raw[0], raw);
+    if (raw && !(auto.running && !isAuto)) remember(raw[0], raw);
   }
-  if (!forced && !isSplitBass(pitch)) useKeys.setState({ lastKey: pitch });
+  if (!forced && !melody && !isSplitBass(pitch)) useKeys.setState({ lastKey: pitch });
   const p: Pressed = {
     key: pitch,
     velocity,
@@ -711,13 +738,23 @@ function press(
     ended: false,
     prev,
     forced,
+    melody,
+    auto: isAuto,
   };
-  if (rhythmOn(style)) {
+  // a melody note is held as it is, whatever plays the chords
+  if (melody) startVoices(p, kc, style, kc.notes);
+  else if (rhythmOn(style)) {
     // the rhythm plays it; while stopped, step entry writes the chord as it is (D149)
-    stepEntry(out, kc.notes, velocity);
-  } else startVoices(p, kc, style, kc.notes);
-  if ((out.kind === "sample" || out.kind === "voice") && out.track.mode !== "notes")
+    if (!isAuto) stepEntry(out, kc.notes, velocity);
+  } else startVoices(p, kc, style, kc.notes, at);
+  if (!isAuto && (out.kind === "sample" || out.kind === "voice") && out.track.mode !== "notes")
     padInput(out.track, velocity);
+  if (isAuto) {
+    autoPress = p;
+    publish();
+    pokeRhythm();
+    return () => end(p);
+  }
   down.push(p);
   publish();
   pokeRhythm();
@@ -740,7 +777,10 @@ function press(
  * don't need a grid (D150): Strum spreads them, Slop moves them later and varies them, Balance
  * shapes their velocities. Bass notes play on the bass's track when it has one (D154).
  */
-function startVoices(p: Pressed, kc: KeyChord, style: PlayStyle, which: number[]) {
+function startVoices(p: Pressed, kc: KeyChord, style: PlayStyle, which: number[], at?: number) {
+  // a start time ahead (Auto's change, D162): every note waits for it
+  const ahead = at === undefined ? 0 : Math.max(0, at - audioNow());
+  const hitAt = at ?? audioNow();
   const notes = [...which].sort((a, b) => a - b);
   const offs = style.strum.on ? strumOffsets(notes.length, style.strum.time, strumDown(style)) : [];
   const all = [...kc.notes].sort((a, b) => a - b);
@@ -750,10 +790,15 @@ function startVoices(p: Pressed, kc: KeyChord, style: PlayStyle, which: number[]
     const slop = style.slop.on
       ? slopFor(style.slop.amount, Math.random(), Math.random())
       : { delay: 0, vel: 1 };
-    const delay = (offs[i] ?? 0) + slop.delay;
+    const spread = (offs[i] ?? 0) + slop.delay;
+    const delay = ahead + spread;
     const vel = Math.max(0.05, Math.min(1, p.velocity * bal[all.indexOf(n)] * slop.vel));
     const out = kc.bass.includes(n) && bassOut ? bassOut : p.out;
-    p.voices.set(n, delay > 0.0005 ? startNoteLater(out, n, vel, delay) : startNote(out, n, vel));
+    // its time is the hit's (now, or Auto's change) plus its own spread (strum, slop)
+    p.voices.set(
+      n,
+      delay > 0.0005 ? startNoteLater(out, n, vel, spread, hitAt) : startNote(out, n, vel),
+    );
   });
 }
 
@@ -779,13 +824,15 @@ function endLatched() {
 }
 
 /** Stop what a key plays (when the pedal comes up, if it's down). */
-function end(p: Pressed) {
+function end(p: Pressed, at?: number) {
   if (p.ended) return;
   p.ended = true;
   latched = latched.filter((q) => q !== p);
   const voices = [...p.voices.values()];
   p.voices.clear();
-  whenReleased(() => voices.forEach((v) => stopNote(v)));
+  // Auto's chords end at their change (D162); a key's when it goes up (or the pedal does)
+  if (at !== undefined) voices.forEach((v) => stopNote(v, at));
+  else whenReleased(() => voices.forEach((v) => stopNote(v)));
 }
 
 /**
@@ -795,9 +842,11 @@ function end(p: Pressed) {
  * again. With a rhythm on, the rhythm plays what they hold now.
  */
 function revoice() {
-  const newest = active().at(-1);
+  const newest = active()
+    .filter((q) => !q.melody)
+    .at(-1);
   if (newest && !splitBass(newest) && (newest.forced ?? padNotes(newest.key)))
-    for (const q of active()) if (q !== newest && !splitBass(q)) end(q);
+    for (const q of active()) if (q !== newest && !splitBass(q) && !q.melody) end(q);
   const style = playStyle();
   for (const p of active()) {
     const kc = chordOf(p);
@@ -892,10 +941,26 @@ function remember(root: number, notes: number[]) {
 export function playSuggestion(i: number, velocity: number, source: KeysSource): () => void {
   const sug = useKeys.getState().suggestions[i];
   if (!sug) return () => {};
-  const near = useKeys.getState().lastKey ?? 60;
-  const root = near - 6 + ((((sug.root - (near - 6)) % 12) + 12) % 12);
+  const root = rootNear(sug.root);
   const chord = padChord(root, sug.pads);
   if (!chord) return () => {};
+  if (auto.running) {
+    // pad 1 over Auto: on to the next chord now; pads 2–8: a passing chord while held (D162)
+    if (i === 0) {
+      autoChord(audioNow());
+      return () => {};
+    }
+    auto.passing++;
+    const up = press(root, velocity, source, chord);
+    return () => {
+      up();
+      auto.passing = Math.max(0, auto.passing - 1);
+      // Auto's chord again, where it was
+      const cur = lastAutoChord;
+      if (auto.running && auto.passing === 0 && cur)
+        press(cur.root, AUTO_VELOCITY, "auto", cur.chord, { auto: true, at: audioNow() });
+    };
+  }
   return press(root, velocity, source, chord);
 }
 
@@ -920,6 +985,154 @@ export function setSuggestAdventure(level: 0 | 1 | 2) {
   useSettings.getState().set({ suggestAdventure: level });
   refreshSuggestions();
 }
+
+// ---------- Auto: the progression plays itself (D162–D164) ----------
+
+/** Auto's state: running, armed (it starts with Play), its next change, how many chords played,
+ * passing chords held over it, and whether it started with the song (it waits again after). */
+const auto = {
+  running: false,
+  armed: false,
+  withSong: false,
+  nextAt: 0,
+  count: 0,
+  passing: 0,
+};
+/** The chord Auto is playing (no key is down for it). */
+let autoPress: Pressed | null = null;
+/** How hard Auto plays its chords. */
+const AUTO_VELOCITY = 0.8;
+export const AUTO_EVERY = [1, 2, 3, 4, 6, 8] as const;
+
+/** A unit Auto counts in, in 16ths: the pattern's length (D153) when one plays, else a bar. */
+export function autoUnit(): { steps: number; pattern: boolean } {
+  const st = playStyle();
+  if (st.pattern.on) return { steps: patternById(st.pattern.id).length, pattern: true };
+  const [beats, unit] = useStore.getState().project.timeSignature ?? [4, 4];
+  return { steps: (beats * 16) / unit, pattern: false };
+}
+
+/** Seconds between Auto's chord changes. */
+function changeDur(): number {
+  const every = Math.max(1, useSettings.getState().autoEvery);
+  return (every * autoUnit().steps * 60) / useStore.getState().project.bpm / 4;
+}
+
+/** A root note for a suggestion: its pitch class in the octave nearest the last key. */
+function rootNear(pc: number): number {
+  const near = useKeys.getState().lastKey ?? 60;
+  return near - 6 + ((((pc - (near - 6)) % 12) + 12) % 12);
+}
+
+/** Auto's next chord, at `at`: pad 1's (the progression's next, or the best suggestion). */
+function autoChord(at: number) {
+  const s = useSettings.getState();
+  const prog = progressionById(s.nextProgression);
+  // Loop off: after the progression's last chord, stop at what would be the next change
+  if (!s.autoLoop && prog && auto.count >= prog.chords.length) return stopAuto(at);
+  auto.count++;
+  // a passing chord held: Auto keeps time, silently (it comes back when it's let go)
+  if (auto.passing > 0) return;
+  const sug = useKeys.getState().suggestions[0];
+  if (!sug) return;
+  const root = rootNear(sug.root);
+  const chord = padChord(root, sug.pads);
+  if (!chord) return;
+  lastAutoChord = { root, chord };
+  press(root, AUTO_VELOCITY, "auto", chord, { auto: true, at });
+}
+
+/** Auto's chord, to come back to after a passing chord. */
+let lastAutoChord: { root: number; chord: number[] } | null = null;
+
+function aheadOfRhythm(_now: number, horizon: number): boolean {
+  if (!auto.running) return false;
+  while (auto.running && auto.nextAt <= horizon) {
+    autoChord(auto.nextAt);
+    auto.nextAt += changeDur();
+  }
+  publishAuto();
+  return auto.running;
+}
+
+function publishAuto() {
+  useKeys.setState({
+    auto: {
+      running: auto.running,
+      armed: auto.armed,
+      nextAt: auto.running ? auto.nextAt : null,
+      dur: changeDur(),
+    },
+  });
+}
+
+/** Start Auto at `at`; from the progression's first chord (a take with the song) or pad 1's. */
+function beginAuto(at: number, fromTop: boolean) {
+  if (fromTop) forgetChords();
+  auto.running = true;
+  auto.nextAt = at;
+  auto.count = 0;
+  auto.passing = 0;
+  setAhead(aheadOfRhythm);
+  publishAuto();
+}
+
+/**
+ * ▶ Auto (D162, D163): while the song is stopped and "starts with Play" is on, Auto waits (armed)
+ * and starts with the song, after the count-in, from the top; while the song plays, on its next
+ * bar; else at once.
+ */
+export function startAuto() {
+  if (auto.running) return;
+  const playing = !!useStore.getState().playing;
+  if (!playing && useSettings.getState().autoWithPlay) {
+    auto.armed = true;
+    return publishAuto();
+  }
+  auto.withSong = playing;
+  beginAuto(playing ? nextBar() : audioNow() + 0.02, false);
+}
+
+/** ■ Stop: Auto stops (its chord too, at `at` or now) and isn't armed any more. */
+export function stopAuto(at?: number) {
+  auto.armed = false;
+  haltAuto(at);
+}
+
+function haltAuto(at?: number) {
+  auto.running = false;
+  if (autoPress) end(autoPress, at);
+  autoPress = null;
+  publish();
+  pokeRhythm();
+  publishAuto();
+}
+
+export function toggleAuto() {
+  if (auto.running || auto.armed) stopAuto();
+  else startAuto();
+}
+
+/** The audio time of the song's next bar (it plays). */
+function nextBar(): number {
+  const { project } = useStore.getState();
+  const [beats, unit] = project.timeSignature ?? [4, 4];
+  const bar = (beats * (4 / unit) * 60) / project.bpm;
+  const start = playStartTime();
+  return start + Math.max(0, Math.ceil((audioNow() + 0.01 - start) / bar)) * bar;
+}
+
+// the song starts: an armed Auto starts with it, on its first step after the count-in, from the
+// top; the song stops: Auto stops, and an armed one waits for the next Play (take after take)
+useStore.subscribe?.((s, prev) => {
+  if (s.playing && !prev.playing && auto.armed && !auto.running)
+    // the transport sets its first step's time right after it says it plays
+    queueMicrotask(() => {
+      auto.withSong = true;
+      beginAuto(playStartTime(), true);
+    });
+  if (!s.playing && prev.playing && auto.running && auto.withSong) haltAuto();
+});
 
 // ---------- play styles (D149–D154) ----------
 
@@ -980,6 +1193,7 @@ setRhythmPlayer({
     const chord: number[] = [];
     const bass: number[] = [];
     for (const p of keys) {
+      if (p.melody) continue; // a melody over Auto plays on its own
       const kc = chordOf(p);
       for (const n of kc.notes)
         if (kc.bass.includes(n)) {
@@ -989,7 +1203,9 @@ setRhythmPlayer({
     return { chord, bass, velocity: keys.at(-1)!.velocity };
   },
   play(n) {
-    const newest = active().at(-1);
+    const newest = active()
+      .filter((p) => !p.melody)
+      .at(-1);
     const out = (n.bass && bassOutput()) || newest?.out;
     if (!out) return () => {};
     let v: Voice | null = null;
@@ -1030,6 +1246,7 @@ setRhythmPlayer({
 // Stop (a panic, D99) lets go of what's latched too, and every key goes dark
 onPerformPanic(() => {
   endLatched();
+  if (auto.running) haltAuto();
   publish();
   light(null, false, audioNow());
 });

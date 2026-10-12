@@ -130,6 +130,11 @@ export interface Settings {
     | { kind: "sound"; source: "catalog" | "sample"; id: string; name: string };
   /** Next mode (D161): a progression whose next chord pad 1 holds, or null (the best one). */
   nextProgression: string | null;
+  /** Auto (D162): change every this many patterns (bars without a pattern); go round again; arm
+   * with Play (start with the song, after the count-in). */
+  autoEvery: number;
+  autoLoop: boolean;
+  autoWithPlay: boolean;
   /** Key mode's own key (D138), independent of the project. */
   keyModeKey: { root: number; scale: string };
   /** The Key dial (the MiniLab's black knob in Key mode): a turn changes the key at once, or
@@ -228,6 +233,9 @@ export const DEFAULT_SETTINGS: Settings = {
   suggest: false,
   suggestAdventure: 1,
   nextProgression: null,
+  autoEvery: 1,
+  autoLoop: true,
+  autoWithPlay: true,
   keysTarget: { kind: "sound", source: "catalog", id: "smplr:piano", name: "Grand Piano" },
   previewVolume: 0.8,
   freeFirstLoop: false,

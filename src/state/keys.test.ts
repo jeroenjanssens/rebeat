@@ -725,3 +725,120 @@ describe("suggestions and Next mode (D158, D159)", () => {
     expect(useKeys.getState().suggestions.length).toBeGreaterThan(0);
   });
 });
+
+describe("Auto: the progression plays itself (D162)", () => {
+  const { setSuggest, forgetChords, startAuto, stopAuto, setNextProgression, playSuggestion } =
+    keysApi;
+  const { flushPerform } = performApi;
+  const bar = () => (16 * 60) / project.bpm / 4;
+  /** The roots of the chords held (holdNote calls with the chord's lowest note per start time). */
+  const chordsPlayed = () => {
+    const byTime = new Map<number, number[]>();
+    for (const c of holdNote.mock.calls) {
+      const at = Math.round(((c as unknown[])[3] as number) * 1000);
+      byTime.set(at, [...(byTime.get(at) ?? []), c[1] as number]);
+    }
+    return [...byTime.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([, n]) => n.sort((a, b) => a - b));
+  };
+  const name = (notes: number[]) =>
+    ["C", "C♯", "D", "E♭", "E", "F", "F♯", "G", "A♭", "A", "B♭", "B"][notes[0] % 12];
+
+  beforeEach(() => {
+    keysSustain(false);
+    releaseAllKeys();
+    vi.clearAllMocks();
+    holdNote.mockImplementation(() => holdNoteRelease);
+    setKeysTarget({ kind: "selected" });
+    setKeyModeKey({ root: 0, scale: "major" });
+    useSettings.getState().set({
+      autoWithPlay: false,
+      autoEvery: 1,
+      autoLoop: true,
+      playStyle: performModel.DEFAULT_PLAY_STYLE,
+    });
+    setPadMode("next");
+    setNextProgression("royalroad");
+    forgetChords();
+  });
+  afterEach(() => {
+    stopAuto();
+    setNextProgression(null);
+    setSuggest(false);
+    setPadMode("drum");
+    flushPerform(1000);
+  });
+
+  it("walks the progression, a chord per bar, each at its change", () => {
+    startAuto();
+    for (let b = 0; b < 4; b++) flushPerform(b * bar());
+    const played = chordsPlayed().filter((n) => n.length >= 3);
+    expect(played.map(name)).toEqual(["F", "G", "E", "A"]);
+    // each at its change, a bar apart
+    const times = [...new Set(holdNote.mock.calls.map((c) => (c as unknown[])[3] as number))].sort(
+      (a, b) => a - b,
+    );
+    expect(times[1] - times[0]).toBeCloseTo(bar(), 3);
+  });
+
+  it("counts in patterns when one plays: the waltz changes every three beats", () => {
+    keysApi.setPlayStyle({ pattern: { on: true, id: "waltz" } });
+    expect(keysApi.autoUnit()).toEqual({ steps: 12, pattern: true });
+    keysApi.setPlayStyle({ pattern: { on: false } });
+    expect(keysApi.autoUnit()).toEqual({ steps: 16, pattern: false });
+  });
+
+  it("the keys play a melody over it, and the chord goes on", () => {
+    startAuto();
+    flushPerform(0);
+    const before = holdNoteRelease.mock.calls.length;
+    const up = noteOn(76, 0.9, "midi");
+    const melody = holdNote.mock.calls.at(-1)!;
+    expect(melody[1]).toBe(76);
+    expect(holdNoteRelease.mock.calls.length).toBe(before); // the chord wasn't ended
+    up();
+  });
+
+  it("a passing chord replaces it while held, then it comes back", () => {
+    startAuto();
+    flushPerform(0); // F
+    const up = playSuggestion(1, 0.8, "screen");
+    const passing = holdNote.mock.calls.at(-1)![1] as number;
+    expect(passing % 12).not.toBe(5);
+    vi.clearAllMocks();
+    holdNote.mockImplementation(() => holdNoteRelease);
+    up();
+    // F again
+    expect(chordsPlayed().map(name)).toEqual(["F"]);
+  });
+
+  it("with Loop off, stops after the last chord", () => {
+    useSettings.getState().set({ autoLoop: false });
+    startAuto();
+    for (let b = 0; b < 6; b++) flushPerform(b * bar());
+    expect(chordsPlayed().filter((n) => n.length >= 3)).toHaveLength(4);
+    expect(useKeys.getState().auto.running).toBe(false);
+  });
+
+  it("Free follows the best suggestion every time", () => {
+    setNextProgression(null);
+    startAuto();
+    for (let b = 0; b < 3; b++) flushPerform(b * bar());
+    const played = chordsPlayed()
+      .filter((n) => n.length >= 3)
+      .map(name);
+    expect(played[0]).toBe("C"); // nothing played: home
+    expect(played).toHaveLength(3);
+  });
+
+  it("armed with Play: waits while the song is stopped", () => {
+    useSettings.getState().set({ autoWithPlay: true });
+    startAuto();
+    expect(useKeys.getState().auto).toMatchObject({ armed: true, running: false });
+    flushPerform(0);
+    expect(holdNote).not.toHaveBeenCalled();
+    stopAuto();
+    expect(useKeys.getState().auto.armed).toBe(false);
+  });
+});

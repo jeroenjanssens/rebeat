@@ -58,15 +58,28 @@ function ensureTicking() {
 }
 
 function idle() {
-  if (jobs.size === 0 && !rhythm.running && stopTicker) {
+  if (jobs.size === 0 && !rhythm.running && !ahead && stopTicker) {
     stopTicker();
     stopTicker = null;
   }
 }
 
+/**
+ * Something that changes what's held at exact times ahead (Auto, D162): it runs before the rhythm,
+ * so a change at a step's time is there when that step is played. Returns whether it's still on.
+ */
+type Ahead = (now: number, horizon: number) => boolean;
+let ahead: Ahead | null = null;
+
+export function setAhead(fn: Ahead | null) {
+  ahead = fn;
+  if (fn) ensureTicking();
+}
+
 /** Hand everything due before `now + LOOKAHEAD` to the voices (the ticker calls it). */
 export function flushPerform(now = audioNow()) {
   const horizon = now + LOOKAHEAD;
+  if (ahead && !ahead(now, horizon)) ahead = null;
   tickRhythm(now, horizon);
   const due = [...jobs].filter((j) => j.time <= horizon).sort((a, b) => a.time - b.time);
   for (const j of due) {
