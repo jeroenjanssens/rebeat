@@ -92,7 +92,7 @@ In Next mode a menu picks one of the famous progressions that fit the key; pad 1
 holds its next chord (following where you are), the other pads the usual suggestions. The
 menu shows each one's roman numerals, its chords in the key and what it is.
 
-## 3c. Auto: the progression plays itself (agreed 2026-10-12, D162–D163)
+## 3c. Auto: the progression plays itself (agreed 2026-10-12, D162–D164)
 
 In Next mode, with a progression picked, **▶ Auto** plays it by itself: the chord changes on its
 own, in time, and **■ Stop** ends it. You play over it (or record it: a quick way to write a
@@ -152,12 +152,42 @@ keys, so it lands in the keys' track, on the grid (each chord at its exact hit t
 - **Stays armed**: when the song stops, Auto stops and waits again; the next Play starts it from
   the top (take after take). ■ Stop disarms it.
 - While the song plays, ▶ Auto starts on the next bar (as before).
-- **The page must be long enough**: a progression takes chords × every × the pattern's (or a bar's)
-  length; on a shorter page, the recording would wrap onto itself. The row then says "takes 4
-  bars, the page has 2" with **Fit the page** (sets the page's step count, at most 128 steps; in
-  song mode across pages: later).
+- **The page must be long enough** (loop mode): a progression takes chords × every × the
+  pattern's (or a bar's) length; on a shorter page, the recording would wrap onto itself. The row
+  then says "takes 4 bars, the page has 2" with **Fit the page** (sets the page's step count, at
+  most 128 steps) or **Spread over pages** (song mode, below).
 - The count-in shows on the MiniLab's display ("Auto in 3…"); the first chord lands on bar 1.
 - Overdub/Replace and Snap work as for anything recorded.
+
+### Recording across pages in song mode (D164)
+
+In song mode the song plays its pages in order (the slots, with their repeats). Auto's clock runs
+on through page changes, so a progression longer than a page goes on into the next ones, and
+what it records lands in the page playing at that moment.
+
+- **The right page for every note**: a note is recorded into the page the song plays **at the
+  note's own time**, not the one playing when it was scheduled (`recordNoteOn` asks the
+  transport's scheduled steps, `positionAt(time)`: slot, page step, progress). Today a note
+  scheduled just before a page change would land in the old page; this fixes it for everything
+  recorded with a time (Auto, the arp, patterns, strums).
+- **Before a take, Auto checks the song from the page it starts on** and says what it finds, in
+  the Pad 1 row, each with a button:
+  - **Not enough pages**: "the progression takes 8 bars, the song has 4 from here: **Add 2
+    pages**". New pages are **copies of the page Auto starts on** (its drums and other tracks go on),
+    with the keys' track's lane emptied (and the bass track's), added after the last page the take
+    reaches, each its own pattern (a copy, not a clone). The amount covers one round of the
+    progression; press again for another round. Undo takes them all back (one step).
+  - **Clones**: two slots playing the same pattern would get each other's chords ("pages 2 and 4
+    share a pattern: what's recorded on one shows on both"): **Make copies** gives the cloned
+    slots their own patterns (D8–D13).
+  - **Repeats**: a page that plays twice would get two chords written over each other ("page 3
+    plays 2 times"): **Unroll** turns its repeats into copies.
+- **Mixed page lengths** are fine: chords follow the clock in bars (or patterns), whatever the
+  pages' lengths; a chord that starts near a page's end and goes on is recorded with its length
+  (cut at the page's end, as for any note, D131).
+- **The end of the song** stops the take (and Auto) as it stops the song.
+- **Loop mode** (the page repeats): as before, **Fit the page**, or **Spread over pages**: adds
+  the pages the progression needs (as above) and switches the song to song mode, from this page.
 
 ### Settings
 
@@ -170,7 +200,10 @@ Unit: the change points for patterns of 12, 16 and 32 sixteenths and every N; th
 next bar while playing; Loop off stops after the last chord; Stop clears; Free follows the best
 suggestion; a passing chord and back; the keys as single notes while Auto plays. E2E: Auto on the
 Royal road at a fast tempo walks F G Em Am (the equation), Stop silences; armed, Play with Rec on
-and a count-in records F G Em Am on bars 1–4 of the keys' track; the page warning and Fit the page.
+and a count-in records F G Em Am on bars 1–4 of the keys' track; the page warning and Fit the page;
+song mode: a progression over two one-bar pages... records each chord in its page (the first
+chord of page 2 not in page 1), Add pages adds copies with the keys' lane empty, Make copies and
+Unroll; unit: `positionAt` across a page change, the pages a take needs.
 
 ## 4. Step 3 (later): play-along
 
