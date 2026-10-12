@@ -290,12 +290,30 @@ function PadChordsRow({ keyMode }: { keyMode: boolean }) {
         </button>
       </div>
       <span className="label">Bass</span>
-      <div className="segmented" data-testid="bass" data-hint="controller.bass">
-        {([0, 1, 2, 3] as const).map((n) => (
-          <button key={n} data-active={bass === n} onClick={() => setBassOctaves(n)}>
-            {n === 0 ? "Off" : `−${n}`}
-          </button>
-        ))}
+      <div className="flex items-center" data-testid="bass" data-hint="controller.bass">
+        {/* − is deeper, + back toward Off */}
+        <button
+          className="tool-btn !h-6"
+          aria-label="Deeper"
+          onClick={() => setBassOctaves(Math.min(3, bass + 1) as 0 | 1 | 2 | 3)}
+        >
+          <Minus size={12} />
+        </button>
+        <button
+          className="num w-8 text-center text-[12px] text-ink"
+          title="Off"
+          data-testid="bass-value"
+          onClick={() => setBassOctaves(0)}
+        >
+          {bass ? `−${bass}` : "Off"}
+        </button>
+        <button
+          className="tool-btn !h-6"
+          aria-label="Higher"
+          onClick={() => setBassOctaves(Math.max(0, bass - 1) as 0 | 1 | 2 | 3)}
+        >
+          <Plus size={12} />
+        </button>
       </div>
       <span className="label">Transpose</span>
       <div className="flex items-center" data-testid="transpose" data-hint="controller.transpose">
@@ -391,9 +409,15 @@ export function ControllerPanel() {
   const padMode = useSettings((s) => s.padMode);
   const voicing = useSettings((s) => s.chordVoicing);
   const bassOctaves = useSettings((s) => s.bassOctaves);
+  const keysTranspose = useKeys((s) => s.transpose);
   const kLabels = knobLabels(project, selectedTrackId);
-  // Chord and Key mode (D140): knob 1 is the chord voicing, knob 5 the bass
+  // Chord and Key mode (D140, D148): knob 1 is the chord voicing, knob 2 the transpose, 5 the bass
   if (padMode !== "drum") {
+    kLabels[1] = {
+      name: "Transpose",
+      value: keysTranspose > 0 ? `+${keysTranspose}` : `${keysTranspose}`,
+      pos: (keysTranspose + 12) / 24,
+    };
     kLabels[0] = {
       name: "Voicing",
       value: voicing > 0 ? `+${voicing}` : `${voicing}`,

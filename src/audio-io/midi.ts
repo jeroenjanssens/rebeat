@@ -18,6 +18,8 @@ import {
   keyDialTurn,
   setBassOctaves,
   setChordVoicing,
+  setTranspose,
+  useKeys,
   keysControl,
   keysSustain,
   keysTakeNotes,
@@ -538,41 +540,75 @@ export const targetContext = (): TargetContext => {
   };
 };
 
+const signed = (v: number) => (v > 0 ? `+${v}` : `${v}`);
+
+/**
+ * The settings knobs step in Chord and Key mode (D140, D148), by slot: how many values, which one
+ * it's at and how to set it (0 is the knob's far left).
+ */
+const STEPPED: Record<
+  string,
+  {
+    name: string;
+    target: string;
+    values: number;
+    index: () => number;
+    set: (i: number) => void;
+    text: () => string;
+  }
+> = {
+  knob1: {
+    name: "chord voicing",
+    target: "keys:voicing",
+    values: 2 * VOICING_RANGE + 1,
+    index: () => useSettings.getState().chordVoicing + VOICING_RANGE,
+    set: (i) => setChordVoicing(i - VOICING_RANGE),
+    text: () => signed(useSettings.getState().chordVoicing),
+  },
+  knob2: {
+    name: "transpose",
+    target: "keys:transpose",
+    values: 25,
+    index: () => useKeys.getState().transpose + 12,
+    set: (i) => setTranspose(i - 12),
+    text: () => signed(useKeys.getState().transpose),
+  },
+  // left is deeper: −3, −2, −1, Off
+  knob5: {
+    name: "bass",
+    target: "keys:bass",
+    values: 4,
+    index: () => 3 - useSettings.getState().bassOctaves,
+    set: (i) => setBassOctaves((3 - i) as 0 | 1 | 2 | 3),
+    text: () => {
+      const b = useSettings.getState().bassOctaves;
+      return b ? `−${b}` : "off";
+    },
+  },
+};
+
 /** Apply a mapping to a message; returns what it did (for the monitor). */
 function applyMapping(map: MidiMapping, m: MidiMessage, scope: "project" | "global"): string {
   // where the knob was, in any pad mode: turning it in Drum mode doesn't make a jump later (D141)
   const before = m.type === "cc" ? lastValue.get(map.id) : undefined;
   if (m.type === "cc") lastValue.set(map.id, m.value);
-  // Chord and Key mode (D140): knob 1 is the chord voicing, knob 5 the bass, a step per notch
-  if (
-    (map.slot === "knob1" || map.slot === "knob5") &&
-    m.type === "cc" &&
-    useSettings.getState().padMode !== "drum"
-  ) {
-    const voicing = map.slot === "knob1";
-    // as zones, left to right: voicing −8..+8, the bass −3, −2, −1, Off
-    const settings = useSettings.getState();
-    const n = voicing ? 2 * VOICING_RANGE + 1 : 4;
-    const current = voicing ? settings.chordVoicing + VOICING_RANGE : 3 - settings.bassOctaves;
+  // Chord and Key mode (D140, D148): knobs 1, 2 and 5 are the voicing, the transpose and the bass
+  const stepped =
+    m.type === "cc" && useSettings.getState().padMode !== "drum" && STEPPED[map.slot ?? ""];
+  if (stepped) {
+    const n = stepped.values;
+    const current = stepped.index();
     const mode = knobMode(map, m.value);
     const zone = steppedKnob(map, mode, m.value, before, n, current);
-    if (zone !== current) {
-      if (voicing) setChordVoicing(zone - VOICING_RANGE);
-      else setBassOctaves((3 - zone) as 0 | 1 | 2 | 3);
-    }
-    const s = useSettings.getState();
-    const action = voicing
-      ? `${map.label}: chord voicing ${s.chordVoicing > 0 ? "+" : ""}${s.chordVoicing}`
-      : `${map.label}: bass ${s.bassOctaves ? `−${s.bassOctaves}` : "off"}`;
+    if (zone !== current) stepped.set(zone);
+    const action = `${map.label}: ${stepped.name} ${stepped.text()}`;
     report(m, action, {
       ...slotEventFromMapping(map),
       value: m.value,
-      target: voicing ? "keys:voicing" : "keys:bass",
+      target: stepped.target,
       ...(mode !== "absolute" ? { turn: relativeDelta(mode, m.value) } : {}),
-      // where the knob's needle points: the voicing in its range, the bass (Off at the right)
-      targetValue: voicing
-        ? (s.chordVoicing + VOICING_RANGE) / (2 * VOICING_RANGE)
-        : (3 - s.bassOctaves) / 3,
+      // where the knob points: the setting in its range, left to right
+      targetValue: stepped.index() / (n - 1),
     });
     return action;
   }

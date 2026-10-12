@@ -58,12 +58,12 @@ const hints: Hints = {
   },
   "controller.knob.0": {
     title: "Knob 1",
-    text: "Turns the selected track's first SOUND knob (Tune, Macro 1, or whatever the track plays). The name and value are shown below the knob. Its white cap turns as you turn the knob and lights up for a moment.",
+    text: "Turns the selected track's first SOUND knob (Tune, Macro 1, or whatever the track plays); in Chord and Key mode, the chord voicing. The name and value are shown below the knob. Its white cap turns as you turn the knob and lights up for a moment.",
     guide: "performance-your-controller",
   },
   "controller.knob.1": {
     title: "Knob 2",
-    text: "Turns the selected track's second SOUND knob. Its white cap turns as you turn the knob and lights up for a moment.",
+    text: "Turns the selected track's second SOUND knob; in Chord and Key mode, the transpose. Its white cap turns as you turn the knob and lights up for a moment.",
     guide: "performance-your-controller",
   },
   "controller.knob.2": {
@@ -78,7 +78,7 @@ const hints: Hints = {
   },
   "controller.knob.4": {
     title: "Knob 5",
-    text: "Turns the selected track's fifth SOUND knob. Its white cap turns as you turn the knob and lights up for a moment.",
+    text: "Turns the selected track's fifth SOUND knob; in Chord and Key mode, the bass. Its white cap turns as you turn the knob and lights up for a moment.",
     guide: "performance-your-controller",
   },
   "controller.knob.5": {
@@ -138,12 +138,12 @@ const hints: Hints = {
   },
   "controller.bass": {
     title: "Bass",
-    text: "When the pads make a chord (Chord and Key mode), its root also plays 1, 2 or 3 octaves below it (and below the voiced chord), on the same sound, like the Orchid's bass. It never goes below C1. Off: just the chord. On a controller: knob 5 in Chord and Key mode (left is deeper).",
+    text: "When the pads make a chord (Chord and Key mode), its root also plays 1, 2 or 3 octaves below it (and below the voiced chord), on the same sound, like the Orchid's bass. It never goes below C1. Off: just the chord. − goes deeper, + back up, click the value for Off. On a controller: knob 5 in Chord and Key mode (left is deeper).",
     guide: "performance-chord-pads",
   },
   "controller.transpose": {
     title: "Transpose",
-    text: "Moves everything the keys play up or down by semitones, chords included, in every pad mode (−12 to +12; shown in Chord and Key mode). Click the number to go back to 0. On a MiniLab 3 in Key mode: press and turn the black knob. It starts at 0 in every session.",
+    text: "Moves everything the keys play up or down by semitones, chords included, in every pad mode (−12 to +12; shown in Chord and Key mode). Click the number to go back to 0. On a controller: knob 2 in Chord and Key mode; on a MiniLab 3 in Key mode also: press and turn the black knob. It starts at 0 in every session.",
     guide: "performance-key-mode",
   },
   "controller.keypad.0": {
