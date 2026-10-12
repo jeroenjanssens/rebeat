@@ -1,6 +1,7 @@
 # Plan: 53 patterns, grouped; triplets; patterns that pick notes (bass lines, broken chords)
 
-Status: proposed 2026-10-12. Decisions D174–D179 when built. How we work: on `main`, commit
+Status: agreed and built 2026-10-12 (PLAN.md §0.6n, decisions D174–D179; Jeroen's answers to
+§8: all the proposals). How we work: on `main`, commit
 early and often, e2e once at the end of the batch.
 
 ## 0. Where it starts

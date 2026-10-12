@@ -3,7 +3,7 @@
 This file is the fast way in. It explains what Rebeat is, how the code is organized, how the
 pieces talk to each other, how to verify a change, and the gotchas that cost time before.
 `PLAN.md` is the long-form record: the product spec (§1–§3), the original architecture (§4),
-and every design decision (§6, D1–D173). When this file and the code disagree, the code wins.
+and every design decision (§6, D1–D179). When this file and the code disagree, the code wins.
 Please fix this file in the same change.
 
 Status (2026-10-12): every phase of the original roadmap is built, plus several feature batches
@@ -137,7 +137,9 @@ src/
                        - notes, chords (names of held notes), padChords (the chord pads, D137), keyMode
                          (Key mode's chords, D138), perform (play styles: strum, slop, balance,
                          the arp's order, chord patterns, smooth voicing, D149–D154), suggest
-                         (the next chord: roman numerals, moves, progressions, D158), takePlan
+                         (the next chord: roman numerals, moves, progressions, D158), patterns
+                         (the 53 patterns in a lane notation, which notes a hit plays, D174),
+                         takePlan
                          (room for an Auto take, D163), synthWizard (the wizard's questions and
                          patch, D169), noteOps
                          (piano roll), timing (polyrhythms), tempo, midiFile, effects
@@ -704,6 +706,7 @@ likely to need:
 | Pads after a press, keys default, library menu     | D165–D167                 |
 | 27 new synths, the synth wizard                    | D168–D170                 |
 | Auto: queued pads, Sync to song; Edit sound        | D171–D173                 |
+| Patterns: notation, triplets, picked notes, groups | D174–D179                 |
 
 Feature batches and their acceptance criteria are in PLAN.md §0.6b–§0.6h. Known limitations are
 in §0.7.

@@ -8,10 +8,12 @@ import {
   ARP_MODES,
   ARP_RATES,
   PATTERNS,
+  PATTERN_GROUPS,
   STRUM_TIMES,
   patternById,
   sanitizePlayStyle,
   type ArpMode,
+  type ChordPattern,
 } from "../../model/perform";
 import { setPlayStyle, toggleLatch, useKeys } from "../../state/keys";
 import { useSettings } from "../../state/settings";
@@ -234,15 +236,7 @@ export function PlayStylesRow() {
         hint="controller.play.pattern"
         onClick={() => setPlayStyle({ pattern: { on: !pattern.on } })}
       />
-      {pattern.on && (
-        <Choice
-          testId="pattern-name"
-          value={pattern.id}
-          choices={PATTERNS.map((p) => p.id)}
-          name={(id) => patternById(id).name}
-          onPick={(id) => setPlayStyle({ pattern: { id } })}
-        />
-      )}
+      {pattern.on && <PatternPicker id={pattern.id} />}
 
       <Toggle
         on={style.latch}
@@ -267,5 +261,104 @@ export function PlayStylesRow() {
         onReset={() => setPlayStyle({ balance: 0 })}
       />
     </div>
+  );
+}
+
+/** Which lanes are bass notes (the preview's bottom row). */
+const BASS_LANES = new Set([
+  "bass",
+  "root",
+  "3",
+  "5",
+  "6",
+  "b7",
+  "7",
+  "8",
+  "bass5",
+  "bass8",
+  "walk",
+]);
+
+/** A pattern's rhythm in two rows of dots: the chord on top, the bass below (D178). */
+function PatternPreview({ p }: { p: ChordPattern }) {
+  const w = 3.2;
+  const width = p.length * w;
+  return (
+    <svg width={Math.min(150, width)} height={12} viewBox={`0 0 ${width} 12`} aria-hidden>
+      {p.steps.map((h, i) => {
+        const bass = BASS_LANES.has(h.part);
+        return (
+          <rect
+            key={i}
+            x={h.at * w}
+            y={bass ? 7 : 1}
+            width={Math.max(1.4, h.length * w - 0.8)}
+            height={h.vel >= 0.95 ? 4 : 3}
+            rx={1}
+            fill={bass ? "var(--text-dim)" : "var(--accent)"}
+            opacity={0.4 + 0.6 * h.vel}
+          />
+        );
+      })}
+    </svg>
+  );
+}
+
+/** The pattern: its groups, then their patterns, each with a line and its rhythm (D178). */
+function PatternPicker({ id }: { id: string }) {
+  const p = patternById(id);
+  const later = (fn: () => void) => setTimeout(fn, 0);
+  const openGroups = (el: HTMLElement) =>
+    dropdown(el, [
+      { render: () => <div className="label px-3 py-1">Patterns</div> },
+      ...PATTERN_GROUPS.map((g) => ({
+        label: `${g} (${PATTERNS.filter((x) => x.group === g).length}) ▸`,
+        checked: p.group === g,
+        onSelect: () => later(() => openGroup(el, g)),
+      })),
+    ]);
+  const openGroup = (el: HTMLElement, group: string) =>
+    dropdown(el, [
+      { label: "← Groups", onSelect: () => later(() => openGroups(el)) },
+      { separator: true },
+      ...PATTERNS.filter((x) => x.group === group).map((x) => ({
+        render: (close: () => void) => (
+          <button
+            className="progression-item"
+            data-testid="pattern-option"
+            data-pattern={x.id}
+            data-checked={x.id === id || undefined}
+            onClick={() => {
+              setPlayStyle({ pattern: { on: true, id: x.id } });
+              close();
+            }}
+          >
+            <span className="flex items-center gap-2">
+              <span
+                className={x.id === id ? "font-semibold text-accent" : "font-semibold text-ink"}
+              >
+                {x.name}
+              </span>
+              {x.tag && <span className="num text-[10px] text-dim">{x.tag}</span>}
+              <span className="ml-auto">
+                <PatternPreview p={x} />
+              </span>
+            </span>
+            <span className="block text-[11px] leading-snug text-faint">{x.about}</span>
+          </button>
+        ),
+      })),
+    ]);
+  return (
+    <button
+      className="tool-btn !h-6 gap-1"
+      data-testid="pattern-name"
+      data-hint="controller.play.pattern"
+      onClick={(e) => openGroups(e.currentTarget)}
+    >
+      <span className="text-[12px] text-ink">{p.name}</span>
+      <span className="text-[10px] text-dim">· {p.group}</span>
+      <ChevronDown size={11} />
+    </button>
   );
 }

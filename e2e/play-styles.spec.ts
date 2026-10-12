@@ -394,3 +394,56 @@ test("room for a take: Fit the page, or in song mode Add pages and record a chor
     [0, 4, 9],
   ]);
 });
+
+test("the pattern picker's groups, and a triplet pattern recorded in triplets (D175, D178)", async ({
+  page,
+}) => {
+  const trackId = await autoSetup(page, { padMode: "chord", snap: true });
+  await page.getByTestId("play-pattern").click();
+  const picker = page.getByTestId("pattern-name");
+  await picker.click();
+  const item = (t: string) => page.locator(".menu .menu-item", { hasText: t }).first();
+  await expect(item("Latin (12)")).toBeVisible();
+  await item("Latin (12)").click();
+  await page.locator('[data-testid="pattern-option"][data-pattern="habanera"]').click();
+  await expect(picker).toContainText("Habanera");
+  await expect(picker).toContainText("Latin");
+  // back to the groups from a group
+  await picker.click();
+  await item("Ballads & keys").click();
+  await item("← Groups").click();
+  await expect(item("Hip-hop (2)")).toBeVisible();
+  await item("Ballads & keys").click();
+  await page.locator('[data-testid="pattern-option"][data-pattern="tripletballad"]').click();
+  await expect(picker).toContainText("Triplet ballad");
+
+  // record a bar of it: the chord's triplets keep their place with Snap on
+  await page.evaluate((id) => {
+    const s = (window as never as W).__rebeat.store.getState();
+    s.commit((p) => {
+      const pp = p as unknown as { bpm: number; countIn: boolean; playMode: string };
+      pp.bpm = 100;
+      pp.countIn = false;
+      pp.playMode = "loop";
+      for (const pat of Object.values(p.patterns)) {
+        const lane = pat.lanes[id];
+        if (lane) for (const st of lane.steps) Object.assign(st, { on: false, notes: undefined });
+      }
+    });
+    s.setUi({ recording: true });
+  }, trackId);
+  await page.keyboard.press("Space");
+  const send = (d: number[]) =>
+    page.evaluate((d) => (window as never as W).__midiFrom("Minilab3 MIDI", d), d);
+  await page.waitForTimeout(150);
+  await send([0x99, 38, 100]); // Maj
+  await send([0x90, 60, 100]);
+  await page.waitForTimeout(1500);
+  await send([0x80, 60, 0]);
+  await send([0x89, 38, 0]);
+  await page.keyboard.press("Space");
+  const steps = await recorded(page, trackId);
+  // some chord notes off the 16th grid by a third (triplets), none snapped onto it
+  const offsets = steps.flatMap((s) => s.notes.map((n) => Math.abs(n.offset ?? 0)));
+  expect(offsets.some((o) => Math.abs(o - 1 / 3) < 0.05)).toBe(true);
+});

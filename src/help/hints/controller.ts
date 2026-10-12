@@ -169,7 +169,7 @@ const hints: Hints = {
   },
   "controller.keysknob.6": {
     title: "Knob 7: Pattern",
-    text: "Plays the chord again and again on a rhythm while you hold it, like a pianist or a guitarist accompanying a song. Far left is off: the chord just sounds while held. Turning right steps through 22 rhythms from calm to busy: Whole notes, Halves, Ballad, Waltz, Quarters, Backbeat, Dotted, Charleston, Eighths, Offbeats, One drop, Ska, Tresillo, Oom-pah, Clave, Bossa, Shuffle, House, Funk, Montuno, Gallop and Pulse.",
+    text: "Plays the chord again and again on a rhythm while you hold it, like a pianist or a guitarist accompanying a song. Far left is off: the chord just sounds while held. Turning right steps through all 53 patterns, group by group: Basics, Ballads & keys, Rock, pop & soul, Jazz & blues, Latin, Caribbean & African, Dance & electronic, Hip-hop and Folk & country.",
     guide: "performance-play-styles",
   },
   "controller.keysknob.7": {
@@ -294,7 +294,7 @@ const hints: Hints = {
   },
   "controller.play.pattern": {
     title: "Pattern",
-    text: "Plays the chord again and again on a rhythm while you hold it: 22 rhythms, from whole notes and a ballad to reggae's one drop, ska, a clave, bossa, house, funk, a salsa montuno and a gallop. With the Arp on, each hit plays the next arp note; with Strum on, each hit is strummed. On a controller: knob 7 in Chord and Key mode.",
+    text: "Plays the chord again and again on a rhythm while you hold it: 53 patterns in nine groups (Basics, Ballads & keys, Rock, pop & soul, Jazz & blues, Latin, Caribbean & African, Dance & electronic, Hip-hop, Folk & country), each with a line about it and its rhythm in the menu. Some pick their own notes (a walking bass, Alberti bass, Travis picking, a root–fifth bass), some are in triplets (the Shuffle, the Triplet ballad, Trap). With the Arp on, each plain chord hit plays the next arp note; with Strum on, each hit is strummed. On a controller: knob 7 in Chord and Key mode.",
     guide: "performance-play-styles",
   },
   "controller.play.latch": {

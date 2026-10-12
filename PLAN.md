@@ -12,7 +12,7 @@
 
 ### 0.1 Where we are
 
-- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D173), and the build order is in §7.
+- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D179), and the build order is in §7.
 - Every phase in §7 is built, tested (unit + Playwright e2e) and pushed. The mockup (Phase M) became the app: its components, model and store were kept and extended; `src/mock/` was replaced by the real engine.
 - The desktop app (Phase 10) runs and packages locally (unsigned); signing/notarization need certificates (see `.github/workflows/desktop.yml`).
 
@@ -103,6 +103,7 @@ Key implementation patterns:
 0. Beatbox to step tracks (§0.6h, D105–D118) ✅ merged into `main` (2026-10-10). Decide whether the shipped model may train on beatboxset1 (CC BY-SA, D108). Record and
    label your own sounds (and friends'), export them, and train model 2 with them (`ml/README.md`).
 0b. MIDI controllers (§0.6i, D119–D125) ✅ merged into `main` (2026-10-10). With a device: check what it sends (the Monitor in Settings → MIDI) and fix its map.
+0g. 53 patterns in groups, triplets, patterns that pick notes (§0.6n, D174–D179) ✅ on `main` (2026-10-12).
 0f. Auto, the piano on the keys, the library in the Keys menu, 27 new synths, the synth wizard (§0.6m, D162–D170) ✅ on `main` (2026-10-12).
 0e. Suggestions: the next chord, the key to press, Next pad mode (§0.6l, D158–D160) ✅ on `main` (2026-10-12); later: play-along from the song's chords (PLAN-suggestions.md §4).
 0d. Play styles for the keys (§0.6k, D149–D154) ✅ on `main` (2026-10-12): try them with the MiniLab 3 (strum times, slop, the patterns, the bass on its own track).
@@ -726,6 +727,13 @@ the song's position at its own time (`transport.positionAt`), and checks the roo
 color back after a press; the keys play the **Grand Piano** by default and remember what you
 pick; the Keys menu opens the **library**; **27 new factory synths** (64 in all); the **synth
 wizard** makes a synth from plain questions.
+
+### 0.6n 53 patterns in groups, triplets, patterns that pick notes (agreed and done 2026-10-12) ✅
+
+The plan is `PLAN-patterns.md`: a pattern notation (lanes of characters, `model/patterns.ts`),
+divisions (16ths, 8th and 16th triplets), hits that pick their notes (chord tones, broken
+chords, a walking bass), 31 new patterns (53 in nine groups) and a grouped picker with each
+pattern's rhythm.
 
 ### 0.7 Known limitations and later work
 
@@ -1392,6 +1400,12 @@ Format: **Dn — Question.** Default ✅, alternatives.
 - **D171 — A pad during Auto comes in at the next change.** Instead of passing chords (D162), a pad pressed while Auto plays is queued: its chord plays at the next change, in time, in place of the progression's next chord (Ableton-style launch quantization), and Auto goes on with the progression after it (Auto keeps its own place in the progression, `auto.index`, so a chord from outside it doesn't send it back to the start; pad 1 shows what Auto plays next). The queued pad blinks in the picture; pressing it again takes it back. Free mode follows from the queued chord. Alt: playing it at once (the passing chord); quantizing to the bar instead of the change.
 - **D172 — Auto on its own, or synced to the song.** **Sync to song** (`settings.autoSync`, off by default; it was "With Play", on) ties Auto to the song: armed while the song is stopped (starts with Play after the count-in, from the top), from the next bar while it plays, stopping with it. Off, ▶ Auto plays at once without the song (on the song's next bar if it's playing), and the song's Play doesn't start it; the transport's Stop still silences it (a panic, D99). Alt: a separate play button for Auto.
 - **D173 — Edit sound next to the Keys chip.** A button after the Keys chip (top bar and Controller panel) opens the editor for what the keys play: the synth editor (a library synth, yours, a track's), the sample editor (a sample), the Inspector (a track's sampled instrument); greyed out, with the reason in its tooltip, for a library sampled instrument (no editor of its own) or the synth editor in focus. Alt: in the Keys menu only.
+- **D174 — A pattern notation.** Patterns are written as lanes of characters, one per step, like a drum machine's grid (`model/patterns.ts`): X accent, x normal, o soft, 1–9 velocity in tenths, - holds, . rests; a lane's name says which notes its hits play. Each pattern has an id (stable), a name, a group, a line about it, a division and a tag (3/4, 12/8, 2 bars, triplets). The 21 kept patterns were converted and checked hit for hit (velocities within 0.05). Alt: hit lists; a pattern editor (later).
+- **D175 — Triplets.** A pattern's division is its steps per beat: 4 (16ths), 3 (8th triplets), 6 (16th triplets); the rhythm's step is a beat over it, from the song's first step while it plays. The Shuffle is now in true triplets (its id kept; Jeroen). Auto counts in beats (`autoUnit().beats`), so "every N patterns" holds for any division. Notes the rhythm plays (patterns, the arp) are on their musical grid and recorded unsnapped, their length too (`RecordTiming.onGrid`): a triplet stays a triplet with Snap on. Alt: triplet patterns snapped to the Quantize grid.
+- **D176 — Hits that pick their notes.** Lanes `root 3 5 6 b7 7 8 bass5 bass8` play chord tones in the bass's register (under the chord, the Bass's octave and track when it's on), `low mid high` the voiced chord's lowest, middle, highest note (broken chords), `walk` a walking bass (root, 3, 5, 6 up the chord; its last hit before Auto's next change a half step from the next root, else the 6th: Jeroen); `all chord bass` as before (`laneNotes`). The keys pass the chord's root and tones as built (before voicing) and, while Auto plays, its next chord and when. Fixed with it: Auto placed its first chord twice when that chord started the rhythm (its first flush came back into Auto), so a take began on the progression's second chord. Alt: scale degrees instead of chord tones.
+- **D177 — 53 patterns in nine groups.** Basics (7), Ballads & keys (6), Rock, pop & soul (5), Jazz & blues (5), Latin (12), Caribbean & African (6), Dance & electronic (5), Hip-hop (2), Folk & country (5): the 22 and Rock push, Jazz waltz, Triplet ballad, Alberti bass, Arpeggio up, Motown stabs, Gospel shout, Stadium eighths, Swing comp, Walking bass, Boogie-woogie, Son clave 2-3, Rumba clave, Habanera, Samba, Cha-cha-chá, Reggaeton, Bolero, Tango marcato, Reggae bubble, Afrobeats, Highlife, Disco stabs, Trance gate, UK garage, Boom bap, Trap, Polka, Train beat, Root–fifth bass, Travis picking. Patterns play as written in any meter (the menu shows each one's: Jeroen). Alt: patterns per meter.
+- **D178 — The grouped pattern picker.** The Play row's pattern button ("Habanera · Latin") opens the groups (with counts), each its patterns: the name, the tag, a line about it and its rhythm (two rows of dots: the chord, the bass); ← Groups. Knob 7 steps through all 53 in group order. Alt: one long list.
+- **D179 — The patterns' guide and hints.** The guide lists every group and pattern; the hints say how many and which kinds. Alt: —
 - **D35 — Build order.** ✅ The phases in §7, starting with the mockup (Phase M), each ending with something you can play with.
 
 ---
