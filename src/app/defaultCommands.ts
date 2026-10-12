@@ -86,6 +86,12 @@ export function defaultCommands(): Command[] {
       run: toggleLatch,
     },
     {
+      id: "synth.wizard",
+      title: "Synth: new with the wizard",
+      category: "Library",
+      run: () => useShell.getState().set({ wizardOpen: true }),
+    },
+    {
       id: "keys.auto",
       title: "Auto progression: start/stop",
       category: "Keys",

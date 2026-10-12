@@ -3,7 +3,8 @@ import { FolderMinus } from "lucide-react";
 import { askRemoveFolder, RemoveFolderDialog } from "./RemoveFolder";
 import { inFolder } from "../../library/folders";
 import { sampleOf } from "../../model/tracks";
-import { FolderInput, Link2, Upload, Volume2 } from "lucide-react";
+import { FolderInput, Link2, Upload, Volume2, Wand2 } from "lucide-react";
+import { useShell } from "../../app/shell";
 import { toast } from "../../components/Toast";
 import { kitSounds } from "../../engine/kits";
 import {
@@ -408,6 +409,15 @@ export function LibraryPanel() {
           onClick={() => setLinkOpen(true)}
         >
           <Link2 size={13} />
+        </button>
+        <button
+          className="tool-btn shrink-0"
+          title="New synth with the wizard"
+          data-hint="library.wizard"
+          data-testid="library-wizard"
+          onClick={() => useShell.getState().set({ wizardOpen: true })}
+        >
+          <Wand2 size={13} />
         </button>
         <ImportLink
           open={linkOpen}

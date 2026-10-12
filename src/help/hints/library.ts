@@ -94,6 +94,11 @@ const hints: Hints = {
     text: "Paste a link to an audio file or zip (imported right away), or to a strudel.json or a GitHub repository full of samples (added under Online kits, so you can listen first and pick).",
     guide: "library-importing",
   },
+  "library.wizard": {
+    title: "New synth with the wizard",
+    text: "Make a new synth from a few plain questions (what it's for, how it starts and ends, its tone, grit, movement, width…), trying it as you go. It's saved in Your sounds and opens in the synth editor, where you can change everything it chose.",
+    guide: "instruments-synth-wizard",
+  },
   "library.import.link.input": {
     title: "Link",
     text: "For example https://github.com/user/repo, github:user/repo, a link to a strudel.json, or a link to a .wav, .mp3 or .zip file.",

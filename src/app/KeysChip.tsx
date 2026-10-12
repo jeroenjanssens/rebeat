@@ -117,7 +117,9 @@ export function KeysChip({
     for (const c of entries) {
       if (c.group !== group) {
         group = c.group;
-        items.push({ render: () => <div className="label px-3 pt-2 pb-0.5">{group}</div> });
+        // its own copy: the heading is drawn after the loop has moved on
+        const heading = group;
+        items.push({ render: () => <div className="label px-3 pt-2 pb-0.5">{heading}</div> });
       }
       items.push({
         label: c.name,

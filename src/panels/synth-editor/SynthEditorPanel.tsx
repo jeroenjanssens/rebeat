@@ -1,3 +1,4 @@
+import { useShell } from "../../app/shell";
 import { memo, useEffect, useRef, useState } from "react";
 import {
   ChevronDown,
@@ -317,6 +318,11 @@ function EditorView({ track, target }: { track: Track; target: EditTarget }) {
   const name = src.name ?? factory?.name ?? "Synth";
   const more = (el: HTMLElement) =>
     dropdown(el, [
+      {
+        label: "New synth with the wizard…",
+        onSelect: () => useShell.getState().set({ wizardOpen: true }),
+      },
+      { separator: true },
       {
         label: "Init patch",
         onSelect: () =>

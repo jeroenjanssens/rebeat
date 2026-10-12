@@ -15,6 +15,7 @@ import { ShortcutsDialog } from "./app/ShortcutsDialog";
 import { TransportBar } from "./app/TransportBar";
 import { useAppearance } from "./app/useAppearance";
 import { ExportDialog } from "./app/ExportDialog";
+import { SynthWizardDialog } from "./app/SynthWizardDialog";
 import { SampleExportDialog } from "./app/SampleExportDialog";
 import { WelcomeDialog } from "./app/WelcomeDialog";
 import { ProjectBrowser } from "./app/ProjectBrowser";
@@ -75,6 +76,7 @@ export function App() {
       <ShortcutsDialog />
       <ProjectBrowser />
       <ExportDialog />
+      <SynthWizardDialog />
       <SampleExportDialog />
       <WelcomeDialog />
       <ToastHost />

@@ -10,6 +10,8 @@ interface ShellState {
   shortcutsOpen: boolean;
   homeOpen: boolean;
   exportOpen: boolean;
+  /** The synth wizard (D170). */
+  wizardOpen: boolean;
   /** The sample shown in the sample export dialog. */
   sampleExport: string | null;
   /** Panel id shown in panel full screen, or "app" for app full screen. */
@@ -26,6 +28,7 @@ export const useShell = create<ShellState>()((set) => ({
   shortcutsOpen: false,
   homeOpen: false,
   exportOpen: false,
+  wizardOpen: false,
   sampleExport: null,
   fullscreen: null,
   maximized: false,
