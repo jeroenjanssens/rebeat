@@ -323,3 +323,74 @@ test("Auto armed starts with Play after the count-in and records a chord per bar
   // stopped with the song: armed again for the next take
   await expect(page.getByTestId("auto")).toHaveAttribute("data-armed", "true");
 });
+
+test("room for a take: Fit the page, or in song mode Add pages and record a chord per page (D163, D164)", async ({
+  page,
+}) => {
+  const trackId = await autoSetup(page, { autoWithPlay: true, snap: true });
+  // one one-bar page, its Notes lane empty, no count-in, a fast tempo
+  const reset = (mode: string) =>
+    page.evaluate(
+      ([id, mode]) => {
+        const s = (window as never as W).__rebeat.store.getState();
+        s.commit((p) => {
+          const pp = p as unknown as {
+            bpm: number;
+            countIn: boolean;
+            playMode: string;
+            slots: { id: string; patternId: string; repeats: number }[];
+          };
+          pp.bpm = 200;
+          pp.countIn = false;
+          pp.playMode = mode;
+          pp.slots = [{ ...pp.slots[0], repeats: 1 }];
+          const pat = p.patterns[pp.slots[0].patternId] as unknown as {
+            stepCount: number;
+            stepSize: string;
+            lanes: Record<string, { steps: object[] }>;
+          };
+          pat.stepCount = 16;
+          pat.stepSize = "1/16";
+          for (const st of pat.lanes[id].steps) Object.assign(st, { on: false, notes: undefined });
+        });
+        s.setUi({ editSlotId: (s.project as unknown as { slots: { id: string }[] }).slots[0].id });
+      },
+      [trackId, mode] as const,
+    );
+  await reset("loop");
+  const room = page.getByTestId("take-room");
+  await expect(room).toContainText("Takes 4 bars; the page has 1 bar");
+  await page.getByTestId("fit-page").click();
+  await expect(room).toHaveCount(0);
+
+  // song mode: add the pages, then record across them
+  await reset("song");
+  await expect(room).toContainText("the song has 1 bar from here");
+  await page.getByTestId("add-pages").click();
+  await expect(room).toHaveCount(0);
+  await page.evaluate(() =>
+    (window as never as W).__rebeat.store.getState().setUi({ recording: true }),
+  );
+  await page.getByTestId("auto").click();
+  await page.keyboard.press("Space");
+  await page.waitForTimeout(5600);
+  await page.keyboard.press("Space");
+  const perPage = await page.evaluate((id) => {
+    const s = (window as never as W).__rebeat.store.getState();
+    return s.project.slots.map((sl) =>
+      s.project.patterns[sl.patternId].lanes[id].steps
+        .map((st, i) => ({
+          i,
+          pcs: (st.notes ?? []).map((n) => n.pitch % 12).sort((a, b) => a - b),
+        }))
+        .filter((x) => x.pcs.length),
+    );
+  }, trackId);
+  expect(perPage.map((p) => p.map((x) => x.i))).toEqual([[0], [0], [0], [0]]);
+  expect(perPage.map((p) => p[0].pcs)).toEqual([
+    [0, 5, 9],
+    [2, 7, 11],
+    [4, 7, 11],
+    [0, 4, 9],
+  ]);
+});

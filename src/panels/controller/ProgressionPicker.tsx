@@ -17,12 +17,22 @@ import {
   AUTO_EVERY,
   autoUnit,
   chordHistory,
+  keysTrack,
   setNextProgression,
   suggestionKey,
   toggleAuto,
   useKeys,
 } from "../../state/keys";
 import { audioNow } from "../../engine/engine";
+import {
+  addPages,
+  checkTake,
+  fitPage,
+  makeCopies,
+  takeSixteenths,
+  unroll,
+} from "../../model/takePlan";
+import { useStore } from "../../state/store";
 import { useSettings } from "../../state/settings";
 
 export function ProgressionPicker() {
@@ -186,6 +196,97 @@ export function ProgressionPicker() {
           With Play
         </button>
       </div>
+      {fits && <TakeRoom chords={chords.length} every={every} unit={unit.steps} />}
     </div>
+  );
+}
+
+/**
+ * Whether the take has room (D163, D164): the page (loop mode) or the song from this page on (song
+ * mode), in bars, with the fixes: make the page longer, spread over new pages, add pages, make
+ * clones copies, unroll repeats. Each fix is one undo step.
+ */
+function TakeRoom({ chords, every, unit }: { chords: number; every: number; unit: number }) {
+  const project = useStore((s) => s.project);
+  const slotId = useStore((s) => (s.playing ? s.playSlotId : s.editSlotId));
+  const bassTrack = useSettings((s) => s.bassTrack);
+  const needs = takeSixteenths(chords, every, unit);
+  const check = checkTake(project, slotId, needs);
+  const [beats, value] = project.timeSignature;
+  const bar = (beats * 16) / value;
+  const bars = (n: number) => {
+    const b = Math.round((n / bar) * 10) / 10;
+    return `${b} ${b === 1 ? "bar" : "bars"}`;
+  };
+  const empty = [keysTrack()?.id, bassTrack].filter((x): x is string => !!x);
+  const commit = (fn: (p: typeof project) => void) => useStore.getState().commit(fn);
+  const song = project.playMode === "song";
+  const short = check.has < needs;
+  if (!short && !check.clones.length && !check.repeats.length) return null;
+  return (
+    <span
+      className="flex items-center gap-1.5 text-[11px]"
+      data-testid="take-room"
+      data-hint="controller.auto.room"
+    >
+      {short && (
+        <span className="text-faint">
+          Takes {bars(needs)}; {song ? "the song has" : "the page has"} {bars(check.has)}
+          {song ? " from here" : ""}
+        </span>
+      )}
+      {short && !song && (
+        <>
+          <button
+            className="tool-btn !h-6"
+            data-testid="fit-page"
+            onClick={() => commit((p) => fitPage(p, slotId, needs))}
+          >
+            Fit the page
+          </button>
+          <button
+            className="tool-btn !h-6"
+            data-testid="spread-pages"
+            onClick={() =>
+              commit((p) => {
+                p.playMode = "song";
+                addPages(p, slotId, needs, empty);
+              })
+            }
+          >
+            Spread over pages
+          </button>
+        </>
+      )}
+      {short && song && (
+        <button
+          className="tool-btn !h-6"
+          data-testid="add-pages"
+          onClick={() => commit((p) => void addPages(p, slotId, needs, empty))}
+        >
+          Add pages
+        </button>
+      )}
+      {song && check.clones.length > 0 && (
+        <button
+          className="tool-btn !h-6"
+          data-testid="make-copies"
+          title="Pages that share a pattern would get each other's chords"
+          onClick={() => commit((p) => makeCopies(p, check.clones))}
+        >
+          Make copies
+        </button>
+      )}
+      {song && check.repeats.length > 0 && (
+        <button
+          className="tool-btn !h-6"
+          data-testid="unroll"
+          title="A page that plays more than once would get its chords written over each other"
+          onClick={() => commit((p) => check.repeats.forEach((id) => unroll(p, id)))}
+        >
+          Unroll repeats
+        </button>
+      )}
+    </span>
   );
 }

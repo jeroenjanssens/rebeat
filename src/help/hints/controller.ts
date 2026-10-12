@@ -202,6 +202,11 @@ const hints: Hints = {
     text: "Loop: after the last chord, round again (off: Auto stops there). With Play: pressing Auto while the song is stopped arms it, and it starts with the song (after the count-in), from the top, every time you press Play; off: it starts at once.",
     guide: "performance-suggestions",
   },
+  "controller.auto.room": {
+    title: "Room for the take",
+    text: "Whether what Auto plays fits before the recording wraps around. Loop mode: the page has to be as long as the progression (chords × every); Fit the page makes it so (up to 128 steps), Spread over pages adds pages and switches to song mode. Song mode: Add pages adds copies of this page (the drums go on, the keys' lane empty); Make copies gives pages that share a pattern their own (they'd get each other's chords); Unroll repeats turns a page that plays twice into two.",
+    guide: "performance-suggestions",
+  },
   "controller.suggest": {
     title: "Suggest",
     text: "After each chord you play, Rebeat suggests what could come next, and marks the key to press for the three best (in Chord mode, the pad to hold too): the bigger the dot, the better. The colors say what a chord does: green home, blue away from home, red tension (it wants to resolve), purple color (borrowed or secondary chords). The MiniLab's display shows them too.",
