@@ -68,12 +68,12 @@ const hints: Hints = {
   },
   "controller.knob.2": {
     title: "Knob 3",
-    text: "Turns the selected track's third SOUND knob. Its white cap turns as you turn the knob and lights up for a moment.",
+    text: "Turns the selected track's third SOUND knob; in Chord and Key mode, the strum. Its white cap turns as you turn the knob and lights up for a moment.",
     guide: "performance-your-controller",
   },
   "controller.knob.3": {
     title: "Knob 4",
-    text: "Turns the selected track's fourth SOUND knob. Its white cap turns as you turn the knob and lights up for a moment.",
+    text: "Turns the selected track's fourth SOUND knob; in Chord and Key mode, the arpeggiator's rate. Its white cap turns as you turn the knob and lights up for a moment.",
     guide: "performance-your-controller",
   },
   "controller.knob.4": {
@@ -83,17 +83,17 @@ const hints: Hints = {
   },
   "controller.knob.5": {
     title: "Knob 6",
-    text: "Turns the selected track's sixth SOUND knob. Its white cap turns as you turn the knob and lights up for a moment.",
+    text: "Turns the selected track's sixth SOUND knob; in Chord and Key mode, the slop. Its white cap turns as you turn the knob and lights up for a moment.",
     guide: "performance-your-controller",
   },
   "controller.knob.6": {
     title: "Knob 7",
-    text: "Turns the selected track's seventh SOUND knob. Its white cap turns as you turn the knob and lights up for a moment.",
+    text: "Turns the selected track's seventh SOUND knob; in Chord and Key mode, the pattern. Its white cap turns as you turn the knob and lights up for a moment.",
     guide: "performance-your-controller",
   },
   "controller.knob.7": {
     title: "Knob 8",
-    text: "Turns the selected track's eighth SOUND knob. Its white cap turns as you turn the knob and lights up for a moment.",
+    text: "Turns the selected track's eighth SOUND knob; in Chord and Key mode, the balance. Its white cap turns as you turn the knob and lights up for a moment.",
     guide: "performance-your-controller",
   },
   "controller.padMode.drum": {
@@ -135,6 +135,51 @@ const hints: Hints = {
     title: "Chord voicing",
     text: "Inversions of every chord the pads make, like the Orchid's Voicing dial: each step up moves the chord's lowest note an octave up (C E G → E G C), each step down its highest note an octave down. The chord stays the same; the bass stays on its root. Click the number for root position. On a controller: knob 1 in Chord and Key mode.",
     guide: "performance-chord-pads",
+  },
+  "controller.voicing.smooth": {
+    title: "Smooth voicing",
+    text: "Each chord takes the inversion closest to the chord before it, so a progression moves by small steps (C, then F as C F A) without turning the Voicing knob. Voicing still sets the register it stays near. The number is the voicing it's playing.",
+    guide: "performance-play-styles",
+  },
+  "controller.bass.sound": {
+    title: "Bass sound",
+    text: "What the bass plays on: the chord's own sound, or a Notes track of its own (its sound, mix and effects; recording goes there too), like the Orchid's bass engine.",
+    guide: "performance-play-styles",
+  },
+  "controller.bass.split": {
+    title: "Split",
+    text: "Keys below the split (C3) play the bass alone, one note at a time, on the bass sound; keys above play chords without a bass of their own. Your left hand plays the bass line.",
+    guide: "performance-play-styles",
+  },
+  "controller.play.strum": {
+    title: "Strum",
+    text: "Plays a chord's notes one after another, like a guitar: the time from the first note to the last (10 to 250 ms), Up (low to high), Down, or Alt (alternating; on a pattern down on the beat, up between). On a controller: knob 3 in Chord and Key mode.",
+    guide: "performance-play-styles",
+  },
+  "controller.play.slop": {
+    title: "Slop",
+    text: "Humanizes what the keys play: each note a little later at random (up to 40 ms) and a little louder or softer, so chords and arpeggios don't sound machine-tight. On a controller: knob 6 in Chord and Key mode.",
+    guide: "performance-play-styles",
+  },
+  "controller.play.arp": {
+    title: "Arpeggiator",
+    text: "Plays the notes you hold one at a time, at the tempo (on the song's grid while it plays): Up, Down, Up-down, Random or As played, a rate, octaves and a gate. The bass is held, not arpeggiated. On a controller: knob 4 in Chord and Key mode sets the rate (far left: off).",
+    guide: "performance-play-styles",
+  },
+  "controller.play.pattern": {
+    title: "Pattern",
+    text: "Plays the chord again and again on a rhythm while you hold it: whole notes, halves, quarters, eighths, offbeats, Charleston, tresillo, oom-pah, pulse or bossa. With the Arp on, each hit plays the next arp note; with Strum on, each hit is strummed. On a controller: knob 7 in Chord and Key mode.",
+    guide: "performance-play-styles",
+  },
+  "controller.play.latch": {
+    title: "Latch",
+    text: "What the keys play goes on after you let go: a chord, an arpeggio or a pattern, until you play the next one or turn Latch off (the dot: something is latched). Stop silences it too. Give the command Latch the keys a shortcut, or MIDI-learn a button to it.",
+    guide: "performance-play-styles",
+  },
+  "controller.play.balance": {
+    title: "Balance",
+    text: "Makes the notes in the middle of a chord softer than the bass and the top note, as a pianist brings out the melody: 0% is all notes equal. On a controller: knob 8 in Chord and Key mode.",
+    guide: "performance-play-styles",
   },
   "controller.bass": {
     title: "Bass",

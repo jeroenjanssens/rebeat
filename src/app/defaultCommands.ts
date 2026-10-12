@@ -9,6 +9,7 @@ import {
   setPadMode,
   setTranspose,
   useKeys,
+  toggleLatch,
 } from "../state/keys";
 import { browsePlayable } from "../library/playable";
 import { THEMES, useSettings } from "../state/settings";
@@ -77,6 +78,12 @@ export function defaultCommands(): Command[] {
     },
     { id: "transport.stop", title: "Stop", category: "Transport", run: clock.stop },
     { id: "transport.tap", title: "Tap tempo", category: "Transport", keys: ["T"], run: tapTempo },
+    {
+      id: "keys.latch",
+      title: "Latch the keys",
+      category: "Keys",
+      run: toggleLatch,
+    },
     {
       id: "page.next",
       title: "Next page",

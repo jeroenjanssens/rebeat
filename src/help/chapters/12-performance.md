@@ -118,6 +118,27 @@ On a MiniLab 3, the **black knob** (the main encoder) is the Key dial in Key mod
 
 In Drum and Chord mode the knob browses sounds, as before.
 
+### Play styles {#performance-play-styles}
+
+The **Play** row in the Controller panel changes how the keys play, in every pad mode: what you play on a MIDI keyboard, on the picture's keys or on the computer keyboard. Each style is a switch, and they work together (a strummed, humanized pattern with an arpeggio on top is fine). They're remembered, like Voicing and Bass, because they belong to how you play, not to a song.
+
+- **Strum** plays a chord's notes one after another, like a guitar: the time from the first note to the last (10 to 250 ms), and **Up** (low to high), **Down** or **Alt** (alternating; on a pattern down on the beat and up in between, as a guitarist strums).
+- **Slop** humanizes: every note a little later at random (up to 40 ms) and a little louder or softer. A strummed chord with some slop sounds like a hand.
+- **Arp** plays the notes you hold one at a time, at the tempo: **Up**, **Down**, **Up-down**, **Random** or **As played**, a rate (1/4 to 1/32), **octaves** (1–4) and a **gate** (how long each note lasts). While the song plays, the arpeggio is on its grid; while stopped, it starts with your first key. A new chord keeps the arpeggio's place, so changes land on the beat. The bass is held under it, not arpeggiated. On plain keys (no chord pads) it's a classic arpeggiator: hold a few keys.
+- **Pattern** plays the chord again and again on a rhythm while you hold it: **Whole notes**, **Halves**, **Quarters**, **Eighths**, **Offbeats** (a reggae skank), **Charleston**, **Tresillo** (3 + 3 + 2), **Oom-pah** (bass on 1 and 3, chord on 2 and 4), **Pulse** (16ths) and **Bossa** (two bars). The key's velocity sets how loud. With the **Arp** on too, each hit of the pattern plays the next arp note; with **Strum**, each hit is strummed.
+- **Latch** keeps what the keys play going after you let go, until you play the next chord (or, on plain keys, the next set of keys: keys you add while others are down join in) or turn Latch off. **Stop** silences it too. The command **Latch the keys** can get a shortcut, or you can MIDI-learn a button to it (the MiniLab's Hold button doesn't send anything).
+- **Balance** makes the notes in the middle of a chord softer than the bass and the top note, as a pianist brings out the melody. 0% plays all notes equally.
+
+With the chord pads (Chord and Key mode) there's more next to **Voicing** and **Bass**:
+
+- **Smooth** voicing gives each chord the inversion closest to the one before, so a progression moves by small steps (C, then F as C F A, then G as D G B) without turning the Voicing knob. Voicing still sets the register Smooth stays near, and the number next to Smooth is the voicing it plays.
+- **The bass sound**: the chord's own sound, or a Notes track of its own (its sound, its mix and effects, and its recording), like the Orchid's second engine.
+- **Split**: keys below C3 play the bass alone, one note at a time, on the bass sound; keys above play chords without a bass of their own, so your left hand plays the bass line.
+
+On a controller in Chord and Key mode the eight knobs are these settings: **1** Voicing, **2** Transpose, **3** Strum, **4** Arp (its rate), **5** Bass, **6** Slop, **7** Pattern and **8** Balance. Knobs 3, 4, 6 and 7 turn their style off at the far left. The picture labels them and the MiniLab's display shows the value.
+
+**Recording** records what you hear: each strummed note at its own time, each arpeggio note and each pattern hit, the bass on its own track when it has one. With **Snap** on, the hits snap to the grid and a strum keeps its spread. While stopped (step entry), a key writes its chord as it is.
+
 ## Launchpad and Push
 
 In **Settings → MIDI**, **Connect Launchpad / Push** turns a Novation Launchpad (Mini MK3, X, Pro MK3) or an Ableton Push 2/3 into a step sequencer for the drum machine:

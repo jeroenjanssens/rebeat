@@ -17,6 +17,9 @@ import {
   selectPendingKey,
   setBassOctaves,
   setChordVoicing,
+  setSmoothVoicing,
+  setBassTrack,
+  setBassMode,
   setKeyDial,
   setKeyModeKey,
   setPadMode,
@@ -28,6 +31,8 @@ import { dropdown, type MenuItem } from "../../components/Menu";
 import { padInput } from "../../state/input";
 import * as engine from "../../engine/engine";
 import { MiniLab3Svg } from "./MiniLab3Svg";
+import { PlayStylesRow } from "./PlayStylesRow";
+import { PATTERNS, patternById, sanitizePlayStyle } from "../../model/perform";
 import { KeysChip } from "../../app/KeysChip";
 import { padColors } from "../../midi/padColors";
 import { GenericControllerView } from "./GenericControllerView";
@@ -236,6 +241,14 @@ function PadChordsRow({ keyMode }: { keyMode: boolean }) {
   const dial = useSettings((s) => s.keyDial);
   const bass = useSettings((s) => s.bassOctaves);
   const voicing = useSettings((s) => s.chordVoicing);
+  const smooth = useSettings((s) => s.smoothVoicing);
+  const voicingUsed = useKeys((s) => s.voicingUsed);
+  const bassTrack = useSettings((s) => s.bassTrack);
+  const bassMode = useSettings((s) => s.bassMode);
+  const bassSplit = useSettings((s) => s.bassSplit);
+  const tracks = useStore((s) => s.project.tracks);
+  const notesTracks = tracks.filter((t) => t.mode === "notes");
+  const bassTrackName = tracks.find((t) => t.id === bassTrack)?.name ?? null;
   const pending = useKeys((s) => s.pendingKey);
   const transpose = useKeys((s) => s.transpose);
   return (
@@ -290,6 +303,26 @@ function PadChordsRow({ keyMode }: { keyMode: boolean }) {
           <Plus size={12} />
         </button>
       </div>
+      <div className="segmented" data-hint="controller.voicing.smooth">
+        <button
+          data-active={smooth}
+          aria-pressed={smooth}
+          data-testid="voicing-smooth"
+          title={
+            smooth && voicingUsed !== null
+              ? `Playing ${voicingUsed > 0 ? "+" : ""}${voicingUsed}`
+              : undefined
+          }
+          onClick={() => setSmoothVoicing(!smooth)}
+        >
+          Smooth
+          {smooth && voicingUsed !== null && (
+            <span className="num ml-1 text-faint">
+              {voicingUsed > 0 ? `+${voicingUsed}` : voicingUsed}
+            </span>
+          )}
+        </button>
+      </div>
       <span className="label">Bass</span>
       <div className="flex items-center" data-testid="bass" data-hint="controller.bass">
         {/* − is deeper, + back toward Off */}
@@ -314,6 +347,39 @@ function PadChordsRow({ keyMode }: { keyMode: boolean }) {
           onClick={() => setBassOctaves(Math.max(0, bass - 1) as 0 | 1 | 2 | 3)}
         >
           <Plus size={12} />
+        </button>
+      </div>
+      <button
+        className="tool-btn !h-6 gap-0.5"
+        data-testid="bass-sound"
+        data-hint="controller.bass.sound"
+        onClick={(e) =>
+          dropdown(e.currentTarget, [
+            {
+              label: "Same as the chord",
+              checked: !bassTrackName,
+              onSelect: () => setBassTrack(null),
+            },
+            ...notesTracks.map((t) => ({
+              label: t.name,
+              checked: t.id === bassTrack,
+              onSelect: () => setBassTrack(t.id),
+            })),
+          ])
+        }
+      >
+        <span className="text-[12px] text-ink">{bassTrackName ?? "Chord's sound"}</span>
+        <ChevronDown size={11} />
+      </button>
+      <div className="segmented" data-hint="controller.bass.split">
+        <button
+          data-active={bassMode === "split"}
+          aria-pressed={bassMode === "split"}
+          data-testid="bass-split"
+          title={`Keys below ${noteName(bassSplit)} play the bass alone`}
+          onClick={() => setBassMode(bassMode === "split" ? "auto" : "split")}
+        >
+          Split{bassMode === "split" ? ` < ${noteName(bassSplit)}` : ""}
         </button>
       </div>
       <span className="label">Transpose</span>
@@ -411,9 +477,29 @@ export function ControllerPanel() {
   const voicing = useSettings((s) => s.chordVoicing);
   const bassOctaves = useSettings((s) => s.bassOctaves);
   const keysTranspose = useKeys((s) => s.transpose);
+  const playStyle = sanitizePlayStyle(useSettings((s) => s.playStyle));
   const kLabels = knobLabels(project, selectedTrackId);
-  // Chord and Key mode (D140, D148): knob 1 is the chord voicing, knob 2 the transpose, 5 the bass
+  // Chord and Key mode (D140, D148, D150–D153): the knobs are the keys' settings
   if (padMode !== "drum") {
+    const st = playStyle;
+    kLabels[2] = {
+      name: "Strum",
+      value: st.strum.on ? `${Math.round(st.strum.time * 1000)} ms` : "Off",
+      pos: st.strum.on ? st.strum.time / 0.25 : 0,
+    };
+    kLabels[3] = { name: "Arp", value: st.arp.on ? st.arp.rate : "Off" };
+    kLabels[5] = {
+      name: "Slop",
+      value: st.slop.on ? `${Math.round(st.slop.amount * 100)}%` : "Off",
+    };
+    kLabels[6] = {
+      name: "Pattern",
+      value: st.pattern.on ? patternById(st.pattern.id).name : "Off",
+      pos: st.pattern.on
+        ? (PATTERNS.findIndex((p) => p.id === st.pattern.id) + 1) / PATTERNS.length
+        : 0,
+    };
+    kLabels[7] = { name: "Balance", value: `${Math.round(st.balance * 100)}%`, pos: st.balance };
     kLabels[1] = {
       name: "Transpose",
       value: keysTranspose > 0 ? `+${keysTranspose}` : `${keysTranspose}`,
@@ -513,6 +599,7 @@ export function ControllerPanel() {
         <PadModeSwitch />
       </div>
       {padMode !== "drum" && <PadChordsRow keyMode={padMode === "key"} />}
+      <PlayStylesRow />
 
       {/* Device picture or generic slots */}
       <div className="min-h-0 flex-1 overflow-hidden" data-hint="controller.picture">

@@ -18,6 +18,7 @@ import {
   keyDialTurn,
   setBassOctaves,
   setChordVoicing,
+  setPlayStyle,
   setTranspose,
   useKeys,
   keysControl,
@@ -27,6 +28,8 @@ import {
   noteOn,
 } from "../state/keys";
 import { CHORD_PADS, VOICING_RANGE } from "../model/padChords";
+import { ARP_RATES, PATTERNS, STRUM_TIMES, patternById } from "../model/perform";
+import { playStyle } from "../state/perform";
 import { padInput } from "../state/input";
 import { useSettings } from "../state/settings";
 import { useStore } from "../state/store";
@@ -574,6 +577,56 @@ const STEPPED: Record<
     text: () => signed(useKeys.getState().transpose),
   },
   // left is deeper: −3, −2, −1, Off
+  // the play styles (D150–D153): far left is off
+  knob3: {
+    name: "strum",
+    target: "keys:strum",
+    values: STRUM_TIMES.length + 1,
+    index: () => {
+      const st = playStyle().strum;
+      if (!st.on) return 0;
+      const near = STRUM_TIMES.reduce(
+        (b, t, i) => (Math.abs(t - st.time) < Math.abs(STRUM_TIMES[b] - st.time) ? i : b),
+        0,
+      );
+      return near + 1;
+    },
+    set: (i) => setPlayStyle({ strum: i ? { on: true, time: STRUM_TIMES[i - 1] } : { on: false } }),
+    text: () => (playStyle().strum.on ? `${Math.round(playStyle().strum.time * 1000)} ms` : "off"),
+  },
+  knob4: {
+    name: "arp",
+    target: "keys:arp",
+    values: ARP_RATES.length + 1,
+    index: () => (playStyle().arp.on ? ARP_RATES.indexOf(playStyle().arp.rate) + 1 : 0),
+    set: (i) => setPlayStyle({ arp: i ? { on: true, rate: ARP_RATES[i - 1] } : { on: false } }),
+    text: () => (playStyle().arp.on ? playStyle().arp.rate : "off"),
+  },
+  knob6: {
+    name: "slop",
+    target: "keys:slop",
+    values: 11,
+    index: () => (playStyle().slop.on ? Math.max(1, Math.round(playStyle().slop.amount * 10)) : 0),
+    set: (i) => setPlayStyle({ slop: i ? { on: true, amount: i / 10 } : { on: false } }),
+    text: () => (playStyle().slop.on ? `${Math.round(playStyle().slop.amount * 100)}%` : "off"),
+  },
+  knob7: {
+    name: "pattern",
+    target: "keys:pattern",
+    values: PATTERNS.length + 1,
+    index: () =>
+      playStyle().pattern.on ? PATTERNS.findIndex((p) => p.id === playStyle().pattern.id) + 1 : 0,
+    set: (i) => setPlayStyle({ pattern: i ? { on: true, id: PATTERNS[i - 1].id } : { on: false } }),
+    text: () => (playStyle().pattern.on ? patternById(playStyle().pattern.id).name : "off"),
+  },
+  knob8: {
+    name: "balance",
+    target: "keys:balance",
+    values: 11,
+    index: () => Math.round(playStyle().balance * 10),
+    set: (i) => setPlayStyle({ balance: i / 10 }),
+    text: () => `${Math.round(playStyle().balance * 100)}%`,
+  },
   knob5: {
     name: "bass",
     target: "keys:bass",
@@ -592,7 +645,8 @@ function applyMapping(map: MidiMapping, m: MidiMessage, scope: "project" | "glob
   // where the knob was, in any pad mode: turning it in Drum mode doesn't make a jump later (D141)
   const before = m.type === "cc" ? lastValue.get(map.id) : undefined;
   if (m.type === "cc") lastValue.set(map.id, m.value);
-  // Chord and Key mode (D140, D148): knobs 1, 2 and 5 are the voicing, the transpose and the bass
+  // Chord and Key mode (D140, D148, D150–D153): the knobs are the keys' voicing, transpose,
+  // strum, arp rate, bass, slop, pattern and balance
   const stepped =
     m.type === "cc" && useSettings.getState().padMode !== "drum" && STEPPED[map.slot ?? ""];
   if (stepped) {

@@ -16,6 +16,7 @@
  * lazy-imported inside functions so unit-test-imported code never pulls them in.
  */
 import { showOnDisplay, useDisplay, type DisplayText } from "./display";
+import { patternById, sanitizePlayStyle } from "../model/perform";
 import { useKeys, keysDescription } from "../state/keys";
 import { useStore } from "../state/store";
 import { useSettings } from "../state/settings";
@@ -110,6 +111,21 @@ export function startDisplayFeed(): void {
       showTransient("Voicing", s.chordVoicing > 0 ? `+${s.chordVoicing}` : `${s.chordVoicing}`);
     if (s.bassOctaves !== prev.bassOctaves)
       showTransient("Bass", s.bassOctaves ? `−${s.bassOctaves} octave` : "Off");
+    // ── 3d. The play styles (D150–D153) ──
+    if (s.playStyle !== prev.playStyle) {
+      const a = sanitizePlayStyle(s.playStyle);
+      const b = sanitizePlayStyle(prev.playStyle);
+      if (a.strum.on !== b.strum.on || a.strum.time !== b.strum.time)
+        showTransient("Strum", a.strum.on ? `${Math.round(a.strum.time * 1000)} ms` : "Off");
+      if (a.arp.on !== b.arp.on || a.arp.rate !== b.arp.rate)
+        showTransient("Arp", a.arp.on ? a.arp.rate : "Off");
+      if (a.slop.on !== b.slop.on || a.slop.amount !== b.slop.amount)
+        showTransient("Slop", a.slop.on ? `${Math.round(a.slop.amount * 100)}%` : "Off");
+      if (a.pattern.on !== b.pattern.on || a.pattern.id !== b.pattern.id)
+        showTransient("Pattern", a.pattern.on ? patternById(a.pattern.id).name : "Off");
+      if (a.balance !== b.balance) showTransient("Balance", `${Math.round(a.balance * 100)}%`);
+      if (a.latch !== b.latch) showTransient("Latch", a.latch ? "On" : "Off");
+    }
   });
   useKeys.subscribe((k, prev) => {
     if (k.pendingKey && k.pendingKey !== prev.pendingKey)
