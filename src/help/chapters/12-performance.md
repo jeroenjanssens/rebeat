@@ -70,7 +70,7 @@ A keyboard or chord instrument without knobs (such as the Telepathic Instruments
 
 ### The Controller panel
 
-The [Controller](panel:controller) panel shows a live top-down picture of your controller. Open it from the **Panels** menu or by applying the **Perform** layout ({{key:layout.perform}}).
+The [Controller](panel:controller) panel shows a live top-down picture of your controller. Its header has the same **Keys** drop-down as the top bar (what the keys play), so you can change it with the panel maximized. Open it from the **Panels** menu or by applying the **Perform** layout ({{key:layout.perform}}).
 
 - **Arturia MiniLab 3**: the device as it looks from above, in its own colors. Keys light up as you play them (shaded by velocity) and show the note they play (A3, C4…, with the device's octave), pads have the colors of what they play and light up while held, faders move in real time, and the knobs' white caps (the encoder's black one too) turn as you turn them and light up in the accent for a moment. The MiniLab's screen is mirrored in its black panel, centered as the device shows it. Holding Shift shows the pads' second functions. Click a key in the picture to play it, or drag across the keys with the button down to play one after another.
 - **Where the faders are**: MIDI has no way to ask a controller where its faders are (they only send when they move), so until you move one, it's drawn faint where the value it controls is; after that it follows the device. The MiniLab's knobs turn without end, so their caps show the turning, not a position. The pitch strip rests in the middle. Turn on **Pickup** in Settings → MIDI so an untouched fader doesn't make its value jump when you first move it.

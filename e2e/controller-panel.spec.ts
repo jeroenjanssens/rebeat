@@ -625,3 +625,26 @@ test("knob 2 is the transpose in Chord and Key mode; the bass is a stepper (D148
   await bass.click();
   await expect(bass).toHaveText("Off");
 });
+
+test("the Controller panel has the Keys drop-down too", async ({ page }) => {
+  await midiDevices(page, ["Minilab3 MIDI"]);
+  await page.getByTestId("midi-use-detected").click();
+  await page.keyboard.press("Escape");
+  await openControllerPanel(page);
+  const chip = page.getByTestId("controller-keys-chip");
+  await expect(chip).toBeVisible();
+  // a Notes track to lock the keys to
+  const notes = await page.evaluate(() => {
+    const tracks = (window as never as W).__rebeat.store.getState().project.tracks as unknown as {
+      name: string;
+      mode: string;
+    }[];
+    return tracks.find((t) => t.mode === "notes")?.name ?? null;
+  });
+  expect(notes).not.toBeNull();
+  await chip.click();
+  await page.locator(".menu .menu-item", { hasText: new RegExp(`^${notes}$`) }).click();
+  await expect(chip).toContainText(notes!);
+  // the top bar's chip says the same
+  await expect(page.getByTestId("keys-chip")).toContainText(notes!);
+});

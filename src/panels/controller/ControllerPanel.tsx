@@ -28,6 +28,7 @@ import { dropdown, type MenuItem } from "../../components/Menu";
 import { padInput } from "../../state/input";
 import * as engine from "../../engine/engine";
 import { MiniLab3Svg } from "./MiniLab3Svg";
+import { KeysChip } from "../../app/KeysChip";
 import { padColors } from "../../midi/padColors";
 import { GenericControllerView } from "./GenericControllerView";
 import { onControllerEvent } from "../../midi/controllerEvents";
@@ -507,6 +508,7 @@ export function ControllerPanel() {
           </span>
         )}
         <span className="flex-1" />
+        <KeysChip testId="controller-keys-chip" />
         <span className="label">Pads</span>
         <PadModeSwitch />
       </div>
