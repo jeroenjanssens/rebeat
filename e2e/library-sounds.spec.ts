@@ -37,7 +37,7 @@ test("the locations: All and yours first, then instruments, samples and kits (D9
 test("the type filter picks synths, sampled instruments, one-shots or loops", async ({ page }) => {
   await go(page, "All");
   await filter(page, "Synths");
-  await expect(list(page).locator("[data-instrument]")).toHaveCount(37);
+  await expect(list(page).locator("[data-instrument]")).toHaveCount(64);
   await expect(list(page).locator("[data-sample]:not([data-instrument])")).toHaveCount(0);
   await filter(page, "Sampled instruments");
   await expect(list(page).locator('[data-instrument^="synth:"]')).toHaveCount(0);

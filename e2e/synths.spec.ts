@@ -52,7 +52,7 @@ test("every factory synth plays through the AudioWorklet: audible, finite, no cl
     }
     return out;
   });
-  expect(levels).toHaveLength(37);
+  expect(levels).toHaveLength(64);
   for (const l of levels) {
     expect(l.finite, l.id).toBe(true);
     expect(l.peak, `${l.id} is silent`).toBeGreaterThan(0.03);

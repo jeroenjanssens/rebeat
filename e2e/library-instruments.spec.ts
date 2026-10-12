@@ -31,7 +31,7 @@ const list = (page: Page) => page.getByTestId("library-list");
 
 test("the library lists synths and sampled instruments with their source", async ({ page }) => {
   await go(page, "Synths");
-  await expect(list(page).locator("[data-instrument]")).toHaveCount(37);
+  await expect(list(page).locator("[data-instrument]")).toHaveCount(64);
   await expect(page.getByTestId("family-header")).toContainText("Rebeat factory synths");
   await go(page, "General MIDI");
   await expect(list(page).locator("[data-instrument]")).toHaveCount(128);
