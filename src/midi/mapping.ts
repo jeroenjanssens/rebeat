@@ -28,23 +28,49 @@ export function relativeDelta(mode: MidiMode, value: number): number {
  * 64 (sign bit); absolute ones move through values. Null when it can't tell yet.
  *
  * D129: fader slots are never sniffed (see midi.ts), so this function only sees data from knobs
- * and encoders. The logic is unchanged from D120: one repeated value is enough evidence.
+ * and encoders. D141: a wrong guess sticks (it's saved) and turns a knob into one that goes the
+ * same way whichever way it turns, so relative needs strong evidence: at least half the messages
+ * repeat the one before, the values don't walk a path (66, 67, 67, 68 is an absolute knob turned
+ * slowly), and an absolute knob held at its end (124, 127, 127 or 127, 127, 127) isn't taken for
+ * two's complement turning down.
  */
 export function detectMode(values: number[]): MidiMode | null {
   if (values.length < 2) return null;
-  const repeats = values.some((v, i) => i > 0 && v === values[i - 1]);
+  const pairs = values.length - 1;
+  const repeatCount = values.filter((v, i) => i > 0 && v === values[i - 1]).length;
+  const repeats = repeatCount > 0;
   const all = (lo: number, hi: number) => values.every((v) => v >= lo && v <= hi);
   const inSets = (...ranges: [number, number][]) =>
     values.every((v) => ranges.some(([lo, hi]) => v >= lo && v <= hi));
-  if (repeats || values.length >= 3) {
-    if (all(57, 71) && values.every((v) => v !== 64) && repeats) return "rel64";
-    if (inSets([1, 15], [113, 127]) && values.some((v) => v >= 113 || v <= 15) && repeats)
-      return "rel2c";
-    if (inSets([1, 15], [65, 79]) && repeats) return "relsign";
+  const distinct = new Set(values).size;
+  // a walk moves by small steps (relative codes jump across 0 and 127, or 1 and 65)
+  const near = (v: number, i: number) => i === 0 || Math.abs(v - values[i - 1]) <= 12;
+  const up = values.every((v, i) => near(v, i) && (i === 0 || v >= values[i - 1]));
+  const down = values.every((v, i) => near(v, i) && (i === 0 || v <= values[i - 1]));
+  const last = values[values.length - 1];
+  const path = (up || down) && (distinct >= 3 || (distinct >= 2 && (last === 0 || last === 127)));
+  const relative = repeatCount * 2 >= pairs && !path;
+  if (relative) {
+    if (all(57, 71) && values.every((v) => v !== 64)) return "rel64";
+    // 127 alone is also where an absolute knob stops: two's complement needs another code too
+    if (inSets([1, 15], [113, 127]) && values.some((v) => v !== 127)) return "rel2c";
+    if (inSets([1, 15], [65, 79])) return "relsign";
   }
   // values that move like a fader: absolute
   if (!repeats || values.length >= 4) return "absolute";
   return null;
+}
+
+/**
+ * Whether a knob taken for relative is really absolute (D141): six values in a row that only go
+ * one way without repeating. Relative knobs turned slowly repeat their code; this walk is what an
+ * absolute knob sends, so a wrong guess heals itself as soon as the knob is turned a little.
+ */
+export function walksLikeAbsolute(values: number[]): boolean {
+  if (values.length < 6) return false;
+  const up = values.every((v, i) => i === 0 || v > values[i - 1]);
+  const down = values.every((v, i) => i === 0 || v < values[i - 1]);
+  return up || down;
 }
 
 // ---------- roles (D121) ----------

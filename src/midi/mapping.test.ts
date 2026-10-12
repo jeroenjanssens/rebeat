@@ -18,6 +18,7 @@ import {
   relativeDelta,
   resolveTarget,
   routeNote,
+  walksLikeAbsolute,
   withMapping,
   ROLES,
 } from "./mapping";
@@ -243,6 +244,37 @@ describe("detectMode — fader protection (D129)", () => {
   it("rel2c and relsign are unaffected", () => {
     expect(detectMode([127, 127, 126, 1, 1])).toBe("rel2c");
     expect(detectMode([65, 65, 66, 2, 2])).toBe("relsign");
+  });
+});
+
+describe("detectMode — absolute knobs aren't taken for relative (D141)", () => {
+  it("an absolute knob turned slowly, with a repeat or a wiggle, stays absolute", () => {
+    expect(detectMode([66, 67, 67, 68, 69, 70])).toBe("absolute");
+    expect(detectMode([66, 66, 67, 67, 68, 68])).toBe("absolute");
+    expect(detectMode([70, 69, 69, 70, 71, 72])).toBe("absolute");
+    expect(detectMode([71, 70, 70, 69])).toBe("absolute");
+  });
+
+  it("an absolute knob at its end isn't two's complement", () => {
+    expect(detectMode([118, 121, 124, 127, 127, 127])).toBe("absolute");
+    expect(detectMode([124, 127, 127, 127, 127, 127])).toBe("absolute");
+    expect(detectMode([127, 127, 127, 127])).toBe("absolute");
+  });
+
+  it("relative knobs turned slowly are still found", () => {
+    expect(detectMode([65, 65, 65, 65])).toBe("rel64");
+    expect(detectMode([63, 63, 63, 62, 63, 63])).toBe("rel64");
+    expect(detectMode([1, 1, 1, 1])).toBe("rel2c");
+    expect(detectMode([127, 127, 127, 126])).toBe("rel2c");
+    expect(detectMode([65, 65, 65, 1, 1])).toBe("relsign");
+  });
+
+  it("a knob taken for relative walks like an absolute one", () => {
+    expect(walksLikeAbsolute([66, 67, 68, 69, 70, 71])).toBe(true);
+    expect(walksLikeAbsolute([90, 85, 80, 76, 70, 66])).toBe(true);
+    expect(walksLikeAbsolute([65, 65, 65, 65, 65, 65])).toBe(false);
+    expect(walksLikeAbsolute([65, 66, 65, 66, 67, 65])).toBe(false);
+    expect(walksLikeAbsolute([66, 67, 68])).toBe(false);
   });
 });
 

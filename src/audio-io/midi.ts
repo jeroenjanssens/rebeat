@@ -34,6 +34,7 @@ import { fromKnob, paramOf } from "../model/patchParams";
 import { soundDefs } from "../library/synthTrack";
 import {
   detectMode,
+  walksLikeAbsolute,
   findMapping,
   pickedUp,
   readTarget,
@@ -524,6 +525,9 @@ export const targetContext = (): TargetContext => {
 
 /** Apply a mapping to a message; returns what it did (for the monitor). */
 function applyMapping(map: MidiMapping, m: MidiMessage, scope: "project" | "global"): string {
+  // where the knob was, in any pad mode: turning it in Drum mode doesn't make a jump later (D141)
+  const before = m.type === "cc" ? lastValue.get(map.id) : undefined;
+  if (m.type === "cc") lastValue.set(map.id, m.value);
   // Chord and Key mode (D140): knob 1 is the chord voicing, knob 5 the bass, a step per notch
   if (
     (map.slot === "knob1" || map.slot === "knob5") &&
@@ -531,7 +535,7 @@ function applyMapping(map: MidiMapping, m: MidiMessage, scope: "project" | "glob
     useSettings.getState().padMode !== "drum"
   ) {
     const voicing = map.slot === "knob1";
-    const steps = voicingKnobSteps(map, m.value);
+    const steps = steppedKnob(map, m.value, before);
     if (steps) (voicing ? stepChordVoicing : stepBass)(steps);
     const s = useSettings.getState();
     const action = voicing
@@ -651,32 +655,7 @@ function applyMapping(map: MidiMapping, m: MidiMessage, scope: "project" | "glob
     lastSelectedForPickup.set(map.id, selected);
     if (before !== undefined && before !== selected) lastInSeen.delete(map.id);
   }
-  const now = Date.now();
-  const prevSeen = lastInSeen.get(map.id) ?? { values: [], times: [] };
-  // D129: gesture — only accumulate values within 250 ms of the previous one
-  const recent =
-    prevSeen.times.length > 0 && now - prevSeen.times[prevSeen.times.length - 1] > 250
-      ? { values: [m.value], times: [now] }
-      : {
-          values: [...prevSeen.values, m.value].slice(-6),
-          times: [...prevSeen.times, now].slice(-6),
-        };
-  lastInSeen.set(map.id, recent);
-  const seen = recent.values;
-
-  let mode = map.mode ?? "absolute";
-
-  // D129: only sniff knobs and encoders, never faders
-  const kind = slotKind(map.slot ?? "");
-  if (mode === "absolute" && (kind === "knob" || kind === "encoder") && seen.length >= 4) {
-    // a controller map guessed absolute, but this knob turns out to be relative: switch
-    const sniffed = detectMode(seen);
-    if (sniffed && sniffed !== "absolute") {
-      mode = sniffed;
-      const s = useSettings.getState();
-      s.set({ midiMappings: s.midiMappings.map((x) => (x.id === map.id ? { ...x, mode } : x)) });
-    }
-  }
+  const mode = knobMode(map, m.value);
 
   const current =
     pending.get(target) ?? readTarget(target, useStore.getState().project) ?? lastSet.get(target);
@@ -700,40 +679,62 @@ function applyMapping(map: MidiMapping, m: MidiMessage, scope: "project" | "glob
   return action;
 }
 
-/** A voicing knob's recent values, and how far an absolute one has turned since its last step. */
-const voicingKnobs = new Map<
-  string,
-  { values: number[]; at: number; last?: number; acc: number }
->();
+/** Every mapping's last CC value, in any pad mode (D141). */
+const lastValue = new Map<string, number>();
+/** How far an absolute stepped knob has turned since its last step. */
+const stepAcc = new Map<string, number>();
+
+/**
+ * How a mapping's CC is read now (D120, D129, D141): its saved mode, or a better guess from
+ * this gesture's values (within 250 ms of each other), saved for next time. Only knobs and
+ * encoders are guessed; faders stay absolute. A knob taken for relative that walks like an
+ * absolute one switches back.
+ */
+function knobMode(map: MidiMapping, value: number): MidiMode {
+  const now = Date.now();
+  const prev = lastInSeen.get(map.id) ?? { values: [], times: [] };
+  const recent =
+    prev.times.length > 0 && now - prev.times[prev.times.length - 1] > 250
+      ? { values: [value], times: [now] }
+      : { values: [...prev.values, value].slice(-6), times: [...prev.times, now].slice(-6) };
+  lastInSeen.set(map.id, recent);
+  const seen = recent.values;
+  let mode = map.mode ?? "absolute";
+  const kind = slotKind(map.slot ?? "");
+  if (kind !== "knob" && kind !== "encoder") return mode;
+  let next = mode;
+  if (mode === "absolute" && seen.length >= 4) {
+    // a controller map guessed absolute, but this knob turns out to be relative
+    const sniffed = detectMode(seen);
+    if (sniffed && sniffed !== "absolute") next = sniffed;
+  } else if (mode !== "absolute" && kind === "knob" && walksLikeAbsolute(seen)) {
+    next = "absolute";
+  }
+  if (next !== mode) {
+    mode = next;
+    const s = useSettings.getState();
+    s.set({ midiMappings: s.midiMappings.map((x) => (x.id === map.id ? { ...x, mode } : x)) });
+  }
+  return mode;
+}
 
 /**
  * Steps (±) for a knob that sets a stepped value (D140): one per message for a relative knob,
- * one per 8 values for an absolute one. A knob mapped as absolute that turns out to send
- * relative codes is switched, as the other knobs are (D129).
+ * one per 8 values for an absolute one, counted from where the knob was (`before`).
  */
-function voicingKnobSteps(map: MidiMapping, value: number): number {
-  const now = Date.now();
-  const st = voicingKnobs.get(map.id) ?? { values: [], at: 0, acc: 0 };
-  st.values = now - st.at > 250 ? [value] : [...st.values, value].slice(-6);
-  st.at = now;
-  voicingKnobs.set(map.id, st);
-  let mode = map.mode ?? "absolute";
-  if (mode === "absolute" && st.values.length >= 4) {
-    const sniffed = detectMode(st.values);
-    if (sniffed && sniffed !== "absolute") {
-      mode = sniffed;
-      const s = useSettings.getState();
-      s.set({ midiMappings: s.midiMappings.map((x) => (x.id === map.id ? { ...x, mode } : x)) });
-    }
+function steppedKnob(map: MidiMapping, value: number, before: number | undefined): number {
+  const mode = knobMode(map, value);
+  if (mode !== "absolute") {
+    stepAcc.delete(map.id);
+    return Math.sign(relativeDelta(mode, value));
   }
-  if (mode !== "absolute") return Math.sign(relativeDelta(mode, value));
-  if (st.last !== undefined) st.acc += value - st.last;
-  st.last = value;
+  let acc = (stepAcc.get(map.id) ?? 0) + (before === undefined ? 0 : value - before);
   let steps = 0;
-  while (Math.abs(st.acc) >= 8) {
-    steps += Math.sign(st.acc);
-    st.acc -= 8 * Math.sign(st.acc);
+  while (Math.abs(acc) >= 8) {
+    steps += Math.sign(acc);
+    acc -= 8 * Math.sign(acc);
   }
+  stepAcc.set(map.id, acc);
   return steps;
 }
 
