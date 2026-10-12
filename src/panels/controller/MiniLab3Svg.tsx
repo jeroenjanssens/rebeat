@@ -13,6 +13,8 @@ import { SHIFT_PAD_COLORS } from "../../midi/padColors";
 import { inKey, noteName, type Key } from "../../model/notes";
 import { CHORD_PADS } from "../../model/padChords";
 import { onFrame } from "../../render/raf";
+import { audioNow } from "../../engine/engine";
+import { onKeysLight } from "../../state/keys";
 
 // ── Layout (photo pixels) ──────────────────────────────────────────────────
 
@@ -194,6 +196,10 @@ interface LiveState {
   seen: Uint8Array;
   encoderAngle: number;
   shift: number;
+  /** How many of the keys' notes sound on each pitch (D156), and light changes still to come
+   * (at their audio times). */
+  audible: Map<number, number>;
+  lightQueue: { pitch: number | null; on: boolean; at: number }[];
   dirty: boolean;
 }
 
@@ -208,6 +214,8 @@ function makeLiveState(): LiveState {
     seen: new Uint8Array(4),
     encoderAngle: 0,
     shift: 12, // MiniLab's keys start at C3 (MIDI 48) at octave 0
+    audible: new Map(),
+    lightQueue: [],
     dirty: true,
   };
 }
@@ -235,8 +243,6 @@ interface MiniLab3SvgProps {
   padMode?: "drum" | "chord" | "key";
   /** The pads' colors (D144): the tracks' in Drum mode, blue and purple for the chord pads. */
   padColors?: readonly (string | null)[];
-  /** Notes the keys play that no key pressed (a chord's other notes), as MIDI notes. */
-  generated?: readonly number[];
   /** Key mode's key: the keys in it get a dot (the root a bigger one), D138. */
   scaleKey?: Key | null;
   /** The size the note names on the keys are drawn at, in CSS pixels, when it changes. */
@@ -253,7 +259,6 @@ export function MiniLab3Svg({
   onPadDown,
   padMode = "drum",
   padColors = [],
-  generated = [],
   scaleKey = null,
   onLabelPx,
   holdLit = false,
@@ -267,11 +272,9 @@ export function MiniLab3Svg({
   const liveRef = useRef<LiveState>(makeLiveState());
   // the labels (and the values they control) for the frame loop, which runs outside React
   const labelsRef = useRef(labels);
-  const generatedRef = useRef(generated);
   const scaleKeyRef = useRef(scaleKey);
   useEffect(() => {
     labelsRef.current = labels;
-    generatedRef.current = generated;
     scaleKeyRef.current = scaleKey;
     colorsRef.current = colors;
     liveRef.current.dirty = true;
@@ -309,6 +312,15 @@ export function MiniLab3Svg({
   useEffect(() => {
     const timers = flashTimers.current;
     return () => timers.forEach((t) => clearTimeout(t));
+  }, []);
+
+  // What the keys play, as it sounds (D156): a strum's notes one by one, an arpeggio's steps
+  useEffect(() => {
+    const live = liveRef.current;
+    return onKeysLight((pitch, on, at) => {
+      live.lightQueue.push({ pitch, on, at });
+      live.dirty = true;
+    });
   }, []);
 
   // Subscribe to controller events
@@ -369,26 +381,49 @@ export function MiniLab3Svg({
       if (!live.dirty) return;
       live.dirty = false;
 
-      // Keys: pressed ones in the accent, the ones a chord adds in a paler accent
-      const extra = new Set(generatedRef.current.map((n) => n - live.shift));
+      // the notes that started or stopped sounding by now (later ones wait for their time)
+      if (live.lightQueue.length) {
+        const now = audioNow();
+        const due = live.lightQueue.filter((e) => e.at <= now + 0.004).sort((a, b) => a.at - b.at);
+        live.lightQueue = live.lightQueue.filter((e) => e.at > now + 0.004);
+        for (const e of due) {
+          if (e.pitch === null) live.audible.clear();
+          else {
+            const n = (live.audible.get(e.pitch) ?? 0) + (e.on ? 1 : -1);
+            if (n > 0) live.audible.set(e.pitch, n);
+            else live.audible.delete(e.pitch);
+          }
+        }
+        if (live.lightQueue.length) live.dirty = true; // keep looking until they're all due
+      }
+
+      // Keys: a key you hold that sounds in the accent, a note the keys add (a chord's, an
+      // arpeggio's, a pattern's) in a paler accent while it sounds, a key you hold that doesn't
+      // sound right now (its turn in a strum, between arp steps) faintly
       for (let i = 0; i < KEY_LAYOUT.length; i++) {
         const k = KEY_LAYOUT[i];
         const vel = live.keyVel[k.midi];
-        const added = vel === 0 && extra.has(k.midi);
+        const sounding = live.audible.has(k.midi + live.shift);
+        const added = vel === 0 && sounding;
         const el = svg.querySelector<SVGElement>(`[data-key="${k.midi}"]`);
         if (el) {
+          const under = k.white ? WHITE_KEY : BLACK_KEY;
           el.style.fill =
-            vel > 0
-              ? `color-mix(in oklab, var(--accent) ${Math.round(40 + (vel / 127) * 60)}%, ${k.white ? WHITE_KEY : BLACK_KEY})`
-              : added
-                ? generatedFill(k.white)
-                : "";
+            vel > 0 && sounding
+              ? `color-mix(in oklab, var(--accent) ${Math.round(40 + (vel / 127) * 60)}%, ${under})`
+              : vel > 0
+                ? `color-mix(in oklab, var(--accent) 18%, ${under})`
+                : added
+                  ? generatedFill(k.white)
+                  : "";
           if (added) el.dataset.generated = "true";
           else delete el.dataset.generated;
+          if (sounding) el.dataset.sounding = "true";
+          else delete el.dataset.sounding;
         }
-        // while a key sounds: the note it plays (the device's octave included)
+        // while a key sounds or is held: the note it plays (the device's octave included)
         const label = svg.querySelector<SVGTextElement>(`[data-key-note="${k.midi}"]`);
-        if (label) label.textContent = vel > 0 || added ? noteName(k.midi + live.shift) : "";
+        if (label) label.textContent = vel > 0 || sounding ? noteName(k.midi + live.shift) : "";
         // Key mode: a dot on the keys in its key, a bigger one on the root
         const dot = svg.querySelector<SVGCircleElement>(`[data-key-dot="${k.midi}"]`);
         if (dot) {

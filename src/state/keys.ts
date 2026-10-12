@@ -300,6 +300,26 @@ interface Voice {
   recordId: number | null;
   pending?: boolean;
   cancel?: () => void;
+  /** The note it plays and when it started sounding (for the lights, `onKeysLight`). */
+  pitch?: number;
+  startedAt?: number;
+}
+
+/**
+ * A note the keys play started (`on`) or stopped sounding, at an audio time (D156): the
+ * Controller panel lights its key then, so a strum, a slop, an arpeggio or a pattern shows as it
+ * sounds. `pitch` null: everything stopped (Stop).
+ */
+export type KeysLight = (pitch: number | null, on: boolean, at: number) => void;
+const lights = new Set<KeysLight>();
+
+export function onKeysLight(fn: KeysLight): () => void {
+  lights.add(fn);
+  return () => void lights.delete(fn);
+}
+
+function light(pitch: number | null, on: boolean, at: number) {
+  for (const fn of lights) fn(pitch, on, at);
 }
 
 /**
@@ -315,6 +335,12 @@ interface NoteTiming {
 }
 
 function startNote(out: Output, pitch: number, velocity: number, t: NoteTiming = {}): Voice {
+  const at = t.at ?? audioNow();
+  light(pitch, true, at);
+  return { ...voiceFor(out, pitch, velocity, t), pitch, startedAt: at };
+}
+
+function voiceFor(out: Output, pitch: number, velocity: number, t: NoteTiming): Voice {
   switch (out.kind) {
     case "editor":
       return { release: out.hold(pitch, velocity), recordId: null };
@@ -352,6 +378,7 @@ function stopNote(v: Voice, at?: number) {
   }
   v.release(at);
   recordNoteOff(v.recordId, at);
+  if (v.pitch !== undefined) light(v.pitch, false, Math.max(at ?? audioNow(), v.startedAt ?? 0));
 }
 
 /** Play a note through the Keys channel (library sound target). */
@@ -840,10 +867,11 @@ setRhythmPlayer({
   },
 });
 
-// Stop (a panic, D99) lets go of what's latched too
+// Stop (a panic, D99) lets go of what's latched too, and every key goes dark
 onPerformPanic(() => {
   endLatched();
   publish();
+  light(null, false, audioNow());
 });
 
 /** Pitch bend (−1..1), mod wheel and aftertouch (0..1) for the keys' voice. */

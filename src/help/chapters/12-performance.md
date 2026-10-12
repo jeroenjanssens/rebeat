@@ -137,6 +137,8 @@ With the chord pads (Chord and Key mode) there's more next to **Voicing** and **
 
 On a controller in Chord and Key mode the eight knobs are these settings: **1** Voicing, **2** Transpose, **3** Strum, **4** Arp (its rate), **5** Bass, **6** Slop, **7** Pattern and **8** Balance. Knobs 3, 4, 6 and 7 turn their style off at the far left. The picture labels them and the MiniLab's display shows the value.
 
+The **keys in the picture light up as their notes sound**: a strum's notes one after another, an arpeggio a step at a time, a pattern on its hits. A key you hold is lit in the accent while it sounds and faintly while it waits for its turn; the notes the keys add are in a paler accent.
+
 **Recording** records what you hear: each strummed note at its own time, each arpeggio note and each pattern hit, the bass on its own track when it has one. With **Snap** on, the hits snap to the grid and a strum keeps its spread. While stopped (step entry), a key writes its chord as it is.
 
 ## Launchpad and Push

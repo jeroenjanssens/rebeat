@@ -165,3 +165,72 @@ test("Latch keeps the chord after the key is let go; knobs 3, 4, 7 set the style
   await send([0xb0, 77, 0]);
   await expect(page.getByTestId("play-arp")).toHaveAttribute("aria-pressed", "false");
 });
+
+test("the keys light up as their notes sound: a strum one by one, an arpeggio a step at a time (D156)", async ({
+  page,
+}) => {
+  await midiDevices(page, ["Minilab3 MIDI"]);
+  await page.getByTestId("midi-use-detected").click();
+  await page.keyboard.press("Escape");
+  await page.evaluate(() =>
+    (window as never as W).__rebeat
+      .commands()
+      .find((c) => c.id === "panel.controller")!
+      .run(),
+  );
+  await page.getByTestId("controller-panel").waitFor();
+  await page.evaluate(() => {
+    const s = (window as never as W).__rebeat.store.getState();
+    s.setUi({ selectedTrackId: s.project.tracks.find((t) => t.mode === "notes")!.id });
+  });
+  const send = (d: number[]) =>
+    page.evaluate((d) => (window as never as W).__midiFrom("Minilab3 MIDI", d), d);
+  // record when each key starts sounding, and how many sound at once
+  await page.evaluate(() => {
+    const w = window as never as { __lit: { key: string; at: number }[]; __most: number };
+    w.__lit = [];
+    w.__most = 0;
+    new MutationObserver((ms) => {
+      for (const m of ms) {
+        const el = m.target as SVGElement;
+        if (el.dataset.sounding === "true" && m.oldValue !== "true")
+          w.__lit.push({ key: el.dataset.key!, at: performance.now() });
+      }
+      w.__most = Math.max(
+        w.__most,
+        document.querySelectorAll('[data-key][data-sounding="true"]').length,
+      );
+    }).observe(document.querySelector('[aria-label="MiniLab 3 controller"]')!, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["data-sounding"],
+      attributeOldValue: true,
+    });
+  });
+  const lit = () =>
+    page.evaluate(() => (window as never as { __lit: { key: string; at: number }[] }).__lit);
+
+  // a slow strum on a C major chord (Chord mode, pad 3 = Maj): C, then E, then G
+  await page.getByTestId("pad-mode").getByRole("button", { name: "Chord" }).click();
+  await setStyle(page, { strum: { on: true, time: 0.25, direction: "up" } }, { padMode: "chord" });
+  await send([0x99, 38, 100]);
+  await send([0x90, 60, 100]);
+  await expect.poll(async () => (await lit()).length).toBeGreaterThanOrEqual(3);
+  const strum = await lit();
+  const order = strum.map((l) => Number(l.key));
+  expect(order.slice(0, 3)).toEqual([...order.slice(0, 3)].sort((a, b) => a - b));
+  expect(strum[2].at - strum[0].at).toBeGreaterThan(120);
+  await send([0x80, 60, 0]);
+  await send([0x89, 38, 0]);
+  await expect(page.locator('[data-key][data-sounding="true"]')).toHaveCount(0);
+
+  // the arpeggiator over three held keys: one key lit at a time
+  await page.getByTestId("pad-mode").getByRole("button", { name: "Drum" }).click();
+  await setStyle(page, { arp: { on: true, rate: "1/8", gate: 0.6 } }, { padMode: "drum" });
+  await page.evaluate(() => ((window as never as { __most: number }).__most = 0));
+  for (const n of [60, 64, 67]) await send([0x90, n, 100]);
+  await page.waitForTimeout(1200);
+  for (const n of [60, 64, 67]) await send([0x80, n, 0]);
+  expect(await page.evaluate(() => (window as never as { __most: number }).__most)).toBe(1);
+  expect(new Set((await lit()).slice(3).map((l) => l.key)).size).toBe(3);
+});

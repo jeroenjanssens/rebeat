@@ -563,6 +563,25 @@ describe("play styles (D149–D154)", () => {
     expect(h[2][1]).toBeCloseTo(0.06);
   });
 
+  it("tells the lights when each note sounds and stops (D156)", () => {
+    const events: [number | null, boolean, number][] = [];
+    const off = keysApi.onKeysLight((p, on, at) => events.push([p, on, at]));
+    setPlayStyle({ strum: { on: true, time: 0.06, direction: "up" } });
+    const up = noteOn(60, 0.8, "midi");
+    flushPerform(0);
+    const ons = events.filter((e) => e[1]);
+    expect(ons.map((e) => e[0])).toEqual([60, 64, 67]);
+    expect(ons[2][2]).toBeCloseTo(0.06);
+    up();
+    expect(
+      events
+        .filter((e) => !e[1])
+        .map((e) => e[0])
+        .sort(),
+    ).toEqual([60, 64, 67]);
+    off();
+  });
+
   it("strums down from the highest; a key let go early cancels what hasn't started", () => {
     setPlayStyle({ strum: { on: true, time: 0.2, direction: "down" } });
     const up = noteOn(60, 0.8, "midi");

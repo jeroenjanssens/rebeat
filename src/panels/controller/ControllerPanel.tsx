@@ -614,7 +614,6 @@ export function ControllerPanel() {
             onPadDown={handlePadDown}
             padMode={padMode}
             padColors={padColors(project.tracks, padMode)}
-            generated={sounding.filter((n) => n.added).map((n) => n.pitch)}
             scaleKey={padMode === "key" ? keyModeKey : null}
             onLabelPx={setLabelPx}
             holdLit={playStyle.latch}
