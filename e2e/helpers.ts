@@ -8,7 +8,11 @@ export async function openApp(page: Page) {
     if (!localStorage.getItem("rebeat.settings"))
       localStorage.setItem(
         "rebeat.settings",
-        JSON.stringify({ state: { onboarded: true }, version: 1 }),
+        // the keys follow the selected track, as most tests expect (the default is the piano)
+        JSON.stringify({
+          state: { onboarded: true, keysTarget: { kind: "selected" } },
+          version: 1,
+        }),
       );
   });
   await page.goto("/");

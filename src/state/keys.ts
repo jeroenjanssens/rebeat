@@ -137,11 +137,27 @@ export function setKeysTarget(target: KeysTarget) {
   // leaving a sound target: dispose the Keys channel
   if (prev.kind === "sound" && target.kind !== "sound") disposeKeysChannel();
   useKeys.setState({ target, root: null });
+  useSettings.getState().set({ keysTarget: target });
   if (target.kind === "sound") {
     // add to recent (dedupe by id, newest first, at most 8)
     const t = target;
     const prev = useKeys.getState().recent.filter((r) => r.id !== t.id);
     useKeys.setState({ recent: [t, ...prev].slice(0, 8) });
+    void ensureKeysChannel(target);
+  }
+}
+
+/**
+ * What the keys played last time (D166; the Grand Piano at first): put back when the audio
+ * starts, a library sound's channel made at once, so it's loading before the first key.
+ */
+export function restoreKeysTarget() {
+  const target = useSettings.getState().keysTarget ?? { kind: "selected" };
+  useKeys.setState({ target, root: null });
+  if (target.kind === "sound") {
+    useKeys.setState({
+      recent: [target, ...useKeys.getState().recent.filter((r) => r.id !== target.id)].slice(0, 8),
+    });
     void ensureKeysChannel(target);
   }
 }

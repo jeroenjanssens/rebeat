@@ -53,6 +53,8 @@ export async function startAudio(): Promise<boolean> {
     if (useSettings.getState().midiEnabled) void startMidi();
     startLiveInput();
     void import("../midi/displayFeed").then((m) => m.startDisplayFeed());
+    // the keys play what they played last time (D166: the Grand Piano at first)
+    void import("../state/keys").then((m) => m.restoreKeysTarget());
     const { outputDeviceId } = useSettings.getState();
     if (outputDeviceId) await setOutputDevice(outputDeviceId);
     startAudioLoad(audioContext());

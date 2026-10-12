@@ -123,6 +123,11 @@ export interface Settings {
   suggest: boolean;
   /** How adventurous the suggestions are: 0 Safe (the key's own chords), 1 Common, 2 Bold. */
   suggestAdventure: number;
+  /** What the keys play (D126, D166), remembered: the library's Grand Piano to start with. */
+  keysTarget:
+    | { kind: "selected" }
+    | { kind: "track"; id: string }
+    | { kind: "sound"; source: "catalog" | "sample"; id: string; name: string };
   /** Next mode (D161): a progression whose next chord pad 1 holds, or null (the best one). */
   nextProgression: string | null;
   /** Key mode's own key (D138), independent of the project. */
@@ -223,6 +228,7 @@ export const DEFAULT_SETTINGS: Settings = {
   suggest: false,
   suggestAdventure: 1,
   nextProgression: null,
+  keysTarget: { kind: "sound", source: "catalog", id: "smplr:piano", name: "Grand Piano" },
   previewVolume: 0.8,
   freeFirstLoop: false,
   onboarded: false,
