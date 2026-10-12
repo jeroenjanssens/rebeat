@@ -67,3 +67,26 @@ export function padChordLabel(pads: readonly number[]): string {
   const order = [...new Set(pads)].sort((a, b) => a - b);
   return order.map((p) => CHORD_PADS[p]).join(" + ");
 }
+
+/** How far chord voicing goes either way (D140): ±8 inversions. */
+export const VOICING_RANGE = 8;
+
+/**
+ * A chord's voicing (D140), as the Orchid's Voicing dial: each step up moves the lowest note an
+ * octave up, each step down the highest note an octave down (C E G → +1: E G C, −1: G C E
+ * below). Notes that would leave MIDI's range stop it. Low to high.
+ */
+export function voiceChord(notes: readonly number[], steps: number): number[] {
+  const out = [...notes].sort((a, b) => a - b);
+  for (let i = 0; i < Math.abs(steps) && out.length > 1; i++) {
+    if (steps > 0) {
+      if (out[0] + 12 > 127) break;
+      out.push(out.shift()! + 12);
+    } else {
+      if (out[out.length - 1] - 12 < 0) break;
+      out.unshift(out.pop()! - 12);
+    }
+    out.sort((a, b) => a - b);
+  }
+  return out;
+}

@@ -16,6 +16,8 @@ import {
   chordPadUp,
   keyDialPress,
   keyDialTurn,
+  stepBass,
+  stepChordVoicing,
   keysControl,
   keysSustain,
   keysTakeNotes,
@@ -522,6 +524,29 @@ export const targetContext = (): TargetContext => {
 
 /** Apply a mapping to a message; returns what it did (for the monitor). */
 function applyMapping(map: MidiMapping, m: MidiMessage, scope: "project" | "global"): string {
+  // Chord and Key mode (D140): knob 1 is the chord voicing, knob 5 the bass, a step per notch
+  if (
+    (map.slot === "knob1" || map.slot === "knob5") &&
+    m.type === "cc" &&
+    useSettings.getState().padMode !== "drum"
+  ) {
+    const voicing = map.slot === "knob1";
+    const steps = voicingKnobSteps(map, m.value);
+    if (steps) (voicing ? stepChordVoicing : stepBass)(steps);
+    const s = useSettings.getState();
+    const action = voicing
+      ? `${map.label}: chord voicing ${s.chordVoicing > 0 ? "+" : ""}${s.chordVoicing}`
+      : `${map.label}: bass ${s.bassOctaves ? `−${s.bassOctaves}` : "off"}`;
+    report(m, action, {
+      ...slotEventFromMapping(map),
+      value: m.value,
+      target: voicing ? "keys:voicing" : "keys:bass",
+      // where the knob's needle points: the voicing in its range, the bass (Off at the right)
+      targetValue: voicing ? (s.chordVoicing + 8) / 16 : (3 - s.bassOctaves) / 3,
+    });
+    return action;
+  }
+
   const target = resolveTarget(map.target, targetContext());
   if (!target) return `${map.label}: nothing to control (select a track)`;
   const where = scope === "global" ? " (everywhere)" : "";
@@ -673,6 +698,43 @@ function applyMapping(map: MidiMapping, m: MidiMessage, scope: "project" | "glob
   const action = `${map.label}${where} = ${Math.round(v * 100)}%`;
   report(m, action, { ...slotEv, value: m.value, target, targetValue: v });
   return action;
+}
+
+/** A voicing knob's recent values, and how far an absolute one has turned since its last step. */
+const voicingKnobs = new Map<
+  string,
+  { values: number[]; at: number; last?: number; acc: number }
+>();
+
+/**
+ * Steps (±) for a knob that sets a stepped value (D140): one per message for a relative knob,
+ * one per 8 values for an absolute one. A knob mapped as absolute that turns out to send
+ * relative codes is switched, as the other knobs are (D129).
+ */
+function voicingKnobSteps(map: MidiMapping, value: number): number {
+  const now = Date.now();
+  const st = voicingKnobs.get(map.id) ?? { values: [], at: 0, acc: 0 };
+  st.values = now - st.at > 250 ? [value] : [...st.values, value].slice(-6);
+  st.at = now;
+  voicingKnobs.set(map.id, st);
+  let mode = map.mode ?? "absolute";
+  if (mode === "absolute" && st.values.length >= 4) {
+    const sniffed = detectMode(st.values);
+    if (sniffed && sniffed !== "absolute") {
+      mode = sniffed;
+      const s = useSettings.getState();
+      s.set({ midiMappings: s.midiMappings.map((x) => (x.id === map.id ? { ...x, mode } : x)) });
+    }
+  }
+  if (mode !== "absolute") return Math.sign(relativeDelta(mode, value));
+  if (st.last !== undefined) st.acc += value - st.last;
+  st.last = value;
+  let steps = 0;
+  while (Math.abs(st.acc) >= 8) {
+    steps += Math.sign(st.acc);
+    st.acc -= 8 * Math.sign(st.acc);
+  }
+  return steps;
 }
 
 /** Derive controller event kind+index from a mapping's slot id. */

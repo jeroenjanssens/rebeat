@@ -83,6 +83,9 @@ const {
   keyDialTurn,
   keyDialPress,
   setBassOctaves,
+  setChordVoicing,
+  stepChordVoicing,
+  stepBass,
 } = await import("./keys");
 const { useSettings } = await import("./settings");
 
@@ -454,5 +457,72 @@ describe("bass voicing (D139)", () => {
     chordPadUp(MAJ);
     noteOn(60, 0.8, "midi");
     expect(sounding()).toEqual([[62]]);
+  });
+});
+
+describe("chord voicing and the bass knob (D140)", () => {
+  const MAJ = 2;
+  const sounding = () => useKeys.getState().sounding.map((s) => s.notes);
+
+  beforeEach(() => {
+    keysSustain(false);
+    releaseAllKeys();
+    vi.clearAllMocks();
+    holdNote.mockImplementation(() => holdNoteRelease);
+    setKeysTarget({ kind: "selected" });
+    setPadMode("chord");
+    chordPadDown(MAJ);
+  });
+  afterEach(() => {
+    releaseAllKeys();
+    chordPadUp(MAJ);
+    setChordVoicing(0);
+    setBassOctaves(0);
+    setPadMode("drum");
+  });
+
+  it("voices every chord, a held one at once, within ±8", () => {
+    noteOn(60, 0.8, "midi");
+    stepChordVoicing(1);
+    expect(sounding()).toEqual([[64, 67, 72]]);
+    stepChordVoicing(-1);
+    stepChordVoicing(-1);
+    expect(sounding()).toEqual([[55, 60, 64]]);
+    setChordVoicing(20);
+    expect(useSettings.getState().chordVoicing).toBe(8);
+  });
+
+  it("keeps the bass on the root, below the voiced chord", () => {
+    setBassOctaves(1);
+    setChordVoicing(1);
+    noteOn(60, 0.8, "midi");
+    expect(sounding()).toEqual([[48, 64, 67, 72]]);
+    setChordVoicing(-2);
+    // the chord starts on E3: C3 is still below it
+    expect(sounding()).toEqual([[48, 52, 55, 60]]);
+    setChordVoicing(-3);
+    // the chord starts on C3 itself: the bass goes an octave further, C2
+    expect(sounding()).toEqual([[36, 48, 52, 55]]);
+  });
+
+  it("steps the bass deeper to the left and back toward Off to the right", () => {
+    stepBass(-1);
+    stepBass(-1);
+    expect(useSettings.getState().bassOctaves).toBe(2);
+    stepBass(-5);
+    stepBass(-1);
+    expect(useSettings.getState().bassOctaves).toBe(3);
+    stepBass(1);
+    stepBass(1);
+    stepBass(1);
+    stepBass(1);
+    expect(useSettings.getState().bassOctaves).toBe(0);
+  });
+
+  it("leaves plain keys alone", () => {
+    chordPadUp(MAJ);
+    setChordVoicing(2);
+    noteOn(60, 0.8, "midi");
+    expect(sounding()).toEqual([[60]]);
   });
 });

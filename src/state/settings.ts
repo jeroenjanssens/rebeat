@@ -124,6 +124,8 @@ export interface Settings {
   /** Bass voicing (D139): when the pads make a chord, its root also plays this many octaves
    * below it (0 = off, 1–3), never below C1. */
   bassOctaves: 0 | 1 | 2 | 3;
+  /** Chord voicing (D140): inversions of every chord the pads make, −8..8 (0 = root position). */
+  chordVoicing: number;
   previewVolume: number;
   /** When nothing plays yet, the first loop recording sets the tempo (loop-pedal style). */
   freeFirstLoop: boolean;
@@ -191,6 +193,7 @@ export const DEFAULT_SETTINGS: Settings = {
   keyModeKey: { root: 0, scale: "major" },
   keyDial: "instant",
   bassOctaves: 0,
+  chordVoicing: 0,
   previewVolume: 0.8,
   freeFirstLoop: false,
   onboarded: false,

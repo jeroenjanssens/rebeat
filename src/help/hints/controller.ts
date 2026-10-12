@@ -131,9 +131,14 @@ const hints: Hints = {
     text: "Turning the black knob picks a key, shown next to the active one; pressing the knob selects it, as on the Orchid.",
     guide: "performance-key-mode",
   },
+  "controller.voicing": {
+    title: "Chord voicing",
+    text: "Inversions of every chord the pads make, like the Orchid's Voicing dial: each step up moves the chord's lowest note an octave up (C E G → E G C), each step down its highest note an octave down. The chord stays the same; the bass stays on its root. Click the number for root position. On a controller: knob 1 in Chord and Key mode.",
+    guide: "performance-chord-pads",
+  },
   "controller.bass": {
     title: "Bass",
-    text: "When the pads make a chord (Chord and Key mode), its root also plays 1, 2 or 3 octaves below it, on the same sound, like the Orchid's bass. It never goes below C1. Off: just the chord.",
+    text: "When the pads make a chord (Chord and Key mode), its root also plays 1, 2 or 3 octaves below it (and below the voiced chord), on the same sound, like the Orchid's bass. It never goes below C1. Off: just the chord. On a controller: knob 5 in Chord and Key mode (left is deeper).",
     guide: "performance-chord-pads",
   },
   "controller.transpose": {

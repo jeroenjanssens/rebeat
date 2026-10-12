@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { chordName } from "./chords";
-import { padChord, padChordLabel, padChordTones } from "./padChords";
+import { padChord, padChordLabel, padChordTones, voiceChord } from "./padChords";
 
 const [DIM, MIN, MAJ, SUS, SIX, M7, MAJ7, NINE] = [0, 1, 2, 3, 4, 5, 6, 7];
 const C3 = 48;
@@ -63,5 +63,29 @@ describe("chord pads (D137)", () => {
   it("reads the pads as the buttons do", () => {
     expect(padChordLabel([MAJ7, MAJ])).toBe("Maj + M7");
     expect(padChordLabel([])).toBe("");
+  });
+});
+
+describe("chord voicing (D140)", () => {
+  const C = [60, 64, 67];
+  it("moves the lowest note up or the highest down, an octave a step", () => {
+    expect(voiceChord(C, 0)).toEqual(C);
+    expect(voiceChord(C, 1)).toEqual([64, 67, 72]);
+    expect(voiceChord(C, 2)).toEqual([67, 72, 76]);
+    expect(voiceChord(C, 3)).toEqual([72, 76, 79]);
+    expect(voiceChord(C, -1)).toEqual([55, 60, 64]);
+    expect(voiceChord(C, -2)).toEqual([52, 55, 60]);
+    // a seventh: four steps to come round
+    expect(voiceChord([60, 64, 67, 70], 4)).toEqual([72, 76, 79, 82]);
+  });
+
+  it("keeps the same chord, named as an inversion", () => {
+    expect(chordName(voiceChord(C, 1))).toBe("C/E");
+    expect(chordName(voiceChord(C, -1))).toBe("C/G");
+  });
+
+  it("stops at MIDI's edges", () => {
+    expect(voiceChord([120, 124, 127], 2)).toEqual([120, 124, 127]);
+    expect(voiceChord([0, 4, 7], -1)).toEqual([0, 4, 7]);
   });
 });

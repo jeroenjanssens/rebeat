@@ -16,6 +16,7 @@ import {
   noteOn,
   selectPendingKey,
   setBassOctaves,
+  setChordVoicing,
   setKeyDial,
   setKeyModeKey,
   setPadMode,
@@ -127,7 +128,7 @@ function faderValue(
 function knobLabels(
   project: ReturnType<typeof useStore.getState>["project"],
   selectedTrackId: string | null | undefined,
-) {
+): { name: string; value: string; pos?: number }[] {
   const track = project.tracks.find((t) => t.id === selectedTrackId);
   if (!track) return Array.from({ length: 8 }, (_, i) => ({ name: `Knob ${i + 1}`, value: "" }));
   const defs = soundDefs(track);
@@ -232,6 +233,7 @@ function KeyModeChip() {
 function PadChordsRow({ keyMode }: { keyMode: boolean }) {
   const dial = useSettings((s) => s.keyDial);
   const bass = useSettings((s) => s.bassOctaves);
+  const voicing = useSettings((s) => s.chordVoicing);
   const pending = useKeys((s) => s.pendingKey);
   const transpose = useKeys((s) => s.transpose);
   return (
@@ -269,6 +271,23 @@ function PadChordsRow({ keyMode }: { keyMode: boolean }) {
           </div>
         </>
       )}
+      <span className="label">Voicing</span>
+      <div className="flex items-center" data-testid="voicing" data-hint="controller.voicing">
+        <button className="tool-btn !h-6" onClick={() => setChordVoicing(voicing - 1)}>
+          <Minus size={12} />
+        </button>
+        <button
+          className="num w-8 text-center text-[12px] text-ink"
+          title="Root position"
+          data-testid="voicing-value"
+          onClick={() => setChordVoicing(0)}
+        >
+          {voicing > 0 ? `+${voicing}` : voicing}
+        </button>
+        <button className="tool-btn !h-6" onClick={() => setChordVoicing(voicing + 1)}>
+          <Plus size={12} />
+        </button>
+      </div>
       <span className="label">Bass</span>
       <div className="segmented" data-testid="bass" data-hint="controller.bass">
         {([0, 1, 2, 3] as const).map((n) => (
@@ -368,7 +387,23 @@ export function ControllerPanel() {
 
   const isMiniLab = activeMap?.id === "minilab3";
 
+  const padMode = useSettings((s) => s.padMode);
+  const voicing = useSettings((s) => s.chordVoicing);
+  const bassOctaves = useSettings((s) => s.bassOctaves);
   const kLabels = knobLabels(project, selectedTrackId);
+  // Chord and Key mode (D140): knob 1 is the chord voicing, knob 5 the bass
+  if (padMode !== "drum") {
+    kLabels[0] = {
+      name: "Voicing",
+      value: voicing > 0 ? `+${voicing}` : `${voicing}`,
+      pos: (voicing + 8) / 16,
+    };
+    kLabels[4] = {
+      name: "Bass",
+      value: bassOctaves ? `−${bassOctaves}` : "Off",
+      pos: (3 - bassOctaves) / 3,
+    };
+  }
   const fLabels = [0, 1, 2, 3].map((i) => {
     const v = faderValue(i, project);
     return {
@@ -378,7 +413,6 @@ export function ControllerPanel() {
     };
   });
 
-  const padMode = useSettings((s) => s.padMode);
   const keyModeKey = useSettings((s) => s.keyModeKey);
   const [held, changeHeld] = useHeldNotes();
   const sounding = useSounding(held);

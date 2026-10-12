@@ -18,7 +18,7 @@ import {
 } from "../engine/engine";
 import { noteName, type Key } from "../model/notes";
 import { keyModeChord, sameKey, stepKeyRoot, stepKeyScale } from "../model/keyMode";
-import { padChord } from "../model/padChords";
+import { padChord, voiceChord, VOICING_RANGE } from "../model/padChords";
 import type { Track } from "../model/types";
 import { player } from "../model/tracks";
 import { recordNoteOff, recordNoteOn, playedNotes, padInput, keyRoot } from "./input";
@@ -330,18 +330,25 @@ function padNotes(key: number): number[] | null {
 /** The lowest a bass note goes (C1): an octave lower is felt more than heard. */
 const BASS_FLOOR = 24;
 
-/** What a key plays now: its chord or itself, transposed (D138), and a chord's bass (D139). */
+/**
+ * What a key plays now: its chord or itself, transposed (D138); a chord in its voicing (D140),
+ * with its bass (D139): the root, octaves down, below the chord's lowest note, not below C1.
+ */
 function notesOf(out: Output, key: number): { notes: number[]; chord: boolean } {
   const chord = padNotes(key);
   const t = useKeys.getState().transpose;
-  const notes = (chord ?? keyNotes(out, key)).map((n) => n + t);
-  const octaves = useSettings.getState().bassOctaves;
-  if (chord && octaves > 0) {
-    // the chord's root (its lowest note), that many octaves down, but not below C1
-    const root = notes[0];
-    let bass = root - 12 * octaves;
-    while (bass < BASS_FLOOR) bass += 12;
-    if (bass < root) notes.unshift(bass);
+  let notes = (chord ?? keyNotes(out, key)).map((n) => n + t);
+  if (chord) {
+    const s = useSettings.getState();
+    const root = notes[0]; // chords are built up from their root
+    notes = voiceChord(notes, s.chordVoicing);
+    if (s.bassOctaves > 0) {
+      const low = notes[0];
+      let bass = root - 12 * s.bassOctaves;
+      while (bass >= low) bass -= 12;
+      while (bass < BASS_FLOOR) bass += 12;
+      if (bass < low) notes.unshift(bass);
+    }
   }
   return { notes: [...new Set(notes.filter((n) => n >= 0 && n <= 127))], chord: !!chord };
 }
@@ -393,6 +400,25 @@ export function setTranspose(semitones: number) {
 export function setBassOctaves(octaves: 0 | 1 | 2 | 3) {
   useSettings.getState().set({ bassOctaves: octaves });
   revoice();
+}
+
+/** Bass voicing a step at a time, as the Orchid's Bass Voicing dial: down (−) is deeper,
+ * Off → −1 → −2 → −3; up (+) back toward Off (knob 5, D140). */
+export function stepBass(step: number) {
+  const n = Math.max(0, Math.min(3, useSettings.getState().bassOctaves - Math.sign(step)));
+  setBassOctaves(n as 0 | 1 | 2 | 3);
+}
+
+/** Chord voicing (D140): inversions of every chord the pads make, −8..8. */
+export function setChordVoicing(steps: number) {
+  const v = Math.max(-VOICING_RANGE, Math.min(VOICING_RANGE, Math.round(steps)));
+  if (v === useSettings.getState().chordVoicing) return;
+  useSettings.getState().set({ chordVoicing: v });
+  revoice();
+}
+
+export function stepChordVoicing(step: number) {
+  setChordVoicing(useSettings.getState().chordVoicing + Math.sign(step));
 }
 
 /** At once: a turn of the Key dial changes the key; On press: it picks one a press selects. */

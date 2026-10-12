@@ -105,6 +105,11 @@ export function startDisplayFeed(): void {
   useSettings.subscribe((s, prev) => {
     if (s.padMode === "key" && (s.keyModeKey !== prev.keyModeKey || prev.padMode !== "key"))
       showTransient("Key", keyName(s.keyModeKey));
+    // ── 3c. Chord and bass voicing (D139, D140) ──
+    if (s.chordVoicing !== prev.chordVoicing)
+      showTransient("Voicing", s.chordVoicing > 0 ? `+${s.chordVoicing}` : `${s.chordVoicing}`);
+    if (s.bassOctaves !== prev.bassOctaves)
+      showTransient("Bass", s.bassOctaves ? `−${s.bassOctaves} octave` : "Off");
   });
   useKeys.subscribe((k, prev) => {
     if (k.pendingKey && k.pendingKey !== prev.pendingKey)
