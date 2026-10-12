@@ -4,6 +4,9 @@ import { dropdown, type MenuItem } from "../components/Menu";
 import { addKeysSoundAsTrack, keysDescription, setKeysTarget, useKeys } from "../state/keys";
 import { useSettings } from "../state/settings";
 import { useStore } from "../state/store";
+import { FAMILIES, type Family } from "../library/instruments";
+import { allInstruments } from "../library/userInstruments";
+import { useLibrary } from "../library/library";
 
 /**
  * The keys chip: what the keys play (D126), and a menu to change it. In the top bar, and in the
@@ -80,9 +83,72 @@ export function KeysChip({
         });
       }
     }
+    // the library, by family (D167): any sound straight onto the keys
+    items.push({ separator: true });
+    items.push({ label: "Library ▸", onSelect: () => later(openLibrary) });
     if (keysTarget.kind === "sound" && usual) {
       items.push({ separator: true });
       items.push({ label: "Add as a track", onSelect: () => addKeysSoundAsTrack() });
+    }
+    dropdown(chipRef.current!, items);
+  };
+
+  /** Open another menu in the chip's place, once this one has closed. */
+  const later = (fn: () => void) => setTimeout(fn, 0);
+
+  /** The library's families, and the samples. */
+  const openLibrary = () => {
+    const back: MenuItem = { label: "← Back", onSelect: () => later(openMenu) };
+    const families = FAMILIES.filter((f) => allInstruments().some((c) => c.family === f));
+    dropdown(chipRef.current!, [
+      back,
+      { separator: true },
+      ...families.map((f) => ({ label: `${f} ▸`, onSelect: () => later(() => openFamily(f)) })),
+      { label: "Samples ▸", onSelect: () => later(openSamples) },
+    ]);
+  };
+
+  /** A family's sounds, under their groups. */
+  const openFamily = (family: Family) => {
+    const { target } = useKeys.getState();
+    const entries = allInstruments().filter((c) => c.family === family);
+    const items: MenuItem[] = [{ label: "← Back", onSelect: () => later(openLibrary) }];
+    let group = "";
+    for (const c of entries) {
+      if (c.group !== group) {
+        group = c.group;
+        items.push({ render: () => <div className="label px-3 pt-2 pb-0.5">{group}</div> });
+      }
+      items.push({
+        label: c.name,
+        checked: target.kind === "sound" && target.id === c.id,
+        onSelect: () => setKeysTarget({ kind: "sound", source: "catalog", id: c.id, name: c.name }),
+      });
+    }
+    dropdown(chipRef.current!, items);
+  };
+
+  /** The library's samples, by folder. */
+  const openSamples = () => {
+    const { target } = useKeys.getState();
+    const samples = [...useLibrary.getState().samples].sort(
+      (a, b) => a.folder.localeCompare(b.folder) || a.name.localeCompare(b.name),
+    );
+    const items: MenuItem[] = [{ label: "← Back", onSelect: () => later(openLibrary) }];
+    if (!samples.length) items.push({ label: "No samples yet", disabled: true });
+    let folder: string | null = null;
+    for (const smp of samples) {
+      if (smp.folder !== folder) {
+        folder = smp.folder;
+        const name = folder || "Samples";
+        items.push({ render: () => <div className="label px-3 pt-2 pb-0.5">{name}</div> });
+      }
+      items.push({
+        label: smp.name,
+        checked: target.kind === "sound" && target.id === smp.id,
+        onSelect: () =>
+          setKeysTarget({ kind: "sound", source: "sample", id: smp.id, name: smp.name }),
+      });
     }
     dropdown(chipRef.current!, items);
   };
