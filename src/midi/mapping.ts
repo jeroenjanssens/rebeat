@@ -62,15 +62,17 @@ export function detectMode(values: number[]): MidiMode | null {
 }
 
 /**
- * Whether a knob taken for relative is really absolute (D141): six values in a row that only go
- * one way without repeating. Relative knobs turned slowly repeat their code; this walk is what an
- * absolute knob sends, so a wrong guess heals itself as soon as the knob is turned a little.
+ * Whether a knob taken for relative (`mode`) is really absolute (D141): six values in a row that
+ * only go one way without repeating, and at least one of them a code no relative knob sends (a
+ * step of more than 24). Relative knobs turned slowly repeat their code, and turned fast they
+ * speed up (65, 66, 67, 68…) but stay near their center; this is what an absolute knob sends, so
+ * a wrong guess heals itself once the knob is turned well away from the middle.
  */
-export function walksLikeAbsolute(values: number[]): boolean {
+export function walksLikeAbsolute(values: number[], mode: MidiMode): boolean {
   if (values.length < 6) return false;
   const up = values.every((v, i) => i === 0 || v > values[i - 1]);
   const down = values.every((v, i) => i === 0 || v < values[i - 1]);
-  return up || down;
+  return (up || down) && values.some((v) => Math.abs(relativeDelta(mode, v)) > 24);
 }
 
 // ---------- roles (D121) ----------

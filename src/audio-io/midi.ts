@@ -714,7 +714,7 @@ function knobMode(map: MidiMapping, value: number): MidiMode {
     // a controller map guessed absolute, but this knob turns out to be relative
     const sniffed = detectMode(seen);
     if (sniffed && sniffed !== "absolute") next = sniffed;
-  } else if (mode !== "absolute" && kind === "knob" && walksLikeAbsolute(seen)) {
+  } else if (mode !== "absolute" && kind === "knob" && walksLikeAbsolute(seen, mode)) {
     next = "absolute";
   }
   if (next !== mode) {

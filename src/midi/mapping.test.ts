@@ -271,11 +271,19 @@ describe("detectMode — absolute knobs aren't taken for relative (D141)", () =>
   });
 
   it("a knob taken for relative walks like an absolute one", () => {
-    expect(walksLikeAbsolute([66, 67, 68, 69, 70, 71])).toBe(true);
-    expect(walksLikeAbsolute([90, 85, 80, 76, 70, 66])).toBe(true);
-    expect(walksLikeAbsolute([65, 65, 65, 65, 65, 65])).toBe(false);
-    expect(walksLikeAbsolute([65, 66, 65, 66, 67, 65])).toBe(false);
-    expect(walksLikeAbsolute([66, 67, 68])).toBe(false);
+    expect(walksLikeAbsolute([86, 87, 88, 89, 90, 91], "rel64")).toBe(true);
+    expect(walksLikeAbsolute([90, 85, 80, 76, 70, 66], "rel64")).toBe(true);
+    expect(walksLikeAbsolute([40, 42, 44, 46, 48, 50], "rel2c")).toBe(true);
+    expect(walksLikeAbsolute([65, 65, 65, 65, 65, 65], "rel64")).toBe(false);
+    expect(walksLikeAbsolute([65, 66, 65, 66, 67, 65], "rel64")).toBe(false);
+    expect(walksLikeAbsolute([86, 87, 88], "rel64")).toBe(false);
+  });
+
+  it("a relative knob speeding up stays relative", () => {
+    expect(walksLikeAbsolute([65, 66, 67, 68, 70, 73], "rel64")).toBe(false);
+    expect(walksLikeAbsolute([63, 62, 60, 58, 55, 52], "rel64")).toBe(false);
+    expect(walksLikeAbsolute([1, 2, 3, 5, 8, 12], "rel2c")).toBe(false);
+    expect(walksLikeAbsolute([127, 126, 124, 121, 118, 115], "rel2c")).toBe(false);
   });
 });
 
