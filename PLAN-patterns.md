@@ -1,4 +1,4 @@
-# Plan: many more patterns, grouped; triplets; patterns that pick notes (bass lines, broken chords)
+# Plan: 53 patterns, grouped; triplets; patterns that pick notes (bass lines, broken chords)
 
 Status: proposed 2026-10-12. Decisions D174–D179 when built. How we work: on `main`, commit
 early and often, e2e once at the end of the batch.
@@ -18,7 +18,7 @@ velocity }`: the notes, not the root (a voiced chord's lowest note isn't always 
 
 ## 1. The pattern notation (D174)
 
-Writing 45 patterns as `{ at, length, vel, part }` lists is unreadable. A pattern becomes
+Writing 53 patterns as `{ at, length, vel, part }` lists is unreadable. A pattern becomes
 **lanes of characters, one per step**, like a drum machine grid, built by `pattern()`:
 
 ```ts
@@ -91,7 +91,7 @@ A hit can play particular notes of the chord, which makes bass lines and broken 
 
 ## 4. The patterns and their groups (D177)
 
-45 in all: the 22 (§0) and 23 new ones (marked +). In the picker they're grouped; the order
+53 in all: the 22 (§0) and 31 new ones (marked +). In the picker they're grouped; the order
 within a group is calm to busy. Knob 7 steps through all of them, group by group.
 
 | Group                   | Patterns                                                                                                                                                                                               |
@@ -120,7 +120,7 @@ Reggaeton: `"X..x..x.X..x..x."` on the chord with `bass: "X.......X......."`; Wa
   dots, the accents bigger).
 - Hovering a pattern in the menu doesn't play it; picking it does (it plays from the next step).
 - The picked pattern's name shows in the row with its group ("Habanera · Latin").
-- Knob 7 (D153) steps through all 45 in group order; the display shows "Pattern / Habanera".
+- Knob 7 (D153) steps through all 53 in group order; the display shows "Pattern / Habanera".
 - Patterns' ids never change: the setting keeps working (the old `shuffle` id plays the new
   triplet shuffle).
 
@@ -146,7 +146,7 @@ Reggaeton: `"X..x..x.X..x..x."` on the chord with `bass: "X.......X......."`; Wa
 | 1    | The notation (`model/patterns.ts`), the 22 converted (same hits), tests     | D174      |
 | 2    | Divisions (triplets) in the rhythm engine, Auto in beats, on-grid recording | D175      |
 | 3    | The pool's root and tones, the selectors, the next chord for `walk`         | D176      |
-| 4    | The 23 new patterns, groups and `about` lines                               | D177      |
+| 4    | The 31 new patterns, groups and `about` lines                               | D177      |
 | 5    | The grouped picker with previews; knob 7 in group order                     | D178      |
 | 6    | Guide (the patterns, the groups), hints, PLAN.md, AGENTS.md; e2e            | D179      |
 
