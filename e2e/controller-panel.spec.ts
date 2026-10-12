@@ -559,3 +559,33 @@ test("pads that send CCs (56–63, each message twice) play tracks, chord pads a
   await expect.poll(playing).toBe(false);
   await send(page, "Minilab3 MIDI", [0xb0, 9, 0]);
 });
+
+test("dragging across the keys with the button down plays each key in turn", async ({ page }) => {
+  await midiDevices(page, ["Minilab3 MIDI"]);
+  await page.getByTestId("midi-use-detected").click();
+  await page.keyboard.press("Escape");
+  await page.evaluate(() => {
+    const s = (window as never as W).__rebeat.store.getState();
+    const tracks = s.project.tracks as unknown as { id: string; mode: string }[];
+    const notes = tracks.find((t) => t.mode === "notes");
+    if (notes) s.setUi({ selectedTrackId: notes.id });
+  });
+  await openControllerPanel(page);
+  const line = page.getByTestId("controller-notes");
+  const center = async (midi: number) => {
+    const b = (await page.locator(`[data-key="${midi}"]`).boundingBox())!;
+    return { x: b.x + b.width / 2, y: b.y + b.height * 0.85 }; // low on the key: no black keys
+  };
+  const c = await center(36);
+  const d = await center(38);
+  const e = await center(40);
+  await page.mouse.move(c.x, c.y);
+  await page.mouse.down();
+  await expect(line).toHaveText(/^C\d$/);
+  await page.mouse.move(d.x, d.y, { steps: 5 });
+  await expect(line).toHaveText(/^D\d$/);
+  await page.mouse.move(e.x, e.y, { steps: 5 });
+  await expect(line).toHaveText(/^E\d$/);
+  await page.mouse.up();
+  await expect(line).not.toHaveText(/E\d/);
+});

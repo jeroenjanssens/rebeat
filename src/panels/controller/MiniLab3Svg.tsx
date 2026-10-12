@@ -438,11 +438,13 @@ export function MiniLab3Svg({
     });
   }, []);
 
-  // Key interaction
+  // Key interaction: a press plays a key, and dragging with the button down plays every key the
+  // pointer moves onto (a glissando), as the synth editor's keyboard does
   const handleKeyPointerDown = useCallback(
     (midi: number, e: React.PointerEvent<SVGElement>) => {
-      if (!onKeyDown) return;
-      e.currentTarget.setPointerCapture(e.pointerId);
+      if (!onKeyDown || heldKeys.current.has(midi)) return;
+      // touch captures the pointer on the first key; let go so the others get it too
+      e.currentTarget.releasePointerCapture(e.pointerId);
       const release = onKeyDown(midi + liveRef.current.shift, 100);
       heldKeys.current.set(midi, release);
       liveRef.current.keyVel[midi] = 100;
@@ -1016,6 +1018,7 @@ export function MiniLab3Svg({
           strokeWidth="0.6"
           style={{ cursor: onKeyDown ? "pointer" : undefined }}
           onPointerDown={(e) => handleKeyPointerDown(k.midi, e)}
+          onPointerEnter={(e) => e.buttons === 1 && handleKeyPointerDown(k.midi, e)}
           onPointerUp={() => handleKeyPointerUp(k.midi)}
           onPointerLeave={() => handleKeyPointerUp(k.midi)}
         />
@@ -1034,6 +1037,7 @@ export function MiniLab3Svg({
           strokeWidth="0.5"
           style={{ cursor: onKeyDown ? "pointer" : undefined }}
           onPointerDown={(e) => handleKeyPointerDown(k.midi, e)}
+          onPointerEnter={(e) => e.buttons === 1 && handleKeyPointerDown(k.midi, e)}
           onPointerUp={() => handleKeyPointerUp(k.midi)}
           onPointerLeave={() => handleKeyPointerUp(k.midi)}
         />
