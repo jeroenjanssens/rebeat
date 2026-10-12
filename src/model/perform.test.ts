@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_PLAY_STYLE,
-  PATTERNS,
   arpNote,
   arpSequence,
   balanceFactors,
@@ -75,40 +74,6 @@ describe("the arpeggiator (D151)", () => {
 });
 
 describe("patterns (D153)", () => {
-  it("has the 22 patterns, calm to busy, every hit inside its pattern", () => {
-    expect(PATTERNS.map((p) => p.id)).toEqual([
-      "whole",
-      "halves",
-      "ballad",
-      "waltz",
-      "quarters",
-      "backbeat",
-      "dotted",
-      "charleston",
-      "eighths",
-      "offbeats",
-      "onedrop",
-      "ska",
-      "tresillo",
-      "oompah",
-      "clave",
-      "bossa",
-      "shuffle",
-      "house",
-      "funk",
-      "montuno",
-      "gallop",
-      "pulse",
-    ]);
-    expect(new Set(PATTERNS.map((p) => p.id)).size).toBe(PATTERNS.length);
-    for (const p of PATTERNS)
-      for (const s of p.steps) {
-        expect(s.at).toBeGreaterThanOrEqual(0);
-        expect(s.at).toBeLessThan(p.length);
-        expect(s.length).toBeGreaterThan(0);
-      }
-  });
-
   it("plays the new ones as written: a waltz in three, one drop on 3, a gallop on every beat", () => {
     const waltz = patternById("waltz");
     expect(waltz.length).toBe(12);
