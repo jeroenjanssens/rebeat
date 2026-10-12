@@ -75,25 +75,53 @@ describe("the arpeggiator (D151)", () => {
 });
 
 describe("patterns (D153)", () => {
-  it("has the ten patterns, every hit inside its pattern", () => {
+  it("has the 22 patterns, calm to busy, every hit inside its pattern", () => {
     expect(PATTERNS.map((p) => p.id)).toEqual([
       "whole",
       "halves",
+      "ballad",
+      "waltz",
       "quarters",
+      "backbeat",
+      "dotted",
+      "charleston",
       "eighths",
       "offbeats",
-      "charleston",
+      "onedrop",
+      "ska",
       "tresillo",
       "oompah",
-      "pulse",
+      "clave",
       "bossa",
+      "shuffle",
+      "house",
+      "funk",
+      "montuno",
+      "gallop",
+      "pulse",
     ]);
+    expect(new Set(PATTERNS.map((p) => p.id)).size).toBe(PATTERNS.length);
     for (const p of PATTERNS)
       for (const s of p.steps) {
         expect(s.at).toBeGreaterThanOrEqual(0);
         expect(s.at).toBeLessThan(p.length);
         expect(s.length).toBeGreaterThan(0);
       }
+  });
+
+  it("plays the new ones as written: a waltz in three, one drop on 3, a gallop on every beat", () => {
+    const waltz = patternById("waltz");
+    expect(waltz.length).toBe(12);
+    expect([0, 4, 8, 12].map((n) => patternHits(waltz, n).map((s) => s.part))).toEqual([
+      ["bass"],
+      ["chord"],
+      ["chord"],
+      ["bass"],
+    ]);
+    expect(patternHits(patternById("onedrop"), 0)).toEqual([]);
+    expect(patternHits(patternById("onedrop"), 8).map((s) => s.part)).toEqual(["bass"]);
+    const gallop = patternById("gallop");
+    expect([0, 1, 2, 3].map((n) => patternHits(gallop, n).length)).toEqual([1, 0, 1, 1]);
   });
 
   it("finds a pattern's hits as it loops", () => {

@@ -126,7 +126,7 @@ export interface Settings {
   keyDial: "instant" | "press";
   /** Bass voicing (D139): when the pads make a chord, its root also plays this many octaves
    * below it (0 = off, 1–3), never below C1. */
-  bassOctaves: 0 | 1 | 2 | 3;
+  bassOctaves: number;
   /** Chord voicing (D140): inversions of every chord the pads make, −8..8 (0 = root position). */
   chordVoicing: number;
   /** How the keys play (D149–D153): strum, slop, the arpeggiator, a pattern, latch, balance.

@@ -173,16 +173,61 @@ const hit = (at: number, length: number, vel = 1, part: PatternStep["part"] = "a
   part,
 });
 
-/** The rhythms the chord can be played on (D153): comping patterns from piano and guitar. */
+/** Hits on every beat of a 16-step bar: `at(beat)` gives the hits that start beat `b` (0–3). */
+const everyBeat = (at: (b: number) => PatternStep[]) => [0, 4, 8, 12].flatMap(at);
+
+/**
+ * The rhythms the chord can be played on (D153, D155): comping patterns from piano and guitar,
+ * roughly from calm to busy. Their ids are stored in the settings: never change one.
+ */
 export const PATTERNS: ChordPattern[] = [
   { id: "whole", name: "Whole notes", length: 16, steps: [hit(0, 16)] },
   { id: "halves", name: "Halves", length: 16, steps: [hit(0, 8), hit(8, 8, 0.85)] },
+  {
+    // a piano ballad: the bass and the chord on 1, softer chords on 3 and 4
+    id: "ballad",
+    name: "Ballad",
+    length: 16,
+    steps: [
+      hit(0, 8, 1, "bass"),
+      hit(0, 8, 0.9, "chord"),
+      hit(8, 4, 0.7, "chord"),
+      hit(12, 4, 0.75, "chord"),
+    ],
+  },
+  {
+    // three beats (a 3/4 bar of 12 16ths): the bass on 1, the chord on 2 and 3
+    id: "waltz",
+    name: "Waltz",
+    length: 12,
+    steps: [hit(0, 4, 1, "bass"), hit(4, 3, 0.8, "chord"), hit(8, 3, 0.75, "chord")],
+  },
   {
     id: "quarters",
     name: "Quarters",
     length: 16,
     steps: [hit(0, 4), hit(4, 4, 0.75), hit(8, 4, 0.9), hit(12, 4, 0.75)],
   },
+  {
+    // the bass on 1 and 3, the chord on the backbeat (2 and 4), as a rock or pop band
+    id: "backbeat",
+    name: "Backbeat",
+    length: 16,
+    steps: [
+      hit(0, 4, 1, "bass"),
+      hit(4, 3, 0.95, "chord"),
+      hit(8, 4, 0.9, "bass"),
+      hit(12, 3, 0.95, "chord"),
+    ],
+  },
+  {
+    // dotted quarters: 3 + 3 + 2 eighths (the pop "push" across the bar)
+    id: "dotted",
+    name: "Dotted",
+    length: 16,
+    steps: [hit(0, 6), hit(6, 6, 0.85), hit(12, 4, 0.9)],
+  },
+  { id: "charleston", name: "Charleston", length: 16, steps: [hit(0, 6), hit(6, 10, 0.85)] },
   {
     id: "eighths",
     name: "Eighths",
@@ -199,7 +244,20 @@ export const PATTERNS: ChordPattern[] = [
       ...[2, 6, 10, 14].map((at) => hit(at, 1, 0.9, "chord")),
     ],
   },
-  { id: "charleston", name: "Charleston", length: 16, steps: [hit(0, 6), hit(6, 10, 0.85)] },
+  {
+    // reggae's one drop: nothing on 1, the bass on 3, short chords on 2 and 4
+    id: "onedrop",
+    name: "One drop",
+    length: 16,
+    steps: [hit(4, 1, 0.85, "chord"), hit(8, 6, 1, "bass"), hit(12, 1, 0.85, "chord")],
+  },
+  {
+    // ska: a walking bass on every beat, chord upstrokes on every "and"
+    id: "ska",
+    name: "Ska",
+    length: 16,
+    steps: everyBeat((b) => [hit(b, 2, b % 8 ? 0.85 : 1, "bass"), hit(b + 2, 1, 0.9, "chord")]),
+  },
   {
     id: "tresillo",
     name: "Tresillo",
@@ -225,10 +283,11 @@ export const PATTERNS: ChordPattern[] = [
     ],
   },
   {
-    id: "pulse",
-    name: "Pulse",
-    length: 16,
-    steps: Array.from({ length: 16 }, (_, i) => hit(i, 1, i % 4 ? 0.6 : 1)),
+    // the son clave, 3-2, over two bars: the rhythm under salsa and much of Latin music
+    id: "clave",
+    name: "Clave",
+    length: 32,
+    steps: [0, 6, 12, 20, 24].map((at, i) => hit(at, 2, i === 0 || i === 3 ? 1 : 0.85)),
   },
   {
     id: "bossa",
@@ -245,6 +304,63 @@ export const PATTERNS: ChordPattern[] = [
       // the chord: a bossa nova comping rhythm over two bars
       ...[0, 3, 6, 10, 12, 18, 22, 25, 28].map((at, i) => hit(at, 2, i % 3 ? 0.8 : 0.95, "chord")),
     ],
+  },
+  {
+    // a shuffle: long-short on every beat (a swung feel on the 16th grid)
+    id: "shuffle",
+    name: "Shuffle",
+    length: 16,
+    steps: everyBeat((b) => [hit(b, 3, b % 8 ? 0.85 : 1), hit(b + 3, 1, 0.6)]),
+  },
+  {
+    // house piano: the bass on the beats, short syncopated chord stabs
+    id: "house",
+    name: "House",
+    length: 16,
+    steps: [
+      ...[0, 4, 8, 12].map((at) => hit(at, 2, 1, "bass")),
+      ...[3, 6, 10, 13].map((at, i) => hit(at, 1, i % 2 ? 0.8 : 0.95, "chord")),
+    ],
+  },
+  {
+    // funk: short, syncopated 16th stabs, the bass on 1
+    id: "funk",
+    name: "Funk",
+    length: 16,
+    steps: [
+      hit(0, 2, 1, "bass"),
+      ...[
+        [0, 1],
+        [3, 0.7],
+        [6, 0.9],
+        [7, 0.6],
+        [10, 0.95],
+        [13, 0.7],
+        [14, 0.8],
+      ].map(([at, vel]) => hit(at, 1, vel, "chord")),
+    ],
+  },
+  {
+    // a salsa piano montuno: the chord off the beat, over two bars
+    id: "montuno",
+    name: "Montuno",
+    length: 32,
+    steps: [2, 4, 7, 10, 12, 15, 18, 20, 23, 26, 28, 31].map((at, i) =>
+      hit(at, 1, i % 2 ? 0.8 : 0.95),
+    ),
+  },
+  {
+    // a gallop: an eighth and two 16ths on every beat (driving rock)
+    id: "gallop",
+    name: "Gallop",
+    length: 16,
+    steps: everyBeat((b) => [hit(b, 2, b % 8 ? 0.9 : 1), hit(b + 2, 1, 0.7), hit(b + 3, 1, 0.75)]),
+  },
+  {
+    id: "pulse",
+    name: "Pulse",
+    length: 16,
+    steps: Array.from({ length: 16 }, (_, i) => hit(i, 1, i % 4 ? 0.6 : 1)),
   },
 ];
 

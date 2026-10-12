@@ -159,7 +159,7 @@ const hints: Hints = {
   },
   "controller.keysknob.4": {
     title: "Knob 5: Bass",
-    text: "Adds the chord's root below it, as a bass player would: on the chord's sound, or on the bass's own track. Far right is off; each step to the left plays the bass an octave deeper (−1, −2, −3), for a fuller, heavier bottom. It never goes below C1, where you'd feel it more than hear it.",
+    text: "Adds the chord's root below it, as a bass player would: on the chord's sound, or on the bass's own track. Far right is off; each step to the left plays the bass an octave deeper (−1 to −6), for a fuller, heavier bottom. It never goes below C1, where you'd feel it more than hear it: under a chord around middle C, −3 already reaches it, so the deeper steps are for chords played high.",
     guide: "performance-chord-pads",
   },
   "controller.keysknob.5": {
@@ -169,7 +169,7 @@ const hints: Hints = {
   },
   "controller.keysknob.6": {
     title: "Knob 7: Pattern",
-    text: "Plays the chord again and again on a rhythm while you hold it, like a pianist or a guitarist accompanying a song. Far left is off: the chord just sounds while held. Turning right steps through the rhythms: Whole notes, Halves, Quarters, Eighths, Offbeats, Charleston, Tresillo, Oom-pah, Pulse and Bossa, from calm to busy.",
+    text: "Plays the chord again and again on a rhythm while you hold it, like a pianist or a guitarist accompanying a song. Far left is off: the chord just sounds while held. Turning right steps through 22 rhythms from calm to busy: Whole notes, Halves, Ballad, Waltz, Quarters, Backbeat, Dotted, Charleston, Eighths, Offbeats, One drop, Ska, Tresillo, Oom-pah, Clave, Bossa, Shuffle, House, Funk, Montuno, Gallop and Pulse.",
     guide: "performance-play-styles",
   },
   "controller.keysknob.7": {
@@ -209,7 +209,7 @@ const hints: Hints = {
   },
   "controller.play.pattern": {
     title: "Pattern",
-    text: "Plays the chord again and again on a rhythm while you hold it: whole notes, halves, quarters, eighths, offbeats, Charleston, tresillo, oom-pah, pulse or bossa. With the Arp on, each hit plays the next arp note; with Strum on, each hit is strummed. On a controller: knob 7 in Chord and Key mode.",
+    text: "Plays the chord again and again on a rhythm while you hold it: 22 rhythms, from whole notes and a ballad to reggae's one drop, ska, a clave, bossa, house, funk, a salsa montuno and a gallop. With the Arp on, each hit plays the next arp note; with Strum on, each hit is strummed. On a controller: knob 7 in Chord and Key mode.",
     guide: "performance-play-styles",
   },
   "controller.play.latch": {
@@ -224,7 +224,7 @@ const hints: Hints = {
   },
   "controller.bass": {
     title: "Bass",
-    text: "When the pads make a chord (Chord and Key mode), its root also plays 1, 2 or 3 octaves below it (and below the voiced chord), on the same sound, like the Orchid's bass. It never goes below C1. Off: just the chord. − goes deeper, + back up, click the value for Off. On a controller: knob 5 in Chord and Key mode (left is deeper).",
+    text: "When the pads make a chord (Chord and Key mode), its root also plays 1 to 6 octaves below it (and below the voiced chord), on the same sound, like the Orchid's bass. It never goes below C1. Off: just the chord. − goes deeper, + back up, click the value for Off. On a controller: knob 5 in Chord and Key mode (left is deeper).",
     guide: "performance-chord-pads",
   },
   "controller.transpose": {

@@ -40,7 +40,7 @@ import { onControllerEvent } from "../../midi/controllerEvents";
 import { chordName } from "../../model/chords";
 import { keyName, noteName, pitchClassName, SCALES } from "../../model/notes";
 import { pageKey } from "../../model/project";
-import { CHORD_PADS } from "../../model/padChords";
+import { BASS_OCTAVES, CHORD_PADS } from "../../model/padChords";
 import { KEY_MODE_SCALES, keyModeKeyFrom } from "../../model/keyMode";
 
 /** The notes held down: the device's keys, and keys clicked in the picture. */
@@ -329,7 +329,7 @@ function PadChordsRow({ keyMode }: { keyMode: boolean }) {
         <button
           className="tool-btn !h-6"
           aria-label="Deeper"
-          onClick={() => setBassOctaves(Math.min(3, bass + 1) as 0 | 1 | 2 | 3)}
+          onClick={() => setBassOctaves(bass + 1)}
         >
           <Minus size={12} />
         </button>
@@ -344,7 +344,7 @@ function PadChordsRow({ keyMode }: { keyMode: boolean }) {
         <button
           className="tool-btn !h-6"
           aria-label="Higher"
-          onClick={() => setBassOctaves(Math.max(0, bass - 1) as 0 | 1 | 2 | 3)}
+          onClick={() => setBassOctaves(bass - 1)}
         >
           <Plus size={12} />
         </button>
@@ -513,7 +513,7 @@ export function ControllerPanel() {
     kLabels[4] = {
       name: "Bass",
       value: bassOctaves ? `−${bassOctaves}` : "Off",
-      pos: (3 - bassOctaves) / 3,
+      pos: (BASS_OCTAVES - bassOctaves) / BASS_OCTAVES,
     };
   }
   const fLabels = [0, 1, 2, 3].map((i) => {

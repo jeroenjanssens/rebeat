@@ -68,6 +68,9 @@ export function padChordLabel(pads: readonly number[]): string {
   return order.map((p) => CHORD_PADS[p]).join(" + ");
 }
 
+/** How deep the bass goes (D139, D155): the root up to six octaves below the chord. */
+export const BASS_OCTAVES = 6;
+
 /** How far chord voicing goes either way (D140): ±8 inversions. */
 export const VOICING_RANGE = 8;
 

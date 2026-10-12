@@ -12,7 +12,7 @@
 
 ### 0.1 Where we are
 
-- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D154), and the build order is in §7.
+- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D155), and the build order is in §7.
 - Every phase in §7 is built, tested (unit + Playwright e2e) and pushed. The mockup (Phase M) became the app: its components, model and store were kept and extended; `src/mock/` was replaced by the real engine.
 - The desktop app (Phase 10) runs and packages locally (unsigned); signing/notarization need certificates (see `.github/workflows/desktop.yml`).
 
@@ -1352,6 +1352,7 @@ Format: **Dn — Question.** Default ✅, alternatives.
 - **D152 — Smooth voicing.** A Smooth switch next to Voicing gives each chord the voicing (−8..8 of `voiceChord`) that moves least from the chord before (`smoothVoicing`: total movement, plus a small pull home), never more than 7 semitones (average) from the chord at the Voicing setting, which still sets the register; the first chord, or one after 4 s, plays at home. The bass stays on the root below. The panel shows the voicing used. Alt: smoothing without a home (drifts); voice leading that changes the chord's notes.
 - **D153 — Chord patterns.** Ten patterns (`PATTERNS`): Whole notes, Halves, Quarters, Eighths, Offbeats, Charleston, Tresillo, Oom-pah, Pulse, Bossa (two bars), in 16ths, each hit `all`, `chord` or `bass` (a bass hit without a bass plays the chord's lowest note), its velocity × the key's. They loop while the chord is held (or latched), on the tempo's grid; a new chord keeps the place. With the Arp on each hit plays the next arp note (Jeroen: the pattern's rhythm, the arp's order); with Strum on each hit is strummed. Knob 7 picks one (far left: off). Alt: patterns per time signature; user patterns (later).
 - **D154 — The bass on its own track; split.** `settings.bassTrack`: the bass notes (D139) play on a Notes track's live voice (its sound, mix and effects; recorded there), or on the chord's sound (null, as before). `bassMode: split`: keys below `bassSplit` (C3) play the bass alone, one at a time, on the bass sound; chords above get no bass of their own. In the panel: the bass's Sound picker and a Split toggle. Alt: a library sound for the bass; a split point set by pressing a key (later).
+- **D155 — A deeper bass, 22 patterns.** The bass (D139) goes to −6 octaves (`BASS_OCTAVES`; knob 5 has seven zones, the panel's stepper −1 … −6), still never below C1: under a chord around middle C, −3 already reaches C1, so the deeper steps matter for chords played high (Voicing up, a high transpose). Twelve more patterns (D153): Ballad, Waltz (three beats, 12 16ths), Backbeat, Dotted, One drop, Ska, Clave (son 3-2, two bars), Shuffle, House, Funk, Montuno (two bars), Gallop; the list is ordered calm to busy (knob 7 steps through it), ids unchanged. Alt: lowering the floor below C1 (inaudible on most speakers); patterns per time signature.
 - **D35 — Build order.** ✅ The phases in §7, starting with the mockup (Phase M), each ending with something you can play with.
 
 ---

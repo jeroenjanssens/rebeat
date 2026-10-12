@@ -27,7 +27,7 @@ import {
   keysTargetName,
   noteOn,
 } from "../state/keys";
-import { CHORD_PADS, VOICING_RANGE } from "../model/padChords";
+import { BASS_OCTAVES, CHORD_PADS, VOICING_RANGE } from "../model/padChords";
 import { ARP_RATES, PATTERNS, STRUM_TIMES, patternById } from "../model/perform";
 import { playStyle } from "../state/perform";
 import { padInput } from "../state/input";
@@ -576,7 +576,7 @@ const STEPPED: Record<
     set: (i) => setTranspose(i - 12),
     text: () => signed(useKeys.getState().transpose),
   },
-  // left is deeper: −3, −2, −1, Off
+  // left is deeper: −6 … −1, Off
   // the play styles (D150–D153): far left is off
   knob3: {
     name: "strum",
@@ -630,9 +630,9 @@ const STEPPED: Record<
   knob5: {
     name: "bass",
     target: "keys:bass",
-    values: 4,
-    index: () => 3 - useSettings.getState().bassOctaves,
-    set: (i) => setBassOctaves((3 - i) as 0 | 1 | 2 | 3),
+    values: BASS_OCTAVES + 1,
+    index: () => BASS_OCTAVES - useSettings.getState().bassOctaves,
+    set: (i) => setBassOctaves(BASS_OCTAVES - i),
     text: () => {
       const b = useSettings.getState().bassOctaves;
       return b ? `−${b}` : "off";

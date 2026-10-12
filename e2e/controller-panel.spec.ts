@@ -229,8 +229,8 @@ test("chord pads make a chord on one key, its added keys lit (D137)", async ({ p
   await send(page, "Minilab3 MIDI", [0xb0, 74, 72]);
   await expect(line).toHaveText(/E4\s*\+\s*G4\s*\+\s*C5\s*=\s*C\/E$/);
   await expect(page.getByTestId("voicing-value")).toHaveText("+1");
+  await send(page, "Minilab3 MIDI", [0xb0, 93, 115]);
   await send(page, "Minilab3 MIDI", [0xb0, 93, 100]);
-  await send(page, "Minilab3 MIDI", [0xb0, 93, 90]);
   await expect(line).toHaveText(/C3\s*\+\s*E4\s*\+\s*G4\s*\+\s*C5\s*=\s*C$/);
   await page.getByTestId("bass-value").click();
   await page.getByTestId("voicing-value").click();
@@ -246,15 +246,21 @@ test("chord pads make a chord on one key, its added keys lit (D137)", async ({ p
   await expect(voicingValue).toHaveText("+8");
   await send(page, "Minilab3 MIDI", [0xb0, 74, 64]);
   await expect(voicingValue).toHaveText("0");
-  // the bass changes every 32 values: Off, −1, −2, −3 from right to left
+  // the bass changes every 18 or 19 values: Off, −1 … −6 from right to left (D155)
   const bassOn = () => page.getByTestId("bass-value");
   for (const [v, label] of [
-    [96, "Off"],
-    [95, "−1"],
-    [64, "−1"],
-    [63, "−2"],
-    [32, "−2"],
-    [31, "−3"],
+    [110, "Off"],
+    [109, "−1"],
+    [92, "−1"],
+    [91, "−2"],
+    [74, "−2"],
+    [73, "−3"],
+    [55, "−3"],
+    [54, "−4"],
+    [37, "−4"],
+    [36, "−5"],
+    [19, "−5"],
+    [18, "−6"],
   ] as const) {
     await send(page, "Minilab3 MIDI", [0xb0, 93, v]);
     await expect(bassOn()).toHaveText(label);
@@ -379,11 +385,11 @@ test("relative knobs 1 and 5 step the voicing and the bass once per notch, fast 
   await expect(voicing).toHaveText("+2");
   expect(await modeOf("knob1")).toBe("rel64");
 
-  // the first messages read as absolute (63: −2) until the knob is known to be relative
+  // the first messages read as absolute (63: −3) until the knob is known to be relative
   await turn(93, [63, 63, 63, 63, 63, 63]);
   await expect.poll(() => modeOf("knob5")).toBe("rel64");
-  await expect(bass).toHaveText("−3");
-  await turn(93, [65, 65, 65, 65, 65, 65]);
+  await expect(bass).toHaveText("−4");
+  await turn(93, [65, 65, 65, 65, 65, 65, 65, 65, 65, 65]);
   await expect(bass).toHaveText("Off");
 });
 
@@ -616,12 +622,12 @@ test("knob 2 is the transpose in Chord and Key mode; the bass is a stepper (D148
   await expect(bass).toHaveText("Off");
   await higher.click();
   await expect(bass).toHaveText("Off");
-  for (const v of ["−1", "−2", "−3", "−3"]) {
+  for (const v of ["−1", "−2", "−3", "−4", "−5", "−6", "−6"]) {
     await deeper.click();
     await expect(bass).toHaveText(v);
   }
   await higher.click();
-  await expect(bass).toHaveText("−2");
+  await expect(bass).toHaveText("−5");
   await bass.click();
   await expect(bass).toHaveText("Off");
 });

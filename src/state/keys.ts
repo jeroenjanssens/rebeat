@@ -18,7 +18,7 @@ import {
 } from "../engine/engine";
 import { noteName, type Key } from "../model/notes";
 import { keyModeChord, sameKey, stepKeyRoot, stepKeyScale } from "../model/keyMode";
-import { padChord, voiceChord, VOICING_RANGE } from "../model/padChords";
+import { BASS_OCTAVES, padChord, voiceChord, VOICING_RANGE } from "../model/padChords";
 import {
   balanceFactors,
   sanitizePlayStyle,
@@ -497,8 +497,9 @@ export function setTranspose(semitones: number) {
 }
 
 /** Bass voicing (D139): the chord's root this many octaves below it (0 = off). */
-export function setBassOctaves(octaves: 0 | 1 | 2 | 3) {
-  useSettings.getState().set({ bassOctaves: octaves });
+export function setBassOctaves(octaves: number) {
+  const b = Math.max(0, Math.min(BASS_OCTAVES, Math.round(octaves)));
+  useSettings.getState().set({ bassOctaves: b });
   revoice();
 }
 
