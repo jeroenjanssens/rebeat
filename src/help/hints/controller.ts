@@ -136,6 +136,47 @@ const hints: Hints = {
     text: "Inversions of every chord the pads make, like the Orchid's Voicing dial: each step up moves the chord's lowest note an octave up (C E G → E G C), each step down its highest note an octave down. The chord stays the same; the bass stays on its root. Click the number for root position. On a controller: knob 1 in Chord and Key mode.",
     guide: "performance-chord-pads",
   },
+  // the knobs in Chord and Key mode (D140, D148, D150–D153): what each setting is and does
+  "controller.keysknob.0": {
+    title: "Knob 1: Voicing",
+    text: "Which inversion of the chord you hear: the same notes, stacked differently. Turning right moves the chord's lowest note up an octave, step by step (C E G → E G C → G C E…), so the chord gets higher and brighter; turning left moves its top note down an octave, so it gets lower and darker. The middle is root position. With Smooth on, it sets the register the chords stay near.",
+    guide: "performance-chord-pads",
+  },
+  "controller.keysknob.1": {
+    title: "Knob 2: Transpose",
+    text: "Moves everything the keys play up or down, a semitone per step (−12 to +12): the same chords and the same fingers, in another key. Turning right raises the pitch, turning left lowers it; the middle is 0, as you play it. Twelve steps is a whole octave.",
+    guide: "performance-chord-pads",
+  },
+  "controller.keysknob.2": {
+    title: "Knob 3: Strum",
+    text: "Plays a chord's notes one after another instead of all at once, like a pick across guitar strings. Far left is off: all notes together. Turning right makes the strum slower, from 10 ms (a quick, tight roll that just softens the attack) to 250 ms (a slow, harp-like spread). Up, Down or Alt is in the Play row.",
+    guide: "performance-play-styles",
+  },
+  "controller.keysknob.3": {
+    title: "Knob 4: Arpeggiator",
+    text: "Plays the notes you hold one at a time, over and over, at the song's tempo, instead of together. Far left is off. Turning right makes it faster: quarter notes, eighths, eighth triplets, sixteenths, sixteenth triplets, thirty-seconds. The order (up, down…), the octaves and how long each note lasts are in the Play row.",
+    guide: "performance-play-styles",
+  },
+  "controller.keysknob.4": {
+    title: "Knob 5: Bass",
+    text: "Adds the chord's root below it, as a bass player would: on the chord's sound, or on the bass's own track. Far right is off; each step to the left plays the bass an octave deeper (−1, −2, −3), for a fuller, heavier bottom. It never goes below C1, where you'd feel it more than hear it.",
+    guide: "performance-chord-pads",
+  },
+  "controller.keysknob.5": {
+    title: "Knob 6: Slop",
+    text: "Makes what you play less perfect, on purpose: each note starts a little later at random and comes out a little louder or softer, so chords and arpeggios sound played by hands rather than by a machine. Far left is off; turning right adds more, up to 40 ms of looseness and ±30% in loudness at 100%.",
+    guide: "performance-play-styles",
+  },
+  "controller.keysknob.6": {
+    title: "Knob 7: Pattern",
+    text: "Plays the chord again and again on a rhythm while you hold it, like a pianist or a guitarist accompanying a song. Far left is off: the chord just sounds while held. Turning right steps through the rhythms: Whole notes, Halves, Quarters, Eighths, Offbeats, Charleston, Tresillo, Oom-pah, Pulse and Bossa, from calm to busy.",
+    guide: "performance-play-styles",
+  },
+  "controller.keysknob.7": {
+    title: "Knob 8: Balance",
+    text: "How evenly a chord's notes are played. At the far left all notes are equally loud; turning right makes the notes in the middle softer, so the bass and the top note (the melody) stand out, as a pianist voices a chord: up to about a third softer at 100%.",
+    guide: "performance-play-styles",
+  },
   "controller.voicing.smooth": {
     title: "Smooth voicing",
     text: "Each chord takes the inversion closest to the chord before it, so a progression moves by small steps (C, then F as C F A) without turning the Voicing knob. Voicing still sets the register it stays near. The number is the voicing it's playing.",

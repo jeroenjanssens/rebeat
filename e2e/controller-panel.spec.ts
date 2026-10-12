@@ -599,7 +599,7 @@ test("knob 2 is the transpose in Chord and Key mode; the bass is a stepper (D148
   await openControllerPanel(page);
   await page.getByTestId("pad-mode").getByRole("button", { name: "Chord" }).click();
   const svg = page.locator('[aria-label="MiniLab 3 controller"]');
-  await expect(svg.locator('[data-hint="controller.knob.1"]')).toContainText("Transpose");
+  await expect(svg.locator('[data-hint="controller.keysknob.1"]')).toContainText("Transpose");
   const transpose = page.getByTestId("transpose-value");
   // an absolute knob: all the way right +12, left −12, the middle 0
   await send(page, "Minilab3 MIDI", [0xb0, 71, 127]);
@@ -647,4 +647,23 @@ test("the Controller panel has the Keys drop-down too", async ({ page }) => {
   await expect(chip).toContainText(notes!);
   // the top bar's chip says the same
   await expect(page.getByTestId("keys-chip")).toContainText(notes!);
+});
+
+test("in Chord and Key mode the knobs' cards explain the keys' settings", async ({ page }) => {
+  await midiDevices(page, ["Minilab3 MIDI"]);
+  await page.getByTestId("midi-use-detected").click();
+  await page.keyboard.press("Escape");
+  await openControllerPanel(page);
+  const knob3 = page.locator(
+    '[aria-label="MiniLab 3 controller"] [data-hint^="controller."][data-hint$="knob.2"]',
+  );
+  await expect(knob3).toHaveAttribute("data-hint", "controller.knob.2");
+  await page.getByTestId("pad-mode").getByRole("button", { name: "Chord" }).click();
+  await expect(knob3).toHaveAttribute("data-hint", "controller.keysknob.2");
+  await page.getByTestId("toggle-explain").click();
+  await knob3.hover();
+  const card = page.getByTestId("hint-card");
+  await expect(card).toContainText("Knob 3: Strum");
+  await expect(card).toContainText("makes the strum slower");
+  await expect(knob3.locator("title")).toContainText("right is a slower strum");
 });

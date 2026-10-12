@@ -166,6 +166,18 @@ const heptagon = (r: number) =>
 
 const NO_SELECT = { userSelect: "none", pointerEvents: "none" } as const;
 
+/** What the knobs do in Chord and Key mode, in a line (the hover card says more). */
+const KEYS_KNOB_TIPS = [
+  "the chord's inversion: right is higher, left lower",
+  "everything up or down a semitone a step",
+  "the chord's notes one after another: right is a slower strum",
+  "the notes held one at a time: right is faster",
+  "the root an octave deeper per step to the left",
+  "random timing and loudness: right is looser",
+  "the chord on a rhythm: right steps through the patterns",
+  "the middle notes softer: right brings out the bass and the top",
+];
+
 // ── Live state ────────────────────────────────────────────────────────────
 
 interface LiveState {
@@ -772,9 +784,10 @@ export function MiniLab3Svg({
         const cy = KNOB_CYS[Math.floor(i / 4)];
         const label = labels.knobs[i];
         return (
-          <g key={i} data-hint={`controller.knob.${i}`}>
+          <g key={i} data-hint={chordPads ? `controller.keysknob.${i}` : `controller.knob.${i}`}>
             <title>
               {label?.name ?? `Knob ${i + 1}`}: {label?.value ?? ""}
+              {chordPads ? ` — ${KEYS_KNOB_TIPS[i]}` : ""}
             </title>
             <circle cx={cx} cy={cy} r={KNOB_R} fill={KNOB_BASE} />
             <g transform={`translate(${cx},${cy})`}>
