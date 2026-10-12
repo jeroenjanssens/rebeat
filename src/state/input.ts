@@ -241,7 +241,23 @@ export function keyRoot(midi: number): number {
  * When the transport is stopped, falls back to step entry (same as padInput) and returns null.
  * The caller (keys.ts / WS-A) already plays the note's audio through the live voice.
  */
-export function recordNoteOn(track: Track, pitch: number, velocity: number): number | null {
+/**
+ * When a recorded note sounds (play styles, D149): `at`, the audio time of its hit (the moment
+ * the grid or the key gave it; default now), and `spread`, how much later the note itself starts
+ * (a strum's or slop's delay, in seconds). Snap snaps the hit; the spread stays as the note's
+ * offset, so a strum survives Snap.
+ */
+export interface RecordTiming {
+  at?: number;
+  spread?: number;
+}
+
+export function recordNoteOn(
+  track: Track,
+  pitch: number,
+  velocity: number,
+  timing: RecordTiming = {},
+): number | null {
   const trackId = track.id;
   const s = get();
 
@@ -290,15 +306,19 @@ export function recordNoteOn(track: Track, pitch: number, velocity: number): num
     s.quantize,
   );
   const { snap, recordMode } = useSettings.getState();
+  // the hit's position, and the note's own delay after it, in lane steps
+  const laneStepSec = (60 / s.project.bpm) * laneQ;
+  const dt = timing.at === undefined ? 0 : timing.at - (audioContext().currentTime ?? 0);
+  const hit = exact + dt / laneStepSec;
+  const spread = (timing.spread ?? 0) / laneStepSec;
 
   let stepIndex: number;
   let noteOffset: number | undefined;
 
-  if (snap) {
-    stepIndex = Math.round(exact / grid) * grid;
-  } else {
-    stepIndex = Math.round(exact);
-    const rawOffset = exact - stepIndex;
+  const at = snap ? Math.round(hit / grid) * grid + spread : hit + spread;
+  stepIndex = Math.round(at);
+  if (!snap || spread !== 0) {
+    const rawOffset = at - stepIndex;
     if (Math.abs(rawOffset) >= 0.001) {
       noteOffset = Math.max(-0.5, Math.min(0.5, rawOffset));
     }
@@ -341,7 +361,7 @@ export function recordNoteOn(track: Track, pitch: number, velocity: number): num
     trackId,
     pitch,
     stepIndex,
-    startExact: exact,
+    startExact: hit + spread,
     startProgress: pos.progress,
   });
 
@@ -352,7 +372,7 @@ export function recordNoteOn(track: Track, pitch: number, velocity: number): num
  * The note started by recordNoteOn(id) was released (or the sustain pedal released it).
  * Computes the real length and updates the note in the store.
  */
-export function recordNoteOff(id: number | null): void {
+export function recordNoteOff(id: number | null, at?: number): void {
   if (id === null) return;
   const inf = inflightNotes.get(id);
   if (!inf) return;
@@ -380,7 +400,10 @@ export function recordNoteOff(id: number | null): void {
   const ctx = audioContext();
   const latency = ctx.outputLatency || ctx.baseLatency || 0;
   const laneStepSec = (60 / s.project.bpm) * laneQ;
-  const nowExact = pos.progress * pattern.stepCount * ratio - latency / laneStepSec;
+  const nowExact =
+    pos.progress * pattern.stepCount * ratio -
+    latency / laneStepSec +
+    (at === undefined ? 0 : at - (ctx.currentTime ?? 0)) / laneStepSec;
 
   // Length = distance from note-on to note-off; wraps across page if note-off is earlier
   let rawLen = nowExact - inf.startExact;

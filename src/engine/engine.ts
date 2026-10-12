@@ -502,17 +502,18 @@ export function playKeysSample(
   pitch: number,
   velocity: number,
   into: "track" | "keys" = "track",
-): () => void {
+  at = audioNow(),
+): (end?: number) => void {
   const dest = into === "keys" ? keysChannelEntry?.channel.input : liveChannel(track).input;
   if (!dest) return () => {};
-  const voice = playDrum(track, velocity, audioNow(), {
+  const voice = playDrum(track, velocity, at, {
     pitch: pitch - sampleRootNote(track),
     dest,
   });
   if (into === "track" && S.live) idleLive(track.id);
   const buffer = getBuffer(sampleOf(track));
-  return () => {
-    if (voice && buffer && buffer.duration > 2) stopVoice(voice, audioNow());
+  return (end = audioNow()) => {
+    if (voice && buffer && buffer.duration > 2) stopVoice(voice, Math.max(end, at));
   };
 }
 
@@ -666,19 +667,25 @@ export function trackSynth(track: Track) {
 }
 
 /** Start a note on a track's voice that sounds until released (on-screen and MIDI keys). */
-export function holdNote(track: Track, pitch: number, velocity: number): () => void {
+export function holdNote(
+  track: Track,
+  pitch: number,
+  velocity: number,
+  at = audioNow(),
+): (end?: number) => void {
   if (player(track) !== "voice") return () => {};
   const shift = track.transpose ?? 0;
   // live scope: use the dedicated live voice so keys never cut sequenced notes (D126)
   const v = S.live ? liveInstrument(track) : instrument(track);
-  const t = audioNow();
+  const t = at;
   S.activeUntil.set(track.id, Infinity);
   const release =
     v.hold?.(pitch + shift, velocity, t) ??
     // instruments without held notes: a long note
     (v.play([{ pitch: pitch + shift, length: 8, velocity }], t, 0.125), () => {});
-  return () => {
-    const end = audioNow();
+  return (at = audioNow()) => {
+    // a note that ends before it starts (a short arp gate) ends just after it
+    const end = Math.max(at, t + 0.005);
     release(end);
     const tail = toUnit.ms(1, 8000)(track.params["sound.release"] ?? 0.35) / 1000;
     S.activeUntil.set(track.id, end + Math.max(tail, 2) + 0.5);

@@ -243,6 +243,45 @@ describe("recordNoteOn: Snap off = sub-step offset", () => {
   });
 });
 
+describe("recordNoteOn: timed notes from the play styles (D149)", () => {
+  beforeEach(() => {
+    mockProgress = 0;
+    mockLatency = 0;
+    useSettings.setState({ recordMode: "overdub", snap: true });
+  });
+  // the audio clock is at 0 in these tests: a time is seconds from now
+  const stepSec = (p: ReturnType<typeof demoProject>) => 60 / p.bpm / 4;
+
+  it("a hit two steps from now lands two steps later", () => {
+    const p = setupPlaying(120, "1/16");
+    const track = notesTrack(p);
+    mockProgress = 4 / 16;
+    recordNoteOn(track, 60, 0.8, { at: 2 * stepSec(p) });
+    expect(notesAt(track.id, 6).map((n) => n.pitch)).toContain(60);
+  });
+
+  it("with Snap on, the hit snaps and a strum's delay stays as the note's offset", () => {
+    const p = setupPlaying(120, "1/16");
+    const track = notesTrack(p);
+    mockProgress = 4.2 / 16; // played a little late: the hit snaps to step 4
+    recordNoteOn(track, 60, 0.8, { spread: 0 });
+    recordNoteOn(track, 64, 0.8, { spread: 0.3 * stepSec(p) });
+    const notes = notesAt(track.id, 4);
+    expect(notes.find((n) => n.pitch === 60)?.offset).toBeUndefined();
+    expect(notes.find((n) => n.pitch === 64)?.offset).toBeCloseTo(0.3, 5);
+  });
+
+  it("a note-off at a time sets the length to it", () => {
+    const p = setupPlaying(120, "1/16");
+    const track = notesTrack(p);
+    useSettings.setState({ snap: false });
+    mockProgress = 4 / 16;
+    const id = recordNoteOn(track, 60, 0.8);
+    recordNoteOff(id, 1.5 * stepSec(p));
+    expect(notesAt(track.id, 4).find((n) => n.pitch === 60)?.length).toBeCloseTo(1.5, 5);
+  });
+});
+
 describe("schema 9 migration", () => {
   it("is a no-op: projects round-trip with version 9", async () => {
     const { deserializeProject, serializeProject, SCHEMA_VERSION } =
