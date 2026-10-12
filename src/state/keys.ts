@@ -402,23 +402,12 @@ export function setBassOctaves(octaves: 0 | 1 | 2 | 3) {
   revoice();
 }
 
-/** Bass voicing a step at a time, as the Orchid's Bass Voicing dial: down (−) is deeper,
- * Off → −1 → −2 → −3; up (+) back toward Off (knob 5, D140). */
-export function stepBass(step: number) {
-  const n = Math.max(0, Math.min(3, useSettings.getState().bassOctaves - Math.sign(step)));
-  setBassOctaves(n as 0 | 1 | 2 | 3);
-}
-
 /** Chord voicing (D140): inversions of every chord the pads make, −8..8. */
 export function setChordVoicing(steps: number) {
   const v = Math.max(-VOICING_RANGE, Math.min(VOICING_RANGE, Math.round(steps)));
   if (v === useSettings.getState().chordVoicing) return;
   useSettings.getState().set({ chordVoicing: v });
   revoice();
-}
-
-export function stepChordVoicing(step: number) {
-  setChordVoicing(useSettings.getState().chordVoicing + Math.sign(step));
 }
 
 /** At once: a turn of the Key dial changes the key; On press: it picks one a press selects. */

@@ -222,28 +222,44 @@ test("chord pads make a chord on one key, its added keys lit (D137)", async ({ p
   await expect(line.locator("[data-added]")).toHaveCount(3);
   await page.getByTestId("bass").getByRole("button", { name: "Off" }).click();
   await expect(line).toHaveText(/C4\s*\+\s*E4\s*\+\s*G4\s*=\s*C$/);
-  // knob 1 (CC 74) is the chord voicing, knob 5 (CC 93) the bass, a step per notch (D140)
+  // knob 1 (CC 74) is the chord voicing, knob 5 (CC 93) the bass, read as equal zones (D140, D142)
   const svg = page.locator('[aria-label="MiniLab 3 controller"]');
   await expect(svg.getByText("Voicing", { exact: true })).toBeVisible();
   await send(page, "Minilab3 MIDI", [0xb0, 74, 64]);
   await send(page, "Minilab3 MIDI", [0xb0, 74, 72]);
   await expect(line).toHaveText(/E4\s*\+\s*G4\s*\+\s*C5\s*=\s*C\/E$/);
   await expect(page.getByTestId("voicing-value")).toHaveText("+1");
-  await send(page, "Minilab3 MIDI", [0xb0, 93, 64]);
-  await send(page, "Minilab3 MIDI", [0xb0, 93, 56]);
+  await send(page, "Minilab3 MIDI", [0xb0, 93, 100]);
+  await send(page, "Minilab3 MIDI", [0xb0, 93, 90]);
   await expect(line).toHaveText(/C3\s*\+\s*E4\s*\+\s*G4\s*\+\s*C5\s*=\s*C$/);
   await page.getByTestId("bass").getByRole("button", { name: "Off" }).click();
   await page.getByTestId("voicing-value").click();
   await expect(line).toHaveText(/C4\s*\+\s*E4\s*\+\s*G4\s*=\s*C$/);
-  // an absolute knob above the middle turned left, a value repeated, then right (D141): it
-  // isn't taken for a relative one (which went up whichever way it turned)
+  // a full turn reaches both ends, whichever way, a value repeated on the way (D141, D142)
+  const voicingValue = page.getByTestId("voicing-value");
   await page.waitForTimeout(300);
-  for (const v of [71, 70, 70, 69, 68, 67, 66, 65, 63])
+  for (const v of [71, 70, 70, 69, ...Array.from({ length: 24 }, (_, i) => 66 - 3 * i), 0])
     await send(page, "Minilab3 MIDI", [0xb0, 74, v]);
-  await expect(page.getByTestId("voicing-value")).toHaveText("-1");
-  for (const v of [65, 66, 66, 67, 68, 69, 70, 71, 72])
-    await send(page, "Minilab3 MIDI", [0xb0, 74, v]);
-  await expect(page.getByTestId("voicing-value")).toHaveText("0");
+  await expect(voicingValue).toHaveText("-8");
+  for (let v = 1; v <= 127; v += 3) await send(page, "Minilab3 MIDI", [0xb0, 74, v]);
+  await send(page, "Minilab3 MIDI", [0xb0, 74, 127]);
+  await expect(voicingValue).toHaveText("+8");
+  await send(page, "Minilab3 MIDI", [0xb0, 74, 64]);
+  await expect(voicingValue).toHaveText("0");
+  // the bass changes every 32 values: Off, −1, −2, −3 from right to left
+  const bassOn = () => page.getByTestId("bass").locator('[data-active="true"]');
+  for (const [v, label] of [
+    [96, "Off"],
+    [95, "−1"],
+    [64, "−1"],
+    [63, "−2"],
+    [32, "−2"],
+    [31, "−3"],
+  ] as const) {
+    await send(page, "Minilab3 MIDI", [0xb0, 93, v]);
+    await expect(bassOn()).toHaveText(label);
+  }
+  await page.getByTestId("bass").getByRole("button", { name: "Off" }).click();
   // a new key takes the chord over
   await send(page, "Minilab3 MIDI", [0x90, 65, 100]);
   await expect(line).toHaveText(/F4\s*\+\s*A4\s*\+\s*C5\s*=\s*F$/);

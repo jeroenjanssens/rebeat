@@ -84,8 +84,6 @@ const {
   keyDialPress,
   setBassOctaves,
   setChordVoicing,
-  stepChordVoicing,
-  stepBass,
 } = await import("./keys");
 const { useSettings } = await import("./settings");
 
@@ -483,10 +481,9 @@ describe("chord voicing and the bass knob (D140)", () => {
 
   it("voices every chord, a held one at once, within ±8", () => {
     noteOn(60, 0.8, "midi");
-    stepChordVoicing(1);
+    setChordVoicing(1);
     expect(sounding()).toEqual([[64, 67, 72]]);
-    stepChordVoicing(-1);
-    stepChordVoicing(-1);
+    setChordVoicing(-1);
     expect(sounding()).toEqual([[55, 60, 64]]);
     setChordVoicing(20);
     expect(useSettings.getState().chordVoicing).toBe(8);
@@ -503,20 +500,6 @@ describe("chord voicing and the bass knob (D140)", () => {
     setChordVoicing(-3);
     // the chord starts on C3 itself: the bass goes an octave further, C2
     expect(sounding()).toEqual([[36, 48, 52, 55]]);
-  });
-
-  it("steps the bass deeper to the left and back toward Off to the right", () => {
-    stepBass(-1);
-    stepBass(-1);
-    expect(useSettings.getState().bassOctaves).toBe(2);
-    stepBass(-5);
-    stepBass(-1);
-    expect(useSettings.getState().bassOctaves).toBe(3);
-    stepBass(1);
-    stepBass(1);
-    stepBass(1);
-    stepBass(1);
-    expect(useSettings.getState().bassOctaves).toBe(0);
   });
 
   it("leaves plain keys alone", () => {

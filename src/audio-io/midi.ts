@@ -16,15 +16,15 @@ import {
   chordPadUp,
   keyDialPress,
   keyDialTurn,
-  stepBass,
-  stepChordVoicing,
+  setBassOctaves,
+  setChordVoicing,
   keysControl,
   keysSustain,
   keysTakeNotes,
   keysTargetName,
   noteOn,
 } from "../state/keys";
-import { CHORD_PADS } from "../model/padChords";
+import { CHORD_PADS, VOICING_RANGE } from "../model/padChords";
 import { padInput } from "../state/input";
 import { useSettings } from "../state/settings";
 import { useStore } from "../state/store";
@@ -35,6 +35,7 @@ import { soundDefs } from "../library/synthTrack";
 import {
   detectMode,
   walksLikeAbsolute,
+  knobZone,
   findMapping,
   pickedUp,
   readTarget,
@@ -535,8 +536,15 @@ function applyMapping(map: MidiMapping, m: MidiMessage, scope: "project" | "glob
     useSettings.getState().padMode !== "drum"
   ) {
     const voicing = map.slot === "knob1";
-    const steps = steppedKnob(map, m.value, before);
-    if (steps) (voicing ? stepChordVoicing : stepBass)(steps);
+    // as zones, left to right: voicing −8..+8, the bass −3, −2, −1, Off
+    const settings = useSettings.getState();
+    const n = voicing ? 2 * VOICING_RANGE + 1 : 4;
+    const current = voicing ? settings.chordVoicing + VOICING_RANGE : 3 - settings.bassOctaves;
+    const zone = steppedKnob(map, m.value, before, n, current);
+    if (zone !== current) {
+      if (voicing) setChordVoicing(zone - VOICING_RANGE);
+      else setBassOctaves((3 - zone) as 0 | 1 | 2 | 3);
+    }
     const s = useSettings.getState();
     const action = voicing
       ? `${map.label}: chord voicing ${s.chordVoicing > 0 ? "+" : ""}${s.chordVoicing}`
@@ -546,7 +554,9 @@ function applyMapping(map: MidiMapping, m: MidiMessage, scope: "project" | "glob
       value: m.value,
       target: voicing ? "keys:voicing" : "keys:bass",
       // where the knob's needle points: the voicing in its range, the bass (Off at the right)
-      targetValue: voicing ? (s.chordVoicing + 8) / 16 : (3 - s.bassOctaves) / 3,
+      targetValue: voicing
+        ? (s.chordVoicing + VOICING_RANGE) / (2 * VOICING_RANGE)
+        : (3 - s.bassOctaves) / 3,
     });
     return action;
   }
@@ -681,9 +691,6 @@ function applyMapping(map: MidiMapping, m: MidiMessage, scope: "project" | "glob
 
 /** Every mapping's last CC value, in any pad mode (D141). */
 const lastValue = new Map<string, number>();
-/** How far an absolute stepped knob has turned since its last step. */
-const stepAcc = new Map<string, number>();
-
 /**
  * How a mapping's CC is read now (D120, D129, D141): its saved mode, or a better guess from
  * this gesture's values (within 250 ms of each other), saved for next time. Only knobs and
@@ -719,23 +726,26 @@ function knobMode(map: MidiMapping, value: number): MidiMode {
 }
 
 /**
- * Steps (±) for a knob that sets a stepped value (D140): one per message for a relative knob,
- * one per 8 values for an absolute one, counted from where the knob was (`before`).
+ * Where a knob puts a stepped setting of `n` values now at `current` (D140, D142): an absolute
+ * knob picks the zone it points at (with pickup on, once it reaches or passes the current one);
+ * a relative knob moves one step per message.
  */
-function steppedKnob(map: MidiMapping, value: number, before: number | undefined): number {
+function steppedKnob(
+  map: MidiMapping,
+  value: number,
+  before: number | undefined,
+  n: number,
+  current: number,
+): number {
   const mode = knobMode(map, value);
   if (mode !== "absolute") {
-    stepAcc.delete(map.id);
-    return Math.sign(relativeDelta(mode, value));
+    const step = Math.sign(relativeDelta(mode, value));
+    return Math.max(0, Math.min(n - 1, current + step));
   }
-  let acc = (stepAcc.get(map.id) ?? 0) + (before === undefined ? 0 : value - before);
-  let steps = 0;
-  while (Math.abs(acc) >= 8) {
-    steps += Math.sign(acc);
-    acc -= 8 * Math.sign(acc);
-  }
-  stepAcc.set(map.id, acc);
-  return steps;
+  const zone = knobZone(value, n);
+  if (!useSettings.getState().midiPickup) return zone;
+  const from = before === undefined ? zone : knobZone(before, n);
+  return (from - current) * (zone - current) <= 0 ? zone : current;
 }
 
 /** Derive controller event kind+index from a mapping's slot id. */

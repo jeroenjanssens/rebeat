@@ -19,6 +19,7 @@ import {
   resolveTarget,
   routeNote,
   walksLikeAbsolute,
+  knobZone,
   withMapping,
   ROLES,
 } from "./mapping";
@@ -310,5 +311,22 @@ describe("MiniLab 3 map — new encoder slots", () => {
     expect(shift?.number).toBe(9);
     expect(shift?.target).toBe("modifier:shift");
     expect(shift?.kind).toBe("button");
+  });
+});
+
+describe("stepped knobs read as zones (D142)", () => {
+  it("every value gets the same turn, both ends included", () => {
+    const zones = (n: number) => Array.from({ length: 128 }, (_, v) => knobZone(v, n));
+    for (const n of [4, 17]) {
+      const z = zones(n);
+      expect(z[0]).toBe(0);
+      expect(z[127]).toBe(n - 1);
+      const sizes = Array.from({ length: n }, (_, i) => z.filter((x) => x === i).length);
+      expect(Math.max(...sizes) - Math.min(...sizes)).toBeLessThanOrEqual(1);
+    }
+    // the bass: 32 values each
+    expect([0, 31, 32, 63, 64, 95, 96, 127].map((v) => knobZone(v, 4))).toEqual([
+      0, 0, 1, 1, 2, 2, 3, 3,
+    ]);
   });
 });

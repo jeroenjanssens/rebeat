@@ -196,6 +196,14 @@ export function routeNote(
 // ---------- pickup (D120) ----------
 
 /**
+ * Which of `n` equal zones an absolute knob's value (0..127) is in (D142): a stepped setting
+ * read from where the knob points, so every step takes the same turn and both ends are reached.
+ */
+export function knobZone(value: number, n: number): number {
+  return Math.max(0, Math.min(n - 1, Math.floor((value * n) / 128)));
+}
+
+/**
  * Soft takeover for absolute controls: the control moves the target only once it reaches the
  * target's value (passes it, or comes within 3%), so a fader that sits elsewhere doesn't jump.
  */
