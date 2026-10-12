@@ -570,15 +570,15 @@ export function defaultCommands(): Command[] {
     },
     {
       id: "pads.mode",
-      title: "Pads: next mode (Drum, Chord, Key)",
+      title: "Pads: next mode (Drum, Chord, Key, Next)",
       category: "Keys",
       run: () => {
-        const order = ["drum", "chord", "key"] as const;
+        const order = ["drum", "chord", "key", "next"] as const;
         const at = order.indexOf(useSettings.getState().padMode);
         setPadMode(order[(at + 1) % order.length]);
       },
     },
-    ...(["drum", "chord", "key"] as const).map((m) => ({
+    ...(["drum", "chord", "key", "next"] as const).map((m) => ({
       id: `pads.${m}`,
       title: `Pads: ${m[0].toUpperCase()}${m.slice(1)} mode`,
       category: "Keys",

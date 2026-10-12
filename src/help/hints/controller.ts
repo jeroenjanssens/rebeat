@@ -177,6 +177,66 @@ const hints: Hints = {
     text: "How evenly a chord's notes are played. At the far left all notes are equally loud; turning right makes the notes in the middle softer, so the bass and the top note (the melody) stand out, as a pianist voices a chord: up to about a third softer at 100%.",
     guide: "performance-play-styles",
   },
+  "controller.padMode.next": {
+    title: "Next mode",
+    text: "The pads are the next chords to play: after each chord, pads 1–8 hold the eight best next chords, each in the color of what it does (green home, blue away, red tension, purple color). A press plays one, with Voicing, Bass and the play styles. The keys play as in Key mode, in its key.",
+    guide: "performance-suggestions",
+  },
+  "controller.suggest": {
+    title: "Suggest",
+    text: "After each chord you play, Rebeat suggests what could come next, and marks the key to press for the three best (in Chord mode, the pad to hold too): the bigger the dot, the better. The colors say what a chord does: green home, blue away from home, red tension (it wants to resolve), purple color (borrowed or secondary chords). The MiniLab's display shows them too.",
+    guide: "performance-suggestions",
+  },
+  "controller.suggest.adventure": {
+    title: "Adventure",
+    text: "How far the suggestions stray from the key. Safe: only the key's own chords. Common: also the usual borrowed and secondary chords (♭VII, iv in a major key, V/V, sevenths on V). Bold: more color (♭VI, ♭III, secondary dominants, the Neapolitan, sevenths).",
+    guide: "performance-suggestions",
+  },
+  "controller.suggestion": {
+    title: "A suggested next chord",
+    text: "Press this key (in Chord mode with the pads its tooltip names) to play the suggested chord: the tooltip says which chord, its roman numeral, what it does and why it fits. The biggest dot is the best one.",
+    guide: "performance-suggestions",
+  },
+  "controller.nextpad.0": {
+    title: "Next pad 1",
+    text: "The best suggested next chord: its name is on the pad, its color says what it does (green home, blue away, red tension, purple color). Press it to play it; the pads refill after every chord.",
+    guide: "performance-suggestions",
+  },
+  "controller.nextpad.1": {
+    title: "Next pad 2",
+    text: "The second best suggested next chord: its name is on the pad, its color says what it does (green home, blue away, red tension, purple color). Press it to play it; the pads refill after every chord.",
+    guide: "performance-suggestions",
+  },
+  "controller.nextpad.2": {
+    title: "Next pad 3",
+    text: "The third suggested next chord: its name is on the pad, its color says what it does (green home, blue away, red tension, purple color). Press it to play it; the pads refill after every chord.",
+    guide: "performance-suggestions",
+  },
+  "controller.nextpad.3": {
+    title: "Next pad 4",
+    text: "The fourth suggested next chord: its name is on the pad, its color says what it does (green home, blue away, red tension, purple color). Press it to play it; the pads refill after every chord.",
+    guide: "performance-suggestions",
+  },
+  "controller.nextpad.4": {
+    title: "Next pad 5",
+    text: "The fifth suggested next chord: its name is on the pad, its color says what it does (green home, blue away, red tension, purple color). Press it to play it; the pads refill after every chord.",
+    guide: "performance-suggestions",
+  },
+  "controller.nextpad.5": {
+    title: "Next pad 6",
+    text: "The sixth suggested next chord: its name is on the pad, its color says what it does (green home, blue away, red tension, purple color). Press it to play it; the pads refill after every chord.",
+    guide: "performance-suggestions",
+  },
+  "controller.nextpad.6": {
+    title: "Next pad 7",
+    text: "The seventh suggested next chord: its name is on the pad, its color says what it does (green home, blue away, red tension, purple color). Press it to play it; the pads refill after every chord.",
+    guide: "performance-suggestions",
+  },
+  "controller.nextpad.7": {
+    title: "Next pad 8",
+    text: "The eighth suggested next chord: its name is on the pad, its color says what it does (green home, blue away, red tension, purple color). Press it to play it; the pads refill after every chord.",
+    guide: "performance-suggestions",
+  },
   "controller.voicing.smooth": {
     title: "Smooth voicing",
     text: "Each chord takes the inversion closest to the chord before it, so a progression moves by small steps (C, then F as C F A) without turning the Voicing knob. Voicing still sets the register it stays near. The number is the voicing it's playing.",

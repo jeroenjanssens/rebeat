@@ -19,6 +19,7 @@ import {
   setBassOctaves,
   setChordVoicing,
   setPlayStyle,
+  playSuggestion,
   setTranspose,
   useKeys,
   keysControl,
@@ -640,6 +641,9 @@ const STEPPED: Record<
   },
 };
 
+/** Whether the main encoder is the Key dial: in Key mode and Next mode (D138, D159). */
+const keyDialMode = () => ["key", "next"].includes(useSettings.getState().padMode);
+
 /** Apply a mapping to a message; returns what it did (for the monitor). */
 function applyMapping(map: MidiMapping, m: MidiMessage, scope: "project" | "global"): string {
   // where the knob was, in any pad mode: turning it in Drum mode doesn't make a jump later (D141)
@@ -707,7 +711,7 @@ function applyMapping(map: MidiMapping, m: MidiMessage, scope: "project" | "glob
           : 0
         : relativeDelta(mode, m.value);
     // Key mode (D138): the encoder is the Key dial (the root; Shift: the scale; pressed: transpose)
-    if (useSettings.getState().padMode === "key") {
+    if (keyDialMode()) {
       if (delta !== 0) keyDialTurn(Math.sign(delta), bySection);
       const action = `${map.label}: Key dial`;
       report(m, action, { kind: "encoder", index: 0, slot: map.slot, value: m.value, turn: delta });
@@ -724,7 +728,7 @@ function applyMapping(map: MidiMapping, m: MidiMessage, scope: "project" | "glob
 
   // Key mode (D138): the encoder's click is the Key dial's press (a click selects, press and turn
   // transposes), so it doesn't add a track
-  if (map.slot === "encoder-click" && useSettings.getState().padMode === "key") {
+  if (map.slot === "encoder-click" && keyDialMode()) {
     const down = m.type === "noteon" || (m.type === "cc" && m.value >= 64);
     keyDialPress(down);
     const action = `${map.label}: Key dial ${down ? "pressed" : "released"}`;
@@ -898,7 +902,16 @@ const held = new Map<number, () => void>();
 /** Chord pads held on a controller ("channel:note" → pad index), D137. */
 const chordPadsHeld = new Map<string, number>();
 
+/** Next pads held ("channel:note" → what releases the chord it plays), D159. */
+const nextPadsHeld = new Map<string, () => void>();
+
 function releaseChordPad(channel: number, note: number): boolean {
+  const next = nextPadsHeld.get(`${channel}:${note}`);
+  if (next) {
+    nextPadsHeld.delete(`${channel}:${note}`);
+    next();
+    return true;
+  }
   const pad = chordPadsHeld.get(`${channel}:${note}`);
   if (pad === undefined) return false;
   chordPadsHeld.delete(`${channel}:${note}`);
@@ -945,6 +958,11 @@ function playNote(channel: number, note: number, velocity: number): string {
     held.set(note, noteOn(note, velocity, "midi"));
     return `Played on ${targetName}`;
   }
+  // Next mode (D159): pads 1–8 play the suggested chords
+  if (route.to === "pad" && route.index < 8 && useSettings.getState().padMode === "next") {
+    nextPadsHeld.set(`${channel}:${note}`, playSuggestion(route.index, velocity, "midi"));
+    return `Next pad ${route.index + 1}: ${useKeys.getState().suggestions[route.index]?.name ?? "nothing"}`;
+  }
   // Chord and Key mode (D137, D138): pads 1–8 are the chord pads; the others still play tracks
   if (route.to === "pad" && route.index < 8 && useSettings.getState().padMode !== "drum") {
     chordPadDown(route.index);
@@ -967,7 +985,7 @@ function playPadTrack(index: number, velocity: number): string {
 }
 
 /** Pads that send CCs and are down, and what their press did (to undo it on release). */
-const padCCsDown = new Map<number, "shift" | "chord" | "track">();
+const padCCsDown = new Map<number, "shift" | "chord" | "track" | (() => void)>();
 
 /**
  * A pad that sends a CC (D147): 127 is a press, 0 a release. It does what a pad's note does
@@ -983,6 +1001,7 @@ function padCC(m: MidiMessage, index: number) {
   if (!down) {
     padCCsDown.delete(index);
     if (was === "chord") chordPadUp(index);
+    if (typeof was === "function") was();
     return report(m, `Pad ${index + 1} released`, ev);
   }
   if (isShiftHeld(m.device) && index >= 3 && index <= 7) {
@@ -990,6 +1009,10 @@ function padCC(m: MidiMessage, index: number) {
     runCommand(command);
     padCCsDown.set(index, "shift");
     return report(m, `Shift + Pad ${index + 1}: ${name}`, ev);
+  }
+  if (useSettings.getState().padMode === "next") {
+    padCCsDown.set(index, playSuggestion(index, m.value / 127, "midi"));
+    return report(m, `Next pad ${index + 1}`, ev);
   }
   if (useSettings.getState().padMode !== "drum") {
     chordPadDown(index);

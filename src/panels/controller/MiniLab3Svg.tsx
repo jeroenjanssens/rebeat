@@ -233,7 +233,13 @@ interface MiniLab3SvgProps {
   onKeyDown?: (midi: number, velocity: number) => () => void;
   onPadDown?: (index: number) => () => void;
   /** What the pads do: tracks (Drum), the chord pads (Chord, D137) or Key mode's pads (D138). */
-  padMode?: "drum" | "chord" | "key";
+  padMode?: "drum" | "chord" | "key" | "next";
+  /** Next mode (D159): the suggested chords' names, on pads 1–8. */
+  nextLabels?: readonly string[];
+  /** Suggested next chords (D158): a marker on the key to press (by device pitch), its name. */
+  marks?: readonly { pitch: number; rank: number; name: string; color: string; title: string }[];
+  /** The best suggestion's pads (Chord and Key mode): a dot on each. */
+  padMarks?: readonly { index: number; color: string }[];
   /** The pads' colors (D144): the tracks' in Drum mode, blue and purple for the chord pads. */
   padColors?: readonly (string | null)[];
   /** Key mode's key: the keys in it get a dot (the root a bigger one), D138. */
@@ -255,8 +261,13 @@ export function MiniLab3Svg({
   scaleKey = null,
   onLabelPx,
   holdLit = false,
+  nextLabels,
+  marks = [],
+  padMarks = [],
 }: MiniLab3SvgProps) {
   const chordPads = padMode !== "drum";
+  // the device's octave, for the markers (React draws them; the frame loop draws the rest)
+  const [keyShift, setKeyShift] = useState(12);
   // Shift held on the device: the pads show their second functions in the MiniLab's colors
   const [shiftHeld, setShiftHeld] = useState(false);
   const colors = shiftHeld ? SHIFT_PAD_COLORS : padColors;
@@ -326,6 +337,7 @@ export function MiniLab3Svg({
           if (index - live.shift < FIRST_KEY || index - live.shift >= FIRST_KEY + KEY_COUNT) {
             live.shift = 12 * Math.floor((index - FIRST_KEY) / 12);
             live.keyVel.fill(0);
+            setKeyShift(live.shift);
           }
           live.keyVel[index - live.shift] = e.down ? e.value : 0;
           break;
@@ -871,11 +883,13 @@ export function MiniLab3Svg({
           <g
             key={i}
             data-hint={
-              padMode === "key"
-                ? `controller.keypad.${i}`
-                : padMode === "chord"
-                  ? `controller.chordpad.${i}`
-                  : `controller.pad.${i}`
+              padMode === "next"
+                ? `controller.nextpad.${i}`
+                : padMode === "key"
+                  ? `controller.keypad.${i}`
+                  : padMode === "chord"
+                    ? `controller.chordpad.${i}`
+                    : `controller.pad.${i}`
             }
             data-pad-color={lit ?? "none"}
             style={{ cursor: onPadDown ? "pointer" : undefined }}
@@ -931,8 +945,21 @@ export function MiniLab3Svg({
               fill={color}
               style={NO_SELECT}
             >
-              {chordLabel ? CHORD_PADS[i] : PAD_LABELS[i]}
+              {chordLabel ? (nextLabels ? (nextLabels[i] ?? "") : CHORD_PADS[i]) : PAD_LABELS[i]}
             </text>
+            {/* the best suggestion's pad (D158) */}
+            {padMarks.some((m) => m.index === i) && !shiftHeld && (
+              <circle
+                data-testid="suggest-pad"
+                cx={px + PAD_SIZE - 11}
+                cy={PAD_Y + 11}
+                r={4.5}
+                fill={padMarks.find((m) => m.index === i)!.color}
+                stroke="#ffffff"
+                strokeWidth="1.2"
+                style={{ pointerEvents: "none" }}
+              />
+            )}
           </g>
         );
       })}
@@ -1095,6 +1122,50 @@ export function MiniLab3Svg({
           onPointerLeave={() => handleKeyPointerUp(k.midi)}
         />
       ))}
+      {/* Suggested next chords (D158): a marker on the key to press, biggest for the best one */}
+      {marks.map((m) => {
+        let midi = m.pitch - keyShift;
+        if (midi < FIRST_KEY) midi += 12;
+        if (midi >= FIRST_KEY + KEY_COUNT) midi -= 12;
+        const k = KEY_LAYOUT.find((x) => x.midi === midi);
+        if (!k) return null;
+        const cx = KEYS_X + (k.x + k.w / 2) * WHITE_W;
+        const cy = k.white ? KEYS_Y + BLACK_KEY_H + 24 : KEYS_Y + 34;
+        const r = [9, 7, 6][m.rank] ?? 6;
+        return (
+          <g key={`${m.name}-${m.rank}`} data-testid="suggest-mark" data-name={m.name}>
+            <title>{m.title}</title>
+            {/* pressing the marker presses its key */}
+            <circle
+              cx={cx}
+              cy={cy}
+              r={r}
+              fill={m.color}
+              stroke="#ffffff"
+              strokeWidth="1.5"
+              data-hint="controller.suggestion"
+              style={{ cursor: onKeyDown ? "pointer" : undefined }}
+              onPointerDown={(e) => handleKeyPointerDown(k.midi, e)}
+              onPointerUp={() => handleKeyPointerUp(k.midi)}
+              onPointerLeave={() => handleKeyPointerUp(k.midi)}
+            />
+            <text
+              style={{ pointerEvents: "none" }}
+              x={cx}
+              y={cy + r + 14}
+              textAnchor="middle"
+              fontSize={m.rank === 0 ? 14 : 12}
+              fontWeight="700"
+              fill={m.color}
+              stroke={k.white ? "#ffffff" : BLACK_KEY}
+              strokeWidth="3"
+              paintOrder="stroke"
+            >
+              {m.name}
+            </text>
+          </g>
+        );
+      })}
       {/* Key mode's in-key dots (shown by the frame loop) */}
       {KEY_LAYOUT.map((k) => (
         <circle

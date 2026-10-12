@@ -14,6 +14,10 @@ import {
   chordPadDown,
   chordPadUp,
   noteOn,
+  playSuggestion,
+  refreshSuggestions,
+  setSuggest,
+  setSuggestAdventure,
   selectPendingKey,
   setBassOctaves,
   setChordVoicing,
@@ -31,6 +35,7 @@ import { dropdown, type MenuItem } from "../../components/Menu";
 import { padInput } from "../../state/input";
 import * as engine from "../../engine/engine";
 import { MiniLab3Svg } from "./MiniLab3Svg";
+import { ROLE_COLORS, ROLE_NAMES } from "../../model/suggest";
 import { PlayStylesRow } from "./PlayStylesRow";
 import { PATTERNS, patternById, sanitizePlayStyle } from "../../model/perform";
 import { KeysChip } from "../../app/KeysChip";
@@ -158,6 +163,7 @@ const PAD_MODES = [
   { id: "drum", label: "Drum", hint: "controller.padMode.drum" },
   { id: "chord", label: "Chord", hint: "controller.padMode.chord" },
   { id: "key", label: "Key", hint: "controller.padMode.key" },
+  { id: "next", label: "Next", hint: "controller.padMode.next" },
 ] as const;
 
 /** Drum (pads 1–8 play tracks 1–8), Chord (the Orchid-style chord pads) or Key (Key mode). */
@@ -241,6 +247,9 @@ function PadChordsRow({ keyMode }: { keyMode: boolean }) {
   const dial = useSettings((s) => s.keyDial);
   const bass = useSettings((s) => s.bassOctaves);
   const voicing = useSettings((s) => s.chordVoicing);
+  const suggest = useSettings((s) => s.suggest);
+  const adventure = useSettings((s) => s.suggestAdventure);
+  const padMode = useSettings((s) => s.padMode);
   const smooth = useSettings((s) => s.smoothVoicing);
   const voicingUsed = useKeys((s) => s.voicingUsed);
   const bassTrack = useSettings((s) => s.bassTrack);
@@ -265,6 +274,33 @@ function PadChordsRow({ keyMode }: { keyMode: boolean }) {
           <span className="num text-accent">{keyName(pending)}</span>
           <span className="text-faint text-[11px]">press the knob</span>
         </button>
+      )}
+      <div className="segmented" data-hint="controller.suggest">
+        <button
+          data-active={suggest}
+          aria-pressed={suggest}
+          data-testid="suggest"
+          onClick={() => setSuggest(!suggest)}
+        >
+          Suggest
+        </button>
+      </div>
+      {(suggest || padMode === "next") && (
+        <div
+          className="segmented"
+          data-testid="suggest-adventure"
+          data-hint="controller.suggest.adventure"
+        >
+          {(["Safe", "Common", "Bold"] as const).map((label, level) => (
+            <button
+              key={label}
+              data-active={adventure === level}
+              onClick={() => setSuggestAdventure(level as 0 | 1 | 2)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       )}
       <span className="flex-1" />
       {keyMode && (
@@ -424,6 +460,33 @@ function ChordPadsRow({ keyMode }: { keyMode: boolean }) {
   );
 }
 
+/** Next mode on a controller without a picture (D159): the suggestions on pads 1–8. */
+function NextPadsRow() {
+  const suggestions = useKeys((s) => s.suggestions);
+  return (
+    <div className="flex shrink-0 items-center justify-center gap-1" data-testid="next-pads">
+      {Array.from({ length: 8 }, (_, i) => {
+        const s = suggestions[i];
+        return (
+          <button
+            key={i}
+            data-hint={`controller.nextpad.${i}`}
+            className="num rounded border px-2 py-0.5 text-[11px]"
+            style={s ? { borderColor: ROLE_COLORS[s.role], color: ROLE_COLORS[s.role] } : undefined}
+            title={s?.why}
+            onPointerDown={() => {
+              const up = playSuggestion(i, 0.8, "screen");
+              window.addEventListener("pointerup", up, { once: true });
+            }}
+          >
+            {s?.name ?? "—"}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Pad play helper ──────────────────────────────────────────────────────
 
 function playPad(index: number): () => void {
@@ -526,6 +589,37 @@ export function ControllerPanel() {
   });
 
   const keyModeKey = useSettings((s) => s.keyModeKey);
+  // the next chords (D158, D159): markers on the keys, the pads in Next mode
+  const suggestions = useKeys((s) => s.suggestions);
+  const lastKey = useKeys((s) => s.lastKey);
+  const suggestOn = useSettings((s) => s.suggest);
+  const projectKey = useStore((s) => s.project.key);
+  useEffect(() => refreshSuggestions(), [padMode, suggestOn, keyModeKey, projectKey]);
+  const showMarks = suggestOn && padMode !== "drum";
+  const near = lastKey ?? 60;
+  const marks = showMarks
+    ? suggestions.slice(0, 3).map((s, rank) => {
+        // the key with the chord's root closest to the last one played: the hand moves least
+        const pitch = near - 6 + ((((s.root - (near - 6)) % 12) + 12) % 12);
+        const pads = padMode === "chord" ? s.pads : s.keyPads;
+        const how = pads.length ? ` + ${pads.map((p) => CHORD_PADS[p]).join(" + ")}` : "";
+        return {
+          pitch,
+          rank,
+          name: s.name,
+          color: ROLE_COLORS[s.role],
+          title: `${s.name} (${s.roman}, ${ROLE_NAMES[s.role]}): ${s.why}. Press ${noteName(pitch)}${how}.`,
+        };
+      })
+    : [];
+  // the best one's pads, marked on the pads (Chord and Key mode)
+  const best = showMarks && padMode !== "next" ? suggestions[0] : undefined;
+  const padMarks = best
+    ? (padMode === "chord" ? best.pads : best.keyPads).map((i) => ({
+        index: i,
+        color: ROLE_COLORS[best.role],
+      }))
+    : [];
   const [held, changeHeld] = useHeldNotes();
   const sounding = useSounding(held);
   // the equation's size: the note names' on the keys (a fixed 22 px without a picture)
@@ -545,6 +639,7 @@ export function ControllerPanel() {
   const handlePadDown = useCallback(
     (index: number): (() => void) => {
       if (padMode === "drum") return playPad(index);
+      if (padMode === "next") return playSuggestion(index, 0.8, "screen");
       chordPadDown(index);
       return () => chordPadUp(index);
     },
@@ -598,7 +693,7 @@ export function ControllerPanel() {
         <span className="label">Pads</span>
         <PadModeSwitch />
       </div>
-      {padMode !== "drum" && <PadChordsRow keyMode={padMode === "key"} />}
+      {padMode !== "drum" && <PadChordsRow keyMode={padMode === "key" || padMode === "next"} />}
       <PlayStylesRow />
 
       {/* Device picture or generic slots */}
@@ -608,13 +703,20 @@ export function ControllerPanel() {
             labels={{
               knobs: kLabels,
               faders: fLabels,
-              encoder: padMode === "key" ? "Key" : "Browse",
+              encoder: padMode === "key" || padMode === "next" ? "Key" : "Browse",
             }}
             onKeyDown={handleKeyDown}
             onPadDown={handlePadDown}
             padMode={padMode}
-            padColors={padColors(project.tracks, padMode)}
-            scaleKey={padMode === "key" ? keyModeKey : null}
+            padColors={padColors(
+              project.tracks,
+              padMode,
+              suggestions.map((s) => ROLE_COLORS[s.role]),
+            )}
+            scaleKey={padMode === "key" || padMode === "next" ? keyModeKey : null}
+            nextLabels={padMode === "next" ? suggestions.map((s) => s.name) : undefined}
+            marks={marks}
+            padMarks={padMarks}
             onLabelPx={setLabelPx}
             holdLit={playStyle.latch}
           />
@@ -622,7 +724,10 @@ export function ControllerPanel() {
           <GenericControllerView map={activeMap} />
         )}
       </div>
-      {!isMiniLab && padMode !== "drum" && <ChordPadsRow keyMode={padMode === "key"} />}
+      {!isMiniLab && padMode === "next" && <NextPadsRow />}
+      {!isMiniLab && padMode !== "drum" && padMode !== "next" && (
+        <ChordPadsRow keyMode={padMode === "key"} />
+      )}
       <NotesEquation sounding={sounding} size={isMiniLab ? Math.max(15, labelPx) : 22} />
     </div>
   );

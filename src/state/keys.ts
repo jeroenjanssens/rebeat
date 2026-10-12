@@ -17,6 +17,7 @@ import {
   playKeysSample,
 } from "../engine/engine";
 import { noteName, type Key } from "../model/notes";
+import { qualityOf, suggestNext, type Played, type Suggestion } from "../model/suggest";
 import { keyModeChord, sameKey, stepKeyRoot, stepKeyScale } from "../model/keyMode";
 import { BASS_OCTAVES, padChord, voiceChord, VOICING_RANGE } from "../model/padChords";
 import {
@@ -93,6 +94,9 @@ interface KeysState {
   voicingUsed: number | null;
   /** Whether Latch holds something now (D151). */
   latched: boolean;
+  /** The next chords to play (D158), best first; the last key played (to mark the nearest). */
+  suggestions: Suggestion[];
+  lastKey: number | null;
 }
 
 /** A key that's down and what it plays: itself, a chord, or nothing (another key took over). */
@@ -115,6 +119,8 @@ export const useKeys = create<KeysState>()(() => ({
   pendingKey: null,
   voicingUsed: null,
   latched: false,
+  suggestions: [],
+  lastKey: null,
 }));
 
 export function setKeysTarget(target: KeysTarget) {
@@ -419,6 +425,8 @@ function padNotes(key: number): number[] | null {
   const s = useSettings.getState();
   if (s.padMode === "chord") return padChord(keyRoot(key), chordPads);
   if (s.padMode === "key") return keyModeChord(key, s.keyModeKey, chordPads);
+  // Next mode (D159): the keys play Key mode's chords, the pads are the suggestions
+  if (s.padMode === "next") return keyModeChord(key, s.keyModeKey, []);
   return null;
 }
 
@@ -442,14 +450,20 @@ const inMidi = (n: number) => n >= 0 && n <= 127;
  * octaves down, below the chord's lowest note, not below C1. In split mode (D154) a key below the
  * split is the bass alone, and chords get no bass of their own.
  */
-function notesOf(out: Output, key: number, prev: number[] | null = null): KeyChord {
+function notesOf(
+  out: Output,
+  key: number,
+  prev: number[] | null = null,
+  forced: number[] | null = null,
+): KeyChord {
   const s = useSettings.getState();
   const t = useKeys.getState().transpose;
-  if (isSplitBass(key)) {
+  if (!forced && isSplitBass(key)) {
     const n = key + t;
     return { notes: inMidi(n) ? [n] : [], chord: false, bass: inMidi(n) ? [n] : [], voicing: null };
   }
-  const chord = padNotes(key);
+  // a suggestion (D159) plays its own chord; a key its pads' chord, or itself
+  const chord = forced ?? padNotes(key);
   let notes = (chord ?? keyNotes(out, key)).map((n) => n + t);
   const bass: number[] = [];
   let voicing: number | null = null;
@@ -498,14 +512,15 @@ export function chordPadUp(pad: number) {
 }
 
 /** Drum (pads 1–8 play tracks 1–8), Chord (the chord pads, D137) or Key (Key mode, D138). */
-export function setPadMode(mode: "drum" | "chord" | "key") {
+export function setPadMode(mode: "drum" | "chord" | "key" | "next") {
   useSettings.getState().set({ padMode: mode });
   if (mode === "drum") {
     chordPads = [];
     useKeys.setState({ pads: [] });
   }
-  if (mode !== "key") useKeys.setState({ pendingKey: null });
+  if (mode !== "key" && mode !== "next") useKeys.setState({ pendingKey: null });
   revoice();
+  refreshSuggestions();
 }
 
 // ---------- Key mode's key, transpose and the Key dial (D138) ----------
@@ -515,6 +530,7 @@ export function setKeyModeKey(key: Key) {
   useSettings.getState().set({ keyModeKey: { root: key.root, scale: key.scale } });
   useKeys.setState({ pendingKey: null });
   revoice();
+  refreshSuggestions();
 }
 
 /** Transpose what the keys play, −12..12 semitones (for this session). */
@@ -523,6 +539,7 @@ export function setTranspose(semitones: number) {
   if (t === useKeys.getState().transpose) return;
   useKeys.setState({ transpose: t });
   revoice();
+  refreshSuggestions();
 }
 
 /** Bass voicing (D139): the chord's root this many octaves below it (0 = off). */
@@ -609,7 +626,14 @@ interface Pressed {
   ended: boolean;
   /** The chord sounding before this key (for Smooth voicing, D152). */
   prev: number[] | null;
+  /** A suggestion's chord (D159): what it plays instead of the key's own. */
+  forced: number[] | null;
 }
+
+/** What a key that's down plays now. */
+const chordOf = (p: Pressed) => notesOf(p.out, p.key, p.prev, p.forced);
+/** Whether a key that's down is a split's bass key (D154). */
+const splitBass = (p: Pressed) => !p.forced && isSplitBass(p.key);
 
 /** The keys that are down, oldest first. */
 const down: Pressed[] = [];
@@ -623,23 +647,49 @@ const active = () => [...latched, ...down].filter((p) => !p.ended);
 /** Start a held note on the keys' target; the returned function releases it. */
 export function noteOn(pitch: number, velocity: number, source: KeysSource): () => void {
   if (quickKeySelect(pitch)) return () => {};
+  return press(pitch, velocity, source, null);
+}
+
+/**
+ * A key down, or a suggestion played (`forced`: its chord, D159): what it plays goes through the
+ * chord stage (transpose, voicing, Smooth, bass), the play styles, the voices and recording.
+ */
+function press(
+  pitch: number,
+  velocity: number,
+  source: KeysSource,
+  forced: number[] | null,
+): () => void {
   const out = output();
   if (!out) return () => {};
   const style = playStyle();
   // Latch: a key after all were up starts a new set (keys while others are down add to it)
   if (style.latch && down.length === 0) endLatched();
   // Split (D154): one bass note at a time, the last one wins
-  if (isSplitBass(pitch)) for (const q of active()) if (isSplitBass(q.key)) end(q);
+  if (!forced && isSplitBass(pitch)) for (const q of active()) if (splitBass(q)) end(q);
   const now = performance.now();
   const prev = lastChord && now - lastChord.at < 4000 ? lastChord.notes : null;
-  const kc = notesOf(out, pitch, prev);
+  const kc = notesOf(out, pitch, prev, forced);
   // one chord at a time: a new key takes the chord over from the others (as on the Orchid)
-  if (kc.chord) for (const q of active()) if (!isSplitBass(q.key)) end(q);
+  if (kc.chord) for (const q of active()) if (!splitBass(q)) end(q);
   if (kc.chord) {
     lastChord = { notes: kc.notes.filter((n) => !kc.bass.includes(n)), at: now };
     useKeys.setState({ voicingUsed: kc.voicing });
+    // what you played, for the next suggestions (D158): the chord as pressed, before transpose
+    const raw = forced ?? padNotes(pitch);
+    if (raw) remember(raw[0], raw);
   }
-  const p: Pressed = { key: pitch, velocity, source, out, voices: new Map(), ended: false, prev };
+  if (!forced && !isSplitBass(pitch)) useKeys.setState({ lastKey: pitch });
+  const p: Pressed = {
+    key: pitch,
+    velocity,
+    source,
+    out,
+    voices: new Map(),
+    ended: false,
+    prev,
+    forced,
+  };
   if (rhythmOn(style)) {
     // the rhythm plays it; while stopped, step entry writes the chord as it is (D149)
     stepEntry(out, kc.notes, velocity);
@@ -724,11 +774,11 @@ function end(p: Pressed) {
  */
 function revoice() {
   const newest = active().at(-1);
-  if (newest && !isSplitBass(newest.key) && padNotes(newest.key))
-    for (const q of active()) if (q !== newest && !isSplitBass(q.key)) end(q);
+  if (newest && !splitBass(newest) && (newest.forced ?? padNotes(newest.key)))
+    for (const q of active()) if (q !== newest && !splitBass(q)) end(q);
   const style = playStyle();
   for (const p of active()) {
-    const kc = notesOf(p.out, p.key, p.prev);
+    const kc = chordOf(p);
     if (rhythmOn(style)) continue;
     for (const [n, v] of p.voices)
       if (!kc.notes.includes(n)) {
@@ -752,15 +802,80 @@ function publish() {
     sounding: [...down, ...latched].map((p) => ({
       key: p.key,
       // with a rhythm on, what the key holds (the rhythm plays it)
-      notes: p.ended
-        ? []
-        : rhythm
-          ? notesOf(p.out, p.key, p.prev).notes
-          : [...p.voices.keys()].sort((a, b) => a - b),
+      notes: p.ended ? [] : rhythm ? chordOf(p).notes : [...p.voices.keys()].sort((a, b) => a - b),
       source: p.source,
     })),
     latched: latched.some((p) => !p.ended),
   });
+}
+
+// ---------- suggestions (D158, D159) ----------
+
+/** The chords played lately (the last four, forgotten after 30 s of nothing). */
+let history: { played: Played; at: number }[] = [];
+
+/** The key suggestions are in: Key mode's own in Key and Next mode, the page's in Chord mode
+ * (moved by the transpose, so the keys to press are right). */
+function suggestKey(): Key {
+  const s = useSettings.getState();
+  if (s.padMode === "key" || s.padMode === "next") return s.keyModeKey;
+  const st = useStore.getState();
+  const slot = st.project.slots?.find((x) => x.id === st.editSlotId) ?? st.project.slots?.[0];
+  const key = (slot && st.project.patterns?.[slot.patternId]?.keyOverride) || st.project.key;
+  const t = useKeys.getState().transpose;
+  return key
+    ? { root: (((key.root - t) % 12) + 12) % 12, scale: key.scale }
+    : { root: 0, scale: "major" };
+}
+
+/** Work out the suggestions again (a chord was played; the key, the mode or a setting changed). */
+export function refreshSuggestions() {
+  const s = useSettings.getState();
+  const now = performance.now();
+  history = history.filter((h) => now - h.at < 30_000).slice(-4);
+  const show = s.padMode === "next" || (s.suggest && s.padMode !== "drum");
+  const level = Math.max(0, Math.min(2, s.suggestAdventure)) as 0 | 1 | 2;
+  useKeys.setState({
+    suggestions: show
+      ? suggestNext(
+          history.map((h) => h.played),
+          suggestKey(),
+          level,
+          8,
+        )
+      : [],
+  });
+}
+
+function remember(root: number, notes: number[]) {
+  const quality = qualityOf(root, notes);
+  if (!quality) return;
+  history.push({ played: { root: ((root % 12) + 12) % 12, quality }, at: performance.now() });
+  refreshSuggestions();
+}
+
+/**
+ * Play suggestion `i` (a Next pad, D159): its chord, rooted in the octave nearest the last key
+ * played, through the same pipeline as a key. Returns its release.
+ */
+export function playSuggestion(i: number, velocity: number, source: KeysSource): () => void {
+  const sug = useKeys.getState().suggestions[i];
+  if (!sug) return () => {};
+  const near = useKeys.getState().lastKey ?? 60;
+  const root = near - 6 + ((((sug.root - (near - 6)) % 12) + 12) % 12);
+  const chord = padChord(root, sug.pads);
+  if (!chord) return () => {};
+  return press(root, velocity, source, chord);
+}
+
+export function setSuggest(on: boolean) {
+  useSettings.getState().set({ suggest: on });
+  refreshSuggestions();
+}
+
+export function setSuggestAdventure(level: 0 | 1 | 2) {
+  useSettings.getState().set({ suggestAdventure: level });
+  refreshSuggestions();
 }
 
 // ---------- play styles (D149–D154) ----------
@@ -822,7 +937,7 @@ setRhythmPlayer({
     const chord: number[] = [];
     const bass: number[] = [];
     for (const p of keys) {
-      const kc = notesOf(p.out, p.key, p.prev);
+      const kc = chordOf(p);
       for (const n of kc.notes)
         if (kc.bass.includes(n)) {
           if (!bass.includes(n)) bass.push(n);

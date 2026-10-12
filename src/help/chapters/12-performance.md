@@ -141,6 +141,21 @@ The **keys in the picture light up as their notes sound**: a strum's notes one a
 
 **Recording** records what you hear: each strummed note at its own time, each arpeggio note and each pattern hit, the bass on its own track when it has one. With **Snap** on, the hits snap to the grid and a strum keeps its spread. While stopped (step entry), a key writes its chord as it is.
 
+### Suggestions: the next chord {#performance-suggestions}
+
+**Suggest** (in the Controller panel's chord row, in Chord, Key and Next mode) suggests what could come next after each chord you play, and marks **the key to press** for the three best on the picture's keys: the bigger the dot, the better, the chord's name next to it. Each key is the one closest to the last key you played, so your hand moves least (every note name is on the MiniLab's 25 keys at least twice). In Chord mode a dot on a pad says which chord type to hold with it. Hover a dot for the chord, its roman numeral, what it does and why it fits ("V: home, the strongest resolution", "IV: continues the four-chord pop progression"); press the dot to play it.
+
+The colors say what a chord does:
+
+- **Green**, home: the key's home chord and its relatives (I, vi, iii).
+- **Blue**, away from home: IV and ii, which lead on.
+- **Red**, tension: V, V7 and vii°, which want to resolve home.
+- **Purple**, color: chords borrowed from the parallel key (♭VII, iv, ♭VI) and secondary dominants (V/V: D in C).
+
+Suggestions come from how chords usually move (V goes home to I, ii goes to V, vi often to IV…) and from famous progressions: when your last chords match the start of one, its next chord comes first and the tooltip names it (the four-chord pop progression, the fifties progression, ii–V–I, the jazz turnaround, the mixolydian rock progression, the royal road, Pachelbel's canon, the 12-bar blues, the Andalusian cadence and a few minor ones). **Adventure** sets how far they stray from the key: **Safe** (only the key's own chords), **Common** (also the usual borrowed chords and sevenths) or **Bold** (more color: ♭VI, ♭III, secondary dominants, the Neapolitan). The key is Key mode's own in Key and Next mode, the page's in Chord mode. The MiniLab's display shows "Next: F - Am - G" after each chord.
+
+**Next mode** (the pads' fourth mode) puts the suggestions on the pads, for playing without looking at the screen (the MiniLab's keys have no lights, its pads do): pads 1–8 hold the eight best next chords, in their colors, and pressing one plays it, with Voicing, Bass and the play styles, as a key would. After every chord the pads refill. The keys play as in Key mode, so you can play a chord of your own and the pads follow it.
+
 ## Launchpad and Push
 
 In **Settings → MIDI**, **Connect Launchpad / Push** turns a Novation Launchpad (Mini MK3, X, Pro MK3) or an Ableton Push 2/3 into a step sequencer for the drum machine:

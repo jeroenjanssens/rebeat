@@ -104,7 +104,8 @@ export function startDisplayFeed(): void {
 
   // ── 3b. Key mode (D138): the key the Key dial turns to, the transpose ──
   useSettings.subscribe((s, prev) => {
-    if (s.padMode === "key" && (s.keyModeKey !== prev.keyModeKey || prev.padMode !== "key"))
+    const keyish = (m: string) => m === "key" || m === "next";
+    if (keyish(s.padMode) && (s.keyModeKey !== prev.keyModeKey || !keyish(prev.padMode)))
       showTransient("Key", keyName(s.keyModeKey));
     // ── 3c. Chord and bass voicing (D139, D140) ──
     if (s.chordVoicing !== prev.chordVoicing)
@@ -128,6 +129,21 @@ export function startDisplayFeed(): void {
     }
   });
   useKeys.subscribe((k, prev) => {
+    // the next chords (D158): on the display after each chord
+    const st = useSettings.getState();
+    if (
+      k.suggestions !== prev.suggestions &&
+      k.suggestions.length &&
+      st.suggest &&
+      st.padMode !== "drum"
+    )
+      showTransient(
+        "Next",
+        k.suggestions
+          .slice(0, 3)
+          .map((s) => s.name)
+          .join(" · "),
+      );
     if (k.pendingKey && k.pendingKey !== prev.pendingKey)
       showTransient("Key: press to select", keyName(k.pendingKey));
     if (k.transpose !== prev.transpose)

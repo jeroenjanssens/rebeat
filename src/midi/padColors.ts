@@ -6,7 +6,7 @@
  * APIs.
  */
 
-export type PadMode = "drum" | "chord" | "key";
+export type PadMode = "drum" | "chord" | "key" | "next";
 
 /** Chord and Key mode: the chord types, then the extensions. */
 export const CHORD_TYPE_COLOR = "#2f7dff";
@@ -24,11 +24,14 @@ export const SHIFT_PAD_COLORS = [
   "#ffd84a",
 ] as const;
 
-/** What pads 1–8 show: a color each, or null for a pad that plays nothing (unlit). */
+/** What pads 1–8 show: a color each, or null for a pad that plays nothing (unlit). In Next mode
+ * (D159) each pad is a suggestion, in the color of what it does (`suggestions`: their colors). */
 export function padColors(
   tracks: readonly { color: string }[],
   mode: PadMode,
+  suggestions: readonly string[] = [],
 ): readonly (string | null)[] {
+  if (mode === "next") return Array.from({ length: 8 }, (_, i) => suggestions[i] ?? null);
   if (mode !== "drum")
     return Array.from({ length: 8 }, (_, i) => (i < 4 ? CHORD_TYPE_COLOR : EXTENSION_COLOR));
   return Array.from({ length: 8 }, (_, i) => tracks[i]?.color ?? null);

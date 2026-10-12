@@ -118,7 +118,11 @@ export interface Settings {
   keysFollowEditor: boolean;
   /** What a controller's pads 1–8 do: play tracks 1–8 (Drum), make chords (Chord, D137), or
    * add to Key mode's chords (Key, D138). */
-  padMode: "drum" | "chord" | "key";
+  padMode: "drum" | "chord" | "key" | "next";
+  /** Suggest the next chord (D158): markers on the keys, the display, in Chord and Key mode. */
+  suggest: boolean;
+  /** How adventurous the suggestions are: 0 Safe (the key's own chords), 1 Common, 2 Bold. */
+  suggestAdventure: number;
   /** Key mode's own key (D138), independent of the project. */
   keyModeKey: { root: number; scale: string };
   /** The Key dial (the MiniLab's black knob in Key mode): a turn changes the key at once, or
@@ -214,6 +218,8 @@ export const DEFAULT_SETTINGS: Settings = {
   bassTrack: null,
   bassMode: "auto",
   bassSplit: 48,
+  suggest: false,
+  suggestAdventure: 1,
   previewVolume: 0.8,
   freeFirstLoop: false,
   onboarded: false,

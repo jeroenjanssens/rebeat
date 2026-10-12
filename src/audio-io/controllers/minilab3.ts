@@ -34,6 +34,8 @@ import { onControllerEvent } from "../../midi/controllerEvents";
 import { deviceRgb, padColors } from "../../midi/padColors";
 import { useSettings } from "../../state/settings";
 import { useStore } from "../../state/store";
+import { useKeys } from "../../state/keys";
+import { ROLE_COLORS } from "../../model/suggest";
 
 const ARTURIA_MANUFACTURER = [0x00, 0x20, 0x6b];
 /** Send to all mode variants for max compatibility. 0x02=DAW, 0x00=User, 0x01=ARTURIA. */
@@ -58,7 +60,11 @@ const DEBOUNCE_MS = 60;
 /** Match the main MIDI output port (not the MCU port). */
 const OUTPUT_MATCH = /minilab ?3(?!.*(mcu|daw))/i;
 
-function asciiBytes(text: string): number[] {
+/** What the display can't show, in ASCII: B♭ as Bb, F♯ as F#. */
+const ASCII: Record<string, string> = { "♭": "b", "♯": "#", "·": "-", "−": "-", "°": "o", ø: "o" };
+
+function asciiBytes(raw: string): number[] {
+  const text = [...raw].map((c) => ASCII[c] ?? c).join("");
   const bytes: number[] = [];
   for (let i = 0; i < text.length; i++) {
     let code = text.charCodeAt(i);
@@ -180,7 +186,10 @@ let padTimer: ReturnType<typeof setTimeout> | null = null;
 function sendPads(force = false) {
   if (shiftDown) return; // the MiniLab's own colors for Shift's functions
   const { project } = useStore.getState();
-  const colors = padColors(project.tracks, useSettings.getState().padMode).map(deviceRgb);
+  const suggested = useKeys.getState().suggestions.map((s) => ROLE_COLORS[s.role]);
+  const colors = padColors(project.tracks, useSettings.getState().padMode, suggested).map(
+    deviceRgb,
+  );
   const key = JSON.stringify(colors);
   if (!force && key === lastPads) return;
   const out = findOutput();
@@ -231,13 +240,18 @@ export async function startMiniLab3Pads(): Promise<boolean> {
   const offSettings = useSettings.subscribe((s, prev) => {
     if (s.padMode !== prev.padMode) sendPadsSoon();
   });
+  // Next mode (D159): the pads change with the suggestions
+  const offKeys = useKeys.subscribe((k, prev) => {
+    if (k.suggestions !== prev.suggestions && useSettings.getState().padMode === "next")
+      sendPadsSoon();
+  });
   const offShift = onControllerEvent((e) => {
     if (e.control.slot !== "shift") return;
     shiftDown = !!e.down;
     // the device lit its own colors under Shift: put ours back
     if (!shiftDown) sendPadsSoon(true);
   });
-  padsOff = () => (offStore(), offSettings(), offShift());
+  padsOff = () => (offStore(), offSettings(), offShift(), offKeys());
   sendPadsSoon(true);
   return true;
 }
