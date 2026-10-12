@@ -27,6 +27,11 @@ export interface MapSlot {
    * Only "knob" and "encoder" slots are sniffed for relative mode; faders are always absolute.
    */
   kind?: SlotKind;
+  /**
+   * Relative messages an endless knob sends per notch (D146): settings that step (the voicing,
+   * the bass) move once per notch. 1 when absent.
+   */
+  ticksPerNotch?: number;
   /** Numbers the map had for this slot before (wrong ones, fixed in an update): saved
    * mappings with one of them get the current number. A number you learned yourself is kept. */
   formerly?: number[];
@@ -57,8 +62,14 @@ export function slotKind(slot: string): SlotKind {
   return "button";
 }
 
-const knobs = (ccs: (number | null)[], channel: number, mode: MidiMode): MapSlot[] =>
+const knobs = (
+  ccs: (number | null)[],
+  channel: number,
+  mode: MidiMode,
+  ticksPerNotch?: number,
+): MapSlot[] =>
   ccs.map((number, i) => ({
+    ...(ticksPerNotch ? { ticksPerNotch } : {}),
     slot: `knob${i + 1}`,
     label: `Knob ${i + 1}`,
     type: "cc",
@@ -113,7 +124,8 @@ export const CONTROLLER_MAPS: ControllerMap[] = [
     //   CC 9 Shift button
     // Turn = browse the library (browse:sound); Shift + turn = by section (browse:section).
     slots: [
-      ...knobs([74, 71, 76, 77, 93, 18, 19, 16], 0, "absolute"),
+      // set to Relative 1 in MIDI Control Center, a notch sends two messages (Jeroen's, 2026-10-12)
+      ...knobs([74, 71, 76, 77, 93, 18, 19, 16], 0, "absolute", 2),
       ...faders([82, 83, 85, 17], 0),
       // Main encoder
       {

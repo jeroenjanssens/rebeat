@@ -20,6 +20,7 @@ import {
   routeNote,
   walksLikeAbsolute,
   knobZone,
+  notchSteps,
   withMapping,
   ROLES,
 } from "./mapping";
@@ -336,5 +337,30 @@ describe("stepped knobs read as zones (D142)", () => {
     expect([0, 31, 32, 63, 64, 95, 96, 127].map((v) => knobZone(v, 4))).toEqual([
       0, 0, 1, 1, 2, 2, 3, 3,
     ]);
+  });
+});
+
+describe("relative knobs that send two messages per notch (D146)", () => {
+  const run = (deltas: number[], perNotch: number) => {
+    let acc = 0;
+    let total = 0;
+    const each = deltas.map((d) => {
+      const r = notchSteps(acc, d, perNotch);
+      acc = r.acc;
+      total += r.steps;
+      return total;
+    });
+    return each;
+  };
+
+  it("steps once per notch", () => {
+    expect(run([1, 1, 1, 1, 1, 1], 2)).toEqual([0, 1, 1, 2, 2, 3]);
+    expect(run([-1, -1, -1, -1], 2)).toEqual([0, -1, -1, -2]);
+    expect(run([1, 1, 1], 1)).toEqual([1, 2, 3]);
+  });
+
+  it("turning back starts a new notch, without the half notch left over", () => {
+    expect(run([1, -1, -1], 2)).toEqual([0, 0, -1]);
+    expect(run([1, 1, 1, -1, -1], 2)).toEqual([0, 1, 1, 1, 0]);
   });
 });

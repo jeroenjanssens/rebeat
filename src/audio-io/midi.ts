@@ -36,6 +36,7 @@ import {
   detectMode,
   walksLikeAbsolute,
   knobZone,
+  notchSteps,
   findMapping,
   pickedUp,
   readTarget,
@@ -549,7 +550,7 @@ function applyMapping(map: MidiMapping, m: MidiMessage, scope: "project" | "glob
     const n = voicing ? 2 * VOICING_RANGE + 1 : 4;
     const current = voicing ? settings.chordVoicing + VOICING_RANGE : 3 - settings.bassOctaves;
     const mode = knobMode(map, m.value);
-    const zone = steppedKnob(mode, m.value, before, n, current);
+    const zone = steppedKnob(map, mode, m.value, before, n, current);
     if (zone !== current) {
       if (voicing) setChordVoicing(zone - VOICING_RANGE);
       else setBassOctaves((3 - zone) as 0 | 1 | 2 | 3);
@@ -741,12 +742,22 @@ function knobMode(map: MidiMapping, value: number): MidiMode {
   return mode;
 }
 
+/** A relative stepped knob's leftover steps, and when it last sent (a pause starts afresh). */
+const notchAcc = new Map<string, { acc: number; at: number }>();
+
+/** How many relative messages a mapping's knob sends per notch, from its controller map (D146). */
+function ticksPerNotch(map: MidiMapping): number {
+  const controller = mapById(useSettings.getState().midiController);
+  return controller?.slots.find((s) => s.slot === map.slot)?.ticksPerNotch ?? 1;
+}
+
 /**
- * Where a knob puts a stepped setting of `n` values now at `current` (D140, D142): an absolute
- * knob picks the zone it points at (with pickup on, once it reaches or passes the current one);
- * a relative knob moves one step per message.
+ * Where a knob puts a stepped setting of `n` values now at `current` (D140, D142, D146): an
+ * absolute knob picks the zone it points at (with pickup on, once it reaches or passes the
+ * current one); a relative knob moves one step per notch.
  */
 function steppedKnob(
+  map: MidiMapping,
   mode: MidiMode,
   value: number,
   before: number | undefined,
@@ -754,8 +765,12 @@ function steppedKnob(
   current: number,
 ): number {
   if (mode !== "absolute") {
-    const step = Math.sign(relativeDelta(mode, value));
-    return Math.max(0, Math.min(n - 1, current + step));
+    const now = Date.now();
+    const prev = notchAcc.get(map.id);
+    const acc = prev && now - prev.at < 400 ? prev.acc : 0;
+    const r = notchSteps(acc, Math.sign(relativeDelta(mode, value)), ticksPerNotch(map));
+    notchAcc.set(map.id, { acc: r.acc, at: now });
+    return Math.max(0, Math.min(n - 1, current + r.steps));
   }
   const zone = knobZone(value, n);
   if (!useSettings.getState().midiPickup) return zone;

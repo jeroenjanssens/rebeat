@@ -767,7 +767,7 @@ export function MiniLab3Svg({
             <title>
               {label?.name ?? `Knob ${i + 1}`}: {label?.value ?? ""}
             </title>
-            <circle cx={cx} cy={cy + 2} r={KNOB_R} fill={KNOB_BASE} />
+            <circle cx={cx} cy={cy} r={KNOB_R} fill={KNOB_BASE} />
             <g transform={`translate(${cx},${cy})`}>
               <polygon
                 data-knob-cap={i}

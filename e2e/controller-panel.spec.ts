@@ -346,7 +346,7 @@ test("Key mode: a key plays its chord in the key, the black knob turns the key (
   await expect(page.getByTestId("key-mode-pending")).toHaveCount(0);
 });
 
-test("relative knobs 1 and 5 step the voicing and the bass, fast turns too (D140, D141)", async ({
+test("relative knobs 1 and 5 step the voicing and the bass once per notch, fast turns too (D140, D141, D146)", async ({
   page,
 }) => {
   await midiDevices(page, ["Minilab3 MIDI"]);
@@ -367,21 +367,23 @@ test("relative knobs 1 and 5 step the voicing and the bass, fast turns too (D140
       return all.find((m) => m.slot === slot)?.mode;
     }, slot);
 
-  // Relative 1 (64 ± n): a slow turn is recognized (65 reads as the middle until then)
+  // Relative 1 (64 ± n): a slow turn is recognized (65 reads as the middle until then); the
+  // MiniLab sends two messages per notch, and the voicing moves once per notch (D146)
   await turn(74, [65, 65, 65, 65, 65, 65]);
   await expect.poll(() => modeOf("knob1")).toBe("rel64");
-  await expect(voicing).toHaveText("+3");
+  await expect(voicing).toHaveText("+1");
   await turn(74, [63, 63, 63, 63, 63]);
-  await expect(voicing).toHaveText("-2");
-  // a fast turn speeds up (bigger codes): still relative, a step per message
+  await expect(voicing).toHaveText("-1");
+  // a fast turn speeds up (bigger codes): still relative, a step per notch, not per code size
   await turn(74, [66, 67, 68, 69, 70, 72, 75]);
-  await expect(voicing).toHaveText("+5");
+  await expect(voicing).toHaveText("+2");
   expect(await modeOf("knob1")).toBe("rel64");
 
+  // the first messages read as absolute (63: −2) until the knob is known to be relative
   await turn(93, [63, 63, 63, 63, 63, 63]);
   await expect.poll(() => modeOf("knob5")).toBe("rel64");
   await expect(bass).toHaveText("−3");
-  await turn(93, [65, 65, 65]);
+  await turn(93, [65, 65, 65, 65, 65, 65]);
   await expect(bass).toHaveText("Off");
 });
 

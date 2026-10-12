@@ -198,6 +198,23 @@ export function routeNote(
 // ---------- pickup (D120) ----------
 
 /**
+ * Steps a relative knob's messages add up to (D146): `acc` is what's left over from before,
+ * `delta` this message's direction (±1); every `perNotch` of them make one step, so a knob that
+ * sends two messages per notch moves a stepped setting once per notch.
+ */
+export function notchSteps(
+  acc: number,
+  delta: number,
+  perNotch: number,
+): { steps: number; acc: number } {
+  // turning back starts a new notch
+  let a = Math.sign(acc) === -Math.sign(delta) ? delta : acc + delta;
+  const steps = Math.trunc(a / perNotch);
+  a -= steps * perNotch;
+  return { steps, acc: a };
+}
+
+/**
  * Which of `n` equal zones an absolute knob's value (0..127) is in (D142): a stepped setting
  * read from where the knob points, so every step takes the same turn and both ends are reached.
  */
