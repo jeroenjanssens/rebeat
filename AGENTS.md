@@ -3,10 +3,10 @@
 This file is the fast way in. It explains what Rebeat is, how the code is organized, how the
 pieces talk to each other, how to verify a change, and the gotchas that cost time before.
 `PLAN.md` is the long-form record: the product spec (§1–§3), the original architecture (§4),
-and every design decision (§6, D1–D148). When this file and the code disagree, the code wins.
+and every design decision (§6, D1–D154). When this file and the code disagree, the code wins.
 Please fix this file in the same change.
 
-Status (2026-10-10): every phase of the original roadmap is built, plus several feature batches
+Status (2026-10-12): every phase of the original roadmap is built, plus several feature batches
 (PLAN.md §0.6b–§0.6g). The biggest recent batch is **step tracks** (§0.6f, D93–D98, built on
 the `step-tracks` branch and merged): the drum / instrument / audio track kinds became one kind
 of track with a **sound** (sample, synth, sampled instrument) and a **mode** (Hits, Notes,
@@ -16,7 +16,10 @@ beatboxing into step tracks. Since then: MIDI controller maps (§0.6i) and **the
 MiniLab 3** (§0.6j, D126–D131, plan in `PLAN-keys-minilab.md`): what keyboards play
 (`state/keys.ts`), recording held notes with lengths and free starts (schema 9), a Controller
 panel, the MiniLab's display and encoder browsing the library's Playable view, an honest CPU
-meter, zoom levels. Left: tests
+meter, zoom levels. Then the MiniLab 3 work after the device arrived (D139–D148: chord voicing,
+bass, relative knobs, pad colors, Shift + pads, the picture on the photo) and **play styles for
+the keys** (§0.6k, D149–D154, plan in `PLAN-playstyles.md`): strum, slop, balance, a live
+arpeggiator, latch, chord patterns, smooth voicing, the bass on its own track. Left: tests
 with real hardware (mic, MIDI, Launchpad/Push), signing the desktop release, the license (D6),
 and the "later" items in PLAN.md §0.7. The repository is public and `main` deploys to GitHub
 Pages.
@@ -130,7 +133,8 @@ src/
                        - synth.ts (patch v2, macros), synthV1.ts (old patches, read only)
                        - patchParams.ts (the synth editor's knob table), randomize.ts
                        - notes, chords (names of held notes), padChords (the chord pads, D137), keyMode
-                         (Key mode's chords, D138), noteOps
+                         (Key mode's chords, D138), perform (play styles: strum, slop, balance,
+                         the arp's order, chord patterns, smooth voicing, D149–D154), noteOps
                          (piano roll), timing (polyrhythms), tempo, midiFile, effects
   state/               zustand stores:
                        - store.ts: project + undo + UI state
@@ -141,6 +145,8 @@ src/
                          noteOn → release, sustain, bend/mod; live voices and the Keys channel;
                          the chord pads (D137), Key mode, transpose and the Key dial (D138), and
                          what each key down plays (`sounding`)
+                       - perform.ts (D149): the play styles' scheduler (timed notes on the audio
+                         clock) and rhythm engine (arp, patterns); keys.ts plays through it
                        - trackActions, effectActions, clipActions
   engine/              audio (no React):
                        - context.ts (native AudioContext + Tone)
@@ -633,6 +639,10 @@ onPatchEdit` hook, debounced `saveSoundSoon`).
   (unmuted, 0 dB unless recording, D134); samples from the keys go through `playKeysSample`.
   A key can play several notes (in-key chord mode, chord pads): `noteOn` starts each through
   `startNote` and keeps them per key, so pads can change a held chord (`revoice`, D137).
+  The play styles (D149–D154) sit in that path: a note with a delay (strum, slop) or a rhythm
+  (arp, pattern) is started by `state/perform.ts` at its audio time; a note without one still
+  starts at once. New ways of starting notes take a start time (`holdNote(…, at)`) and record
+  with `recordNoteOn(…, { at, spread })`.
 - **Controller-map slots have kinds** (`slotKind`: the slot id's prefix). Only knobs and encoders
   may be sniffed as relative; a fader that switched once stayed jumpy for good (D129). A wrong
   guess is saved, so `detectMode` wants strong evidence and knob slots heal back
@@ -683,6 +693,7 @@ likely to need:
 | Relative knobs: a step per notch                   | D146                      |
 | Pads that send CCs (MiniLab 3: 56–63)              | D147                      |
 | Knob 2 the transpose, the bass a stepper           | D148                      |
+| Play styles: strum, slop, arp, latch, patterns…    | D149–D154                 |
 
 Feature batches and their acceptance criteria are in PLAN.md §0.6b–§0.6h. Known limitations are
 in §0.7.

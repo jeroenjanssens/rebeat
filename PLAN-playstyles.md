@@ -1,6 +1,6 @@
 # Plan: play styles for the keys (strum, slop, arpeggiator, latch, balance, patterns), smooth voicing, the bass on its own track
 
-Status: agreed 2026-10-12, being built (decisions D149–D154). Decisions (Jeroen, 2026-10-12):
+Status: agreed and built 2026-10-12 (PLAN.md §0.6k, decisions D149–D154). Decisions (Jeroen, 2026-10-12):
 
 - **Record the result**: what the styles play (each strummed note at its own time, each arpeggiated
   note, each pattern hit) is what's recorded, as the Orchid sends it over MIDI.
