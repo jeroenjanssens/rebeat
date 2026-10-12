@@ -1,6 +1,6 @@
 # Plan: play styles for the keys (strum, slop, arpeggiator, latch, balance, patterns), smooth voicing, the bass on its own track
 
-Status: proposed 2026-10-12, not built. Decisions so far (Jeroen, 2026-10-12):
+Status: agreed 2026-10-12, being built (decisions D149–D154). Decisions (Jeroen, 2026-10-12):
 
 - **Record the result**: what the styles play (each strummed note at its own time, each arpeggiated
   note, each pattern hit) is what's recorded, as the Orchid sends it over MIDI.
@@ -162,7 +162,7 @@ by `state/keys.ts` instead of calling `startNote` directly.
     after all were up **starts a new set** (how hardware arps latch).
   - Turning Latch off releases what's latched (at the next arp step's end).
 - Works without the Arp too: a latched chord is simply held (an Orchid hold).
-- **On the MiniLab 3** the **Hold** button toggles Latch (a map slot `hold`, `target: keys:latch`;
+- **The MiniLab 3's Hold button sends nothing** (Jeroen, 2026-10-12): Latch is a panel toggle and the command `keys.latch` (map any button to it). (Was: a map slot `hold`, `target: keys:latch`;
   its CC is unknown, so the slot starts unassigned (learn it) until we see it in the Monitor).
 - **Stop** (a panic) releases a latch too, so Stop always means silence (D99).
 
@@ -348,17 +348,12 @@ bassSplit: number; // MIDI note
 | G    | Guide (a "Play styles" chapter section), hints for every new control, PLAN.md §0 and §6, AGENTS.md | —         |
 | H    | On the device: the Hold button's CC; how it feels (strum times, slop, pattern choice)              | —         |
 
-## 14. Open questions
+## 14. Answers (Jeroen, 2026-10-12)
 
-1. **Knobs**: all eight knobs doing keys things in Chord and Key mode (§10.2) leaves no SOUND knob
-   there (no filter while playing chords). Alternative: knobs 3, 4, 6, 7, 8 only with **Shift**
-   held, or keep 6–8 as SOUND knobs (Slop and Balance in the panel only). Your call.
-2. **Plain keys in Drum mode**: should the styles (arp, latch, slop) apply there too (proposed:
-   yes), or only in Chord and Key mode, as the Orchid's only exist with its chords?
-3. **The MiniLab's Hold button**: what does it send? (Press it with the Monitor open.)
-4. **Patterns**: is the list in §8 the right set, or do you have favorites to add (or a style you
-   play a lot)?
-5. **Arp + Pattern**: the pattern's rhythm with the arp's order (proposed); alternative: the arp
-   ignored when a pattern is on.
-6. **Snap and the strum** (§9.1): keep strum and slop offsets even with Snap on (proposed), or
-   let Snap snap everything?
+1. **Knobs**: all eight do keys things in Chord and Key mode (§10.2); Shift for SOUND knobs later.
+2. **Plain keys in Drum mode**: yes, the styles apply to the keys in every pad mode (§1.3).
+3. **The MiniLab's Hold button sends nothing.** Latch is a toggle in the panel and a command
+   (`keys.latch`, "Latch the keys"), so a shortcut or any learned button can toggle it; no map slot.
+4. **Patterns**: the list in §8.
+5. **Snap**: strum and slop offsets are kept with Snap on (§9.1).
+6. **Arp + Pattern**: the pattern's rhythm with the arp's order (§1).
