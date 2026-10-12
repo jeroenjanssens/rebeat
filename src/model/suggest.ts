@@ -414,8 +414,13 @@ export function suggestNext(
     }
   }
 
-  // fill up with the key's own chords, so there are always enough (the pads)
-  for (const g of degrees) if (g.level === 0) add(g.id, 0.05, "one of the key's own chords");
+  // fill up with the key's own chords (then the level's borrowed ones), so the pads are full
+  for (const g of degrees)
+    add(
+      g.id,
+      g.level === 0 ? 0.05 : 0.02,
+      g.level === 0 ? "one of the key's own chords" : "a color",
+    );
 
   const flats = keyUsesFlats(key);
   return [...scores]

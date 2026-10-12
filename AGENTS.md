@@ -3,7 +3,7 @@
 This file is the fast way in. It explains what Rebeat is, how the code is organized, how the
 pieces talk to each other, how to verify a change, and the gotchas that cost time before.
 `PLAN.md` is the long-form record: the product spec (§1–§3), the original architecture (§4),
-and every design decision (§6, D1–D157). When this file and the code disagree, the code wins.
+and every design decision (§6, D1–D160). When this file and the code disagree, the code wins.
 Please fix this file in the same change.
 
 Status (2026-10-12): every phase of the original roadmap is built, plus several feature batches
@@ -19,7 +19,9 @@ panel, the MiniLab's display and encoder browsing the library's Playable view, a
 meter, zoom levels. Then the MiniLab 3 work after the device arrived (D139–D148: chord voicing,
 bass, relative knobs, pad colors, Shift + pads, the picture on the photo) and **play styles for
 the keys** (§0.6k, D149–D154, plan in `PLAN-playstyles.md`): strum, slop, balance, a live
-arpeggiator, latch, chord patterns, smooth voicing, the bass on its own track. Left: tests
+arpeggiator, latch, chord patterns, smooth voicing, the bass on its own track; and
+**suggestions** (§0.6l, D158–D160, `PLAN-suggestions.md`): the next chord and the key to press, a
+Next pad mode. Left: tests
 with real hardware (mic, MIDI, Launchpad/Push), signing the desktop release, the license (D6),
 and the "later" items in PLAN.md §0.7. The repository is public and `main` deploys to GitHub
 Pages.
@@ -134,7 +136,8 @@ src/
                        - patchParams.ts (the synth editor's knob table), randomize.ts
                        - notes, chords (names of held notes), padChords (the chord pads, D137), keyMode
                          (Key mode's chords, D138), perform (play styles: strum, slop, balance,
-                         the arp's order, chord patterns, smooth voicing, D149–D154), noteOps
+                         the arp's order, chord patterns, smooth voicing, D149–D154), suggest
+                         (the next chord: roman numerals, moves, progressions, D158), noteOps
                          (piano roll), timing (polyrhythms), tempo, midiFile, effects
   state/               zustand stores:
                        - store.ts: project + undo + UI state
@@ -694,6 +697,7 @@ likely to need:
 | Pads that send CCs (MiniLab 3: 56–63)              | D147                      |
 | Knob 2 the transpose, the bass a stepper           | D148                      |
 | Play styles: strum, slop, arp, latch, patterns…    | D149–D157                 |
+| Suggestions: the next chord, Next pad mode         | D158–D160                 |
 
 Feature batches and their acceptance criteria are in PLAN.md §0.6b–§0.6h. Known limitations are
 in §0.7.

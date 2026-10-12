@@ -1122,50 +1122,6 @@ export function MiniLab3Svg({
           onPointerLeave={() => handleKeyPointerUp(k.midi)}
         />
       ))}
-      {/* Suggested next chords (D158): a marker on the key to press, biggest for the best one */}
-      {marks.map((m) => {
-        let midi = m.pitch - keyShift;
-        if (midi < FIRST_KEY) midi += 12;
-        if (midi >= FIRST_KEY + KEY_COUNT) midi -= 12;
-        const k = KEY_LAYOUT.find((x) => x.midi === midi);
-        if (!k) return null;
-        const cx = KEYS_X + (k.x + k.w / 2) * WHITE_W;
-        const cy = k.white ? KEYS_Y + BLACK_KEY_H + 24 : KEYS_Y + 34;
-        const r = [9, 7, 6][m.rank] ?? 6;
-        return (
-          <g key={`${m.name}-${m.rank}`} data-testid="suggest-mark" data-name={m.name}>
-            <title>{m.title}</title>
-            {/* pressing the marker presses its key */}
-            <circle
-              cx={cx}
-              cy={cy}
-              r={r}
-              fill={m.color}
-              stroke="#ffffff"
-              strokeWidth="1.5"
-              data-hint="controller.suggestion"
-              style={{ cursor: onKeyDown ? "pointer" : undefined }}
-              onPointerDown={(e) => handleKeyPointerDown(k.midi, e)}
-              onPointerUp={() => handleKeyPointerUp(k.midi)}
-              onPointerLeave={() => handleKeyPointerUp(k.midi)}
-            />
-            <text
-              style={{ pointerEvents: "none" }}
-              x={cx}
-              y={cy + r + 14}
-              textAnchor="middle"
-              fontSize={m.rank === 0 ? 14 : 12}
-              fontWeight="700"
-              fill={m.color}
-              stroke={k.white ? "#ffffff" : BLACK_KEY}
-              strokeWidth="3"
-              paintOrder="stroke"
-            >
-              {m.name}
-            </text>
-          </g>
-        );
-      })}
       {/* Key mode's in-key dots (shown by the frame loop) */}
       {KEY_LAYOUT.map((k) => (
         <circle
@@ -1196,6 +1152,51 @@ export function MiniLab3Svg({
           style={NO_SELECT}
         />
       ))}
+      {/* Suggested next chords (D158): a marker on the key to press, biggest for the best one */}
+      {marks.map((m) => {
+        let midi = m.pitch - keyShift;
+        if (midi < FIRST_KEY) midi += 12;
+        if (midi >= FIRST_KEY + KEY_COUNT) midi -= 12;
+        const k = KEY_LAYOUT.find((x) => x.midi === midi);
+        if (!k) return null;
+        const cx = KEYS_X + (k.x + k.w / 2) * WHITE_W;
+        // over the key's in-key dot (Key mode), the name above it
+        const cy = k.white ? KEYS_Y + KEYS_H - 50 : KEYS_Y + BLACK_KEY_H - 38;
+        const r = [10, 8.5, 8][m.rank] ?? 8;
+        return (
+          <g key={`${m.name}-${m.rank}`} data-testid="suggest-mark" data-name={m.name}>
+            <title>{m.title}</title>
+            {/* pressing the marker presses its key */}
+            <circle
+              cx={cx}
+              cy={cy}
+              r={r}
+              fill={m.color}
+              stroke="#ffffff"
+              strokeWidth="1.5"
+              data-hint="controller.suggestion"
+              style={{ cursor: onKeyDown ? "pointer" : undefined }}
+              onPointerDown={(e) => handleKeyPointerDown(k.midi, e)}
+              onPointerUp={() => handleKeyPointerUp(k.midi)}
+              onPointerLeave={() => handleKeyPointerUp(k.midi)}
+            />
+            <text
+              style={{ pointerEvents: "none" }}
+              x={cx}
+              y={cy - r - 5}
+              textAnchor="middle"
+              fontSize={m.rank === 0 ? 14 : 12}
+              fontWeight="700"
+              fill={m.color}
+              stroke={k.white ? "#ffffff" : BLACK_KEY}
+              strokeWidth="3"
+              paintOrder="stroke"
+            >
+              {m.name}
+            </text>
+          </g>
+        );
+      })}
     </svg>
   );
 }

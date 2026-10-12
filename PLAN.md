@@ -12,7 +12,7 @@
 
 ### 0.1 Where we are
 
-- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D157), and the build order is in §7.
+- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D160), and the build order is in §7.
 - Every phase in §7 is built, tested (unit + Playwright e2e) and pushed. The mockup (Phase M) became the app: its components, model and store were kept and extended; `src/mock/` was replaced by the real engine.
 - The desktop app (Phase 10) runs and packages locally (unsigned); signing/notarization need certificates (see `.github/workflows/desktop.yml`).
 
@@ -103,6 +103,7 @@ Key implementation patterns:
 0. Beatbox to step tracks (§0.6h, D105–D118) ✅ merged into `main` (2026-10-10). Decide whether the shipped model may train on beatboxset1 (CC BY-SA, D108). Record and
    label your own sounds (and friends'), export them, and train model 2 with them (`ml/README.md`).
 0b. MIDI controllers (§0.6i, D119–D125) ✅ merged into `main` (2026-10-10). With a device: check what it sends (the Monitor in Settings → MIDI) and fix its map.
+0e. Suggestions: the next chord, the key to press, Next pad mode (§0.6l, D158–D160) ✅ on `main` (2026-10-12); later: play-along from the song's chords (PLAN-suggestions.md §4).
 0d. Play styles for the keys (§0.6k, D149–D154) ✅ on `main` (2026-10-12): try them with the MiniLab 3 (strum times, slop, the patterns, the bass on its own track).
 0c. The keys, recording notes, the MiniLab 3 (§0.6j, D126–D131) ✅ on `main` (2026-10-10). With the MiniLab 3: the checks in §0.6j step H (fader modes, the main encoder's CCs, **Send test text**, with and without the DAW handshake).
 1. Try the app with real hardware: a microphone and audio interface (calibration, monitoring), a MIDI keyboard/controller (learn), and a Launchpad or Push (the Push color palette is approximate).
@@ -705,6 +706,14 @@ track** and a **split** (D154), on timed notes and a small scheduler (D149). Glo
 (`settings.playStyle`, …), the Controller panel's Play row, the eight knobs in Chord and Key mode
 (1 voicing, 2 transpose, 3 strum, 4 arp rate, 5 bass, 6 slop, 7 pattern, 8 balance), the command
 **Latch the keys**, and recording the result. Also: the Keys drop-down in the Controller panel.
+
+### 0.6l Suggestions: the next chord (agreed and done 2026-10-12) ✅
+
+The plan is `PLAN-suggestions.md`. After every chord in Chord, Key or Next mode Rebeat suggests
+the next ones (`model/suggest.ts`: roman numerals in the key, a table of moves, famous
+progressions, Safe / Common / Bold), marks the key to press for the best three on the Controller
+panel's picture, shows them on the MiniLab's display, and in a fourth pad mode, **Next**, puts the
+eight best on the pads in their roles' colors, one press each. Later: play-along from the song.
 
 ### 0.7 Known limitations and later work
 
@@ -1355,6 +1364,9 @@ Format: **Dn — Question.** Default ✅, alternatives.
 - **D155 — A deeper bass, 22 patterns.** The bass (D139) goes to −6 octaves (`BASS_OCTAVES`; knob 5 has seven zones, the panel's stepper −1 … −6), still never below C1: under a chord around middle C, −3 already reaches C1, so the deeper steps matter for chords played high (Voicing up, a high transpose). Twelve more patterns (D153): Ballad, Waltz (three beats, 12 16ths), Backbeat, Dotted, One drop, Ska, Clave (son 3-2, two bars), Shuffle, House, Funk, Montuno (two bars), Gallop; the list is ordered calm to busy (knob 7 steps through it), ids unchanged. Alt: lowering the floor below C1 (inaudible on most speakers); patterns per time signature.
 - **D156 — The keys light up as they sound.** Every note the keys play reports when it starts and stops sounding, at its audio time (`state/keys.ts: onKeysLight`; Stop turns everything off), and the Controller panel's picture lights each key at that moment (a queue applied on the frame loop), so strums, slop, arpeggios and patterns are visible as they play. A key you hold: the accent while it sounds, a faint tint while it doesn't (its turn in a strum, between arp steps); a note the keys add: the paler accent while it sounds (`data-generated`, `data-sounding`). The equation under the picture still shows the chord you hold. Alt: lighting at the moment of the key press (as before); a flickering equation.
 - **D157 — Keys: yours in the accent, the software's in the second accent, opacity = velocity.** In the Controller panel's picture a sounding key you play is the theme's `--accent`, a note the software plays (a chord's, the bass, arp and pattern notes) the theme's new `--accent-2`, each mixed over the key at velocity × 100% (the light events carry each note's velocity; two notes on one pitch: the louder). A key you hold that doesn't sound gets a 3 px ring in the accent instead of a fill (Jeroen suggested a 25–50% fill; a fill would look like a soft note). `--accent-2` is each theme's `--lit`, except where that equals or is close to the accent: Midnight #f472b6, Ember #38bdf8, High contrast #00e5ff, Abyss #fb7185, Graphite #60a5fa, Sand #0f766e. The equation's added notes use it too. Alt: a minimum opacity for very soft notes; a fill for held-but-silent keys.
+- **D158 — Suggesting the next chord.** After every chord the keys play in Chord, Key or Next mode (a key with its chord, or a Next pad), Rebeat suggests what could come next (`model/suggest.ts`): the chord's roman numeral in the key (Key mode's own in Key and Next mode, the page's in Chord mode, moved by the transpose), a weighted table of moves written for Rebeat from common-practice and pop harmony (V → I, ii → V, vi → IV…), a bonus and a name when the last chords continue a famous progression (four chords, fifties, ii–V–I, the jazz turnaround, mixolydian rock, the royal road, Pachelbel, the 12-bar blues, the Andalusian cadence, a few minor ones; any rotation), and an **Adventure** level (Safe: the key's own chords; Common: also ♭VII, iv, V/V, V7; Bold: ♭VI, ♭III, secondary dominants, the Neapolitan, sevenths). The chord you're on is left out; the history is the last four chords, forgotten after 30 s. Every suggestion says how to play it: its pads in Chord mode (Maj + m7 for a dominant seventh…) and in Key mode (none for the key's own chord, the 7th pad for its own seventh, a chord type pad for a borrowed one). With **Suggest** on, the Controller panel marks the key to press for the best three (the root nearest the last key played: the hand moves least; biggest dot for the best, the chord's name above it, the tooltip with its roman numeral and why; pressing the dot plays the key) and a dot on the best one's pad; the MiniLab's display shows "Next: Am - C - F". Roles and colors: home green, away blue, tension red, color purple. Alt: suggestions from data (Hooktheory's are proprietary); a fixed octave for the markers.
+- **D159 — Next pad mode.** A fourth pad mode, **Next**: pads 1–8 are the eight best suggestions (refilled after every chord, borrowed chords of the Adventure level filling up the pads), lit in their roles' colors on the device (pad SysEx, D144) and in the picture with the chord's name; a press plays the chord through the keys' pipeline (transpose, voicing, Smooth, bass, the play styles, latch, recording, the lights), rooted near the last key played. The keys play as in Key mode (its key, the Key dial), so a chord of your own moves the pads on too. It's the way to use suggestions on the MiniLab alone: its keys have no lights, its pads do. Alt: suggestions only on the display; pads as roman numerals.
+- **D160 — The display in ASCII.** The MiniLab's screen takes ASCII only: ♭ is sent as b, ♯ as #, · and − as -, ° and ø as o (B♭ → Bb). Alt: dropping what it can't show (B♭ became "B ").
 - **D35 — Build order.** ✅ The phases in §7, starting with the mockup (Phase M), each ending with something you can play with.
 
 ---

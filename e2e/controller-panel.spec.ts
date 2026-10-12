@@ -713,3 +713,68 @@ test("your keys in the accent, the software's in the second accent, as opaque as
   await expect(page.locator('[data-key][data-waiting="true"]')).toHaveCount(2);
   for (const n of [60, 64, 67]) await send(page, "Minilab3 MIDI", [0x80, n, 0]);
 });
+
+test("suggestions: markers on the keys after a chord; Next mode puts them on the pads (D158, D159)", async ({
+  page,
+}) => {
+  await midiDevices(page, ["Minilab3 MIDI"]);
+  await page.getByTestId("midi-use-detected").click();
+  await page.keyboard.press("Escape");
+  await page.evaluate(async () => {
+    const r = (window as never as W).__rebeat;
+    const s = r.store.getState();
+    const tracks = s.project.tracks as unknown as { id: string; mode: string }[];
+    s.setUi({ selectedTrackId: tracks.find((t) => t.mode === "notes")!.id });
+  });
+  await openControllerPanel(page);
+  await page.getByTestId("pad-mode").getByRole("button", { name: "Key" }).click();
+  // Key mode in C major
+  await page.evaluate(async () => {
+    const w = window as never as {
+      __rebeat: { settings(): Promise<{ getState(): { set(p: object): void } }> };
+    };
+    (await w.__rebeat.settings()).getState().set({ keyModeKey: { root: 0, scale: "major" } });
+  });
+  await page.getByTestId("suggest").click();
+  await expect(page.getByTestId("suggest-adventure")).toBeVisible();
+  // play C (Key mode: C major), then the markers
+  await send(page, "Minilab3 MIDI", [0x90, 60, 100]);
+  await send(page, "Minilab3 MIDI", [0x80, 60, 0]);
+  const marks = page.locator('[data-testid="suggest-mark"]');
+  await expect(marks).toHaveCount(3);
+  const names = await marks.evaluateAll((els) => els.map((e) => e.getAttribute("data-name")));
+  expect([...names].sort()).toEqual(["Am", "F", "G"]);
+
+  // Next mode: the pads are the suggestions, named, and pad 1 plays the best one
+  await page.getByTestId("pad-mode").getByRole("button", { name: "Next" }).click();
+  const label = (i: number) => page.locator(`[data-pad-label="${i}"]`).textContent();
+  await expect.poll(() => label(0)).toMatch(/^(F|G|Am)$/);
+  const best = (await label(0))!;
+  const line = page.getByTestId("controller-notes");
+  await send(page, "Minilab3 MIDI", [0x99, 36, 100]); // pad 1
+  const want = { F: /F\d.*=\s*F$/, G: /G\d.*=\s*G$/, Am: /A\d.*=\s*Am$/ }[best as "F" | "G" | "Am"];
+  await expect(line).toHaveText(want);
+  await send(page, "Minilab3 MIDI", [0x89, 36, 0]);
+  // the device's pads light in the suggestions' colors (role colors, 7-bit)
+  const sent = () =>
+    page.evaluate(
+      () =>
+        (window as never as { __midiSent: Record<string, number[][]> }).__midiSent[
+          "Minilab3 MIDI"
+        ] ?? [],
+    );
+  const roleRgb = [
+    [17, 98, 47], // home  #22c55e
+    [29, 65, 123], // away  #3b82f6
+    [119, 34, 34], // tension #ef4444
+    [84, 42, 123], // color #a855f7
+  ].map((c) => c.join(","));
+  await expect
+    .poll(async () => {
+      const m = (await sent())
+        .filter((x) => x[0] === 0xf0 && x[8] === 0x16 && x[9] === 0x04)
+        .at(-1);
+      return m ? roleRgb.includes(m.slice(10, 13).join(",")) : false;
+    })
+    .toBe(true);
+});

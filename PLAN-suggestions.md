@@ -1,7 +1,7 @@
 # Plan: suggesting the next chord (and the key to press for it)
 
 Status: agreed 2026-10-12 (Jeroen: "write up a detailed plan and then implement it"); steps 1–2
-built in this batch, step 3 later. Decisions D158–D160.
+built (PLAN.md §0.6l), step 3 later. Decisions D158–D160.
 
 How we work: on `main`, commit early and often, end-to-end tests once at the end of the batch.
 

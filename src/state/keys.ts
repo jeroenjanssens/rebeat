@@ -847,6 +847,12 @@ export function refreshSuggestions() {
   });
 }
 
+/** Forget the chords played (start over: the next suggestions are the key's home chords). */
+export function forgetChords() {
+  history = [];
+  refreshSuggestions();
+}
+
 function remember(root: number, notes: number[]) {
   const quality = qualityOf(root, notes);
   if (!quality) return;

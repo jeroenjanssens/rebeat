@@ -667,3 +667,61 @@ describe("play styles (D149–D154)", () => {
     ).toEqual([40, 60, 64, 67]);
   });
 });
+
+describe("suggestions and Next mode (D158, D159)", () => {
+  const { setSuggest, playSuggestion, refreshSuggestions, forgetChords } = keysApi;
+  const C_MAJOR = { root: 0, scale: "major" };
+
+  beforeEach(() => {
+    keysSustain(false);
+    releaseAllKeys();
+    vi.clearAllMocks();
+    holdNote.mockImplementation(() => holdNoteRelease);
+    setKeysTarget({ kind: "selected" });
+    setKeyModeKey(C_MAJOR);
+    setSuggest(true);
+    forgetChords();
+  });
+  afterEach(() => {
+    releaseAllKeys();
+    setSuggest(false);
+    setPadMode("drum");
+  });
+
+  it("suggests what follows the chord played: after G in Key mode, C first", () => {
+    setPadMode("key");
+    const up = noteOn(67, 0.8, "midi"); // G: Key mode's V in C major
+    up();
+    const s = useKeys.getState().suggestions;
+    expect(s[0].name).toBe("C");
+    expect(useKeys.getState().lastKey).toBe(67);
+  });
+
+  it("Next mode: the pads hold the suggestions, a press plays one as a key would", () => {
+    setPadMode("next");
+    const up = noteOn(62, 0.8, "midi"); // Dm: ii
+    up();
+    const first = useKeys.getState().suggestions[0];
+    expect(first.name).toBe("G");
+    vi.clearAllMocks();
+    holdNote.mockImplementation(() => holdNoteRelease);
+    const release = playSuggestion(0, 0.8, "screen");
+    // G major, rooted in the octave nearest the last key (D4): G3 B3 D4… or G4: near 62
+    const played = holdNote.mock.calls.map((c) => c[1] as number).sort((a, b) => a - b);
+    expect(played.map((n) => n % 12).sort()).toEqual([2, 7, 11].sort());
+    release();
+    // playing it moved the suggestions on: after G, C
+    expect(useKeys.getState().suggestions[0].name).toBe("C");
+  });
+
+  it("shows nothing in Drum mode, or with Suggest off (Next mode always)", () => {
+    setPadMode("drum");
+    refreshSuggestions();
+    expect(useKeys.getState().suggestions).toEqual([]);
+    setPadMode("chord");
+    setSuggest(false);
+    expect(useKeys.getState().suggestions).toEqual([]);
+    setPadMode("next");
+    expect(useKeys.getState().suggestions.length).toBeGreaterThan(0);
+  });
+});
