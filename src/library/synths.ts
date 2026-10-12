@@ -637,6 +637,544 @@ export const FACTORY_SYNTHS: FactorySynth[] = [
     "the arpeggiated synths of the “Stranger Things” theme",
   ),
 
+  // ---- new bass ----
+  synth(
+    "lately-bass",
+    "Lately Bass",
+    "Bass",
+    {
+      // TX81Z "Lately Bass": sine carrier with a strong FM bark that decays away quickly
+      osc: [{ shape: 0 }, undefined, { shape: 0, level: 0, retrigger: true }],
+      filters: [{ cutoff: 2000, reso: 0.159, keytrack: 0.4 }],
+      envs: [
+        { attack: 0.002, decay: 0.8, sustain: 0.6, release: 0.15 },
+        {},
+        { attack: 0.001, decay: 0.12, sustain: 0.05, release: 0.1, curve: 0.7 },
+      ],
+      matrix: [{ source: "env3", dest: "fm", amount: 0.5 }],
+      fm: { route: "3>1" },
+      voice: { mode: "mono", glide: 0.015 },
+      output: { volume: -12 },
+    },
+    "Yamaha TX81Z",
+  ),
+  synth(
+    "synthwave-bass",
+    "Synthwave Bass",
+    "Bass",
+    {
+      // pulsing octave saws with a tight filter pluck: classic synthwave bass
+      osc: [
+        { unison: 2, detune: 14 },
+        { level: 0.6, octave: 1 },
+      ],
+      filters: [{ model: "ladder", cutoff: 600, reso: 0.315, keytrack: 0.3, env: 3.5 }],
+      envs: [
+        { attack: 0.002, decay: 0.35, sustain: 0.5, release: 0.12 },
+        { attack: 0.001, decay: 0.2, sustain: 0, release: 0.1 },
+      ],
+      voice: { mode: "mono", glide: 0.02 },
+      output: { volume: -9 },
+    },
+    "the pulsing octave saws of '80s synthwave",
+  ),
+  synth(
+    "deep-house-bass",
+    "Deep House Bass",
+    "Bass",
+    {
+      // warm round sine + square mix, short and punchy: classic deep house
+      osc: [{ shape: 0 }, { shape: 3, level: 0.4 }],
+      filters: [{ model: "ladder", cutoff: 420, reso: 0.188, keytrack: 0.2 }],
+      envs: [{ attack: 0.003, decay: 0.5, sustain: 0.5, release: 0.08 }],
+      sub: { level: 0.3 },
+      voice: { mode: "mono" },
+      output: { volume: -12 },
+    },
+    "the round organ-ish bass of deep house",
+  ),
+  synth(
+    "garage-bass",
+    "Garage Bass",
+    "Bass",
+    {
+      // UK garage: sine with a short FM growl click and slow portamento
+      osc: [{ shape: 0 }, undefined, { shape: 0, level: 0, retrigger: true }],
+      filters: [{ cutoff: 2500, reso: 0.127, keytrack: 0.3 }],
+      envs: [
+        { attack: 0.003, decay: 0.4, sustain: 0.7, release: 0.1 },
+        {},
+        { attack: 0.001, decay: 0.1, sustain: 0.05, release: 0.08, curve: 0.7 },
+      ],
+      matrix: [{ source: "env3", dest: "fm", amount: 0.12 }],
+      fm: { route: "3>1" },
+      voice: { mode: "mono", glide: 0.04 },
+      output: { volume: -11 },
+    },
+    "UK garage sine bass with FM growl and glide",
+  ),
+  synth(
+    "neuro-bass",
+    "Neuro Bass",
+    "Bass",
+    {
+      // FM growl with moving filter and heavy drive: neuro / tearout DnB
+      osc: [
+        { shape: 1, unison: 2, detune: 16 },
+        undefined,
+        { shape: 1, level: 0, semi: 7, retrigger: true },
+      ],
+      filters: [{ model: "ladder", cutoff: 600, reso: 0.55, keytrack: 0 }],
+      envs: [
+        { attack: 0.003, sustain: 1, release: 0.12 },
+        {},
+        { attack: 0.001, decay: 0.2, sustain: 0.3, release: 0.15, curve: 0.5 },
+      ],
+      lfos: [{ shape: "triangle", rate: 4 }],
+      matrix: [
+        { source: "env3", dest: "fm", amount: 0.4 },
+        { source: "lfo1", dest: "filter1.cutoff", amount: 0.2, via: "macro7" },
+      ],
+      macros: [
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        { name: "Movement", value: 0.6, targets: [] },
+      ],
+      fm: { route: "3>1" },
+      voice: { mode: "mono" },
+      output: { drive: 0.4, volume: -22 },
+    },
+    "FM growl with filter movement, neuro / tearout DnB",
+  ),
+  synth(
+    "juno-sub",
+    "Juno Sub",
+    "Bass",
+    {
+      // square wave + sub oscillator: deep, simple mono bass (Roland Juno style)
+      osc: [{ shape: 3, pw: 0.5 }],
+      filters: [{ model: "ladder", cutoff: 700, reso: 0.237, keytrack: 0.2 }],
+      envs: [{ attack: 0.002, decay: 0.3, sustain: 1, release: 0.12 }],
+      sub: { level: 0.6, shape: "square" },
+      voice: { mode: "mono" },
+      output: { volume: -18 },
+    },
+    "Roland Juno",
+  ),
+
+  // ---- new leads ----
+  synth(
+    "gfunk-whistle",
+    "G-Funk Whistle",
+    "Leads",
+    {
+      // pure sine with long portamento and slow vibrato (delay before it fades in)
+      osc: [{ shape: 0 }],
+      filters: [{ cutoff: 7000, reso: 0.159, keytrack: 0.4 }],
+      envs: [{ attack: 0.01, sustain: 0.9, release: 0.25 }],
+      lfos: [{ shape: "sine", rate: 5.5, delay: 0.2 }],
+      matrix: [{ source: "lfo1", dest: "pitch", amount: 0.0083 }],
+      voice: { mode: "mono", glide: 0.14 },
+      output: { volume: -14 },
+    },
+    "the whistling synth of Dr. Dre and Snoop Dogg",
+  ),
+  synth(
+    "sync-lead",
+    "Sync Lead",
+    "Leads",
+    {
+      // hard sync: osc2 locked to osc1, env3 sweeps osc2 pitch for a tearing timbre
+      osc: [
+        { unison: 2, detune: 8 },
+        { level: 0.6, semi: 7, sync: true },
+      ],
+      filters: [{ cutoff: 2400, reso: 0.376, keytrack: 0.5, env: 2 }],
+      envs: [
+        { attack: 0.005, sustain: 0.85 },
+        { attack: 0.01, decay: 0.3, sustain: 0.5 },
+        { attack: 0.001, decay: 0.5, sustain: 0.1, release: 0.3, curve: 0.6 },
+      ],
+      matrix: [{ source: "env3", dest: "osc2.pitch", amount: 0.5, via: "macro3" }],
+      macros: [undefined, undefined, { name: "Sync", value: 0.6, targets: [] }],
+      voice: { mode: "mono", glide: 0.01 },
+      output: { volume: -13 },
+    },
+    "The Cars, Devo: osc2 hard-synced and swept by the mod envelope",
+  ),
+  synth(
+    "lucky-man-lead",
+    "Lucky Man Lead",
+    "Leads",
+    {
+      // fat mono saw through a ladder filter with glide and subtle vibrato
+      osc: [{ drift: 0.2 }, { level: 0.5, fine: 6, drift: 0.2 }],
+      filters: [{ model: "ladder", cutoff: 1800, reso: 0.237, keytrack: 0.5, env: 1.5 }],
+      envs: [
+        { attack: 0.015, sustain: 0.85, release: 0.3 },
+        { attack: 0.01, decay: 0.3, sustain: 0.6 },
+      ],
+      lfos: [{ rate: 5.5, delay: 0.1 }],
+      matrix: [{ source: "lfo1", dest: "pitch", amount: 0.00417 }],
+      voice: { mode: "mono", glide: 0.05 },
+      output: { volume: -13 },
+    },
+    "Keith Emerson / ELP “Lucky Man”: fat Moog lead with glide",
+  ),
+  synth(
+    "edm-saw-lead",
+    "EDM Saw Lead",
+    "Leads",
+    {
+      // bright detuned unison saws: the big-room lead
+      osc: [{ unison: 7, detune: 28, width: 0.9 }],
+      filters: [{ cutoff: 7000, reso: 0.127, keytrack: 0.3 }],
+      envs: [{ attack: 0.005, decay: 0.4, sustain: 0.8, release: 0.35 }],
+      output: { volume: -18 },
+    },
+    "the bright detuned leads of big-room EDM",
+  ),
+  synth(
+    "talk-box-lead",
+    "Talk Box Lead",
+    "Leads",
+    {
+      // band-pass filter sweeping slowly for a vowel 'wah-wah' talking quality
+      osc: [{ shape: 2 }, { level: 0.4, fine: 7 }],
+      filters: [{ type: "bp", cutoff: 900, reso: 0.55, keytrack: 0.5 }],
+      envs: [{ attack: 0.01, sustain: 0.9, release: 0.2 }],
+      lfos: [{ shape: "sine", rate: 2.5 }],
+      matrix: [{ source: "lfo1", dest: "filter1.cutoff", amount: 0.25, via: "macro7" }],
+      macros: [
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        { name: "Vowel", value: 0.6, targets: [] },
+      ],
+      voice: { mode: "mono", glide: 0.015 },
+      output: { volume: -6 },
+    },
+    "Roger Troutman, Peter Frampton: formant-filtered talking lead",
+  ),
+  synth(
+    "odyssey-lead",
+    "Odyssey Lead",
+    "Leads",
+    {
+      // ARP Odyssey: narrow pulse + saw, resonant filter, cutting mono lead
+      osc: [
+        { shape: 3, pw: 0.25 },
+        { level: 0.5, shape: 2 },
+      ],
+      filters: [{ cutoff: 1400, reso: 0.55, keytrack: 0.6, env: 2 }],
+      envs: [
+        { attack: 0.005, sustain: 0.8, release: 0.2 },
+        { attack: 0.002, decay: 0.2, sustain: 0.3 },
+      ],
+      voice: { mode: "mono", glide: 0.01 },
+      output: { volume: -14 },
+    },
+    "ARP Odyssey",
+  ),
+
+  // ---- new pads ----
+  synth(
+    "ob-pad",
+    "OB Pad",
+    "Pads",
+    {
+      // Oberheim OB-X: warm detuned saws, slow attack, brassy and wide
+      osc: [
+        { unison: 2, detune: 20, drift: 0.1 },
+        { level: 0.6, fine: 9, drift: 0.1 },
+      ],
+      filters: [{ model: "ladder", cutoff: 1200, reso: 0.315, keytrack: 0.4, env: 1.5 }],
+      envs: [
+        { attack: 0.12, decay: 0.6, sustain: 0.85, release: 1.5 },
+        { attack: 0.2, decay: 0.8, sustain: 0.6, release: 1.2 },
+      ],
+      lfos: [{ rate: 5 }],
+      matrix: [{ source: "lfo1", dest: "pitch", amount: 0.00208 }],
+      output: { volume: -16, spread: 0.3 },
+    },
+    "Oberheim OB-X",
+  ),
+  synth(
+    "cs-80-pad",
+    "CS-80 Pad",
+    "Pads",
+    {
+      // Yamaha CS-80: very slow attack, brassy, warm vibrato (Blade Runner)
+      osc: [
+        { unison: 2, detune: 16, drift: 0.2 },
+        { level: 0.5, octave: -1, drift: 0.2 },
+      ],
+      filters: [{ cutoff: 1400, reso: 0.315, keytrack: 0.5, env: 1.8 }],
+      envs: [
+        { attack: 0.8, decay: 0.8, sustain: 0.9, release: 2.5 },
+        { attack: 0.6, decay: 1, sustain: 0.7, release: 2 },
+      ],
+      lfos: [{ rate: 5.5, delay: 0.5 }],
+      matrix: [{ source: "lfo1", dest: "pitch", amount: 0.00417 }],
+      output: { volume: -10, spread: 0.4 },
+    },
+    "Yamaha CS-80, Blade Runner",
+  ),
+  synth(
+    "choir-pad",
+    "Choir Pad",
+    "Pads",
+    {
+      // band-pass filtered pad to suggest an 'aah' choir vowel
+      osc: [
+        { unison: 3, detune: 18, drift: 0.1 },
+        { level: 0.5, fine: 8 },
+      ],
+      filters: [{ type: "bp", cutoff: 1000, reso: 0.4, keytrack: 0.4 }],
+      envs: [{ attack: 0.4, decay: 1, sustain: 0.85, release: 2.2 }],
+      lfos: [{ rate: 0.4 }],
+      matrix: [{ source: "lfo1", dest: "filter1.cutoff", amount: 0.05 }],
+      output: { volume: -5, spread: 0.3 },
+    },
+    "vowel-filtered choir pad",
+  ),
+  synth(
+    "sweep-pad",
+    "Sweep Pad",
+    "Pads",
+    {
+      // a broad pad whose ladder filter slowly sweeps on an LFO
+      osc: [
+        { unison: 4, detune: 18, drift: 0.15 },
+        { level: 0.4, fine: 6 },
+      ],
+      filters: [{ model: "ladder", cutoff: 800, reso: 0.237, keytrack: 0.4 }],
+      envs: [{ attack: 0.3, sustain: 0.9, release: 1.8 }],
+      lfos: [{ shape: "sine", rate: 0.2 }],
+      matrix: [{ source: "lfo1", dest: "filter1.cutoff", amount: 0.35 }],
+      output: { volume: -16, spread: 0.35 },
+    },
+    "a pad whose filter sweeps on a slow LFO",
+  ),
+  synth(
+    "solina-strings",
+    "Solina Strings",
+    "Pads",
+    {
+      // ARP Omni / Solina: ensemble detune with pulse-width modulation for shimmer
+      osc: [
+        { shape: 2, unison: 3, detune: 20, drift: 0.08 },
+        { shape: 3, pw: 0.4, level: 0.5, drift: 0.08 },
+      ],
+      filters: [{ cutoff: 5000, reso: 0.0912, keytrack: 0.5 }],
+      envs: [{ attack: 0.3, decay: 1, sustain: 0.9, release: 1.5 }],
+      lfos: [
+        { shape: "sine", rate: 0.7 },
+        { shape: "triangle", rate: 1.1 },
+      ],
+      matrix: [
+        { source: "lfo1", dest: "pitch", amount: 0.00125 },
+        { source: "lfo2", dest: "osc2.pw", amount: 0.6, via: "macro7" },
+      ],
+      macros: [
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        { name: "Chorus", value: 0.65, targets: [] },
+      ],
+      output: { volume: -17, spread: 0.4 },
+    },
+    "ARP Omni / Solina String Ensemble",
+  ),
+  synth(
+    "lofi-pad",
+    "Lo-fi Pad",
+    "Pads",
+    {
+      // warm, detuned, dull pad with a hint of noise: lo-fi texture
+      osc: [
+        { unison: 2, detune: 12, drift: 0.2 },
+        { level: 0.4, fine: -8, drift: 0.2 },
+      ],
+      filters: [{ model: "ladder", cutoff: 900, reso: 0.159, keytrack: 0.3 }],
+      envs: [{ attack: 0.25, decay: 0.8, sustain: 0.8, release: 1.8 }],
+      noise: { level: 0.04 },
+      output: { volume: -14, spread: 0.25 },
+    },
+    "warm, detuned lo-fi pad with a little noise",
+  ),
+
+  // ---- new keys ----
+  synth(
+    "wurli",
+    "Wurli",
+    "Keys",
+    {
+      // Wurlitzer e-piano: triangle carrier with a short FM bark giving the characteristic bite
+      osc: [{ shape: 1 }, undefined, { shape: 0, level: 0, retrigger: true }],
+      filters: [{ cutoff: 3500, reso: 0.159, keytrack: 0.6 }],
+      envs: [
+        { attack: 0.002, decay: 1.2, sustain: 0.2, release: 0.5, velocity: 0.7 },
+        {},
+        { attack: 0.001, decay: 0.08, sustain: 0.05, release: 0.08, curve: 0.7 },
+      ],
+      matrix: [{ source: "env3", dest: "fm", amount: 0.25 }],
+      fm: { route: "3>1" },
+      output: { volume: -11 },
+    },
+    "Wurlitzer electric piano",
+  ),
+  synth(
+    "poly-stab",
+    "80s Poly Stab",
+    "Keys",
+    {
+      // Prophet-5 style brassy stab: detuned saws with a fast filter pluck
+      osc: [
+        { unison: 2, detune: 14, drift: 0.1 },
+        { level: 0.7, fine: 7, drift: 0.1 },
+      ],
+      filters: [{ model: "ladder", cutoff: 600, reso: 0.376, keytrack: 0.4, env: 3.5 }],
+      envs: [
+        { attack: 0.008, decay: 0.4, sustain: 0.6, release: 0.35 },
+        { attack: 0.005, decay: 0.25, sustain: 0.4 },
+      ],
+      output: { volume: -9, spread: 0.25 },
+    },
+    "Sequential Prophet-5",
+  ),
+  synth(
+    "music-box",
+    "Music Box",
+    "Keys",
+    {
+      // sine with a sine at the octave, FM-modulated for sparkle: fast decay, no sustain
+      osc: [
+        { shape: 0, retrigger: true },
+        { shape: 0, level: 0.25, octave: 1 },
+        { shape: 0, level: 0, octave: 1, retrigger: true },
+      ],
+      filters: [{ cutoff: 12000, reso: 0.0912, keytrack: 0 }],
+      envs: [
+        { attack: 0.001, decay: 1.5, sustain: 0, release: 1.2 },
+        {},
+        { attack: 0.001, decay: 0.5, sustain: 0.05, release: 0.5, curve: 0.7 },
+      ],
+      matrix: [{ source: "env3", dest: "fm", amount: 0.1 }],
+      fm: { route: "3>1" },
+      output: { volume: -12 },
+    },
+    "FM music box bells",
+  ),
+  synth(
+    "kalimba",
+    "Kalimba",
+    "Keys",
+    {
+      // FM with a slightly inharmonic modulator (minor third): woody, bright, short
+      osc: [
+        { shape: 0, retrigger: true },
+        undefined,
+        { shape: 0, level: 0, semi: 3, retrigger: true },
+      ],
+      filters: [{ cutoff: 10000, reso: 0.0912, keytrack: 0.2 }],
+      envs: [
+        { attack: 0.001, decay: 0.6, sustain: 0, release: 0.5 },
+        {},
+        { attack: 0.001, decay: 0.12, sustain: 0.05, release: 0.12, curve: 0.7 },
+      ],
+      matrix: [{ source: "env3", dest: "fm", amount: 0.08 }],
+      fm: { route: "3>1" },
+      output: { volume: -11 },
+    },
+    "FM kalimba, woody and bright",
+  ),
+
+  // ---- new plucks & stabs ----
+  synth(
+    "future-bass-chord",
+    "Future Bass Chord",
+    "Plucks & stabs",
+    {
+      // wide detuned supersaw with filter envelope and tempo-synced LFO on the cutoff (pump feel)
+      osc: [{ unison: 6, detune: 32, width: 0.9 }],
+      filters: [{ model: "ladder", cutoff: 500, reso: 0.237, keytrack: 0.2, env: 4 }],
+      envs: [
+        { attack: 0.003, decay: 0.5, sustain: 0.5, release: 0.35 },
+        { attack: 0.002, decay: 0.3, sustain: 0.2, release: 0.2 },
+      ],
+      lfos: [{ sync: "1/2" }],
+      matrix: [{ source: "lfo1", dest: "filter1.cutoff", amount: 0.3, via: "macro7" }],
+      macros: [
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        { name: "Pump", value: 0.6, targets: [] },
+      ],
+      output: { volume: -6 },
+    },
+    "the wide stabs and filter pumps of future bass",
+  ),
+  synth(
+    "marimba",
+    "Marimba",
+    "Plucks & stabs",
+    {
+      // FM wooden mallet: inharmonic modulator (major third) gives the characteristic hollow thud
+      osc: [
+        { shape: 0, retrigger: true },
+        { shape: 1, level: 0.2, octave: 1, retrigger: true },
+        { shape: 0, level: 0, octave: 1, semi: 4, retrigger: true },
+      ],
+      filters: [{ cutoff: 8000, reso: 0.0912, keytrack: 0.3 }],
+      envs: [
+        { attack: 0.001, decay: 0.5, sustain: 0, release: 0.4 },
+        {},
+        { attack: 0.001, decay: 0.1, sustain: 0.05, release: 0.1, curve: 0.7 },
+      ],
+      matrix: [{ source: "env3", dest: "fm", amount: 0.12 }],
+      fm: { route: "3>1" },
+      output: { volume: -9 },
+    },
+    "wooden mallet percussion (FM)",
+  ),
+  synth(
+    "steel-drum",
+    "Steel Drum",
+    "Plucks & stabs",
+    {
+      // FM steelpan: modulator at a minor 7th gives the bright metallic ring of the steelpan
+      osc: [
+        { shape: 0, retrigger: true },
+        undefined,
+        { shape: 0, level: 0, octave: 1, semi: -2, fine: 20, retrigger: true },
+      ],
+      filters: [{ cutoff: 14000, reso: 0.127, keytrack: 0.2 }],
+      envs: [
+        { attack: 0.001, decay: 1.2, sustain: 0, release: 1 },
+        {},
+        { attack: 0.001, decay: 0.18, sustain: 0.1, release: 0.15, curve: 0.7 },
+      ],
+      matrix: [{ source: "env3", dest: "fm", amount: 0.15 }],
+      fm: { route: "3>1" },
+      output: { volume: -11 },
+    },
+    "FM steel drum / steelpan",
+  ),
+
   // ---- FX ----
   synth("laser", "Laser Zap", "FX", {
     osc: [
@@ -697,6 +1235,40 @@ export const FACTORY_SYNTHS: FactorySynth[] = [
       output: { volume: -16 },
     },
     "the Radiophonic Workshop",
+  ),
+
+  synth(
+    "ocean-wind",
+    "Ocean Wind",
+    "FX",
+    {
+      // noise only, shaped by a band-pass filter that drifts slowly on an LFO
+      osc: [{ on: false, level: 0 }],
+      filters: [{ type: "bp", cutoff: 600, reso: 0.376, keytrack: 0, env: 0 }],
+      envs: [{ attack: 1.5, sustain: 1, release: 3, velocity: 0 }],
+      lfos: [{ shape: "sine", rate: 0.08 }],
+      matrix: [{ source: "lfo1", dest: "filter1.cutoff", amount: 0.4 }],
+      noise: { level: 0.8 },
+      output: { volume: 4 },
+    },
+    "noise shaped by a slowly drifting band-pass filter",
+  ),
+  synth(
+    "ufo",
+    "UFO",
+    "FX",
+    {
+      // ring modulation between a sine and a fifth, warbling LFO on the modulator
+      osc: [{ shape: 0 }, { shape: 0, level: 0.7, semi: 7 }],
+      filters: [{ cutoff: 6000, reso: 0.127, keytrack: 0 }],
+      envs: [{ attack: 0.05, sustain: 1, release: 1.2 }],
+      lfos: [{ shape: "sine", rate: 0.3 }],
+      matrix: [{ source: "lfo1", dest: "osc2.pitch", amount: 0.15 }],
+      ring: 0.8,
+      voice: { mode: "mono" },
+      output: { volume: -16 },
+    },
+    "ring modulation with a warbling LFO",
   ),
 ];
 
