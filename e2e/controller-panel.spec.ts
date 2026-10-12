@@ -345,3 +345,42 @@ test("Key mode: a key plays its chord in the key, the black knob turns the key (
   await expect(chip).toContainText("E♭ minor");
   await expect(page.getByTestId("key-mode-pending")).toHaveCount(0);
 });
+
+test("relative knobs 1 and 5 step the voicing and the bass, fast turns too (D140, D141)", async ({
+  page,
+}) => {
+  await midiDevices(page, ["Minilab3 MIDI"]);
+  await page.getByTestId("midi-use-detected").click();
+  await page.keyboard.press("Escape");
+  await openControllerPanel(page);
+  await page.getByTestId("pad-mode").getByRole("button", { name: "Chord" }).click();
+  const voicing = page.getByTestId("voicing-value");
+  const bass = page.getByTestId("bass").locator('[data-active="true"]');
+  const turn = async (cc: number, values: number[]) => {
+    await page.waitForTimeout(300); // a new gesture
+    for (const v of values) await send(page, "Minilab3 MIDI", [0xb0, cc, v]);
+  };
+  const modeOf = (slot: string) =>
+    page.evaluate(async (slot) => {
+      const s = await (window as never as W).__rebeat.settings();
+      const all = s.getState().midiMappings as { slot?: string; mode?: string }[];
+      return all.find((m) => m.slot === slot)?.mode;
+    }, slot);
+
+  // Relative 1 (64 ± n): a slow turn is recognized (65 reads as the middle until then)
+  await turn(74, [65, 65, 65, 65, 65, 65]);
+  await expect.poll(() => modeOf("knob1")).toBe("rel64");
+  await expect(voicing).toHaveText("+3");
+  await turn(74, [63, 63, 63, 63, 63]);
+  await expect(voicing).toHaveText("-2");
+  // a fast turn speeds up (bigger codes): still relative, a step per message
+  await turn(74, [66, 67, 68, 69, 70, 72, 75]);
+  await expect(voicing).toHaveText("+5");
+  expect(await modeOf("knob1")).toBe("rel64");
+
+  await turn(93, [63, 63, 63, 63, 63, 63]);
+  await expect.poll(() => modeOf("knob5")).toBe("rel64");
+  await expect(bass).toHaveText("−3");
+  await turn(93, [65, 65, 65]);
+  await expect(bass).toHaveText("Off");
+});
