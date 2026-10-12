@@ -201,7 +201,7 @@ next bar while playing; Loop off stops after the last chord; Stop clears; Free f
 suggestion; a passing chord and back; the keys as single notes while Auto plays. E2E: Auto on the
 Royal road at a fast tempo walks F G Em Am (the equation), Stop silences; armed, Play with Rec on
 and a count-in records F G Em Am on bars 1–4 of the keys' track; the page warning and Fit the page;
-song mode: a progression over two one-bar pages... records each chord in its page (the first
+song mode: a progression over two one-bar pages records each chord in its page (the first
 chord of page 2 not in page 1), Add pages adds copies with the keys' lane empty, Make copies and
 Unroll; unit: `positionAt` across a page change, the pages a take needs.
 
