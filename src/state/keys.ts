@@ -17,7 +17,13 @@ import {
   playKeysSample,
 } from "../engine/engine";
 import { noteName, type Key } from "../model/notes";
-import { qualityOf, suggestNext, type Played, type Suggestion } from "../model/suggest";
+import {
+  progressionById,
+  qualityOf,
+  suggestNext,
+  type Played,
+  type Suggestion,
+} from "../model/suggest";
 import { keyModeChord, sameKey, stepKeyRoot, stepKeyScale } from "../model/keyMode";
 import { BASS_OCTAVES, padChord, voiceChord, VOICING_RANGE } from "../model/padChords";
 import {
@@ -835,6 +841,8 @@ export function refreshSuggestions() {
   history = history.filter((h) => now - h.at < 30_000).slice(-4);
   const show = s.padMode === "next" || (s.suggest && s.padMode !== "drum");
   const level = Math.max(0, Math.min(2, s.suggestAdventure)) as 0 | 1 | 2;
+  // Next mode (D161): a progression picked puts its next chord on pad 1
+  const prog = s.padMode === "next" ? progressionById(s.nextProgression) : null;
   useKeys.setState({
     suggestions: show
       ? suggestNext(
@@ -842,6 +850,7 @@ export function refreshSuggestions() {
           suggestKey(),
           level,
           8,
+          prog,
         )
       : [],
   });
@@ -876,6 +885,18 @@ export function playSuggestion(i: number, velocity: number, source: KeysSource):
 
 export function setSuggest(on: boolean) {
   useSettings.getState().set({ suggest: on });
+  refreshSuggestions();
+}
+
+/** The chords played lately, for the progression strip (D161). */
+export const chordHistory = (): Played[] => history.map((h) => h.played);
+
+/** The key the suggestions are in now. */
+export const suggestionKey = (): Key => suggestKey();
+
+/** Pick a progression for pad 1 in Next mode (null: the best suggestion). */
+export function setNextProgression(id: string | null) {
+  useSettings.getState().set({ nextProgression: id });
   refreshSuggestions();
 }
 

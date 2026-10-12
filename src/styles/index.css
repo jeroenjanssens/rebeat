@@ -715,6 +715,18 @@ body {
 .menu-item:disabled {
   color: var(--text-faint);
 }
+/* a two-line menu row: a name and its details, then a line about it (Next mode's progressions) */
+.progression-item {
+  display: block;
+  width: 420px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  text-align: left;
+  white-space: normal;
+}
+.progression-item:hover {
+  background: color-mix(in oklab, var(--accent) 18%, transparent);
+}
 .menu-sep {
   height: 1px;
   margin: 4px 2px;

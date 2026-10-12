@@ -37,6 +37,7 @@ import * as engine from "../../engine/engine";
 import { MiniLab3Svg } from "./MiniLab3Svg";
 import { ROLE_COLORS, ROLE_NAMES } from "../../model/suggest";
 import { PlayStylesRow } from "./PlayStylesRow";
+import { ProgressionPicker } from "./ProgressionPicker";
 import { PATTERNS, patternById, sanitizePlayStyle } from "../../model/perform";
 import { KeysChip } from "../../app/KeysChip";
 import { padColors } from "../../midi/padColors";
@@ -285,6 +286,7 @@ function PadChordsRow({ keyMode }: { keyMode: boolean }) {
           Suggest
         </button>
       </div>
+      {padMode === "next" && <ProgressionPicker />}
       {(suggest || padMode === "next") && (
         <div
           className="segmented"

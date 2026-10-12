@@ -123,6 +123,8 @@ export interface Settings {
   suggest: boolean;
   /** How adventurous the suggestions are: 0 Safe (the key's own chords), 1 Common, 2 Bold. */
   suggestAdventure: number;
+  /** Next mode (D161): a progression whose next chord pad 1 holds, or null (the best one). */
+  nextProgression: string | null;
   /** Key mode's own key (D138), independent of the project. */
   keyModeKey: { root: number; scale: string };
   /** The Key dial (the MiniLab's black knob in Key mode): a turn changes the key at once, or
@@ -220,6 +222,7 @@ export const DEFAULT_SETTINGS: Settings = {
   bassSplit: 48,
   suggest: false,
   suggestAdventure: 1,
+  nextProgression: null,
   previewVolume: 0.8,
   freeFirstLoop: false,
   onboarded: false,

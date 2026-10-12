@@ -86,6 +86,12 @@ interface Suggestion {
   returns its release.
 - Playing it puts it in the history, so the next suggestions follow from it.
 
+## 3b. Pad 1: a progression you pick (D161, added 2026-10-12)
+
+In Next mode a menu picks one of the famous progressions that fit the key; pad 1 then always
+holds its next chord (following where you are), the other pads the usual suggestions. The
+menu shows each one's roman numerals, its chords in the key and what it is.
+
 ## 4. Step 3 (later): play-along
 
 Suggestions from the song: the chords of a Notes track (or a chord track) at the playhead, the

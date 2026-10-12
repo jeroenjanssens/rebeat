@@ -778,3 +778,41 @@ test("suggestions: markers on the keys after a chord; Next mode puts them on the
     })
     .toBe(true);
 });
+
+test("Next mode: pick a progression and pad 1 plays it through (D161)", async ({ page }) => {
+  await midiDevices(page, ["Minilab3 MIDI"]);
+  await page.getByTestId("midi-use-detected").click();
+  await page.keyboard.press("Escape");
+  await page.evaluate(async () => {
+    const r = (window as never as W).__rebeat;
+    const s = r.store.getState();
+    const tracks = s.project.tracks as unknown as { id: string; mode: string }[];
+    s.setUi({ selectedTrackId: tracks.find((t) => t.mode === "notes")!.id });
+    const st = await (
+      r as never as { settings(): Promise<{ getState(): { set(p: object): void } }> }
+    ).settings();
+    st.getState().set({ keyModeKey: { root: 0, scale: "major" } });
+  });
+  await openControllerPanel(page);
+  await page.getByTestId("pad-mode").getByRole("button", { name: "Next" }).click();
+  // the menu says what each one is: its roman numerals and its chords in the key
+  await page.getByTestId("progression").click();
+  const royal = page.locator('[data-testid="progression-option"]', { hasText: "Royal road" });
+  await expect(royal).toContainText("IV–V–iii–vi");
+  await expect(royal).toContainText("F G Em Am");
+  await royal.click();
+  await expect(page.getByTestId("progression")).toContainText("Royal road");
+  // pad 1 walks through it: F, G, Em, Am, and round again
+  const pad1 = () => page.locator('[data-pad-label="0"]').textContent();
+  const next = page.locator('[data-testid="progression-chords"] [data-next]');
+  for (const want of ["F", "G", "Em", "Am", "F"]) {
+    await expect.poll(pad1).toBe(want);
+    await expect(next).toHaveText(want);
+    await send(page, "Minilab3 MIDI", [0x99, 36, 100]);
+    await send(page, "Minilab3 MIDI", [0x89, 36, 0]);
+  }
+  // back to Free: pad 1 is the best suggestion again
+  await page.getByTestId("progression").click();
+  await page.locator('[data-testid="progression-option"]', { hasText: "Free" }).click();
+  await expect(page.getByTestId("progression-chords")).toHaveCount(0);
+});

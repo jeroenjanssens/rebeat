@@ -182,6 +182,11 @@ const hints: Hints = {
     text: "The pads are the next chords to play: after each chord, pads 1–8 hold the eight best next chords, each in the color of what it does (green home, blue away, red tension, purple color). A press plays one, with Voicing, Bass and the play styles. The keys play as in Key mode, in its key.",
     guide: "performance-suggestions",
   },
+  "controller.progression": {
+    title: "Pad 1: a progression",
+    text: "In Next mode, pick a famous progression (four chords, the fifties, the J-pop royal road, the jazz turnaround, mixolydian rock, the 12-bar blues…) and pad 1 always holds its next chord: press pad 1 again and again to play it through. It follows where you are: play a chord of it on the keys and pad 1 goes on from there. The chords show next to it, the next one lit. Free: pad 1 is the best suggestion.",
+    guide: "performance-suggestions",
+  },
   "controller.suggest": {
     title: "Suggest",
     text: "After each chord you play, Rebeat suggests what could come next, and marks the key to press for the three best (in Chord mode, the pad to hold too): the bigger the dot, the better. The colors say what a chord does: green home, blue away from home, red tension (it wants to resolve), purple color (borrowed or secondary chords). The MiniLab's display shows them too.",
