@@ -9,8 +9,14 @@
  *
  * where [mode] is one of: 0x02 = DAW mode, 0x00 = User mode, 0x01 = ARTURIA mode.
  * Sending to all three modes ensures the text appears regardless of which mode is active.
- * Row IDs: 0x01 = top line, 0x02 = bottom line.
- * Line 1 is left-padded by 3 spaces (matches displayLine1LeftPad = 3 in the Mixxx script).
+ * Row IDs: the community's notes have 0x01 as the top line, but on Jeroen's MiniLab 3 (ARTURIA
+ * mode, 2026-10-12) row 0x02 shows on top: Rebeat's line 1 goes in 0x02. The device centers
+ * each line itself, so the Mixxx script's 3 spaces before line 1 are gone (they moved it right).
+ *
+ * Pad lights (D144), same source, "DAW mode" there; sent for every mode as the display is:
+ *   F0 00 20 6B 7F 42  02 [mode] 16 [pad id] [r] [g] [b]  F7
+ * pad ids 0x04–0x0B are pads 1–8 (bank A), r g b 0..127. While Shift is held nothing is sent,
+ * so the MiniLab's own colors for the pads' second functions show.
  * Non-printable characters (< 0x20 or > 0x7E) are replaced with 0x20 (space).
  *
  * The display accepts messages on the regular MIDI port (not the MCU port).
@@ -24,14 +30,17 @@
 
 import { midiOutputs, startMidi } from "../midi";
 import { onDisplayText, type DisplayText } from "../../midi/display";
+import { onControllerEvent } from "../../midi/controllerEvents";
+import { deviceRgb, padColors } from "../../midi/padColors";
 import { useSettings } from "../../state/settings";
+import { useStore } from "../../state/store";
 
 const ARTURIA_MANUFACTURER = [0x00, 0x20, 0x6b];
 /** Send to all mode variants for max compatibility. 0x02=DAW, 0x00=User, 0x01=ARTURIA. */
 const DISPLAY_MODES = [0x02, 0x00, 0x01];
-const LINE1_PAD = 3; // left-padding spaces for the top line
-const ROW1 = 0x01;
-const ROW2 = 0x02;
+/** The row on top, and the one below it (see above). */
+const TOP_ROW = 0x02;
+const BOTTOM_ROW = 0x01;
 const INIT_MSG = new Uint8Array([
   0xf0,
   ...ARTURIA_MANUFACTURER,
@@ -76,7 +85,7 @@ function sendLines(out: MIDIOutput, line1: string, line2: string, handshake: boo
   // the handshake is what Arturia's DAW scripts send to connect, and it may put the MiniLab in
   // DAW mode (where its knobs send other messages): only when asked for (unconfirmed)
   if (handshake && !initSent) sendInit(out);
-  const l1 = asciiBytes(" ".repeat(LINE1_PAD) + line1);
+  const l1 = asciiBytes(line1);
   const l2 = asciiBytes(line2);
   for (const mode of DISPLAY_MODES) {
     const msg = new Uint8Array([
@@ -87,10 +96,10 @@ function sendLines(out: MIDIOutput, line1: string, line2: string, handshake: boo
       0x04,
       mode,
       0x60,
-      ROW1,
+      TOP_ROW,
       ...l1,
       0x00,
-      ROW2,
+      BOTTOM_ROW,
       ...l2,
       0x00,
       0xf7,
@@ -155,5 +164,92 @@ export function stopMiniLab3Display() {
   if (debounceTimer !== null) {
     clearTimeout(debounceTimer);
     debounceTimer = null;
+  }
+}
+
+// ---------- pad lights (D144) ----------
+
+const PAD_IDS = [0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b];
+
+let padsOn = false;
+let padsOff: (() => void) | null = null;
+let shiftDown = false;
+let lastPads = "";
+let padTimer: ReturnType<typeof setTimeout> | null = null;
+
+function sendPads(force = false) {
+  if (shiftDown) return; // the MiniLab's own colors for Shift's functions
+  const { project } = useStore.getState();
+  const colors = padColors(project.tracks, useSettings.getState().padMode).map(deviceRgb);
+  const key = JSON.stringify(colors);
+  if (!force && key === lastPads) return;
+  const out = findOutput();
+  if (!out) return;
+  lastPads = key;
+  for (const mode of DISPLAY_MODES)
+    colors.forEach(([r, g, b], i) =>
+      out.send(
+        new Uint8Array([
+          0xf0,
+          ...ARTURIA_MANUFACTURER,
+          0x7f,
+          0x42,
+          0x02,
+          mode,
+          0x16,
+          PAD_IDS[i],
+          r,
+          g,
+          b,
+          0xf7,
+        ]),
+      ),
+    );
+}
+
+function sendPadsSoon(force = false) {
+  if (padTimer !== null) clearTimeout(padTimer);
+  padTimer = setTimeout(() => {
+    padTimer = null;
+    sendPads(force);
+  }, DEBOUNCE_MS);
+}
+
+/**
+ * Light the MiniLab 3's pads in the colors of what they play (D144): the tracks' colors in Drum
+ * mode, blue and purple in Chord and Key mode. Repaints when tracks or the pad mode change, and
+ * when Shift is let go. Safe to call more than once.
+ */
+export async function startMiniLab3Pads(): Promise<boolean> {
+  if (padsOn) return true;
+  const ok = await startMidi(true);
+  if (!ok) return false;
+  padsOn = true;
+  const offStore = useStore.subscribe((s, prev) => {
+    if (s.project.tracks !== prev.project.tracks) sendPadsSoon();
+  });
+  const offSettings = useSettings.subscribe((s, prev) => {
+    if (s.padMode !== prev.padMode) sendPadsSoon();
+  });
+  const offShift = onControllerEvent((e) => {
+    if (e.control.slot !== "shift") return;
+    shiftDown = !!e.down;
+    // the device lit its own colors under Shift: put ours back
+    if (!shiftDown) sendPadsSoon(true);
+  });
+  padsOff = () => (offStore(), offSettings(), offShift());
+  sendPadsSoon(true);
+  return true;
+}
+
+export function stopMiniLab3Pads() {
+  if (!padsOn) return;
+  padsOn = false;
+  padsOff?.();
+  padsOff = null;
+  lastPads = "";
+  if (padTimer !== null) {
+    clearTimeout(padTimer);
+    padTimer = null;
   }
 }

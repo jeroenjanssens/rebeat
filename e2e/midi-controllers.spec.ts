@@ -85,8 +85,8 @@ test("a MiniLab 3 is recognized; its map turns the selected track's knobs in eve
   const n = await page.evaluate(
     async () => (await (window as never as W).__rebeat.settings()).getState().midiMappings.length,
   );
-  // 8 knobs, 4 faders, the encoder (turn, Shift + turn, click) and Shift
-  expect(n).toBe(16);
+  // 8 knobs, 4 faders, the encoder (turn, Shift + turn, click), Shift and Shift + pads 4–8
+  expect(n).toBe(21);
 });
 
 test("an endless knob that sends relative steps is recognized and steps the value", async ({

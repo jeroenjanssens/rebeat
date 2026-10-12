@@ -118,14 +118,17 @@ export function startDisplayFeed(): void {
       showTransient("Transpose", k.transpose > 0 ? `+${k.transpose}` : `${k.transpose}`);
   });
 
-  // ── 4. Auto-start the MiniLab 3 display writer ───────────────────────────
+  // ── 4. Auto-start the MiniLab 3 display writer and its pad lights ───────
   void maybeStartMiniLabDisplay();
+  void maybeStartMiniLabPads();
   useSettings.subscribe((s, prev) => {
     if (
       s.midiShowDisplayNames !== prev.midiShowDisplayNames ||
+      s.midiMiniLabPadColors !== prev.midiMiniLabPadColors ||
       s.midiController !== prev.midiController
     ) {
       void maybeStartMiniLabDisplay();
+      void maybeStartMiniLabPads();
     }
   });
 }
@@ -140,6 +143,13 @@ async function maybeStartMiniLabDisplay() {
   if (midiController !== "minilab3") return;
   const { startMiniLab3Display } = await import("../audio-io/controllers/minilab3");
   await startMiniLab3Display();
+}
+
+async function maybeStartMiniLabPads() {
+  const { midiController, midiMiniLabPadColors } = useSettings.getState();
+  const { startMiniLab3Pads, stopMiniLab3Pads } = await import("../audio-io/controllers/minilab3");
+  if (midiMiniLabPadColors && midiController === "minilab3") await startMiniLab3Pads();
+  else stopMiniLab3Pads();
 }
 
 /** Resolve a MIDI target string to a human-readable parameter label. */

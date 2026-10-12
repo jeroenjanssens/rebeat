@@ -28,6 +28,7 @@ import { dropdown, type MenuItem } from "../../components/Menu";
 import { padInput } from "../../state/input";
 import * as engine from "../../engine/engine";
 import { MiniLab3Svg } from "./MiniLab3Svg";
+import { padColors } from "../../midi/padColors";
 import { GenericControllerView } from "./GenericControllerView";
 import { onControllerEvent } from "../../midi/controllerEvents";
 import { chordName } from "../../model/chords";
@@ -499,6 +500,7 @@ export function ControllerPanel() {
             onKeyDown={handleKeyDown}
             onPadDown={handlePadDown}
             padMode={padMode}
+            padColors={padColors(project.tracks, padMode)}
             generated={sounding.filter((n) => n.added).map((n) => n.pitch)}
             scaleKey={padMode === "key" ? keyModeKey : null}
             onLabelPx={setLabelPx}

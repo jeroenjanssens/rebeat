@@ -1,125 +1,106 @@
 /**
  * Top-down SVG of the Arturia MiniLab 3.
  *
- * Coordinate system: viewBox 0 0 1158 715, body at (0,0) 1158×715.
- * All layout constants are body-relative, measured from the product photo
- * (photo body: x 62–1220, y 285–1000; so body_x = photo_x − 62, body_y = photo_y − 285).
+ * Coordinates are the pixels of Arturia's top-down product photo (968 × 968, the white MiniLab 3:
+ * saintmaxmusic.fr/app/uploads/2022/11/produit-arturia-minilab3-wh.jpg), measured on it; the
+ * viewBox is the body within it (x 8–962, y 190–778), so the photo laid under the drawing lines
+ * up with it.
  */
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { onControllerEvent, type ControllerEvent } from "../../midi/controllerEvents";
 import { useDisplay } from "../../midi/display";
+import { SHIFT_PAD_COLORS } from "../../midi/padColors";
 import { inKey, noteName, type Key } from "../../model/notes";
 import { CHORD_PADS } from "../../model/padChords";
 import { onFrame } from "../../render/raf";
 
-// ── Layout constants (all in SVG user units = body pixels) ─────────────────
+// ── Layout (photo pixels) ──────────────────────────────────────────────────
 
-const W = 1158;
-const H = 715;
-const BODY_R = 25;
+const VB_X = 8;
+const VB_Y = 190;
+const W = 954;
+const H = 588;
+const BODY_R = 22;
 
-// Body colors — the device always looks like itself, theme-independent
-const BODY_FILL = "#e6e6e8";
-const BODY_STROKE = "#c0c0c4";
-const PANEL_FILL = "#18181b"; // black panel (encoder + OLED)
-const BTN_DARK_FILL = "#1e1e22"; // Shift button face
-const BTN_WHITE_FILL = "#f4f4f2"; // Hold / Oct button face
-const BTN_WHITE_TEXT = "#18181b";
+// Body colors: the device always looks like itself, whatever the theme
+const BODY_FILL = "#e9e9eb";
+const BODY_STROKE = "#c4c4c8";
+const PANEL_FILL = "#141416"; // the black panel (screen + encoder)
+const BTN_DARK_FILL = "#1e1e22"; // Shift's face
+const SHIFT_BEZEL = "#8c8c92";
+const BTN_WHITE_FILL = "#f7f7f5"; // Hold / Oct faces
+const BTN_WHITE_TEXT = "#26262a";
 const BTN_DARK_TEXT = "#e8e8ec";
-const BTN_BEZEL = "#d0d0d4";
-const STRIP_FILL = "#f4f4f2"; // touch strip face
-const STRIP_STROKE = "#c8c8cc";
-const KNOB_EDGE = "#c4c4c8"; // outer ring (shadow)
-const KNOB_FACE = "#eeeeec"; // knob face
-const KNOB_INDICATOR = "#2a2a2e"; // needle
-const FADER_SLOT = "#1a1a1e";
+const BTN_EDGE = "#b8b8bd";
+const STRIP_FILL = "#e2e2e5";
+const STRIP_STROKE = "#cdcdd1";
+const KNOB_BASE = "#d4d4d8"; // the knob's skirt, around the cap
+const KNOB_CAP = "#fafafa";
+const KNOB_CAP_EDGE = "#c9c9ce";
+const ENC_BASE = "#26262a";
+const ENC_CAP = "#3a3a40";
+const FADER_SLOT = "#141416";
 const FADER_CAP_FILL = "#f4f4f2";
-const FADER_CAP_LINE = "#1a1a1e";
-const KEY_BED = "#b0b0b4";
-const WHITE_KEY = "#f4f4f5";
-const BLACK_KEY = "#18181b";
-const KEY_STROKE = "#c0c0c4";
-const TEXT_DIM = "#888890";
-const TEXT_BRAND = "#1a1a1e";
+const FADER_CAP_LINE = "#141416";
+const KEY_BED = "#38383c";
+const KEY_LIP = "#d9d9dc";
+const WHITE_KEY = "#fbfbfb";
+const BLACK_KEY = "#1a1a1d";
+const KEY_STROKE = "#c4c4c8";
+const TEXT_DIM = "#8a8a92";
+const TEXT_PRINT = "#3a3a40"; // the printed numbers
+const TEXT_BRAND = "#1c1c20";
+const PAD_FACE = "#1d1c23";
+const PAD_UNLIT = "#55555c";
+const OLED_TEXT = "#f2f2f2";
 
-// ── Left column: Shift, Hold, Oct ──────────────────────────────────────────
-const SHIFT_X = 78,
-  SHIFT_Y = 48,
-  SHIFT_W = 62,
-  SHIFT_H = 37;
-const HOLD_X = 158,
-  HOLD_Y = 55,
-  HOLD_W = 48,
-  HOLD_H = 25;
-const OCTM_X = 86,
-  OCTM_Y = 108,
-  OCTM_W = 50,
-  OCTM_H = 27;
-const OCTP_X = 158,
-  OCTP_Y = 108,
-  OCTP_W = 48,
-  OCTP_H = 27;
+// ── Left column: Shift, Hold, Oct, the touch strips ───────────────────────
+const SHIFT = { x: 76.5, y: 233, w: 41, h: 24 };
+const HOLD = { x: 136, y: 232, w: 41, h: 26 };
+const OCTM = { x: 77, y: 276, w: 41, h: 25 };
+const OCTP = { x: 136, y: 276, w: 41, h: 25 };
+const STRIP_LX = 73;
+const STRIP_RX = 139;
+const STRIP_Y = 321;
+const STRIP_W = 43;
+const STRIP_H = 144;
 
-// ── Touch strips (body-relative) ─────────────────────────────────────────
-// Left (Pitch): x 78–133, y 162–332  →  w=55, h=170
-// Right (Mod):  x 158–211, y 162–332 →  w=53, h=170
-const STRIP_LX = 78;
-const STRIP_RX = 158;
-const STRIP_Y = 162;
-const STRIP_W = 55;
-const STRIP_H = 170; // used in live update
-
-// ── Black panel ───────────────────────────────────────────────────────────
-const PANEL_X = 238,
-  PANEL_Y = 19,
-  PANEL_W = 122,
-  PANEL_H = 218;
-
-// ── OLED ─────────────────────────────────────────────────────────────────
-const OLED_X = 256,
-  OLED_Y = 60,
-  OLED_W = 87,
-  OLED_H = 27;
-
-// ── Main encoder ──────────────────────────────────────────────────────────
-const ENC_X = 298,
-  ENC_Y = 181,
-  ENC_R = 22;
+// ── Black panel, screen, main encoder ─────────────────────────────────────
+const PANEL = { x: 203, y: 203, w: 103, h: 182 };
+const OLED = { x: 214, y: 232, w: 82, h: 36 };
+const ENC_X = 253;
+const ENC_Y = 342;
+const ENC_R = 21;
 
 // ── Knobs (2 rows of 4) ───────────────────────────────────────────────────
-const KNOB_CXS = [405, 512, 618, 724];
-const KNOB_CYS = [72, 181];
-const KNOB_R = 20;
+const KNOB_CXS = [341, 428, 517, 605];
+const KNOB_CYS = [249, 337];
+const KNOB_R = 21; // the skirt
+const KNOB_CAP_R = 17.5; // the heptagon cap
+const KNOB_NUM_DY = 40; // the printed number, below the center
+/** Degrees a relative knob's drawing turns per step it sends. */
+const DEG_PER_STEP = 12;
 
 // ── Faders (4) ────────────────────────────────────────────────────────────
-const FADER_CXS = [835, 900, 972, 1041];
-// The cap travels from FADER_Y (top) to FADER_Y + FADER_TRACK_H (bottom of travel).
-const FADER_Y = 67; // used in live update
-const FADER_TRACK_H = 125; // cap travel distance; used in live update
-const FADER_SLOT_H = FADER_TRACK_H + 14; // visual slot = travel + cap height
-const FADER_SLOT_W = 4;
+const FADER_CXS = [692, 751, 809, 867];
+const FADER_SLOT_Y = 243;
+const FADER_SLOT_H = 104;
+const FADER_SLOT_W = 7;
 const FADER_CAP_W = 46;
-const FADER_CAP_H = 14;
-const FADER_LABEL_Y = 220;
+const FADER_CAP_H = 22;
+/** The cap's top at the fader's top (1) and how far it travels down to 0. */
+const FADER_TOP = 238;
+const FADER_TRAVEL = 92;
+const FADER_LABEL_Y = 376;
 
 // ── Pads (8 in a row) ──────────────────────────────────────────────────────
-const PAD_START_X = 261;
-const PAD_STEP = 106.5;
-const PAD_Y = 258;
-const PAD_W = 77;
-const PAD_H = 78;
-const PAD_RIM = 5; // rim width in pixels
-const PAD_COLORS = [
-  "#00aaff", // 0 Arp   — blue
-  "#00aaff", // 1 Pad   — blue
-  "#00aaff", // 2 Prog  — blue
-  "#ff8800", // 3 Loop  — orange
-  "#00aaff", // 4 Stop  — blue
-  "#00cc44", // 5 Play  — green
-  "#ff2828", // 6 Rec   — red
-  "#ffcc00", // 7 Tap   — yellow
-] as const;
-const PAD_LABELS = ["Arp", "Pad", "Prog", "↺", "■", "▶", "●", "Tap"] as const;
+const PAD_X0 = 222;
+const PAD_STEP = 87.6;
+const PAD_Y = 400;
+const PAD_SIZE = 66;
+const PAD_INSET = 5;
+/** What's printed on the pads: their Shift functions (Arp, Pad, Prog, loop, stop, play, rec, tap). */
+const PAD_LABELS = ["Arp", "Pad", "Prog", "⇄", "■", "▶", "●", "Tap"] as const;
 
 /**
  * A key the keys play for you (a chord's other notes, D137): lit in a secondary color, a paler
@@ -128,15 +109,26 @@ const PAD_LABELS = ["Arp", "Pad", "Prog", "↺", "■", "▶", "●", "Tap"] as 
 const generatedFill = (white: boolean) =>
   `color-mix(in oklab, var(--accent) 38%, ${white ? WHITE_KEY : BLACK_KEY})`;
 
+// ── Text row ───────────────────────────────────────────────────────────────
+const TEXT_ROW_Y = 503;
+const MIDI_CH_X0 = 247.5;
+const MIDI_CH_STEP = 33;
+
 // ── Keys ──────────────────────────────────────────────────────────────────
-const KEYS_Y = 393;
 const KEYS_X = 63;
-const KEYS_W = 1035;
-const KEYS_H = 317;
+const KEYS_Y = 512;
+const KEYS_W = 848;
+const KEYS_H = 238;
 const KEY_COUNT = 25;
 const KEY_WHITES = 15;
-const WHITE_W = KEYS_W / KEY_WHITES; // 69
-const BLACK_KEY_H = Math.round(KEYS_H * 0.57); // ~181
+const WHITE_W = KEYS_W / KEY_WHITES; // 56.5
+const BLACK_W = 28 / WHITE_W; // in white keys
+const BLACK_KEY_H = 150;
+/**
+ * Where a black key sits on the line between its white keys, in white keys (+ is right): as on a
+ * piano, C♯ and F♯ lean left, D♯ and A♯ right, G♯ is in the middle. Measured on the photo.
+ */
+const BLACK_OFFSET: Record<number, number> = { 1: -0.1, 3: 0.09, 6: -0.16, 8: 0, 10: 0.14 };
 
 // 25 keys starting at C2 (MIDI 36)
 const FIRST_KEY = 36;
@@ -153,7 +145,8 @@ function buildKeys(): KeyLayout[] {
       keys.push({ midi: FIRST_KEY + i, white: true, x: wx, w: 1 });
       wx += 1;
     } else {
-      keys.push({ midi: FIRST_KEY + i, white: false, x: wx - 0.3, w: 0.6 });
+      const center = wx + BLACK_OFFSET[semitone];
+      keys.push({ midi: FIRST_KEY + i, white: false, x: center - BLACK_W / 2, w: BLACK_W });
     }
   }
   return keys;
@@ -162,22 +155,32 @@ function buildKeys(): KeyLayout[] {
 const KEY_LAYOUT = buildKeys();
 
 /** The size of the note names on the white keys (drawing units); the equation matches it. */
-const KEY_LABEL_SIZE = 22;
+const KEY_LABEL_SIZE = 18;
+
+/** The points of a regular heptagon of radius r around 0,0, a corner on top. */
+const heptagon = (r: number) =>
+  Array.from({ length: 7 }, (_, i) => {
+    const a = -Math.PI / 2 + (i * 2 * Math.PI) / 7;
+    return `${(r * Math.cos(a)).toFixed(2)},${(r * Math.sin(a)).toFixed(2)}`;
+  }).join(" ");
+
+const NO_SELECT = { userSelect: "none", pointerEvents: "none" } as const;
 
 // ── Live state ────────────────────────────────────────────────────────────
 
 interface LiveState {
   keyVel: Uint8Array; // 128
   padVel: Uint8Array; // 16
-  knobPos: Float32Array; // 8  (0..1)
+  /** The knobs' turn in degrees (an absolute knob: its position; a relative one: its steps). */
+  knobAngle: Float32Array; // 8
   faderPos: Float32Array; // 4  (0..1)
   stripPos: Float32Array; // 2  (0..1)
   /**
-   * Which knobs (0–7) and faders (8–11) the device has sent: MIDI can't ask a controller where
-   * its controls are, so until one moves it's drawn faint, at the value it controls.
+   * Which faders (0–3) the device has sent: MIDI can't ask a controller where its controls are,
+   * so until one moves it's drawn faint, at the value it controls.
    */
   seen: Uint8Array;
-  encoderPos: number;
+  encoderAngle: number;
   shift: number;
   dirty: boolean;
 }
@@ -186,13 +189,12 @@ function makeLiveState(): LiveState {
   return {
     keyVel: new Uint8Array(128),
     padVel: new Uint8Array(16),
-    knobPos: new Float32Array(8).fill(0.5),
+    knobAngle: new Float32Array(8),
     faderPos: new Float32Array(4).fill(0.5),
-    // strips start empty; live events fill them when touched
     // the pitch strip springs back to the middle; the mod strip starts at 0
     stripPos: new Float32Array([0.5, 0]),
-    seen: new Uint8Array(12),
-    encoderPos: 0.5,
+    seen: new Uint8Array(4),
+    encoderAngle: 0,
     shift: 12, // MiniLab's keys start at C3 (MIDI 48) at octave 0
     dirty: true,
   };
@@ -219,6 +221,8 @@ interface MiniLab3SvgProps {
   onPadDown?: (index: number) => () => void;
   /** What the pads do: tracks (Drum), the chord pads (Chord, D137) or Key mode's pads (D138). */
   padMode?: "drum" | "chord" | "key";
+  /** The pads' colors (D144): the tracks' in Drum mode, blue and purple for the chord pads. */
+  padColors?: readonly (string | null)[];
   /** Notes the keys play that no key pressed (a chord's other notes), as MIDI notes. */
   generated?: readonly number[];
   /** Key mode's key: the keys in it get a dot (the root a bigger one), D138. */
@@ -234,11 +238,16 @@ export function MiniLab3Svg({
   onKeyDown,
   onPadDown,
   padMode = "drum",
+  padColors = [],
   generated = [],
   scaleKey = null,
   onLabelPx,
 }: MiniLab3SvgProps) {
   const chordPads = padMode !== "drum";
+  // Shift held on the device: the pads show their second functions in the MiniLab's colors
+  const [shiftHeld, setShiftHeld] = useState(false);
+  const colors = shiftHeld ? SHIFT_PAD_COLORS : padColors;
+  const colorsRef = useRef(colors);
   const svgRef = useRef<SVGSVGElement>(null);
   const liveRef = useRef<LiveState>(makeLiveState());
   // the labels (and the values they control) for the frame loop, which runs outside React
@@ -249,6 +258,7 @@ export function MiniLab3Svg({
     labelsRef.current = labels;
     generatedRef.current = generated;
     scaleKeyRef.current = scaleKey;
+    colorsRef.current = colors;
     liveRef.current.dirty = true;
   });
 
@@ -268,11 +278,29 @@ export function MiniLab3Svg({
   const heldKeys = useRef<Map<number, () => void>>(new Map());
   const heldPads = useRef<Map<number, () => void>>(new Map());
 
+  // A knob or the encoder being turned lights up in the accent for a moment, as keys do
+  const flashTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const flash = useCallback((selector: string) => {
+    const el = svgRef.current?.querySelector<SVGElement>(selector);
+    if (!el) return;
+    el.dataset.turning = "true";
+    const timers = flashTimers.current;
+    clearTimeout(timers.get(selector));
+    timers.set(
+      selector,
+      setTimeout(() => delete el.dataset.turning, 260),
+    );
+  }, []);
+  useEffect(() => {
+    const timers = flashTimers.current;
+    return () => timers.forEach((t) => clearTimeout(t));
+  }, []);
+
   // Subscribe to controller events
   useEffect(() => {
     const live = liveRef.current;
     return onControllerEvent((e: ControllerEvent) => {
-      const { kind, index } = e.control;
+      const { kind, index, slot } = e.control;
       switch (kind) {
         case "key":
           if (index - live.shift < FIRST_KEY || index - live.shift >= FIRST_KEY + KEY_COUNT) {
@@ -286,26 +314,36 @@ export function MiniLab3Svg({
           break;
         case "knob":
           if (index >= 0 && index < 8) {
-            live.knobPos[index] = e.targetValue ?? e.value / 127;
-            live.seen[index] = 1;
+            // a relative knob turns by its steps; an absolute one points at its value
+            live.knobAngle[index] =
+              e.turn !== undefined
+                ? live.knobAngle[index] + e.turn * DEG_PER_STEP
+                : -135 + (e.targetValue ?? e.value / 127) * 270;
+            flash(`[data-knob-cap="${index}"]`);
           }
           break;
         case "fader":
           if (index >= 0 && index < 4) {
             live.faderPos[index] = e.targetValue ?? e.value / 127;
-            live.seen[8 + index] = 1;
+            live.seen[index] = 1;
           }
           break;
         case "encoder":
-          live.encoderPos = (live.encoderPos + (e.value - 64) / 24 + 1) % 1;
+          live.encoderAngle += (e.turn ?? e.value - 64) * DEG_PER_STEP;
+          flash("[data-enc-cap]");
           break;
         case "strip":
           if (index >= 0 && index < 2) live.stripPos[index] = e.value / 127;
           break;
+        case "button":
+          if (slot === "shift") setShiftHeld(!!e.down);
+          // Shift + pads 4–8 (CC 105–109 in DAW mode): light the pad as it's pressed
+          else if (slot?.startsWith("shift-pad")) live.padVel[index] = e.down ? 100 : 0;
+          break;
       }
       live.dirty = true;
     });
-  }, []);
+  }, [flash]);
 
   // Flush dirty state to DOM per frame
   useEffect(() => {
@@ -344,74 +382,56 @@ export function MiniLab3Svg({
           const on = !!key && inKey(note, key);
           const root = on && (((note - key.root) % 12) + 12) % 12 === 0;
           dot.style.display = on ? "" : "none";
-          dot.setAttribute("r", root ? "8" : "5");
+          dot.setAttribute("r", root ? "7" : "4.5");
           if (on) dot.dataset.inKey = root ? "root" : "true";
           else delete dot.dataset.inKey;
         }
       }
 
-      // Pads — inner face brightens on hit (uses pad's own color)
+      // Pads: the face lights up in the pad's color on a hit, brighter the harder
       for (let i = 0; i < 8; i++) {
         const vel = live.padVel[i];
+        const color = colorsRef.current[i] ?? PAD_UNLIT;
         const el = svg.querySelector<SVGElement>(`[data-pad="${i}"]`);
-        if (el) {
-          // hit: the face lights up in its color, brighter the harder
+        if (el)
           el.style.fill =
             vel > 0
-              ? `color-mix(in oklab, ${PAD_COLORS[i]} ${Math.round(45 + (vel / 127) * 50)}%, #0a0a10)`
+              ? `color-mix(in oklab, ${color} ${Math.round(45 + (vel / 127) * 50)}%, ${PAD_FACE})`
               : "";
-        }
         // its label turns white on the lit face, so it stays readable
         const text = svg.querySelector<SVGElement>(`[data-pad-label="${i}"]`);
         if (text) text.style.fill = vel > 0 ? "#ffffff" : "";
       }
 
-      // Knob needles (faint, at the value they control, until the device sends one)
-      const labels = labelsRef.current;
+      // Knob caps: the heptagon turns with the knob
       for (let i = 0; i < 8; i++) {
-        const seen = live.seen[i] === 1;
-        const pos = seen ? live.knobPos[i] : (labels.knobs[i]?.pos ?? 0.5);
-        const el = svg.querySelector<SVGElement>(`[data-knob-needle="${i}"]`);
-        if (el) {
-          const deg = -135 + pos * 270;
-          el.setAttribute("transform", `rotate(${deg.toFixed(1)},0,0)`);
-          el.style.opacity = seen ? "1" : "0.35";
-        }
+        const el = svg.querySelector<SVGElement>(`[data-knob-cap="${i}"]`);
+        if (el) el.setAttribute("transform", `rotate(${live.knobAngle[i].toFixed(1)})`);
       }
 
-      // Fader caps (cap rect + center line move together)
+      // Fader caps (faint, at the value they control, until the device sends one)
+      const labels = labelsRef.current;
       for (let i = 0; i < 4; i++) {
-        const seen = live.seen[8 + i] === 1;
+        const seen = live.seen[i] === 1;
         const pos = seen ? live.faderPos[i] : (labels.faders[i]?.pos ?? 0.5);
-        const y = FADER_Y + FADER_TRACK_H * (1 - pos);
+        const y = FADER_TOP + FADER_TRAVEL * (1 - pos);
         const cap = svg.querySelector<SVGElement>(`[data-fader-thumb="${i}"]`);
         if (cap) {
-          cap.setAttribute("y", y.toFixed(1));
+          cap.setAttribute("transform", `translate(0,${y.toFixed(1)})`);
           cap.style.opacity = seen ? "1" : "0.45";
-          cap.setAttribute("stroke-dasharray", seen ? "" : "4 3");
-        }
-        const line = svg.querySelector<SVGElement>(`[data-fader-line="${i}"]`);
-        if (line) {
-          const ly = (y + FADER_CAP_H / 2).toFixed(1);
-          line.setAttribute("y1", ly);
-          line.setAttribute("y2", ly);
         }
       }
 
-      // Encoder needle
-      const encNeedle = svg.querySelector<SVGElement>("[data-enc-needle]");
-      if (encNeedle) {
-        encNeedle.setAttribute("transform", `rotate(${(live.encoderPos * 360).toFixed(1)},0,0)`);
-      }
+      const enc = svg.querySelector<SVGElement>("[data-enc-cap]");
+      if (enc) enc.setAttribute("transform", `rotate(${live.encoderAngle.toFixed(1)})`);
 
       // Strip fills
       for (let i = 0; i < 2; i++) {
         const pos = live.stripPos[i];
         const el = svg.querySelector<SVGElement>(`[data-strip-fill="${i}"]`);
         if (el) {
-          const h = (STRIP_H - 4) * pos;
-          const sy = STRIP_Y + STRIP_H - h;
-          el.setAttribute("y", sy.toFixed(1));
+          const h = (STRIP_H - 6) * pos;
+          el.setAttribute("y", (STRIP_Y + STRIP_H - 3 - h).toFixed(1));
           el.setAttribute("height", h.toFixed(1));
         }
       }
@@ -461,10 +481,36 @@ export function MiniLab3Svg({
   const whiteKeys = KEY_LAYOUT.filter((k) => k.white);
   const blackKeys = KEY_LAYOUT.filter((k) => !k.white);
 
+  const whiteButton = (b: { x: number; y: number; w: number; h: number }, label: string) => (
+    <>
+      <rect
+        x={b.x}
+        y={b.y}
+        width={b.w}
+        height={b.h}
+        rx={4}
+        fill={BTN_WHITE_FILL}
+        stroke={BTN_EDGE}
+        strokeWidth="1"
+      />
+      <text
+        x={b.x + b.w / 2}
+        y={b.y + b.h / 2 + 3.2}
+        textAnchor="middle"
+        fontSize="9"
+        fontWeight="600"
+        fill={BTN_WHITE_TEXT}
+        style={NO_SELECT}
+      >
+        {label}
+      </text>
+    </>
+  );
+
   return (
     <svg
       ref={svgRef}
-      viewBox={`0 0 ${W} ${H}`}
+      viewBox={`${VB_X} ${VB_Y} ${W} ${H}`}
       preserveAspectRatio="xMidYMid meet"
       style={{ width: "100%", height: "100%", display: "block" }}
       aria-label="MiniLab 3 controller"
@@ -473,153 +519,102 @@ export function MiniLab3Svg({
         <filter id="ml3-glow" x="-20%" y="-20%" width="140%" height="140%">
           <feGaussianBlur stdDeviation="2" />
         </filter>
+        <clipPath id="ml3-oled">
+          <rect x={OLED.x} y={OLED.y} width={OLED.w} height={OLED.h} />
+        </clipPath>
+        <style>{`
+          [data-knob-cap], [data-enc-cap] { transition: fill 0.25s ease-out; }
+          [data-knob-cap][data-turning], [data-enc-cap][data-turning] {
+            fill: var(--accent); transition: none;
+          }
+        `}</style>
       </defs>
       {/* ── Body ──────────────────────────────────────────────────────── */}
       <rect
-        x={0}
-        y={0}
+        x={VB_X}
+        y={VB_Y}
         width={W}
         height={H}
         rx={BODY_R}
         fill={BODY_FILL}
         stroke={BODY_STROKE}
-        strokeWidth="2"
+        strokeWidth="1.5"
       />
 
       {/* ── Left column: Shift, Hold, Oct ──────────────────────────────── */}
 
-      {/* Shift: dark face with white text, inside a lighter bezel */}
-      <g data-hint="controller.btn.0">
-        <title>Shift: hold for secondary functions</title>
+      {/* Shift: a dark face with white text, in a grey bezel; lit while held */}
+      <g data-hint="controller.btn.0" data-testid="ml3-shift" data-held={shiftHeld || undefined}>
+        <title>Shift: hold for the pads' second functions</title>
         <rect
-          x={SHIFT_X - 3}
-          y={SHIFT_Y - 3}
-          width={SHIFT_W + 6}
-          height={SHIFT_H + 6}
-          rx={5}
-          fill={BTN_BEZEL}
+          x={SHIFT.x - 4.5}
+          y={SHIFT.y - 4}
+          width={SHIFT.w + 9}
+          height={SHIFT.h + 8}
+          rx={3}
+          fill={SHIFT_BEZEL}
         />
         <rect
-          x={SHIFT_X}
-          y={SHIFT_Y}
-          width={SHIFT_W}
-          height={SHIFT_H}
-          rx={4}
-          fill={BTN_DARK_FILL}
+          x={SHIFT.x}
+          y={SHIFT.y}
+          width={SHIFT.w}
+          height={SHIFT.h}
+          rx={3}
+          fill={shiftHeld ? "var(--accent)" : BTN_DARK_FILL}
+          stroke="#f4f4f4"
+          strokeWidth="1.5"
         />
         <text
-          x={SHIFT_X + SHIFT_W / 2}
-          y={SHIFT_Y + SHIFT_H / 2 + 4}
+          x={SHIFT.x + SHIFT.w / 2}
+          y={SHIFT.y + SHIFT.h / 2 + 3.2}
           textAnchor="middle"
-          fontSize="11"
+          fontSize="9"
           fontWeight="600"
           fill={BTN_DARK_TEXT}
-          style={{ userSelect: "none", pointerEvents: "none" }}
+          style={NO_SELECT}
         >
           Shift
         </text>
       </g>
 
-      {/* Hold: white key, dark text */}
       <g data-hint="controller.btn.1">
         <title>Hold: sustain current notes</title>
-        <rect
-          x={HOLD_X}
-          y={HOLD_Y}
-          width={HOLD_W}
-          height={HOLD_H}
-          rx={4}
-          fill={BTN_WHITE_FILL}
-          stroke={BTN_BEZEL}
-          strokeWidth="1"
-        />
+        {whiteButton(HOLD, "Hold")}
         <text
-          x={HOLD_X + HOLD_W / 2}
-          y={HOLD_Y + HOLD_H / 2 + 4}
+          x={HOLD.x + HOLD.w / 2}
+          y={HOLD.y + HOLD.h + 12}
           textAnchor="middle"
-          fontSize="9"
-          fill={BTN_WHITE_TEXT}
-          style={{ userSelect: "none", pointerEvents: "none" }}
-        >
-          Hold
-        </text>
-        <text
-          x={HOLD_X + HOLD_W / 2}
-          y={HOLD_Y + HOLD_H + 12}
-          textAnchor="middle"
-          fontSize="8"
+          fontSize="8.5"
           fill={TEXT_DIM}
-          style={{ userSelect: "none", pointerEvents: "none" }}
+          style={NO_SELECT}
         >
           Chord
         </text>
       </g>
 
-      {/* Oct − */}
       <g data-hint="controller.btn.2">
         <title>Octave −</title>
-        <rect
-          x={OCTM_X}
-          y={OCTM_Y}
-          width={OCTM_W}
-          height={OCTM_H}
-          rx={4}
-          fill={BTN_WHITE_FILL}
-          stroke={BTN_BEZEL}
-          strokeWidth="1"
-        />
-        <text
-          x={OCTM_X + OCTM_W / 2}
-          y={OCTM_Y + OCTM_H / 2 + 4}
-          textAnchor="middle"
-          fontSize="9"
-          fill={BTN_WHITE_TEXT}
-          style={{ userSelect: "none", pointerEvents: "none" }}
-        >
-          Oct −
-        </text>
+        {whiteButton(OCTM, "Oct −")}
       </g>
 
-      {/* Oct + */}
       <g data-hint="controller.btn.3">
         <title>Octave +</title>
-        <rect
-          x={OCTP_X}
-          y={OCTP_Y}
-          width={OCTP_W}
-          height={OCTP_H}
-          rx={4}
-          fill={BTN_WHITE_FILL}
-          stroke={BTN_BEZEL}
-          strokeWidth="1"
-        />
-        <text
-          x={OCTP_X + OCTP_W / 2}
-          y={OCTP_Y + OCTP_H / 2 + 4}
-          textAnchor="middle"
-          fontSize="9"
-          fill={BTN_WHITE_TEXT}
-          style={{ userSelect: "none", pointerEvents: "none" }}
-        >
-          Oct +
-        </text>
+        {whiteButton(OCTP, "Oct +")}
       </g>
 
-      {/* "← Transpose →" under oct buttons */}
-      <text
-        x={(OCTM_X + OCTM_W / 2 + OCTP_X + OCTP_W / 2) / 2}
-        y={OCTM_Y + OCTM_H + 12}
-        textAnchor="middle"
-        fontSize="8"
-        fill={TEXT_DIM}
-        style={{ userSelect: "none" }}
-      >
-        ← Transpose →
+      {/* "← Transpose →" under the Oct buttons */}
+      <text x={95} y={314} textAnchor="middle" fontSize="9" fill={TEXT_DIM} style={NO_SELECT}>
+        ←
+      </text>
+      <text x={127} y={314} textAnchor="middle" fontSize="8" fill={TEXT_DIM} style={NO_SELECT}>
+        Transpose
+      </text>
+      <text x={158} y={314} textAnchor="middle" fontSize="9" fill={TEXT_DIM} style={NO_SELECT}>
+        →
       </text>
 
       {/* ── Touch strips ─────────────────────────────────────────────────── */}
 
-      {/* Pitch strip (left) */}
       <g data-hint="controller.strip.0">
         <title>Pitch strip</title>
         <rect
@@ -627,200 +622,181 @@ export function MiniLab3Svg({
           y={STRIP_Y}
           width={STRIP_W}
           height={STRIP_H}
-          rx={6}
+          rx={4}
           fill={STRIP_FILL}
           stroke={STRIP_STROKE}
-          strokeWidth="1.5"
+          strokeWidth="1.2"
         />
-        {/* fill indicator (grows from bottom) */}
         <rect
           data-strip-fill={0}
-          x={STRIP_LX + 4}
+          x={STRIP_LX + 3}
           y={STRIP_Y + STRIP_H / 2}
-          width={STRIP_W - 8}
+          width={STRIP_W - 6}
           height={0}
           rx={3}
           fill="var(--accent)"
           opacity="0.5"
           style={{ pointerEvents: "none" }}
         />
-        {/* ↑ at top */}
         <text
           x={STRIP_LX + STRIP_W / 2}
-          y={STRIP_Y + 16}
+          y={STRIP_Y + 18}
           textAnchor="middle"
           fontSize="12"
-          fill={TEXT_DIM}
-          style={{ userSelect: "none" }}
+          fontWeight="700"
+          fill={TEXT_BRAND}
+          style={NO_SELECT}
         >
           ↑
         </text>
-        {/* center line */}
         <line
-          x1={STRIP_LX + 10}
-          y1={STRIP_Y + STRIP_H / 2}
-          x2={STRIP_LX + STRIP_W - 10}
-          y2={STRIP_Y + STRIP_H / 2}
-          stroke={STRIP_STROKE}
-          strokeWidth="1.5"
+          x1={STRIP_LX + 13}
+          y1={STRIP_Y + STRIP_H / 2 - 1}
+          x2={STRIP_LX + STRIP_W - 13}
+          y2={STRIP_Y + STRIP_H / 2 - 1}
+          stroke={TEXT_BRAND}
+          strokeWidth="1.3"
         />
-        {/* ↓ at bottom */}
         <text
           x={STRIP_LX + STRIP_W / 2}
-          y={STRIP_Y + STRIP_H - 6}
+          y={STRIP_Y + STRIP_H - 7}
           textAnchor="middle"
           fontSize="12"
-          fill={TEXT_DIM}
-          style={{ userSelect: "none" }}
+          fontWeight="700"
+          fill={TEXT_BRAND}
+          style={NO_SELECT}
         >
           ↓
         </text>
       </g>
 
-      {/* Mod strip (right) */}
       <g data-hint="controller.strip.1">
         <title>Mod strip</title>
         <rect
           x={STRIP_RX}
           y={STRIP_Y}
-          width={STRIP_W}
+          width={STRIP_W - 1}
           height={STRIP_H}
-          rx={6}
+          rx={4}
           fill={STRIP_FILL}
           stroke={STRIP_STROKE}
-          strokeWidth="1.5"
+          strokeWidth="1.2"
         />
         <rect
           data-strip-fill={1}
-          x={STRIP_RX + 4}
+          x={STRIP_RX + 3}
           y={STRIP_Y + STRIP_H}
-          width={STRIP_W - 8}
+          width={STRIP_W - 7}
           height={0}
           rx={3}
           fill="var(--accent)"
           opacity="0.5"
           style={{ pointerEvents: "none" }}
         />
-        {/* ↑ with bar below it — near the bottom (mod goes up from rest) */}
+        {/* ↑ standing on a bar, near the bottom (mod goes up from rest) */}
         <text
-          x={STRIP_RX + STRIP_W / 2}
-          y={STRIP_Y + STRIP_H - 20}
+          x={STRIP_RX + STRIP_W / 2 - 0.5}
+          y={STRIP_Y + STRIP_H - 13}
           textAnchor="middle"
           fontSize="12"
-          fill={TEXT_DIM}
-          style={{ userSelect: "none" }}
+          fontWeight="700"
+          fill={TEXT_BRAND}
+          style={NO_SELECT}
         >
           ↑
         </text>
         <line
-          x1={STRIP_RX + 10}
-          y1={STRIP_Y + STRIP_H - 8}
-          x2={STRIP_RX + STRIP_W - 10}
-          y2={STRIP_Y + STRIP_H - 8}
-          stroke={STRIP_STROKE}
-          strokeWidth="1.5"
+          x1={STRIP_RX + 11}
+          y1={STRIP_Y + STRIP_H - 9}
+          x2={STRIP_RX + STRIP_W - 12}
+          y2={STRIP_Y + STRIP_H - 9}
+          stroke={TEXT_BRAND}
+          strokeWidth="1.3"
         />
       </g>
 
-      {/* ── Black panel (encoder + OLED) ────────────────────────────────── */}
-      <rect x={PANEL_X} y={PANEL_Y} width={PANEL_W} height={PANEL_H} rx={8} fill={PANEL_FILL} />
+      {/* ── Black panel (screen + encoder) ──────────────────────────────── */}
+      <rect
+        x={PANEL.x}
+        y={PANEL.y}
+        width={PANEL.w}
+        height={PANEL.h}
+        rx={4}
+        fill={PANEL_FILL}
+        stroke="#f4f4f4"
+        strokeWidth="1.5"
+      />
 
-      {/* OLED */}
       <g data-hint="controller.screen">
-        <rect
-          x={OLED_X}
-          y={OLED_Y}
-          width={OLED_W}
-          height={OLED_H}
-          rx={3}
-          fill="#050507"
-          stroke="#2a2a30"
-          strokeWidth="1"
-        />
-        <ScreenText x={OLED_X} y={OLED_Y} w={OLED_W} h={OLED_H} />
+        <rect x={OLED.x} y={OLED.y} width={OLED.w} height={OLED.h} rx={2} fill="#09090b" />
+        <ScreenText />
       </g>
 
-      {/* Main encoder */}
+      {/* Main encoder: a dark heptagon cap that turns */}
       <g data-hint="controller.encoder">
         <title>{labels.encoder}</title>
-        <circle cx={ENC_X} cy={ENC_Y} r={ENC_R + 3} fill="#0a0a0e" />
-        <circle cx={ENC_X} cy={ENC_Y} r={ENC_R} fill="#222226" />
-        <circle cx={ENC_X} cy={ENC_Y} r={ENC_R - 4} fill="#2e2e34" />
+        <circle cx={ENC_X} cy={ENC_Y} r={ENC_R} fill={ENC_BASE} />
         <g transform={`translate(${ENC_X},${ENC_Y})`}>
-          <line
-            data-enc-needle
-            x1="0"
-            y1={-(ENC_R - 4)}
-            x2="0"
-            y2={-(ENC_R - 10)}
-            stroke="#e8e8ec"
-            strokeWidth="2.5"
-            strokeLinecap="round"
+          <polygon
+            data-enc-cap
+            points={heptagon(ENC_R - 3)}
+            fill={ENC_CAP}
+            stroke="#4a4a52"
+            strokeWidth="1"
           />
         </g>
         <text
           x={ENC_X}
-          y={ENC_Y + ENC_R + 14}
+          y={PANEL.y + PANEL.h - 7}
           textAnchor="middle"
-          fontSize="9"
+          fontSize="7.5"
           fill={TEXT_DIM}
-          style={{ userSelect: "none" }}
+          style={NO_SELECT}
         >
           {labels.encoder}
         </text>
       </g>
 
-      {/* ── Knobs (2 × 4) ─────────────────────────────────────────────────── */}
+      {/* ── Knobs (2 × 4): white heptagon caps that turn ───────────────── */}
       {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => {
-        const col = i % 4;
-        const row = Math.floor(i / 4);
-        const cx = KNOB_CXS[col];
-        const cy = KNOB_CYS[row];
-        const num = i + 1;
+        const cx = KNOB_CXS[i % 4];
+        const cy = KNOB_CYS[Math.floor(i / 4)];
         const label = labels.knobs[i];
         return (
           <g key={i} data-hint={`controller.knob.${i}`}>
             <title>
-              {label?.name ?? `Knob ${num}`}: {label?.value ?? ""}
+              {label?.name ?? `Knob ${i + 1}`}: {label?.value ?? ""}
             </title>
-            {/* outer ring (shadow/edge) */}
-            <circle cx={cx} cy={cy} r={KNOB_R + 2} fill={KNOB_EDGE} />
-            {/* knob face */}
-            <circle cx={cx} cy={cy} r={KNOB_R} fill={KNOB_FACE} />
-            {/* needle */}
+            <circle cx={cx} cy={cy + 2} r={KNOB_R} fill={KNOB_BASE} />
             <g transform={`translate(${cx},${cy})`}>
-              <line
-                data-knob-needle={i}
-                x1="0"
-                y1={-(KNOB_R - 2)}
-                x2="0"
-                y2={-(KNOB_R - 8)}
-                stroke={KNOB_INDICATOR}
-                strokeWidth="2"
-                strokeLinecap="round"
+              <polygon
+                data-knob-cap={i}
+                points={heptagon(KNOB_CAP_R)}
+                fill={KNOB_CAP}
+                stroke={KNOB_CAP_EDGE}
+                strokeWidth="1"
+                strokeLinejoin="round"
               />
             </g>
-            {/* device number */}
             <text
               x={cx}
-              y={cy + KNOB_R + 14}
+              y={cy + KNOB_NUM_DY}
               textAnchor="middle"
               fontSize="9"
-              fill={TEXT_DIM}
-              style={{ userSelect: "none" }}
+              fontWeight="600"
+              fill={TEXT_PRINT}
+              style={NO_SELECT}
             >
-              {num}
+              {i + 1}
             </text>
-            {/* mapping label (subtle, below number) */}
             {label?.name && (
               <text
                 x={cx}
-                y={cy + KNOB_R + 25}
+                y={cy + KNOB_NUM_DY + 11}
                 textAnchor="middle"
                 fontSize="8"
                 fill="var(--accent)"
-                opacity="0.7"
-                style={{ userSelect: "none" }}
+                style={NO_SELECT}
               >
                 {label.name}
               </text>
@@ -831,9 +807,11 @@ export function MiniLab3Svg({
 
       {/* ── Pads (8 in a row) ─────────────────────────────────────────────── */}
       {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => {
-        const px = PAD_START_X + i * PAD_STEP;
-        const color = PAD_COLORS[i];
-        const padLabel = chordPads ? CHORD_PADS[i] : PAD_LABELS[i];
+        const px = PAD_X0 + i * PAD_STEP;
+        const lit = colors[i] ?? null;
+        const color = lit ?? PAD_UNLIT;
+        // what's printed on the pad, or the chord pad it is (Chord and Key mode, not under Shift)
+        const chordLabel = chordPads && !shiftHeld;
         return (
           <g
             key={i}
@@ -844,48 +822,61 @@ export function MiniLab3Svg({
                   ? `controller.chordpad.${i}`
                   : `controller.pad.${i}`
             }
+            data-pad-color={lit ?? "none"}
             style={{ cursor: onPadDown ? "pointer" : undefined }}
             onPointerDown={(e) => handlePadPointerDown(i, e)}
             onPointerUp={() => handlePadPointerUp(i)}
             onPointerLeave={() => handlePadPointerUp(i)}
           >
             {/* a light bezel, and the rim's colored glow (the pads are backlit) */}
-            <rect x={px} y={PAD_Y} width={PAD_W} height={PAD_H} rx={6} fill="#d4d4d8" />
+            <rect x={px} y={PAD_Y} width={PAD_SIZE} height={PAD_SIZE} rx={7} fill="#f2f2f4" />
+            {lit && (
+              <rect
+                x={px + 1.5}
+                y={PAD_Y + 1.5}
+                width={PAD_SIZE - 3}
+                height={PAD_SIZE - 3}
+                rx={6}
+                fill="none"
+                stroke={color}
+                strokeWidth={4}
+                opacity={0.9}
+                filter="url(#ml3-glow)"
+              />
+            )}
             <rect
-              x={px + 1.5}
-              y={PAD_Y + 1.5}
-              width={PAD_W - 3}
-              height={PAD_H - 3}
-              rx={5}
+              x={px + 2}
+              y={PAD_Y + 2}
+              width={PAD_SIZE - 4}
+              height={PAD_SIZE - 4}
+              rx={5.5}
               fill="none"
               stroke={color}
-              strokeWidth={3}
-              opacity={0.85}
-              filter="url(#ml3-glow)"
+              strokeWidth={lit ? 2.5 : 1.5}
+              opacity={lit ? 1 : 0.6}
             />
-            {/* inner dark face (data-pad used for live brightness) */}
+            {/* the dark face (data-pad: lit on hits) */}
             <rect
               data-pad={i}
-              x={px + PAD_RIM}
-              y={PAD_Y + PAD_RIM}
-              width={PAD_W - PAD_RIM * 2}
-              height={PAD_H - PAD_RIM * 2}
+              x={px + PAD_INSET}
+              y={PAD_Y + PAD_INSET}
+              width={PAD_SIZE - PAD_INSET * 2}
+              height={PAD_SIZE - PAD_INSET * 2}
               rx={3}
-              fill="#0a0a10"
+              fill={PAD_FACE}
               style={{ pointerEvents: "none" }}
             />
-            {/* pad label at bottom inside, in rim color */}
             <text
               data-pad-label={i}
-              x={px + PAD_W / 2}
-              y={PAD_Y + PAD_H - 8}
+              x={px + PAD_SIZE / 2}
+              y={chordLabel ? PAD_Y + PAD_SIZE / 2 + 5 : PAD_Y + PAD_SIZE - 11}
               textAnchor="middle"
-              fontSize={chordPads ? 15 : 10}
-              fontWeight={chordPads ? 600 : 500}
+              fontSize={chordLabel ? 14 : 8.5}
+              fontWeight={chordLabel ? 600 : 500}
               fill={color}
-              style={{ pointerEvents: "none", userSelect: "none" }}
+              style={NO_SELECT}
             >
-              {padLabel}
+              {chordLabel ? CHORD_PADS[i] : PAD_LABELS[i]}
             </text>
           </g>
         );
@@ -895,66 +886,60 @@ export function MiniLab3Svg({
       {[0, 1, 2, 3].map((i) => {
         const cx = FADER_CXS[i];
         const faderLabel = labels.faders[i];
-        const num = i + 1;
         return (
           <g key={i} data-hint={`controller.fader.${i}`}>
             <title>
-              {faderLabel?.name ?? `Fader ${num}`}: {faderLabel?.value ?? ""}
+              {faderLabel?.name ?? `Fader ${i + 1}`}: {faderLabel?.value ?? ""}
             </title>
-            {/* slot track */}
             <rect
               x={cx - FADER_SLOT_W / 2}
-              y={FADER_Y}
+              y={FADER_SLOT_Y}
               width={FADER_SLOT_W}
               height={FADER_SLOT_H}
-              rx={2}
+              rx={FADER_SLOT_W / 2}
               fill={FADER_SLOT}
             />
-            {/* cap */}
-            <rect
-              data-fader-thumb={i}
-              x={cx - FADER_CAP_W / 2}
-              y={FADER_Y + FADER_TRACK_H * 0.5}
-              width={FADER_CAP_W}
-              height={FADER_CAP_H}
-              rx={3}
-              fill={FADER_CAP_FILL}
-              stroke={BTN_BEZEL}
-              strokeWidth="1"
-            />
-            {/* cap center line — moves with the cap in the frame loop */}
-            <line
-              data-fader-line={i}
-              x1={cx - FADER_CAP_W / 2 + 6}
-              y1={FADER_Y + FADER_TRACK_H * 0.5 + FADER_CAP_H / 2}
-              x2={cx + FADER_CAP_W / 2 - 6}
-              y2={FADER_Y + FADER_TRACK_H * 0.5 + FADER_CAP_H / 2}
-              stroke={FADER_CAP_LINE}
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              style={{ pointerEvents: "none" }}
-            />
-            {/* number */}
+            {/* the cap and its line move together (data-fader-thumb: translated per frame) */}
+            <g data-fader-thumb={i} transform={`translate(0,${FADER_TOP + FADER_TRAVEL / 2})`}>
+              <rect
+                x={cx - FADER_CAP_W / 2}
+                y={0}
+                width={FADER_CAP_W}
+                height={FADER_CAP_H}
+                rx={4}
+                fill={FADER_CAP_FILL}
+                stroke={BTN_EDGE}
+                strokeWidth="1"
+              />
+              <line
+                x1={cx - FADER_CAP_W / 2 + 5}
+                y1={8}
+                x2={cx + FADER_CAP_W / 2 - 5}
+                y2={8}
+                stroke={FADER_CAP_LINE}
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+            </g>
             <text
               x={cx}
               y={FADER_LABEL_Y}
               textAnchor="middle"
               fontSize="9"
-              fill={TEXT_DIM}
-              style={{ userSelect: "none" }}
+              fontWeight="600"
+              fill={TEXT_PRINT}
+              style={NO_SELECT}
             >
-              {num}
+              {i + 1}
             </text>
-            {/* mapping label */}
             {faderLabel?.name && (
               <text
                 x={cx}
-                y={FADER_LABEL_Y + 12}
+                y={FADER_LABEL_Y + 11}
                 textAnchor="middle"
                 fontSize="8"
                 fill="var(--accent)"
-                opacity="0.7"
-                style={{ userSelect: "none" }}
+                style={NO_SELECT}
               >
                 {faderLabel.name}
               </text>
@@ -964,81 +949,77 @@ export function MiniLab3Svg({
       })}
 
       {/* ── Text row: MINILAB 3 / MIDI CH / ARTURIA ──────────────────────── */}
-      {/* MINILAB 3 */}
       <text
-        x={83}
-        y={375}
-        fontSize="14"
-        fontWeight="700"
+        x={76}
+        y={TEXT_ROW_Y}
+        fontSize="17.5"
+        letterSpacing="0.6"
         fill={TEXT_BRAND}
-        style={{ userSelect: "none" }}
+        style={NO_SELECT}
       >
-        MINI
-        <tspan fontWeight="400">LAB</tspan>
-        <tspan fontWeight="700"> 3</tspan>
+        <tspan fontWeight="400">MINI</tspan>
+        <tspan fontWeight="800">LAB</tspan>
+        <tspan fontWeight="400"> 3</tspan>
       </text>
-
-      {/* MIDI CH 1 2 … 16 */}
-      <text x={248} y={375} fontSize="8" fill={TEXT_DIM} style={{ userSelect: "none" }}>
+      <text x={209} y={TEXT_ROW_Y} fontSize="7" fontWeight="600" fill={TEXT_DIM} style={NO_SELECT}>
         MIDI CH
       </text>
-      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].map((n) => (
+      {Array.from({ length: 16 }, (_, n) => (
         <text
           key={n}
-          x={310 + (n - 1) * 38}
-          y={375}
+          x={MIDI_CH_X0 + n * MIDI_CH_STEP}
+          y={TEXT_ROW_Y}
           textAnchor="middle"
-          fontSize="8"
+          fontSize="7.5"
+          fontWeight="600"
           fill={TEXT_DIM}
-          style={{ userSelect: "none" }}
+          style={NO_SELECT}
         >
-          {n}
+          {n + 1}
         </text>
       ))}
-
-      {/* ARTURIA */}
       <text
-        x={1075}
-        y={375}
+        x={900}
+        y={TEXT_ROW_Y}
         textAnchor="end"
-        fontSize="14"
-        fontWeight="700"
+        fontSize="17.5"
+        fontWeight="800"
+        letterSpacing="3.4"
         fill={TEXT_BRAND}
-        style={{ userSelect: "none" }}
+        style={NO_SELECT}
       >
         ARTURIA
       </text>
 
       {/* ── Keys ─────────────────────────────────────────────────────────── */}
-      {/* Key bed */}
+      {/* the key bed behind the keys, and the lip below them */}
+      <rect x={KEYS_X - 2} y={KEYS_Y - 2} width={KEYS_W + 4} height={KEYS_H + 4} fill={KEY_BED} />
       <rect
-        x={KEYS_X - 4}
-        y={KEYS_Y - 5}
-        width={KEYS_W + 8}
-        height={KEYS_H + 5}
-        rx={4}
-        fill={KEY_BED}
+        x={KEYS_X - 2}
+        y={KEYS_Y + KEYS_H + 2}
+        width={KEYS_W + 4}
+        height={22}
+        rx={2}
+        fill={KEY_LIP}
       />
-      {/* White keys */}
       {whiteKeys.map((k) => (
         <rect
           key={k.midi}
           data-key={k.midi}
-          x={KEYS_X + k.x * WHITE_W + 0.5}
+          x={KEYS_X + k.x * WHITE_W + 0.6}
           y={KEYS_Y}
-          width={WHITE_W - 1}
+          width={WHITE_W - 1.2}
           height={KEYS_H}
-          rx={3}
+          rx={2.5}
           fill={WHITE_KEY}
           stroke={KEY_STROKE}
-          strokeWidth="0.8"
+          strokeWidth="0.6"
           style={{ cursor: onKeyDown ? "pointer" : undefined }}
           onPointerDown={(e) => handleKeyPointerDown(k.midi, e)}
           onPointerUp={() => handleKeyPointerUp(k.midi)}
           onPointerLeave={() => handleKeyPointerUp(k.midi)}
         />
       ))}
-      {/* Black keys */}
       {blackKeys.map((k) => (
         <rect
           key={k.midi}
@@ -1063,8 +1044,8 @@ export function MiniLab3Svg({
           key={k.midi}
           data-key-dot={k.midi}
           cx={KEYS_X + (k.x + k.w / 2) * WHITE_W}
-          cy={k.white ? KEYS_Y + KEYS_H - 64 : KEYS_Y + BLACK_KEY_H - 48}
-          r={5}
+          cy={k.white ? KEYS_Y + KEYS_H - 50 : KEYS_Y + BLACK_KEY_H - 38}
+          r={4.5}
           fill="var(--accent)"
           opacity={0.75}
           style={{ display: "none", pointerEvents: "none" }}
@@ -1076,24 +1057,25 @@ export function MiniLab3Svg({
           key={k.midi}
           data-key-note={k.midi}
           x={KEYS_X + (k.x + k.w / 2) * WHITE_W}
-          y={k.white ? KEYS_Y + KEYS_H - 22 : KEYS_Y + BLACK_KEY_H - 16}
+          y={k.white ? KEYS_Y + KEYS_H - 18 : KEYS_Y + BLACK_KEY_H - 14}
           textAnchor="middle"
-          fontSize={k.white ? KEY_LABEL_SIZE : 16}
+          fontSize={k.white ? KEY_LABEL_SIZE : 12.5}
           fontWeight="600"
           fill="#ffffff"
           stroke="rgba(0,0,0,0.45)"
-          strokeWidth={k.white ? 3 : 2.5}
+          strokeWidth={k.white ? 2.6 : 2}
           paintOrder="stroke"
-          style={{ pointerEvents: "none", userSelect: "none" }}
+          style={NO_SELECT}
         />
       ))}
     </svg>
   );
 }
 
-// ── Inline screen display ─────────────────────────────────────────────────
+// ── The screen ────────────────────────────────────────────────────────────
 
-function ScreenText({ x, y, w: _w, h }: { x: number; y: number; w: number; h: number }) {
+/** The two lines of the MiniLab's screen, centered as the device shows them. */
+function ScreenText() {
   const line1Ref = useRef<SVGTextElement>(null);
   const line2Ref = useRef<SVGTextElement>(null);
 
@@ -1106,29 +1088,34 @@ function ScreenText({ x, y, w: _w, h }: { x: number; y: number; w: number; h: nu
     return useDisplay.subscribe((s) => update(s.text));
   }, []);
 
+  const cx = OLED.x + OLED.w / 2;
+  const font = "ui-monospace, Menlo, Consolas, monospace";
   return (
-    <>
+    <g clipPath="url(#ml3-oled)" data-testid="ml3-screen">
       <text
         ref={line1Ref}
-        x={x + 4}
-        y={y + h / 2 - 1}
-        fontSize="7"
-        fill="#7dd3fc"
-        fontFamily="monospace"
+        data-testid="ml3-screen-line1"
+        x={cx}
+        y={OLED.y + OLED.h / 2 - 3}
+        textAnchor="middle"
+        fontSize="8.5"
+        fill={OLED_TEXT}
+        fontFamily={font}
         style={{ userSelect: "none" }}
       >
         Rebeat
       </text>
       <text
         ref={line2Ref}
-        x={x + 4}
-        y={y + h / 2 + 8}
-        fontSize="6"
-        fill="#7dd3fc"
-        fontFamily="monospace"
-        opacity="0.7"
+        data-testid="ml3-screen-line2"
+        x={cx}
+        y={OLED.y + OLED.h / 2 + 9}
+        textAnchor="middle"
+        fontSize="8.5"
+        fill={OLED_TEXT}
+        fontFamily={font}
         style={{ userSelect: "none" }}
-      ></text>
-    </>
+      />
+    </g>
   );
 }

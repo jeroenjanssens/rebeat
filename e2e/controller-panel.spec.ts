@@ -96,14 +96,14 @@ test("MiniLab 3: SVG renders with the map active and knob CC moves the needle", 
   });
 
   // Get the knob-0 needle's current transform
-  const needleBefore = await page.locator('[data-knob-needle="0"]').getAttribute("transform");
+  const needleBefore = await page.locator('[data-knob-cap="0"]').getAttribute("transform");
 
   // Send knob 1 (CC 74) fully right
   await send(page, "MiniLab3 MIDI", [0xb0, 74, 127]);
 
   // Needle should have rotated (transform changed)
   await expect
-    .poll(() => page.locator('[data-knob-needle="0"]').getAttribute("transform"))
+    .poll(() => page.locator('[data-knob-cap="0"]').getAttribute("transform"))
     .not.toBe(needleBefore);
 });
 
@@ -122,13 +122,13 @@ test("MiniLab 3: fader CC moves the fader thumb", async ({ page }) => {
   await expect(page.locator('[data-fader-thumb="0"]').first()).toBeVisible();
 
   // Get fader-0 thumb's current y
-  const thumbBefore = await page.locator('[data-fader-thumb="0"]').getAttribute("y");
+  const thumbBefore = await page.locator('[data-fader-thumb="0"]').getAttribute("transform");
 
   // Send fader 1 (CC 82) to top
   await send(page, "MiniLab3 MIDI", [0xb0, 82, 127]);
 
   await expect
-    .poll(() => page.locator('[data-fader-thumb="0"]').getAttribute("y"))
+    .poll(() => page.locator('[data-fader-thumb="0"]').getAttribute("transform"))
     .not.toBe(thumbBefore);
 });
 
@@ -383,4 +383,123 @@ test("relative knobs 1 and 5 step the voicing and the bass, fast turns too (D140
   await expect(bass).toHaveText("−3");
   await turn(93, [65, 65, 65]);
   await expect(bass).toHaveText("Off");
+});
+
+test("the pads in the tracks' colors, blue and purple for chords, Shift's own; Shift + pads run the transport (D144)", async ({
+  page,
+}) => {
+  await midiDevices(page, ["Minilab3 MIDI"]);
+  await page.getByTestId("midi-use-detected").click();
+  await page.keyboard.press("Escape");
+  await openControllerPanel(page);
+  const padColor = (i: number) =>
+    page.locator(`[data-pad-color]`).nth(i).getAttribute("data-pad-color");
+  const trackColors = await page.evaluate(() =>
+    (window as never as W).__rebeat.store
+      .getState()
+      .project.tracks.slice(0, 8)
+      .map((t) => (t as unknown as { color: string }).color),
+  );
+  // Drum mode: each pad the color of its track
+  for (let i = 0; i < trackColors.length; i++) expect(await padColor(i)).toBe(trackColors[i]);
+  // the device gets them too (7-bit RGB, pad ids 0x04…)
+  const sent = () =>
+    page.evaluate(
+      () =>
+        (window as never as { __midiSent: Record<string, number[][]> }).__midiSent[
+          "Minilab3 MIDI"
+        ] ?? [],
+    );
+  const padMsg = (msgs: number[][], id: number) =>
+    msgs.filter((m) => m[0] === 0xf0 && m[6] === 0x02 && m[8] === 0x16 && m[9] === id).at(-1);
+  const rgb = (hex: string) =>
+    [1, 3, 5].map((i) => Math.round((parseInt(hex.slice(i, i + 2), 16) * 127) / 255));
+  await expect
+    .poll(async () => padMsg(await sent(), 0x04)?.slice(10, 13))
+    .toEqual(rgb(trackColors[0]));
+
+  // Chord mode: chord types blue, extensions purple, on the device too
+  await page.getByTestId("pad-mode").getByRole("button", { name: "Chord" }).click();
+  const blue = await padColor(0);
+  const purple = await padColor(4);
+  expect(blue).not.toBe(purple);
+  for (let i = 0; i < 4; i++) expect(await padColor(i)).toBe(blue);
+  for (let i = 4; i < 8; i++) expect(await padColor(i)).toBe(purple);
+  await expect.poll(async () => padMsg(await sent(), 0x0b)?.slice(10, 13)).toEqual(rgb(purple!));
+
+  // Shift held: the pads' second functions in the MiniLab's colors
+  await send(page, "Minilab3 MIDI", [0xb0, 9, 127]);
+  await expect(page.getByTestId("ml3-shift")).toHaveAttribute("data-held", "true");
+  expect(await padColor(5)).not.toBe(purple); // Play: green
+  // Shift + pad 6 plays, Shift + pad 5 stops (a pad's note while Shift is held)
+  const playing = () =>
+    page.evaluate(
+      () =>
+        (
+          window as never as { __rebeat: { store: { getState(): { playing: boolean } } } }
+        ).__rebeat.store.getState().playing,
+    );
+  await send(page, "Minilab3 MIDI", [0x99, 41, 100]);
+  await send(page, "Minilab3 MIDI", [0x89, 41, 0]);
+  await expect.poll(playing).toBe(true);
+  await send(page, "Minilab3 MIDI", [0x99, 40, 100]);
+  await send(page, "Minilab3 MIDI", [0x89, 40, 0]);
+  await expect.poll(playing).toBe(false);
+  await send(page, "Minilab3 MIDI", [0xb0, 9, 0]);
+  await expect(page.getByTestId("ml3-shift")).not.toHaveAttribute("data-held", "true");
+  expect(await padColor(5)).toBe(purple);
+  // in DAW mode the MiniLab sends CC 107 for Shift + Play, CC 106 for Shift + Stop
+  await send(page, "Minilab3 MIDI", [0xb0, 107, 127]);
+  await send(page, "Minilab3 MIDI", [0xb0, 107, 0]);
+  await expect.poll(playing).toBe(true);
+  await send(page, "Minilab3 MIDI", [0xb0, 106, 127]);
+  await send(page, "Minilab3 MIDI", [0xb0, 106, 0]);
+  await expect.poll(playing).toBe(false);
+});
+
+test("the screen shows line 1 on top, centered, as the device does (row 0x02 on top)", async ({
+  page,
+}) => {
+  await midiDevices(page, ["Minilab3 MIDI"]);
+  await page.getByTestId("midi-use-detected").click();
+  await page.keyboard.press("Escape");
+  await openControllerPanel(page);
+  const l1 = page.getByTestId("ml3-screen-line1");
+  const l2 = page.getByTestId("ml3-screen-line2");
+  await expect(l1).toHaveAttribute("text-anchor", "middle");
+  const y1 = Number(await l1.getAttribute("y"));
+  const y2 = Number(await l2.getAttribute("y"));
+  expect(y1).toBeLessThan(y2);
+  // the device gets line 1 in row 0x02, without the old three spaces in front
+  await page.evaluate(async () => {
+    const w = window as never as {
+      __rebeat: { settings(): Promise<{ getState(): { set(p: object): void } }> };
+    };
+    (await w.__rebeat.settings()).getState().set({ midiShowDisplayNames: true });
+  });
+  await send(page, "Minilab3 MIDI", [0xb0, 74, 65]); // a knob: its name shows for a moment
+  await expect
+    .poll(async () => {
+      const msgs = await page.evaluate(
+        () =>
+          (window as never as { __midiSent: Record<string, number[][]> }).__midiSent[
+            "Minilab3 MIDI"
+          ] ?? [],
+      );
+      const d = msgs.filter((m) => m[0] === 0xf0 && m[6] === 0x04 && m[8] === 0x60).at(-1);
+      if (!d) return null;
+      return { row: d[9], text: String.fromCharCode(...d.slice(10, d.indexOf(0x00, 10))) };
+    })
+    .toEqual({ row: 0x02, text: (await l1.textContent()) ?? "" });
+});
+
+test("a turning knob lights up in the accent for a moment", async ({ page }) => {
+  await midiDevices(page, ["Minilab3 MIDI"]);
+  await page.getByTestId("midi-use-detected").click();
+  await page.keyboard.press("Escape");
+  await openControllerPanel(page);
+  const cap = page.locator('[data-knob-cap="2"]');
+  await send(page, "Minilab3 MIDI", [0xb0, 76, 65]);
+  await expect(cap).toHaveAttribute("data-turning", "true");
+  await expect(cap).not.toHaveAttribute("data-turning", "true");
 });

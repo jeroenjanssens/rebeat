@@ -51,6 +51,7 @@ import {
   mapById,
   missingSlots,
   slotKind,
+  SHIFT_PADS,
 } from "../midi/controllers";
 import { emitControllerEvent, type ControlKind } from "../midi/controllerEvents";
 import { browsePlayable } from "../library/playable";
@@ -365,6 +366,7 @@ function report(
     down?: boolean;
     target?: string;
     targetValue?: number;
+    turn?: number;
   },
 ) {
   const entry: MonitorEntry = {
@@ -384,6 +386,7 @@ function report(
       ...(ev.down !== undefined ? { down: ev.down } : {}),
       ...(ev.target ? { target: ev.target } : {}),
       ...(ev.targetValue !== undefined ? { targetValue: ev.targetValue } : {}),
+      ...(ev.turn !== undefined ? { turn: ev.turn } : {}),
       action,
     });
   }
@@ -469,9 +472,14 @@ function handle(e: MIDIMessageEvent, device: string) {
     }
   }
 
-  if (m.type === "noteon")
+  if (m.type === "noteon") {
+    const done = shiftPad(m);
+    if (done) return report(m, done, noteEvent(m, true));
     return report(m, playNote(m.channel, m.number, m.value / 127), noteEvent(m, true));
+  }
   if (m.type === "noteoff") {
+    if (shiftPadsHeld.delete(`${m.device}:${m.channel}:${m.number}`))
+      return report(m, "Shift + pad released", noteEvent(m, false));
     if (releaseChordPad(m.channel, m.number))
       return report(m, "Chord pad released", noteEvent(m, false));
     releaseNote(m.number);
@@ -540,7 +548,8 @@ function applyMapping(map: MidiMapping, m: MidiMessage, scope: "project" | "glob
     const settings = useSettings.getState();
     const n = voicing ? 2 * VOICING_RANGE + 1 : 4;
     const current = voicing ? settings.chordVoicing + VOICING_RANGE : 3 - settings.bassOctaves;
-    const zone = steppedKnob(map, m.value, before, n, current);
+    const mode = knobMode(map, m.value);
+    const zone = steppedKnob(mode, m.value, before, n, current);
     if (zone !== current) {
       if (voicing) setChordVoicing(zone - VOICING_RANGE);
       else setBassOctaves((3 - zone) as 0 | 1 | 2 | 3);
@@ -553,6 +562,7 @@ function applyMapping(map: MidiMapping, m: MidiMessage, scope: "project" | "glob
       ...slotEventFromMapping(map),
       value: m.value,
       target: voicing ? "keys:voicing" : "keys:bass",
+      ...(mode !== "absolute" ? { turn: relativeDelta(mode, m.value) } : {}),
       // where the knob's needle points: the voicing in its range, the bass (Off at the right)
       targetValue: voicing
         ? (s.chordVoicing + VOICING_RANGE) / (2 * VOICING_RANGE)
@@ -604,13 +614,13 @@ function applyMapping(map: MidiMapping, m: MidiMessage, scope: "project" | "glob
     if (useSettings.getState().padMode === "key") {
       if (delta !== 0) keyDialTurn(Math.sign(delta), bySection);
       const action = `${map.label}: Key dial`;
-      report(m, action, { kind: "encoder", index: 0, slot: map.slot, value: m.value });
+      report(m, action, { kind: "encoder", index: 0, slot: map.slot, value: m.value, turn: delta });
       return action;
     }
     // one sound per message, as Arturia's own scripts do (fast turns send bigger steps)
     if (delta !== 0) browsePlayable(Math.sign(delta), bySection);
     const action = `${map.label}: browse ${bySection ? "section" : "sound"}`;
-    report(m, action, { kind: "encoder", index: 0, slot: map.slot, value: m.value });
+    report(m, action, { kind: "encoder", index: 0, slot: map.slot, value: m.value, turn: delta });
     return action;
   }
 
@@ -685,7 +695,13 @@ function applyMapping(map: MidiMapping, m: MidiMessage, scope: "project" | "glob
   lastSet.set(target, v);
   applySoon(target, v);
   const action = `${map.label}${where} = ${Math.round(v * 100)}%`;
-  report(m, action, { ...slotEv, value: m.value, target, targetValue: v });
+  report(m, action, {
+    ...slotEv,
+    value: m.value,
+    target,
+    targetValue: v,
+    ...(mode !== "absolute" ? { turn: relativeDelta(mode, m.value) } : {}),
+  });
   return action;
 }
 
@@ -731,13 +747,12 @@ function knobMode(map: MidiMapping, value: number): MidiMode {
  * a relative knob moves one step per message.
  */
 function steppedKnob(
-  map: MidiMapping,
+  mode: MidiMode,
   value: number,
   before: number | undefined,
   n: number,
   current: number,
 ): number {
-  const mode = knobMode(map, value);
   if (mode !== "absolute") {
     const step = Math.sign(relativeDelta(mode, value));
     return Math.max(0, Math.min(n - 1, current + step));
@@ -789,6 +804,25 @@ function releaseNote(note: number) {
 
 /** Notes on the pads' channel play step tracks by position (36 = track 1, D119); others play
  * the keys' target track (or tracks by position when none is selected, D119). */
+/** Pads pressed with Shift held, so their release doesn't play anything either. */
+const shiftPadsHeld = new Set<string>();
+
+/**
+ * Shift + pads 4–8 (the MiniLab 3's loop, stop, play, record and tap): a pad's note while Shift
+ * is held runs its command instead of playing (in DAW mode the device sends CCs for these, which
+ * the map has as slots). Null when it isn't one.
+ */
+function shiftPad(m: MidiMessage): string | null {
+  if (!isShiftHeld(m.device)) return null;
+  const pads = useSettings.getState().midiPadsChannel;
+  const index = m.number - 36;
+  if (!(pads === "any" || pads === m.channel) || index < 3 || index > 7) return null;
+  const [name, command] = SHIFT_PADS[index - 3];
+  runCommand(command);
+  shiftPadsHeld.add(`${m.device}:${m.channel}:${m.number}`);
+  return `Shift + Pad ${index + 1}: ${name}`;
+}
+
 function playNote(channel: number, note: number, velocity: number): string {
   const s = useStore.getState();
   const route = routeNote(channel, note, useSettings.getState().midiPadsChannel, keysTakeNotes());

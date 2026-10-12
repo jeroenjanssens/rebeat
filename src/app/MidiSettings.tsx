@@ -438,6 +438,14 @@ function MiniLab3DisplayOptions() {
         />
         Show names on the MiniLab display
       </label>
+      <label className="flex items-center gap-1.5" data-hint="app.midi.padColors">
+        <input
+          type="checkbox"
+          checked={settings.midiMiniLabPadColors}
+          onChange={(e) => useSettings.getState().set({ midiMiniLabPadColors: e.target.checked })}
+        />
+        Light the pads in the tracks' colors
+      </label>
       <button
         className="tool-btn border border-line"
         data-testid="minilab3-send-test"

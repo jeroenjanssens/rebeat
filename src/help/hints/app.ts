@@ -511,6 +511,11 @@ const hints: Hints = {
     text: "Show names on the MiniLab display sends the current track name and sound to the MiniLab 3's OLED screen. Send test text checks whether your device is receiving: it sends \"Rebeat / Connected!\" right now. The display SysEx format comes from community research and is unconfirmed: use the test to check it. If nothing shows, tick DAW handshake (it sends Arturia's DAW connection first, which may switch the MiniLab to DAW mode).",
     guide: "performance-your-controller",
   },
+  "app.midi.padColors": {
+    title: "MiniLab 3 pad lights",
+    text: "Lights the MiniLab 3's pads in the colors of what they play: in Drum mode each pad the color of its track, in Chord and Key mode the chord types blue and the extensions purple. While you hold Shift the MiniLab shows its own colors for the pads' second functions. The pad light SysEx comes from community research: if the pads don't change, tell us what your MiniLab does.",
+    guide: "performance-your-controller",
+  },
 
   // ── Calibration dialog ───────────────────────────────────────────────────
   "app.calibration.start": {

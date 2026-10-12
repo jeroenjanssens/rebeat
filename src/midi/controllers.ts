@@ -86,6 +86,15 @@ const faders = (ccs: number[], channel: number): MapSlot[] =>
     target: FADER_TARGETS[i].target,
   }));
 
+/** The MiniLab 3's Shift + pad 4–8 functions, as printed on the pads: name and command. */
+export const SHIFT_PADS = [
+  ["Loop", "transport.mode"],
+  ["Stop", "transport.stop"],
+  ["Play", "transport.play"],
+  ["Record", "transport.record"],
+  ["Tap", "transport.tap"],
+] as const;
+
 export const CONTROLLER_MAPS: ControllerMap[] = [
   {
     id: "minilab3",
@@ -153,6 +162,19 @@ export const CONTROLLER_MAPS: ControllerMap[] = [
         kind: "button",
         formerly: [27],
       },
+      // Shift + pads 4–8 (their second labels: loop, stop, play, record, tap). In DAW mode these
+      // are CC 105–109 (MaksPV/minilab3-mixxx-config); in ARTURIA mode a pad's note while Shift
+      // is held does the same (midi.ts: shiftPad)
+      ...SHIFT_PADS.map(([name, command], i): MapSlot => ({
+        slot: `shift-pad${i + 4}`,
+        label: `Shift + Pad ${i + 4} (${name})`,
+        type: "cc",
+        channel: 0,
+        number: 105 + i,
+        mode: "absolute",
+        target: `command:${command}`,
+        kind: "button",
+      })),
     ],
     checklist: [
       "Put the MiniLab in ARTURIA mode: hold Shift and press Pad 3 until the display says Arturia.",

@@ -109,6 +109,8 @@ export interface Settings {
   midiShowDisplayNames: boolean;
   /** Send the MiniLab 3 the DAW handshake before writing its display (it may switch it to DAW mode). */
   midiMiniLabHandshake: boolean;
+  /** Light the MiniLab 3's pads in the colors of what they play (D144). */
+  midiMiniLabPadColors: boolean;
   /** The Keys strip (a library sound on the keys, D126): level and sends. */
   keysMix: { volume: number; sendA: number; sendB: number };
   /** The keys play what the active synth editor edits (D132). */
@@ -187,6 +189,7 @@ export const DEFAULT_SETTINGS: Settings = {
   midiFollowStart: true,
   midiShowDisplayNames: true,
   midiMiniLabHandshake: false,
+  midiMiniLabPadColors: true,
   keysMix: { volume: 0.8, sendA: 0, sendB: 0 },
   keysFollowEditor: false,
   padMode: "drum",

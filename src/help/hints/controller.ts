@@ -18,7 +18,7 @@ const hints: Hints = {
   },
   "controller.screen": {
     title: "Display",
-    text: "Mirrors the text Rebeat sends to the device's screen. The MiniLab 3's display shows the current track name, sound name, or a knob value while it turns.",
+    text: "Mirrors the text Rebeat sends to the device's screen, two lines centered as the MiniLab shows them: the current track and its sound, or a knob's name and value while it turns.",
     guide: "performance-your-controller",
   },
   "controller.encoder": {
@@ -38,7 +38,7 @@ const hints: Hints = {
   },
   "controller.btn.0": {
     title: "Shift button",
-    text: "Hold Shift to access secondary functions: the octave buttons change the keyboard octave, pads switch banks (A/B).",
+    text: "Hold Shift for the second functions printed on the pads: Shift + pad 4 switches loop and song mode, 5 stops, 6 plays, 7 records and 8 taps the tempo. While it's held, the pads show those functions in the MiniLab's own colors, here and on the device. With Shift the octave buttons change the keyboard octave.",
     guide: "performance-your-controller",
   },
   "controller.btn.1": {
@@ -58,42 +58,42 @@ const hints: Hints = {
   },
   "controller.knob.0": {
     title: "Knob 1",
-    text: "Turns the selected track's first SOUND knob (Tune, Macro 1, or whatever the track plays). The name and value are shown below the knob. Until you move it, it's drawn faint where its value is: MIDI can't ask the device where its controls are.",
+    text: "Turns the selected track's first SOUND knob (Tune, Macro 1, or whatever the track plays). The name and value are shown below the knob. Its white cap turns as you turn the knob and lights up for a moment.",
     guide: "performance-your-controller",
   },
   "controller.knob.1": {
     title: "Knob 2",
-    text: "Turns the selected track's second SOUND knob. Until you move it, it's drawn faint where its value is: MIDI can't ask the device where its controls are.",
+    text: "Turns the selected track's second SOUND knob. Its white cap turns as you turn the knob and lights up for a moment.",
     guide: "performance-your-controller",
   },
   "controller.knob.2": {
     title: "Knob 3",
-    text: "Turns the selected track's third SOUND knob. Until you move it, it's drawn faint where its value is: MIDI can't ask the device where its controls are.",
+    text: "Turns the selected track's third SOUND knob. Its white cap turns as you turn the knob and lights up for a moment.",
     guide: "performance-your-controller",
   },
   "controller.knob.3": {
     title: "Knob 4",
-    text: "Turns the selected track's fourth SOUND knob. Until you move it, it's drawn faint where its value is: MIDI can't ask the device where its controls are.",
+    text: "Turns the selected track's fourth SOUND knob. Its white cap turns as you turn the knob and lights up for a moment.",
     guide: "performance-your-controller",
   },
   "controller.knob.4": {
     title: "Knob 5",
-    text: "Turns the selected track's fifth SOUND knob. Until you move it, it's drawn faint where its value is: MIDI can't ask the device where its controls are.",
+    text: "Turns the selected track's fifth SOUND knob. Its white cap turns as you turn the knob and lights up for a moment.",
     guide: "performance-your-controller",
   },
   "controller.knob.5": {
     title: "Knob 6",
-    text: "Turns the selected track's sixth SOUND knob. Until you move it, it's drawn faint where its value is: MIDI can't ask the device where its controls are.",
+    text: "Turns the selected track's sixth SOUND knob. Its white cap turns as you turn the knob and lights up for a moment.",
     guide: "performance-your-controller",
   },
   "controller.knob.6": {
     title: "Knob 7",
-    text: "Turns the selected track's seventh SOUND knob. Until you move it, it's drawn faint where its value is: MIDI can't ask the device where its controls are.",
+    text: "Turns the selected track's seventh SOUND knob. Its white cap turns as you turn the knob and lights up for a moment.",
     guide: "performance-your-controller",
   },
   "controller.knob.7": {
     title: "Knob 8",
-    text: "Turns the selected track's eighth SOUND knob. Until you move it, it's drawn faint where its value is: MIDI can't ask the device where its controls are.",
+    text: "Turns the selected track's eighth SOUND knob. Its white cap turns as you turn the knob and lights up for a moment.",
     guide: "performance-your-controller",
   },
   "controller.padMode.drum": {
@@ -228,42 +228,42 @@ const hints: Hints = {
   },
   "controller.pad.0": {
     title: "Pad 1",
-    text: "Plays track 1 (bank A). Click to trigger it now. Shift + pad switches to bank B (tracks 9–16). On the MiniLab 3: Shift + Pad 3 switches ARTURIA/DAW mode.",
+    text: "Plays track 1 (bank A), and lights in its color (on the MiniLab 3 too). Click to trigger it now. Shift + pad switches to bank B (tracks 9–16). On the MiniLab 3: Shift + Pad 3 switches ARTURIA/DAW mode.",
     guide: "performance-your-controller",
   },
   "controller.pad.1": {
     title: "Pad 2",
-    text: "Plays track 2 (bank A). Click to trigger it.",
+    text: "Plays track 2 (bank A), lit in its color. Click to trigger it.",
     guide: "performance-your-controller",
   },
   "controller.pad.2": {
     title: "Pad 3",
-    text: "Plays track 3 (bank A). Click to trigger it.",
+    text: "Plays track 3 (bank A), lit in its color. Click to trigger it.",
     guide: "performance-your-controller",
   },
   "controller.pad.3": {
     title: "Pad 4",
-    text: "Plays track 4 (bank A). Click to trigger it.",
+    text: "Plays track 4 (bank A), lit in its color. Click to trigger it. Shift + pad 4: loop or song mode.",
     guide: "performance-your-controller",
   },
   "controller.pad.4": {
     title: "Pad 5",
-    text: "Plays track 5 (bank A). Click to trigger it.",
+    text: "Plays track 5 (bank A), lit in its color. Click to trigger it. Shift + pad 5: stop.",
     guide: "performance-your-controller",
   },
   "controller.pad.5": {
     title: "Pad 6",
-    text: "Plays track 6 (bank A). Click to trigger it.",
+    text: "Plays track 6 (bank A), lit in its color. Click to trigger it. Shift + pad 6: play.",
     guide: "performance-your-controller",
   },
   "controller.pad.6": {
     title: "Pad 7",
-    text: "Plays track 7 (bank A). Click to trigger it.",
+    text: "Plays track 7 (bank A), lit in its color. Click to trigger it. Shift + pad 7: record.",
     guide: "performance-your-controller",
   },
   "controller.pad.7": {
     title: "Pad 8",
-    text: "Plays track 8 (bank A). Click to trigger it.",
+    text: "Plays track 8 (bank A), lit in its color. Click to trigger it. Shift + pad 8: tap the tempo.",
     guide: "performance-your-controller",
   },
   "controller.fader.0": {

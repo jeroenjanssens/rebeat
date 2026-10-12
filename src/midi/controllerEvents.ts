@@ -18,6 +18,8 @@ export interface ControllerEvent {
   target?: string;
   /** The target's value after this message (0..1), if it has one. */
   targetValue?: number;
+  /** A relative knob or encoder: the steps it turned (+ clockwise). */
+  turn?: number;
   /** What Rebeat did, as the monitor says it. */
   action: string;
 }

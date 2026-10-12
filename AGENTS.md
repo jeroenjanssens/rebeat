@@ -3,7 +3,7 @@
 This file is the fast way in. It explains what Rebeat is, how the code is organized, how the
 pieces talk to each other, how to verify a change, and the gotchas that cost time before.
 `PLAN.md` is the long-form record: the product spec (§1–§3), the original architecture (§4),
-and every design decision (§6, D1–D143). When this file and the code disagree, the code wins.
+and every design decision (§6, D1–D145). When this file and the code disagree, the code wins.
 Please fix this file in the same change.
 
 Status (2026-10-10): every phase of the original roadmap is built, plus several feature batches
@@ -162,7 +162,7 @@ src/
                        channel, pickup), controllers.ts (controller maps: MiniLab 3, MPK Mini MK3,
                        Launchkey Mini MK3/MK4; slot kinds), controllerEvents.ts (what each control
                        did, for the Controller panel), display.ts (a device's screen text, mirrored),
-                       displayFeed.ts (names to show)
+                       displayFeed.ts (names to show), padColors.ts (what the pads light in, D144)
   library/             samples and instruments:
                        - beatbox/ (D105–D118): classes, onsets (+ resample to 16 kHz), model.ts +
                          model.worker.ts (ONNX Runtime Web, loaded on first use), calibrate,
@@ -678,6 +678,8 @@ likely to need:
 | Chord voicing (knob 1) and the bass knob (knob 5)  | D140                      |
 | Telling absolute knobs from relative ones          | D141                      |
 | Stepped knobs (voicing, bass) as equal zones       | D142                      |
+| GM instruments that sustain loop their samples     | D143                      |
+| MiniLab 3: pad colors, Shift + pads, the picture   | D144–D145                 |
 
 Feature batches and their acceptance criteria are in PLAN.md §0.6b–§0.6h. Known limitations are
 in §0.7.
