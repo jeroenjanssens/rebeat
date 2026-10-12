@@ -162,8 +162,8 @@ by `state/keys.ts` instead of calling `startNote` directly.
     after all were up **starts a new set** (how hardware arps latch).
   - Turning Latch off releases what's latched (at the next arp step's end).
 - Works without the Arp too: a latched chord is simply held (an Orchid hold).
-- **The MiniLab 3's Hold button sends nothing** (Jeroen, 2026-10-12): Latch is a panel toggle and the command `keys.latch` (map any button to it). (Was: a map slot `hold`, `target: keys:latch`;
-  its CC is unknown, so the slot starts unassigned (learn it) until we see it in the Monitor).
+- **The MiniLab 3's Hold button sends nothing** (Jeroen, 2026-10-12), so Latch is a toggle in
+  the panel and the command `keys.latch` (give it a shortcut, or MIDI-learn any button to it).
 - **Stop** (a panic) releases a latch too, so Stop always means silence (D99).
 
 ## 5. Balance
