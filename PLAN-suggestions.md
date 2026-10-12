@@ -92,7 +92,7 @@ In Next mode a menu picks one of the famous progressions that fit the key; pad 1
 holds its next chord (following where you are), the other pads the usual suggestions. The
 menu shows each one's roman numerals, its chords in the key and what it is.
 
-## 3c. Auto: the progression plays itself (agreed 2026-10-12, D162–D164)
+## 3c. Auto: the progression plays itself (agreed and built 2026-10-12, D162–D164)
 
 In Next mode, with a progression picked, **▶ Auto** plays it by itself: the chord changes on its
 own, in time, and **■ Stop** ends it. You play over it (or record it: a quick way to write a

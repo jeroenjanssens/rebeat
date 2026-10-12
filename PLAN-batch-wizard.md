@@ -1,7 +1,7 @@
-# Plan: pad colors after a press, the piano on the keys, the library in the Keys menu, Auto, 26 new synths, a synth wizard
+# Plan: pad colors after a press, the piano on the keys, the library in the Keys menu, Auto, 27 new synths, a synth wizard
 
-Status: agreed 2026-10-12 (Jeroen: "go with all the defaults and just start implementing"),
-decisions D162–D170. How we work: on `main`, commit early and often, e2e once at the end.
+Status: agreed and built 2026-10-12 (PLAN.md §0.6m; Jeroen: "go with all the defaults and just
+start implementing"), decisions D162–D170. §5 has 27 synths (the table listed 27). How we work: on `main`, commit early and often, e2e once at the end.
 
 ## 1. The MiniLab's pads go orange after a press (D165)
 
