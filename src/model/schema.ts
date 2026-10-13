@@ -6,6 +6,7 @@ import { defaultBuses, defaultMaster, defaultPerf } from "./effects";
 import { uid } from "./id";
 import { EFFECT_PARAMS, MIX_PARAMS, SOUND_PARAMS, defaultParams } from "./params";
 import { emptyLane, type Project } from "./project";
+import { clampBpm } from "./tempoMap";
 import { player } from "./tracks";
 import {
   MAX_STEPS,
@@ -18,7 +19,7 @@ import {
 } from "./types";
 import { convertSynthKnobs, defaultSynth } from "../library/synthTrack";
 
-export const SCHEMA_VERSION = 9;
+export const SCHEMA_VERSION = 10;
 
 export interface SerializedProject {
   format: "rebeat-project";
@@ -134,6 +135,8 @@ const migrations: Record<number, Migration> = {
   },
   // 8 → 9: Note.offset (D128) — optional field added; no data to migrate
   8: (p) => p,
+  // 9 → 10: section settings, tempo changes, automation and timeline audio (D182) — all optional
+  9: (p) => p,
 };
 
 /** The ADSR decay of a voice's SOUND knobs, renamed in version 7. */
@@ -255,7 +258,59 @@ export function normalizeProject(p: Project): Project {
     const first = Object.keys(p.patterns)[0];
     if (first) p.slots.push({ id: `slot-${first}`, patternId: first, repeats: 1 });
   }
+  normalizeArrangement(p);
   return p;
+}
+
+/** Section settings in range; tempo changes, automation and regions without their section,
+ * track or target dropped (D182). */
+function normalizeArrangement(p: Project) {
+  const trackIds = new Set(p.tracks.map((t) => t.id));
+  const slotIds = new Set(p.slots.map((s) => s.id));
+  for (const s of p.slots) {
+    s.repeats = Math.max(1, Math.min(64, Math.round(s.repeats) || 1));
+    if (s.mutes) {
+      s.mutes = s.mutes.filter((id) => trackIds.has(id));
+      if (!s.mutes.length) delete s.mutes;
+    }
+    if (s.transpose !== undefined) {
+      s.transpose = Math.max(-12, Math.min(12, Math.round(s.transpose)));
+      if (!s.transpose) delete s.transpose;
+    }
+    if (s.fill !== undefined && s.fill !== "last" && s.fill !== "all") delete s.fill;
+    const n = p.patterns[s.patternId].stepCount;
+    if (s.steps !== undefined) {
+      s.steps = Math.max(1, Math.round(s.steps));
+      if (s.steps >= n) delete s.steps;
+    }
+  }
+  const anchored = (a: { slotId: string; at: number }) =>
+    slotIds.has(a.slotId) && Number.isFinite(a.at) && a.at >= 0;
+  if (p.tempo) {
+    p.tempo = p.tempo.filter(anchored);
+    for (const t of p.tempo) t.bpm = clampBpm(t.bpm);
+    if (!p.tempo.length) delete p.tempo;
+  }
+  if (p.automation) {
+    p.automation = p.automation.filter((l) => {
+      const [kind, id] = l.target.split(":");
+      return kind !== "track" || trackIds.has(id);
+    });
+    for (const l of p.automation) {
+      l.id ??= uid("auto");
+      l.on ??= true;
+      l.points = (l.points ?? []).filter(anchored);
+      for (const pt of l.points) pt.value = Math.max(0, Math.min(1, pt.value));
+    }
+    if (!p.automation.length) delete p.automation;
+  }
+  if (p.regions) {
+    p.regions = p.regions.filter(
+      (r) => trackIds.has(r.trackId) && anchored(r.start) && r.length > 0 && r.sampleId,
+    );
+    for (const r of p.regions) r.offset = Math.max(0, r.offset || 0);
+    if (!p.regions.length) delete p.regions;
+  }
 }
 
 function normalizeEffects(list: Effect[]) {
@@ -278,5 +333,6 @@ export function projectSampleIds(p: Project): string[] {
     if (t.sound?.sampleId) ids.add(t.sound.sampleId);
     for (const z of t.sound?.zones ?? []) ids.add(z.sampleId);
   }
+  for (const r of p.regions ?? []) ids.add(r.sampleId);
   return [...ids];
 }

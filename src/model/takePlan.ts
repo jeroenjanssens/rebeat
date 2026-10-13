@@ -4,6 +4,7 @@
  * page longer, add pages (copies of the first, the keys' lanes emptied), make clones copies,
  * unroll repeats. The fixes mutate a project inside an immer recipe.
  */
+import { blockOf, splitAnchored } from "./arrangement";
 import { copySlot, slotPattern, unlinkSlot } from "./project";
 import type { Project } from "./project";
 import { MAX_STEPS, STEP_SIZE_QUARTERS, type Pattern } from "./types";
@@ -100,13 +101,23 @@ export function unroll(project: Project, slotId: string) {
   const slot = project.slots.find((s) => s.id === slotId);
   if (!slot || slot.repeats <= 1) return;
   const times = slot.repeats;
+  const length = blockOf(project, slotId)!.length;
   slot.repeats = 1;
-  let after = slot.id;
+  const parts = [slot.id];
   for (let n = 1; n < times; n++) {
-    const id = copySlot(project, slotId);
+    const id = copySlot(project, slotId, false);
     const at = project.slots.findIndex((s) => s.id === id);
     const [copy] = project.slots.splice(at, 1);
-    project.slots.splice(project.slots.findIndex((s) => s.id === after) + 1, 0, copy);
-    after = copy.id;
+    project.slots.splice(
+      project.slots.findIndex((s) => s.id === parts[parts.length - 1]) + 1,
+      0,
+      copy,
+    );
+    parts.push(copy.id);
   }
+  // fill on the last repeat: only the last part is a last repeat now
+  if (slot.fill === "last")
+    for (const id of parts.slice(0, -1)) delete project.slots.find((s) => s.id === id)!.fill;
+  // what was anchored to repeat k is now on part k (D187)
+  splitAnchored(project, slotId, parts, length);
 }

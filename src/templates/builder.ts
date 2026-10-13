@@ -1,7 +1,17 @@
 /** Helpers for writing templates and example songs as code. */
 import { defaultBuses, defaultMaster, defaultPerf } from "../model/effects";
 import { makePattern, makeTrack, type Project } from "../model/project";
-import type { Effect, Lane, Pattern, Sound, SoundCategory, StepSize, Track } from "../model/types";
+import { splitAnchored } from "../model/arrangement";
+import {
+  STEP_SIZE_QUARTERS,
+  type Effect,
+  type Lane,
+  type Pattern,
+  type Sound,
+  type SoundCategory,
+  type StepSize,
+  type Track,
+} from "../model/types";
 
 export function emptyProject(name: string, bpm: number): Project {
   return {
@@ -181,8 +191,23 @@ export function splitLongPages(p: Project, max = 32) {
   p.slots = p.slots.flatMap((slot) => {
     const pieces = parts.get(slot.patternId);
     if (!pieces) return [slot];
-    return Array.from({ length: slot.repeats }, (_, r) =>
-      pieces.map((part, k) => ({ id: `${slot.id}-${r}${k}`, patternId: part.id, repeats: 1 })),
+    const { id: _id, patternId: _p, repeats: _r, ...settings } = slot;
+    const out = Array.from({ length: slot.repeats }, (_, r) =>
+      pieces.map((part, k) => ({
+        ...structuredClone(settings),
+        id: `${slot.id}-${r}${k}`,
+        patternId: part.id,
+        repeats: 1,
+      })),
     ).flat();
+    // automation, tempo changes and regions move to the part they're in (D187)
+    const length = max * STEP_SIZE_QUARTERS[pieces[0].stepSize];
+    splitAnchored(
+      p,
+      slot.id,
+      out.map((s) => s.id),
+      length,
+    );
+    return out;
   });
 }

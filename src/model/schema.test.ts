@@ -277,6 +277,40 @@ describe("migration 6 → 7: step tracks (D93, D94)", () => {
   });
 });
 
+describe("migration 9 → 10 (D182)", () => {
+  it("loads a version 9 project unchanged", () => {
+    const p = demoProject();
+    const v9 = { ...JSON.parse(JSON.stringify(serializeProject(p))), schemaVersion: 9 };
+    expect(deserializeProject(v9)).toEqual(p);
+  });
+
+  it("drops anchors without their section and lists the regions' samples", () => {
+    const p = demoProject();
+    const slot = p.slots[0].id;
+    p.tempo = [
+      { slotId: slot, at: 0, bpm: 999 },
+      { slotId: "gone", at: 0, bpm: 90 },
+    ];
+    p.regions = [
+      {
+        id: "r",
+        trackId: p.tracks[0].id,
+        sampleId: "abc",
+        start: { slotId: slot, at: 0 },
+        length: 4,
+        offset: 0,
+      },
+    ];
+    p.slots[0].transpose = 30;
+    p.slots[0].mutes = ["nobody"];
+    const d = deserializeProject(JSON.parse(JSON.stringify(serializeProject(p))));
+    expect(d.tempo).toEqual([{ slotId: slot, at: 0, bpm: 300 }]);
+    expect(d.slots[0].transpose).toBe(12);
+    expect(d.slots[0].mutes).toBeUndefined();
+    expect(projectSampleIds(d)).toContain("abc");
+  });
+});
+
 describe("migration 7 → 8", () => {
   it("marks the old MIDI mappings absolute (D120)", () => {
     const p = demoProject();

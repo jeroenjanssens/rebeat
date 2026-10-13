@@ -7,6 +7,9 @@ import {
   MAX_STEPS,
   emptyStep,
   laneLength,
+  type AudioRegion,
+  type AutomationLane,
+  type TempoChange,
   type Lane,
   type Section,
   type Pattern,
@@ -17,6 +20,7 @@ import {
   type TrackMode,
 } from "./types";
 import { canClip, hitNoteOf, player } from "./tracks";
+import { copyAnchored, dropAnchored } from "./arrangement";
 
 export interface Project {
   name: string;
@@ -39,8 +43,14 @@ export interface Project {
   midiMappings: MidiMapping[];
   /** Performance: mute groups (track ids) and crossfader sides. */
   perf: PerfSetup;
-  /** Loop the page being edited, or play the pages in song order (D73). */
+  /** Loop the section being edited, or play the sections in song order (D73). */
   playMode: PlayMode;
+  /** Tempo changes after the start tempo (`bpm`), in song order (D192). */
+  tempo?: TempoChange[];
+  /** Automation lanes (D186). */
+  automation?: AutomationLane[];
+  /** Audio on the timeline (D188). */
+  regions?: AudioRegion[];
 }
 
 export type PlayMode = "loop" | "song";
@@ -156,21 +166,51 @@ function insertSlotAfter(project: Project, afterSlotId: string, slot: Section) {
   project.slots.splice(i + 1, 0, slot);
 }
 
-/** An independent page with duplicated content, inserted after the source. */
-export function copySlot(project: Project, slotId: string): string {
+/** A section's own settings (D183), for a copy or clone of it. */
+function sectionSettings(s: Section): Partial<Section> {
+  const { mutes, transpose, fill, steps } = s;
+  // through JSON: the mutes may be a draft (no structuredClone of drafts)
+  return JSON.parse(
+    JSON.stringify({
+      ...(mutes ? { mutes } : {}),
+      ...(transpose ? { transpose } : {}),
+      ...(fill ? { fill } : {}),
+      ...(steps ? { steps } : {}),
+    }),
+  );
+}
+
+/**
+ * A section with its own copy of the pattern, inserted after the source, with the source's
+ * settings and what's anchored to it (automation, tempo changes, regions: D187).
+ */
+export function copySlot(project: Project, slotId: string, withAnchors = true): string {
+  const sourceSlot = project.slots.find((s) => s.id === slotId)!;
   const source = slotPattern(project, slotId);
   const pattern = clonePattern(project, source, `${source.name} copy`);
   project.patterns[pattern.id] = pattern;
-  const slot: Section = { id: uid("slot"), patternId: pattern.id, repeats: 1 };
+  const slot: Section = {
+    id: uid("slot"),
+    patternId: pattern.id,
+    repeats: 1,
+    ...sectionSettings(sourceSlot),
+  };
   insertSlotAfter(project, slotId, slot);
+  if (withAnchors) copyAnchored(project, slotId, slot.id, () => uid("rgn"));
   return slot.id;
 }
 
-/** A linked page: a new slot that points to the same pattern. */
+/** A linked section: it points to the same pattern (with the source's settings and anchors). */
 export function cloneSlot(project: Project, slotId: string): string {
   const source = project.slots.find((s) => s.id === slotId)!;
-  const slot: Section = { id: uid("slot"), patternId: source.patternId, repeats: source.repeats };
+  const slot: Section = {
+    id: uid("slot"),
+    patternId: source.patternId,
+    repeats: source.repeats,
+    ...sectionSettings(source),
+  };
   insertSlotAfter(project, slotId, slot);
+  copyAnchored(project, slotId, slot.id, () => uid("rgn"));
   return slot.id;
 }
 
@@ -202,6 +242,7 @@ export function deleteSlot(project: Project, slotId: string) {
   const i = project.slots.findIndex((s) => s.id === slotId);
   const [slot] = project.slots.splice(i, 1);
   if (linkCount(project, slot.patternId) === 0) delete project.patterns[slot.patternId];
+  dropAnchored(project, slotId);
 }
 
 /** ×2: double the page length and duplicate its contents. */

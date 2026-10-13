@@ -296,13 +296,13 @@ describe("recordNoteOn: timed notes from the play styles (D149)", () => {
 });
 
 describe("schema 9 migration", () => {
-  it("is a no-op: projects round-trip with version 9", async () => {
+  it("is a no-op: projects round-trip", async () => {
     const { deserializeProject, serializeProject, SCHEMA_VERSION } =
       await import("../model/schema");
     const p = demoProject();
-    expect(SCHEMA_VERSION).toBe(9);
+    expect(SCHEMA_VERSION).toBeGreaterThanOrEqual(9);
     const json = JSON.parse(JSON.stringify(serializeProject(p)));
-    expect(json.schemaVersion).toBe(9);
+    expect(json.schemaVersion).toBe(SCHEMA_VERSION);
     const restored = deserializeProject(json);
     expect(restored.tracks.length).toBe(p.tracks.length);
   });

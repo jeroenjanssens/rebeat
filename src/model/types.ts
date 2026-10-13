@@ -162,6 +162,63 @@ export interface Section {
   id: string;
   patternId: string;
   repeats: number;
+  // Section settings (D183): this section only; its clones keep the link.
+  /** Tracks silent in this section. */
+  mutes?: string[];
+  /** Semitones on the Notes tracks here, added to the pattern's own (−12..12). */
+  transpose?: number;
+  /** FILL conditions pass on the section's last repeat, or on every repeat. */
+  fill?: "last" | "all";
+  /** Play only the first N steps of the pattern (1..stepCount). */
+  steps?: number;
+}
+
+/** A position in song time, anchored to a section (D187): quarter notes from its start (over
+ * all its repeats). Anchors move with their section. */
+export interface SongAnchor {
+  slotId: string;
+  at: number;
+}
+
+/** A tempo change (D192): from here the song plays at `bpm`, or ramps to it from the change
+ * before (linear in quarter notes). */
+export interface TempoChange extends SongAnchor {
+  bpm: number;
+  ramp?: boolean;
+}
+
+export interface AutomationPoint extends SongAnchor {
+  /** The knob's position, 0..1. */
+  value: number;
+  /** Hold until the next point (a step) instead of ramping to it. */
+  hold?: boolean;
+}
+
+/** An automation lane (D186): a MIDI-learn target ("track:<id>:mix.sendA", "master:volume"…)
+ * and its points in song time. */
+export interface AutomationLane {
+  id: string;
+  target: string;
+  /** Off: the knob's own value plays. */
+  on: boolean;
+  points: AutomationPoint[];
+}
+
+/** A piece of a sample in song time on a Clip track (D188); it can run across sections. */
+export interface AudioRegion {
+  id: string;
+  trackId: string;
+  sampleId: string;
+  start: SongAnchor;
+  /** Quarter notes. */
+  length: number;
+  /** Seconds into the sample where it starts. */
+  offset: number;
+  /** dB, −24..12. */
+  gain?: number;
+  /** Quarter notes. */
+  fadeIn?: number;
+  fadeOut?: number;
 }
 
 export const MAX_STEPS = 128;
