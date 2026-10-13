@@ -20,13 +20,18 @@ import {
   addAudioTrack,
   addTempoChange,
   deleteSections,
-  deleteTempoChange,
+  deleteTempoChanges,
+  insertTempoOnCurve,
+  setTempoEase,
+  setTempoOn,
   duplicateSections,
   moveTempoChange,
   setStartTempo,
   setTempoRamp,
 } from "../../state/timelineActions";
 import { CurveLane, type LanePoint } from "./CurveLane";
+import { openInInspector, pointMenu } from "./pointMenu";
+import { TEMPO_TYPES } from "../../model/ease";
 import {
   HEADER,
   MAX_ZOOM,
@@ -137,7 +142,13 @@ function TempoLane({ ppq, width }: { ppq: number; width: number }) {
   const points: LanePoint[] = changes
     .map((t, i) => ({ t, i, q: toSong(project, t) }))
     .filter((x) => x.q !== null)
-    .map((x) => ({ index: x.i, q: x.q!, value: x.t.bpm, flag: !!x.t.ramp }));
+    .map((x) => ({
+      index: x.i,
+      q: x.q!,
+      value: x.t.bpm,
+      on: x.t.on !== false,
+      eased: !!(x.t.in || x.t.out),
+    }));
   const values = [project.bpm, ...changes.map((t) => t.bpm)];
   const min = Math.max(20, Math.floor((Math.min(...values) - 20) / 10) * 10);
   const max = Math.min(300, Math.ceil((Math.max(...values) + 20) / 10) * 10);
@@ -149,6 +160,7 @@ function TempoLane({ ppq, width }: { ppq: number; width: number }) {
         <div className="flex h-full items-center gap-1 px-1.5">
           <button
             className="label flex-1 text-left"
+            onDoubleClick={() => openInInspector({ kind: "tempo" })}
             title={
               open ? "Fold the Tempo lane" : "Open the Tempo lane: tempo changes over the song"
             }
@@ -171,42 +183,65 @@ function TempoLane({ ppq, width }: { ppq: number; width: number }) {
               onChange={setStartTempo}
             />
           )}
+          {open && (
+            <button
+              className="tool-btn !h-5 !min-w-0 !px-1 text-[9px]"
+              title="Tempo lane menu"
+              data-hint="timeline.tempo.menu"
+              data-testid="tempo-menu"
+              onClick={(e) =>
+                contextMenu(e, [
+                  {
+                    label: "Edit tempo changes in the Inspector",
+                    onSelect: () => openInInspector({ kind: "tempo" }),
+                  },
+                ])
+              }
+            >
+              ⋯
+            </button>
+          )}
         </div>
       }
     >
       {open ? (
         <CurveLane
-          kind="tempo"
+          laneKey="tempo"
           points={points}
+          curve={(q) => tempoAt(project, q)}
           ppq={ppq}
           width={width}
           height={h}
           min={min}
           max={max}
-          base={project.bpm}
           color={token("lit") || "#ffb547"}
           format={(v) => `${Math.round(v * 10) / 10} BPM`}
           snap={(q, free) => snapQ(project, q, free ? "off" : snap === "bar" ? "beat" : snap)}
           round={(v, free) => (free ? Math.round(v * 10) / 10 : Math.round(v))}
-          onAdd={(q, v) => addTempoChange(q, v)}
+          onAdd={(q, v, onCurve) => (onCurve ? insertTempoOnCurve(q) : addTempoChange(q, v))}
           onMove={(i, q, v, key) => moveTempoChange(i, q, v, key)}
-          onDelete={(ids) => [...ids].sort((a, b) => b - a).forEach(deleteTempoChange)}
-          onMenu={(i, e) =>
-            contextMenu(e, [
-              {
-                label: "Jump to this tempo",
-                checked: !changes[i]?.ramp,
-                onSelect: () => setTempoRamp(i, false),
-              },
-              {
-                label: "Ramp to it from the change before",
-                checked: !!changes[i]?.ramp,
-                onSelect: () => setTempoRamp(i, true),
-              },
-              { separator: true },
-              { label: "Delete", onSelect: () => deleteTempoChange(i) },
-            ])
-          }
+          onDelete={deleteTempoChanges}
+          onMenu={(i, e) => {
+            const sel = useStore.getState().pointSelection;
+            const ids = sel.lane === "tempo" && sel.indexes.includes(i) ? sel.indexes : [i];
+            const t = changes[i];
+            contextMenu(
+              e,
+              pointMenu({
+                count: ids.length,
+                easeIn: t?.in,
+                easeOut: t?.out,
+                inTypes: TEMPO_TYPES,
+                outTypes: TEMPO_TYPES,
+                on: t?.on !== false,
+                setEase: (side, ease) => setTempoEase(ids, side, ease),
+                setOn: (on) => setTempoOn(ids, on),
+                remove: () => deleteTempoChanges(ids),
+                inspect: { kind: "tempo" },
+                ramp: { on: !!t?.ramp, set: (r) => ids.forEach((x) => setTempoRamp(x, r)) },
+              }),
+            );
+          }}
           testId="tempo-lane"
           hint="timeline.tempo.lane"
         />

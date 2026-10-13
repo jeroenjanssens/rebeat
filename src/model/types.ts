@@ -1,3 +1,4 @@
+import type { Ease } from "./ease";
 import type { SynthPatch } from "./synth";
 /**
  * How a step track plays (D93): single hits on its steps, notes and chords, or its sample as a
@@ -185,13 +186,21 @@ export interface SongAnchor {
 export interface TempoChange extends SongAnchor {
   bpm: number;
   ramp?: boolean;
+  /** Off: skipped, as if it weren't there (D196). */
+  on?: boolean;
+  /** How a ramp arrives here, and how the next ramp leaves (D198; Linear when unset). */
+  in?: Ease;
+  out?: Ease;
 }
 
 export interface AutomationPoint extends SongAnchor {
   /** The knob's position, 0..1. */
   value: number;
-  /** Hold until the next point (a step) instead of ramping to it. */
-  hold?: boolean;
+  /** Off: the curve skips it, as if it weren't there (D196). */
+  on?: boolean;
+  /** How the curve arrives here, and how it leaves (D196; Linear when unset, None holds). */
+  in?: Ease;
+  out?: Ease;
 }
 
 /** An automation lane (D186): a MIDI-learn target ("track:<id>:mix.sendA", "master:volume"…)

@@ -71,6 +71,35 @@ With **Auto** on (Record automation, next to Rec), knob turns while recording in
 
 Knobs that can be automated: track levels, pan, width, sends and EQ, a sample's filter, a synth's macros, the master's and the buses' levels, and some effect knobs (the Filter's cutoff and resonance, the Delay's mix and feedback, the Reverb's mix, EQ3's gains, Pump's depth, and every effect's mix). Other knobs don't show Automate.
 
+## Editing points in the Inspector
+
+Every automation lane, and the Tempo lane, can be edited as a table: choose **Edit points in the Inspector** in the lane's ⋯ menu (or double-click the lane's name, or right-click a point). The Inspector shows one row per point, in time order; **← Back to the track** returns to the track.
+
+| Column                 | What you can do                                                                                                                                                                                                                          |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **On**                 | Turn a point off: the curve skips it, as if it weren't there (it's drawn hollow on the lane).                                                                                                                                            |
+| **Position**           | Drag sideways or scroll to move it by the Snap grid (Shift: finer), or type a position: `17.3.2` is bar 17, beat 3, 16th 2; `17.3.2.5` is half a 16th later; `6:3.2` is beat 3, 16th 2 of section 6. The section it's in shows under it. |
+| **Value**              | Drag up or down, scroll (Shift: finer), or type a value in the knob's units (`880`, `1.2k`, `-6`, `L20`) or a percentage (`35%`). Double-click resets it to the knob's default.                                                          |
+| **Ease in / Ease out** | How the curve arrives at the point and how it leaves it: the type and its strength.                                                                                                                                                      |
+
+- **Insert a point** with the **+** between two rows: it goes halfway between them, on the curve, so the line keeps its shape until you change it. **+ at ▼** puts one at the start marker, **+ after the last** one bar after the last point.
+- Select several rows (Shift+click, ⌘-click) to set their value or ease together, or drag their positions together. ↑ and ↓ move the selection, Delete deletes it. The selection is the lane's too: points you select on the timeline are the rows selected here.
+- Everything you change shows on the lane at once, and every change on the lane shows in the table. ⌘Z undoes it either way.
+
+### Eases
+
+Each point has an **ease in** (how the curve arrives at it) and an **ease out** (how it leaves). The stretch between two points takes its shape from the first point's ease out and the second point's ease in:
+
+| Ease            | Leaving a point                                        | Arriving at a point                        |
+| --------------- | ------------------------------------------------------ | ------------------------------------------ |
+| **None (jump)** | Hold the value, then jump at the next point.           | —                                          |
+| **Linear**      | A straight line (the default).                         | A straight line.                           |
+| **Smooth**      | Set off slowly.                                        | Settle slowly.                             |
+| **Exponential** | Start slowly and speed up: good for filters and fades. | Arrive fast, then settle.                  |
+| **Bounce**      | —                                                      | Land on the value and bounce back onto it. |
+
+The **strength** (0–100%) sets how much: 0% is a straight line. Tempo changes ease their ramps the same way (Linear, Smooth or Exponential). On the timeline, a ring around a point means it has an ease; a click right on the line adds a point on the curve, a click elsewhere at that height.
+
 ## Audio on the timeline
 
 A sample on the timeline plays in song time, across sections: a vocal line over a section change, a long take, a riser into the drop.

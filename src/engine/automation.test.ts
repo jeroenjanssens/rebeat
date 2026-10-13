@@ -9,7 +9,12 @@ vi.mock("./engine", () => ({
 const { curveEvents } = await import("./automation");
 
 const pts = (...list: [number, number, boolean?][]) =>
-  list.map(([q, value, hold]) => ({ q, value, hold: !!hold }));
+  list.map(([q, value, hold], index) => ({
+    q,
+    value,
+    index,
+    ...(hold ? { out: { type: "none" as const } } : {}),
+  }));
 
 describe("curve events (D186)", () => {
   it("ramps to the points in the step and to the value at its end", () => {
@@ -32,7 +37,19 @@ describe("curve events (D186)", () => {
   });
 
   it("adds points inside the step for targets that can't ramp", () => {
-    const e = curveEvents(pts([0, 0], [4, 1]), 0, 2, 0, 1, false, 1);
+    const e = curveEvents(pts([0, 0], [4, 1]), 0, 2, 0, 1, false, 8, 1);
     expect(e.map((x) => x.v)).toEqual([0.25, 0.5]);
+  });
+
+  it("samples a step where the curve is eased (D197), not where it's straight", () => {
+    const eased = [
+      { q: 0, value: 0, index: 0, out: { type: "smooth" as const, strength: 1 } },
+      { q: 4, value: 1, index: 1 },
+    ];
+    const e = curveEvents(eased, 0, 1, 0, 1, false, 8);
+    expect(e).toHaveLength(9);
+    // slow at first: the first sample is below the straight line
+    expect(e[0].v).toBeLessThan(1 / 9 / 4);
+    expect(curveEvents(pts([0, 0], [4, 1]), 0, 1, 0, 1, false, 8)).toHaveLength(1);
   });
 });

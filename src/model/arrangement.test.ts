@@ -94,7 +94,7 @@ describe("automation values", () => {
     const [a, b] = p.slots;
     const l = lane([
       { slotId: a.id, at: 2, value: 0.2 },
-      { slotId: b.id, at: 0, value: 0.8, hold: true },
+      { slotId: b.id, at: 0, value: 0.8, out: { type: "none" } },
       { slotId: b.id, at: 4, value: 0.4 },
     ]);
     expect(valueAt(p, l, 0)).toBe(0.2);

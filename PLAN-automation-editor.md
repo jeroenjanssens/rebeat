@@ -30,12 +30,14 @@ The stretch from point A to point B takes its shape from **A's out and B's in**:
 
 ```
 v(t) = vA + (vB − vA) · f(t),   t = 0..1 across the stretch
-f(t) = (1 − t) · out(t) + t · in(t)
+f(t) = in(out(t))
 ```
 
-`out` and `in` are each a full ease from 0 to 1. Blending them by t means the start of the stretch
-follows A's out (its slope at 0 is out's), and its end follows B's in (its slope at 1 is in's).
-Two smooth sides make an S-curve; "leave slowly, bounce in" just works.
+`out` and `in` are each a full ease from 0 to 1. Composing them means A's out shapes how the
+stretch sets off and B's in how it lands: a flat start (smooth out) stays flat, a flat landing
+stays flat, two smooth sides make an S-curve, and "leave slowly, bounce in" keeps its whole
+bounce. (A first version blended them, `(1 − t)·out + t·in`; that flattened bounces to almost
+nothing, D196.)
 
 | Type                 | As the ease out of A (leaving)                                     | As the ease in of B (arriving)                         |
 | -------------------- | ------------------------------------------------------------------ | ------------------------------------------------------ |
@@ -160,7 +162,7 @@ start marker** and **+ after the last point**.
 ## 10. Decisions
 
 - **D196 — Eases per point, in and out.** Each point has an ease in and an ease out; the stretch
-  between two points blends the first's out and the second's in (`(1−t)·out + t·in`). Types:
+  between two points composes the first's out and the second's in (`in(out(t))`). Types:
   None (out only: a jump), Linear (default), Smooth, Exponential, Bounce (in only), with a
   strength per side. Schema 11: `hold` became ease out None; points can be off. Alt: one ease per
   stretch (simpler, less control); Bézier handles (more to learn).

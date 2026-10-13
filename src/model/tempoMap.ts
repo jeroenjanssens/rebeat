@@ -5,17 +5,21 @@
  */
 import { isDraft } from "immer";
 import { songLength, toSong } from "./arrangement";
+import { easeAt, isLinear, type Ease } from "./ease";
 import type { Project } from "./project";
 
 export const MIN_BPM = 20;
 export const MAX_BPM = 300;
 
-/** A piece of the map: from `q` the tempo goes from `bpm` to `to` (linearly) at `end`. */
+/** A piece of the map: from `q` the tempo goes from `bpm` to `to` at `end`, shaped by the eases
+ * of the changes at its ends (D198; linear when unset). */
 export interface TempoSegment {
   q: number;
   end: number;
   bpm: number;
   to: number;
+  out?: Ease;
+  in?: Ease;
 }
 
 const maps = new WeakMap<
@@ -35,20 +39,25 @@ export function tempoMap(project: Project): TempoSegment[] {
     cached.bpm === project.bpm
   )
     return cached.segments;
+  // changes that are off are skipped (D196)
   const changes = (project.tempo ?? [])
-    .map((t) => ({ q: toSong(project, t), bpm: clampBpm(t.bpm), ramp: !!t.ramp }))
-    .filter((t): t is { q: number; bpm: number; ramp: boolean } => t.q !== null)
-    .sort((a, b) => a.q - b.q);
+    .filter((t) => t.on !== false)
+    .map((t) => ({ ...t, q: toSong(project, t), bpm: clampBpm(t.bpm), ramp: !!t.ramp }))
+    .filter((t) => t.q !== null)
+    .sort((a, b) => a.q! - b.q!);
   const segments: TempoSegment[] = [];
   let q = 0;
   let bpm = clampBpm(project.bpm);
+  let out: Ease | undefined;
   for (const c of changes) {
+    const cq = c.q!;
     if (c.ramp) {
-      // ramp from the tempo before, starting at the change before
-      if (c.q > q) segments.push({ q, end: c.q, bpm, to: c.bpm });
-    } else if (c.q > q) segments.push({ q, end: c.q, bpm, to: bpm });
-    q = Math.max(q, c.q);
+      // ramp from the tempo before, starting at the change before, eased by both (D198)
+      if (cq > q) segments.push({ q, end: cq, bpm, to: c.bpm, out, in: c.in });
+    } else if (cq > q) segments.push({ q, end: cq, bpm, to: bpm });
+    q = Math.max(q, cq);
     bpm = c.bpm;
+    out = c.out;
   }
   segments.push({ q, end: Infinity, bpm, to: bpm });
   if (!draft)
@@ -64,7 +73,7 @@ export function hasTempoChanges(project: Project): boolean {
 
 function bpmIn(s: TempoSegment, q: number) {
   if (s.to === s.bpm || s.end === Infinity) return s.bpm;
-  return s.bpm + ((s.to - s.bpm) * (q - s.q)) / (s.end - s.q);
+  return s.bpm + (s.to - s.bpm) * easeAt(s.out, s.in, (q - s.q) / (s.end - s.q));
 }
 
 /** The tempo at song position q. */
@@ -78,6 +87,14 @@ export function tempoAt(project: Project, q: number): number {
 function seconds(s: TempoSegment, a: number, b: number) {
   const b0 = bpmIn(s, a);
   const b1 = bpmIn(s, b);
+  if (s.bpm !== s.to && s.end !== Infinity && !isLinear(s.out, s.in)) {
+    // an eased ramp: ∫ 60 / bpm(q) dq by Simpson's rule (D198)
+    const n = 64;
+    const h = (b - a) / n;
+    let sum = 60 / b0 + 60 / b1;
+    for (let i = 1; i < n; i++) sum += (i % 2 ? 4 : 2) * (60 / bpmIn(s, a + i * h));
+    return (sum * h) / 3;
+  }
   if (Math.abs(b1 - b0) < 1e-9) return ((b - a) * 60) / b0;
   // ∫ 60 / bpm(q) dq for a linear bpm(q)
   return ((60 * (b - a)) / (b1 - b0)) * Math.log(b1 / b0);

@@ -68,4 +68,30 @@ describe("the tempo map (D192)", () => {
     for (const q of [0, 3, 4, 7.5, 20, 30])
       expect(quarterAt(p, secondsBetween(p, 0, q))).toBeCloseTo(q, 6);
   });
+
+  it("an eased ramp (D198) matches a fine numeric sum, and quarterAt inverts it", () => {
+    const p = song();
+    p.tempo = [
+      { slotId: p.slots[1].id, at: 0, bpm: 90, out: { type: "smooth", strength: 1 } },
+      { slotId: p.slots[1].id, at: 15.999, bpm: 160, ramp: true, in: { type: "exponential" } },
+    ];
+    // slow to leave 90
+    expect(tempoAt(p, 18)).toBeLessThan(90 + (160 - 90) * (2 / 16));
+    let sum = 0;
+    const n = 200000;
+    for (let i = 0; i < n; i++) {
+      const q = 16 + ((i + 0.5) / n) * 12;
+      sum += (60 / tempoAt(p, q)) * (12 / n);
+    }
+    expect(secondsBetween(p, 16, 28)).toBeCloseTo(sum, 4);
+    for (const q of [3, 17.5, 25, 31])
+      expect(quarterAt(p, secondsBetween(p, 0, q))).toBeCloseTo(q, 5);
+  });
+
+  it("a change that's off is skipped", () => {
+    const p = song();
+    p.tempo = [{ slotId: p.slots[1].id, at: 0, bpm: 60, on: false }];
+    expect(hasTempoChanges(p)).toBe(false);
+    expect(tempoAt(p, 20)).toBe(120);
+  });
 });

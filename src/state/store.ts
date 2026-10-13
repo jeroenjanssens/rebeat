@@ -76,6 +76,12 @@ export interface UiState {
   startAt: SongAnchor | null;
   /** Record automation (D191): knob turns while recording in Song mode become points. */
   recordAutomation: boolean;
+  /** What the Inspector shows instead of the selected track (D199): a lane's points, or the
+   * tempo changes. */
+  inspect: { kind: "lane"; id: string } | { kind: "tempo" } | null;
+  /** Selected points (D200), shared by a lane on the timeline and its table: a lane id or
+   * "tempo", and the points' indexes in the saved list. */
+  pointSelection: { lane: string; indexes: number[] };
   jogOpen: Record<string, boolean>;
   clipboard: Step[] | null;
   euclidOpen: boolean;
@@ -136,6 +142,8 @@ export const useStore = create<State>()((set, get) => ({
       playSlotId: p.slots[0]?.id ?? "",
       queuedSlotId: null,
       startAt: null,
+      inspect: null,
+      pointSelection: { lane: "", indexes: [] },
       selectedSteps: {},
       cursor: null,
       fxIndex: 0,
@@ -180,6 +188,8 @@ export const useStore = create<State>()((set, get) => ({
   queuedSlotId: null,
   startAt: null,
   recordAutomation: false,
+  inspect: null,
+  pointSelection: { lane: "", indexes: [] },
   jogOpen: {},
   clipboard: null,
   euclidOpen: false,
@@ -218,7 +228,15 @@ export const useStore = create<State>()((set, get) => ({
       lastCommitKey: null,
     });
   },
-  setUi: (partial) => set(partial),
+  setUi: (partial) =>
+    set(
+      // choosing another track shows it in the Inspector again (D199)
+      partial.selectedTrackId !== undefined &&
+        partial.selectedTrackId !== get().selectedTrackId &&
+        !("inspect" in partial)
+        ? { ...partial, inspect: null }
+        : partial,
+    ),
   setPlayMode: (playMode) => {
     const { project, past, future } = get();
     if (project.playMode === playMode) return;

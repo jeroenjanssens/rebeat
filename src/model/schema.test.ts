@@ -277,6 +277,30 @@ describe("migration 6 → 7: step tracks (D93, D94)", () => {
   });
 });
 
+describe("migration 10 → 11 (D196)", () => {
+  it("turns a held point into an ease out of None", () => {
+    const p = demoProject();
+    const json = JSON.parse(JSON.stringify(serializeProject(p)));
+    json.schemaVersion = 10;
+    json.project.automation = [
+      {
+        id: "a",
+        target: "master:volume",
+        on: true,
+        points: [
+          { slotId: p.slots[0].id, at: 0, value: 0.5, hold: true },
+          { slotId: p.slots[0].id, at: 1, value: 0.7, hold: false },
+        ],
+      },
+    ];
+    const d = deserializeProject(json);
+    expect(d.automation![0].points).toEqual([
+      { slotId: p.slots[0].id, at: 0, value: 0.5, out: { type: "none" } },
+      { slotId: p.slots[0].id, at: 1, value: 0.7 },
+    ]);
+  });
+});
+
 describe("migration 9 → 10 (D182)", () => {
   it("loads a version 9 project unchanged", () => {
     const p = demoProject();

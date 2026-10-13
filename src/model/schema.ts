@@ -19,7 +19,7 @@ import {
 } from "./types";
 import { convertSynthKnobs, defaultSynth } from "../library/synthTrack";
 
-export const SCHEMA_VERSION = 10;
+export const SCHEMA_VERSION = 11;
 
 export interface SerializedProject {
   format: "rebeat-project";
@@ -137,6 +137,16 @@ const migrations: Record<number, Migration> = {
   8: (p) => p,
   // 9 → 10: section settings, tempo changes, automation and timeline audio (D182) — all optional
   9: (p) => p,
+  // 10 → 11: eases per point (D196): a held point is an ease out of None
+  10: (p) => {
+    for (const lane of (p.automation as Json[] | undefined) ?? [])
+      for (const pt of (lane.points as Json[] | undefined) ?? [])
+        if ("hold" in pt) {
+          if (pt.hold) pt.out = { type: "none" };
+          delete pt.hold;
+        }
+    return p;
+  },
 };
 
 /** The ADSR decay of a voice's SOUND knobs, renamed in version 7. */

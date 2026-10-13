@@ -36,6 +36,11 @@ const hints: Hints = {
     keys: "Shift+drag: tenths of a BPM, free · Double-click: delete",
     guide: "timeline-tempo-changes",
   },
+  "timeline.tempo.menu": {
+    title: "Tempo lane menu",
+    text: "Edit the tempo changes in the Inspector: a table with each change's position, tempo, ramp and eases.",
+    guide: "timeline-editing-points-in-the-inspector",
+  },
   "timeline.lane": {
     title: "Automation lane",
     text: "A knob over the song. Click to add a point, drag points to move them. Right-click a point: ramp to the next one or hold until it. Turning the knob itself overrides the lane until Back to automation.",

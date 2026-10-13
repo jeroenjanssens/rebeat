@@ -5,6 +5,7 @@
  * the tempo map, model/tempo.ts).
  */
 import { isDraft } from "immer";
+import { easeAt, type Ease } from "./ease";
 import type { Project } from "./project";
 import {
   STEP_SIZE_QUARTERS,
@@ -160,28 +161,32 @@ export function bars(project: Project): BarLine[] {
 export interface ResolvedPoint {
   q: number;
   value: number;
-  hold: boolean;
+  in?: Ease;
+  out?: Ease;
+  /** Its index in the lane's saved points. */
+  index: number;
 }
 
 const resolved = new WeakMap<AutomationPoint[], { slots: Section[]; points: ResolvedPoint[] }>();
 
-/** A lane's points in song order, without hidden ones. */
+/** A lane's points in song order, without hidden ones and ones that are off (D196). */
 export function lanePoints(project: Project, points: AutomationPoint[]): ResolvedPoint[] {
   const draft = isDraft(points) || isDraft(project.slots) || isDraft(project.patterns);
   const cached = draft ? undefined : resolved.get(points);
   if (cached && cached.slots === project.slots) return cached.points;
   const out: ResolvedPoint[] = [];
-  for (const p of points) {
+  points.forEach((p, index) => {
+    if (p.on === false) return;
     const q = toSong(project, p);
-    if (q !== null) out.push({ q, value: p.value, hold: !!p.hold });
-  }
+    if (q !== null) out.push({ q, value: p.value, in: p.in, out: p.out, index });
+  });
   out.sort((a, b) => a.q - b.q);
   if (!draft) resolved.set(points, { slots: project.slots, points: out });
   return out;
 }
 
-/** The value of a curve at q: linear between points (a hold is a step), the first value before
- * the first point and the last after the last. */
+/** The value of a curve at q: eased between points (D196; an ease out of None holds), the first
+ * value before the first point and the last after the last. */
 export function curveAt(points: ResolvedPoint[], q: number): number | null {
   if (!points.length) return null;
   if (q <= points[0].q) return points[0].value;
@@ -189,8 +194,7 @@ export function curveAt(points: ResolvedPoint[], q: number): number | null {
     const b = points[i];
     if (q < b.q) {
       const a = points[i - 1];
-      if (a.hold) return a.value;
-      return a.value + ((b.value - a.value) * (q - a.q)) / (b.q - a.q);
+      return a.value + (b.value - a.value) * easeAt(a.out, b.in, (q - a.q) / (b.q - a.q));
     }
   }
   return points[points.length - 1].value;

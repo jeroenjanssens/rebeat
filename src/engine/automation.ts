@@ -3,6 +3,7 @@
  * offline render call these for every step, so a song sounds the same live and exported.
  */
 import { curveAt, lanePoints, toSong, type ResolvedPoint } from "../model/arrangement";
+import { isLinear } from "../model/ease";
 import type { Project } from "../model/project";
 import { secondsBetween } from "../model/tempoMap";
 import type { AudioRegion } from "../model/types";
@@ -18,9 +19,10 @@ const JUMP = 0.003;
 
 /**
  * A curve's events over one step, from song position q0 to q1 (heard from `time` for `dur`
- * seconds): its points inside the step, a jump where a held point ends, the value at the step's
- * end, and with `jumped` (a start, a jump in the song) the value at its start first. `extra`
- * adds points inside the step, for targets that can't ramp (a synth's macros).
+ * seconds): its points inside the step, a jump where an ease out of None ends, the value at the
+ * step's end, and with `jumped` (a start, a jump in the song) the value at its start first.
+ * Eased stretches (D197) are sampled `samples` times over the step; `linearSamples` adds points
+ * on straight stretches too, for targets that can't ramp (a synth's macros).
  */
 export function curveEvents(
   points: ResolvedPoint[],
@@ -29,14 +31,24 @@ export function curveEvents(
   time: number,
   dur: number,
   jumped: boolean,
-  extra = 0,
+  samples = 8,
+  linearSamples = 0,
 ): AutoEvent[] {
   if (!points.length || q1 <= q0) return [];
   const at = (q: number) => time + ((q - q0) / (q1 - q0)) * dur;
   const out: AutoEvent[] = [];
   if (jumped) out.push({ t: time, v: curveAt(points, q0)!, ramp: false });
+  // is the curve shaped anywhere in this step?
+  let shaped = false;
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1];
+    const b = points[i];
+    if (a.q < q1 - EPS && b.q > q0 + EPS && a.out?.type !== "none" && !isLinear(a.out, b.in))
+      shaped = true;
+  }
+  const n = shaped ? samples : linearSamples;
   const marks: number[] = [];
-  for (let k = 1; k <= extra; k++) marks.push(q0 + (k * (q1 - q0)) / (extra + 1));
+  for (let k = 1; k <= n; k++) marks.push(q0 + (k * (q1 - q0)) / (n + 1));
   let m = 0;
   points.forEach((p, i) => {
     if (p.q <= q0 + EPS || p.q > q1 + EPS) return;
@@ -45,7 +57,7 @@ export function curveEvents(
       m++;
     }
     const prev = points[i - 1];
-    if (prev?.hold) {
+    if (prev?.out?.type === "none") {
       // held until here, then the new value at once (in a few milliseconds)
       out.push({ t: at(p.q) - JUMP, v: prev.value, ramp: true });
       out.push({ t: at(p.q), v: p.value, ramp: true });
@@ -79,7 +91,10 @@ export function automationStep(
     const jumped = prev === undefined || Math.abs(prev - q0) > EPS;
     last.set(lane.id, q1);
     const macro = /:sound\.macro\d$/.test(lane.target);
-    automateTarget(lane.target, curveEvents(points, q0, q1, time, dur, jumped, macro ? 1 : 0));
+    automateTarget(
+      lane.target,
+      curveEvents(points, q0, q1, time, dur, jumped, macro ? 4 : 8, macro ? 1 : 0),
+    );
   }
 }
 

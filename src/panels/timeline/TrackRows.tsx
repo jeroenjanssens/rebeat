@@ -6,7 +6,8 @@
 import { Plus } from "lucide-react";
 import { Fragment, type ReactNode } from "react";
 import { contextMenu, type MenuItem } from "../../components/Menu";
-import { layout, toSong } from "../../model/arrangement";
+import { curveAt, lanePoints, layout, toSong } from "../../model/arrangement";
+import { IN_TYPES, OUT_TYPES } from "../../model/ease";
 import { automatableKnobs, knobFor, knobValue, targetOwner } from "../../model/automation";
 import type { Project } from "../../model/project";
 import { clipOf, type AutomationLane, type Track } from "../../model/types";
@@ -25,11 +26,14 @@ import {
   deletePoints,
   movePoint,
   retargetLane,
+  insertOnCurve,
   setLaneOn,
-  setPointHold,
+  setPointEase,
+  setPointsOn,
   toggleMuteHere,
 } from "../../state/timelineActions";
 import { CurveLane, type LanePoint } from "./CurveLane";
+import { openInInspector, pointMenu } from "./pointMenu";
 import { HEADER, LANE_H, TRACK_H, snapQ } from "./geometry";
 import { RegionBoxes } from "./RegionBox";
 import { ViewCanvas, type View } from "./ViewCanvas";
@@ -123,27 +127,42 @@ function Lanes({
         const points: LanePoint[] = lane.points
           .map((p, i) => ({ p, i, q: toSong(project, p) }))
           .filter((x) => x.q !== null)
-          .map((x) => ({ index: x.i, q: x.q!, value: x.p.value, flag: !!x.p.hold }));
-        const items = (i: number): MenuItem[] => [
-          {
-            label: "Ramp to the next point",
-            checked: !lane.points[i]?.hold,
-            onSelect: () => setPointHold(lane.id, i, false),
-          },
-          {
-            label: "Hold until the next point",
-            checked: !!lane.points[i]?.hold,
-            onSelect: () => setPointHold(lane.id, i, true),
-          },
-          { separator: true },
-          { label: "Delete point", onSelect: () => deletePoints(lane.id, [i]) },
-        ];
+          .map((x) => ({
+            index: x.i,
+            q: x.q!,
+            value: x.p.value,
+            on: x.p.on !== false,
+            eased: !!(x.p.in || x.p.out),
+          }));
+        const resolved = lanePoints(project, lane.points);
+        // the menu acts on the selection (the point right-clicked is in it)
+        const items = (i: number): MenuItem[] => {
+          const sel = useStore.getState().pointSelection;
+          const ids = sel.lane === lane.id && sel.indexes.includes(i) ? sel.indexes : [i];
+          const pt = lane.points[i];
+          return pointMenu({
+            count: ids.length,
+            easeIn: pt?.in,
+            easeOut: pt?.out,
+            inTypes: IN_TYPES,
+            outTypes: OUT_TYPES,
+            on: pt?.on !== false,
+            setEase: (side, ease) => setPointEase(lane.id, ids, side, ease),
+            setOn: (on) => setPointsOn(lane.id, ids, on),
+            remove: () => deletePoints(lane.id, ids),
+            inspect: { kind: "lane", id: lane.id },
+          });
+        };
         return (
           <Row
             key={lane.id}
             height={LANE_H}
             header={
-              <div className="flex h-full flex-col justify-center gap-0.5 pl-4 pr-1">
+              <div
+                className="flex h-full flex-col justify-center gap-0.5 pl-4 pr-1"
+                onDoubleClick={() => openInInspector({ kind: "lane", id: lane.id })}
+                title="Double-click: edit its points in the Inspector"
+              >
                 <span className="truncate text-[10px] text-ink" title={knob?.label ?? lane.target}>
                   {knob?.label.split(" · ").slice(1).join(" · ") ?? "(gone)"}
                 </span>
@@ -176,6 +195,10 @@ function Lanes({
                     onClick={(e) =>
                       contextMenu(e, [
                         {
+                          label: "Edit points in the Inspector",
+                          onSelect: () => openInInspector({ kind: "lane", id: lane.id }),
+                        },
+                        {
                           label: "Pick another knob…",
                           onSelect: () =>
                             // after this menu closes: the knobs of the same track (or bus, master)
@@ -207,8 +230,9 @@ function Lanes({
             }
           >
             <CurveLane
-              kind="automation"
+              laneKey={lane.id}
               points={points}
+              curve={(q) => curveAt(resolved, q)}
               ppq={ppq}
               width={width}
               height={LANE_H}
@@ -218,7 +242,9 @@ function Lanes({
               dimmed={!lane.on || !!overridden[lane.target]}
               format={(v) => (def ? def.format(v) : `${Math.round(v * 100)}%`)}
               snap={(q, free) => snapQ(project, q, free ? "off" : snap === "bar" ? "beat" : snap)}
-              onAdd={(q, v) => addPoint(lane.id, q, v)}
+              onAdd={(q, v, onCurve) =>
+                onCurve ? insertOnCurve(lane.id, q) : addPoint(lane.id, q, v)
+              }
               onMove={(i, q, v, key) => movePoint(lane.id, i, q, v, key)}
               onDelete={(ids) => deletePoints(lane.id, ids)}
               onMenu={(i, e) => contextMenu(e, items(i))}

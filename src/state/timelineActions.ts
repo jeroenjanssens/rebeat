@@ -2,7 +2,8 @@
  * Timeline edits (D184): sections (order, copies, clones, repeats, settings), tempo changes,
  * automation and regions. Each is one commit; drags pass a merge key.
  */
-import { anchoredTo, toAnchor } from "../model/arrangement";
+import { anchoredTo, toAnchor, toSong, valueAt } from "../model/arrangement";
+import type { Ease } from "../model/ease";
 import { uid } from "../model/id";
 import {
   addTrack,
@@ -12,7 +13,7 @@ import {
   makeTrack,
   type Project,
 } from "../model/project";
-import { clampBpm, tempoAt } from "../model/tempoMap";
+import { clampBpm, tempoAt, tempoMap } from "../model/tempoMap";
 import { getBuffer, sampleInfo } from "../engine/samples";
 import { loadSample, sampleName } from "../library/library";
 import type { AutomationLane, Section } from "../model/types";
@@ -177,7 +178,7 @@ export function addTempoChange(q: number, bpm: number, ramp = false): number {
   let index = 0;
   store().commit((p) => {
     p.tempo ??= [];
-    index = p.tempo.push({ ...toAnchor(p, q), bpm: Math.round(clampBpm(bpm)), ramp }) - 1;
+    index = p.tempo.push({ ...toAnchor(p, q), bpm: Math.round(clampBpm(bpm) * 10) / 10, ramp }) - 1;
   });
   return index;
 }
@@ -196,6 +197,61 @@ export function setTempoRamp(index: number, ramp: boolean) {
     if (!t) return;
     if (ramp) t.ramp = true;
     else delete t.ramp;
+  });
+}
+
+/** Eases of tempo changes (D198); Linear clears it. */
+export function setTempoEase(indexes: number[], side: "in" | "out", ease: Ease) {
+  store().commit((p) => {
+    for (const i of indexes) {
+      const t = p.tempo?.[i];
+      if (!t) continue;
+      if (ease.type === "linear") delete t[side];
+      else t[side] = { ...ease };
+    }
+  }, `tempo-ease-${side}`);
+}
+
+export function setTempoOn(indexes: number[], on: boolean) {
+  store().commit((p) => {
+    for (const i of indexes) {
+      const t = p.tempo?.[i];
+      if (!t) continue;
+      if (on) delete t.on;
+      else t.on = false;
+    }
+  });
+}
+
+export function setTempoBpm(indexes: number[], bpm: number, key: string) {
+  store().commit((p) => {
+    for (const i of indexes) if (p.tempo?.[i]) p.tempo[i].bpm = Math.round(clampBpm(bpm) * 10) / 10;
+  }, key);
+}
+
+export function moveTempoBy(indexes: number[], dq: number, key: string) {
+  store().commit((p) => {
+    for (const i of indexes) {
+      const t = p.tempo?.[i];
+      const q = t ? toSong(p, t) : null;
+      if (t && q !== null) Object.assign(t, toAnchor(p, Math.max(0, q + dq)));
+    }
+  }, key);
+}
+
+/** A tempo change at q at the tempo there, a ramp if the tempo is ramping there (D202). */
+export function insertTempoOnCurve(q: number): number {
+  const { project } = store();
+  const bpm = tempoAt(project, q);
+  const ramping = tempoMap(project).some((s) => s.q < q && s.end > q && s.bpm !== s.to);
+  return addTempoChange(q, Math.round(bpm * 10) / 10, ramping);
+}
+
+/** Delete several tempo changes in one step. */
+export function deleteTempoChanges(indexes: number[]) {
+  store().commit((p) => {
+    p.tempo = p.tempo?.filter((_, i) => !indexes.includes(i));
+    if (p.tempo && !p.tempo.length) delete p.tempo;
   });
 }
 
@@ -238,15 +294,64 @@ export function movePoint(laneId: string, index: number, q: number, value: numbe
   }, key);
 }
 
-export function setPointHold(laneId: string, index: number, hold: boolean) {
+/** Eases on one side of points (D196); Linear clears it (the default). */
+export function setPointEase(laneId: string, indexes: number[], side: "in" | "out", ease: Ease) {
   store().commit((p) => {
-    const pt = laneOf(p, laneId)?.points[index];
-    if (!pt) return;
-    if (hold) pt.hold = true;
-    else delete pt.hold;
+    const l = laneOf(p, laneId);
+    if (!l) return;
+    for (const i of indexes) {
+      const pt = l.points[i];
+      if (!pt) continue;
+      if (ease.type === "linear") delete pt[side];
+      else pt[side] = { ...ease };
+    }
+  }, `ease-${laneId}-${side}`);
+}
+
+/** Points on or off (D196): off, the curve skips them. */
+export function setPointsOn(laneId: string, indexes: number[], on: boolean) {
+  store().commit((p) => {
+    const l = laneOf(p, laneId);
+    if (!l) return;
+    for (const i of indexes) {
+      const pt = l.points[i];
+      if (!pt) continue;
+      if (on) delete pt.on;
+      else pt.on = false;
+    }
   });
 }
 
+/** The same value on several points (the table's multi-select). */
+export function setPointsValue(laneId: string, indexes: number[], value: number, key: string) {
+  store().commit((p) => {
+    const l = laneOf(p, laneId);
+    if (!l) return;
+    for (const i of indexes) if (l.points[i]) l.points[i].value = clamp01(value);
+  }, key);
+}
+
+/** Move points by `dq` quarter notes, keeping their spacing (re-anchored where they land). */
+export function movePointsBy(laneId: string, indexes: number[], dq: number, key: string) {
+  store().commit((p) => {
+    const l = laneOf(p, laneId);
+    if (!l) return;
+    for (const i of indexes) {
+      const pt = l.points[i];
+      const q = pt ? toSong(p, pt) : null;
+      if (pt && q !== null) Object.assign(pt, toAnchor(p, Math.max(0, q + dq)));
+    }
+  }, key);
+}
+
+/** A point at q on the curve (its value there), so the line keeps its shape (D202). */
+export function insertOnCurve(laneId: string, q: number): number {
+  const { project } = store();
+  const l = laneOf(project, laneId);
+  if (!l) return -1;
+  const value = valueAt(project, l, q) ?? 0.5;
+  return addPoint(laneId, q, value);
+}
 export function deletePoints(laneId: string, indexes: number[]) {
   store().commit((p) => {
     const l = laneOf(p, laneId);

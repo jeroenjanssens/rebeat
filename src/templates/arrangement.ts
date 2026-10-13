@@ -243,25 +243,26 @@ export function longWayHome(): Project {
   p.tempo = [
     // the break floats at 100…
     { slotId: sBreak.id, at: 0, bpm: 100 },
-    // …and Pre 2 ramps back up to 112 for the final chorus
-    { slotId: sPre2.id, at: 0, bpm: 100 },
-    { slotId: sFinal.id, at: 0, bpm: 112, ramp: true },
-    // a ritardando to the end
-    { slotId: sOutro.id, at: 0, bpm: 112 },
+    // …and Pre 2 ramps back up to 112 for the final chorus, smoothly (D205)
+    { slotId: sPre2.id, at: 0, bpm: 100, out: { type: "smooth" } },
+    { slotId: sFinal.id, at: 0, bpm: 112, ramp: true, in: { type: "smooth" } },
+    // a ritardando to the end, slowing more and more
+    { slotId: sOutro.id, at: 0, bpm: 112, out: { type: "smooth" } },
     { slotId: sOutro.id, at: 15.99, bpm: 88, ramp: true },
   ];
 
   // ---------- automation (D186) ----------
-  const at = (s: Section, q: number, value: number, hold = false): AutomationPoint => ({
-    slotId: s.id,
-    at: q,
-    value,
-    ...(hold ? { hold } : {}),
-  });
-  // a high-pass sweep up the build, and the drop at once (a held point)
+  const at = (
+    s: Section,
+    q: number,
+    value: number,
+    eases: Pick<AutomationPoint, "in" | "out"> = {},
+  ): AutomationPoint => ({ slotId: s.id, at: q, value, ...eases });
+  // a high-pass sweep up the build, slow at first (exponential, D205), and the drop at once
+  // (an ease out of None)
   const sweep = (s: Section, next: Section) => [
-    at(s, 0, 0),
-    at(s, 15.75, 0.55, true),
+    at(s, 0, 0, { out: { type: "exponential", strength: 0.6 } }),
+    at(s, 15.75, 0.55, { out: { type: "none" } }),
     at(next, 0, 0),
   ];
   p.automation = [
@@ -269,11 +270,12 @@ export function longWayHome(): Project {
       id: "auto-brightness",
       target: `track:${pad.id}:sound.macro1`,
       on: true,
+      // the strings open smoothly over the intro and close as smoothly at the end (D205)
       points: [
-        at(sIntro, 0, 0.08),
-        at(sVerse1, 16, 0.62),
-        at(sOutro, 0, 0.62),
-        at(sOutro, 15.75, 0.12),
+        at(sIntro, 0, 0.08, { out: { type: "smooth", strength: 0.8 } }),
+        at(sVerse1, 16, 0.62, { in: { type: "smooth", strength: 0.8 } }),
+        at(sOutro, 0, 0.62, { out: { type: "smooth" } }),
+        at(sOutro, 15.75, 0.12, { in: { type: "smooth" } }),
       ],
     },
     {
@@ -291,7 +293,8 @@ export function longWayHome(): Project {
         at(sVerse2, 31, 0.2),
         at(sVerse2, 31.25, 0.9),
         at(sVerse2, 31.75, 0.9),
-        at(sBreak, 1, 0.2),
+        // back down with a bounce (D205)
+        at(sBreak, 1, 0.2, { in: { type: "bounce", strength: 0.7 } }),
       ],
     },
     {
