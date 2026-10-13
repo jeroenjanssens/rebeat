@@ -558,7 +558,7 @@ export function TransportBar() {
         onMenu={(el) => popover(el, () => <TempoPopover />)}
         menuTitle="Tempo & groove: tap, time signature, swing"
         menuHint="transport.tempo.menu"
-        testId="tempo-menu"
+        testId="transport-tempo-menu"
       >
         <span className="inline-flex items-center gap-1" data-hint="transport.bpm">
           <DragValue
