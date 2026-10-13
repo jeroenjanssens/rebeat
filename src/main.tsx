@@ -90,6 +90,8 @@ if (import.meta.env.DEV || import.meta.env.MODE === "test") {
         // MIDI: the monitor, learning; settings for global mappings
         midi: () => import("./audio-io/midi").then((m) => m.useMidi),
         settings: () => import("./state/settings").then((m) => m.useSettings),
+        // which knobs each effect can move at an audio time (D206)
+        missingAutomation: () => import("./engine/effects").then((m) => m.missingAutomation()),
       };
     },
   );
