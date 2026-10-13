@@ -3,7 +3,7 @@
 This file is the fast way in. It explains what Rebeat is, how the code is organized, how the
 pieces talk to each other, how to verify a change, and the gotchas that cost time before.
 `PLAN.md` is the long-form record: the product spec (§1–§3), the original architecture (§4),
-and every design decision (§6, D1–D195). When this file and the code disagree, the code wins.
+and every design decision (§6, D1–D205). When this file and the code disagree, the code wins.
 Please fix this file in the same change.
 
 Status (2026-10-13): every phase of the original roadmap is built, plus several feature batches
@@ -25,7 +25,9 @@ Next pad mode. The latest batch is **the timeline** (§0.6o, D180–D195, `PLAN-
 "page" became **pattern** and **section**, a Timeline panel draws the sections in song time,
 sections have their own settings (mutes, transpose, fill, a shorter length) that keep clones
 linked, and tempo changes, automation and audio on the timeline (all anchored to sections,
-schema 10), with the demo song Long Way Home. Left: tests
+schema 10), with the demo song Long Way Home; and then **automation as a table** (§0.6p,
+D196–D205, `PLAN-automation-editor.md`): a lane's points in the Inspector, eases in and out per
+point and on tempo ramps, schema 11. Left: tests
 with real hardware (mic, MIDI, Launchpad/Push), signing the desktop release, the license (D6),
 and the "later" items in PLAN.md §0.7. The repository is public and `main` deploys to GitHub
 Pages.
@@ -103,7 +105,7 @@ pnpm prettier --write src e2e && pnpm tsc --noEmit && pnpm eslint . && pnpm vite
   && pnpm playwright test --workers=4
 ```
 
-Expect about 570 unit tests and about 250 e2e tests (around 7 minutes, most of it the golden
+Expect about 590 unit tests and about 255 e2e tests (around 7 minutes, most of it the golden
 levels renders). Visual changes are
 also checked in a real browser: a throwaway Playwright spec that takes a screenshot works well
 (delete it afterwards).
@@ -139,7 +141,8 @@ src/
                        - arrangement.ts (D181: sections laid out in quarter notes, bars, anchors,
                          curve values, keeping anchors on delete/copy/unroll), tempoMap.ts (D192:
                          jumps and ramps, exact seconds), automation.ts (D189: what can be
-                         automated, knob values, thinning)
+                         automated, knob values, thinning), ease.ts (D196: eases in and out, composed
+                         `in(out(t))`)
                        - fixtures/v6/ (every example and template as schema 6 saved it, gzipped)
                        - synth.ts (patch v2, macros), synthV1.ts (old patches, read only)
                        - patchParams.ts (the synth editor's knob table), randomize.ts
@@ -213,7 +216,8 @@ src/
                        beatbox (recordings list, HitWaveform, RecordDialog, ConvertView, ModelView),
                        controller (the MiniLab 3 drawn live, other maps as lists),
                        timeline (D184: ruler, Tempo lane, sections, track rows, curve lanes, regions;
-                       canvases cover only the visible part, ViewCanvas)
+                       canvases cover only the visible part, ViewCanvas); inspector/automation/
+                       (D199–D204: the point table, its sources, ScrubField, parsing)
   components/          Encoder (knob), Fader, MiniFader, DragValue, Keyboard (piano), Scope,
                        PeaksCanvas, Playhead, Menu (contextMenu/dropdown), Dialog, Toast,
                        EffectEditor, glide (smooth resets), soundIcons…
@@ -317,9 +321,11 @@ fill?: "last" | "all", steps? }`. The settings are the section's own (D183): its
   `Project.automation?: AutomationLane[]` (`{ id, target (a MIDI-learn target), on, points }`),
   `Project.regions?: AudioRegion[]` (`{ id, trackId, sampleId, start, length (quarters), offset
 (seconds), gain?, fadeIn?, fadeOut? }`). Ask `model/arrangement.ts` where anything is.
-- **Schema**: `model/schema.ts`, currently `SCHEMA_VERSION = 10` (8: MIDI mappings' `mode`; 9: `Note.offset`, a
+  Points and tempo changes have `on?` (false: skipped) and `in?`/`out?` eases (`model/ease.ts`;
+  none saved = Linear; an ease out of None holds until the next point).
+- **Schema**: `model/schema.ts`, currently `SCHEMA_VERSION = 11` (8: MIDI mappings' `mode`; 9: `Note.offset`, a
   note's own start within its step, −0.5..0.5; 10: sections' settings, tempo changes, automation,
-  regions, all optional).
+  regions, all optional; 11: eases per point, `hold` became an ease out of None).
   - Every change to the saved shape bumps the version and adds a migration plus a test.
   - `migrate` + `normalizeProject` run on every load.
   - Migration 5 → 6 converted the old SOUND knobs on synth tracks into patch edits (it changes
@@ -585,6 +591,11 @@ onPatchEdit` hook, debounced `saveSoundSoon`).
 - **Regions** (D188): `engine.startRegion` keeps them in `S.clips` under `rgn:<id>` (stop, panic
   and tempo changes reach them); one sound per track (the track's own clip stops, and
   `coveredTracks` keeps it from starting).
+- **Eases** (D196–D198): `curveAt` and the tempo map ease between points; `curveEvents` samples
+  an eased step (8 ramps, 4 for synth macros); eased tempo ramps integrate numerically.
+- **The Inspector's table** (D199–D204): `ui.inspect` makes the Inspector show a lane or the
+  tempo changes (`panels/inspector/automation/`); `ui.pointSelection` is shared with the lane's
+  `CurveLane`. Every edit goes through `state/timelineActions.ts`, so both views follow.
 - **The panel** (`panels/timeline/`): `SectionsRow` (blocks, drags), `TrackRows` (miniatures,
   mutes by cell, lanes), `CurveLane` (automation and tempo), `RegionBox`, `ViewCanvas` (a canvas
   for the visible part only).
@@ -771,6 +782,7 @@ likely to need:
 | Auto: queued pads, Sync to song; Edit sound        | D171–D173                 |
 | Patterns: notation, triplets, picked notes, groups | D174–D179                 |
 | The timeline: pattern and section, settings, tempo | D180–D195                 |
+| Automation as a table, eases                       | D196–D205                 |
 
 Feature batches and their acceptance criteria are in PLAN.md §0.6b–§0.6h. Known limitations are
 in §0.7.

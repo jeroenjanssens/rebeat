@@ -12,7 +12,7 @@
 
 ### 0.1 Where we are
 
-- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D195), and the build order is in §7.
+- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D205), and the build order is in §7.
 - Every phase in §7 is built, tested (unit + Playwright e2e) and pushed. The mockup (Phase M) became the app: its components, model and store were kept and extended; `src/mock/` was replaced by the real engine.
 - The desktop app (Phase 10) runs and packages locally (unsigned); signing/notarization need certificates (see `.github/workflows/desktop.yml`).
 
@@ -103,6 +103,7 @@ Key implementation patterns:
 0. Beatbox to step tracks (§0.6h, D105–D118) ✅ merged into `main` (2026-10-10). Decide whether the shipped model may train on beatboxset1 (CC BY-SA, D108). Record and
    label your own sounds (and friends'), export them, and train model 2 with them (`ml/README.md`).
 0b. MIDI controllers (§0.6i, D119–D125) ✅ merged into `main` (2026-10-10). With a device: check what it sends (the Monitor in Settings → MIDI) and fix its map.
+0i. Editing automation as a table in the Inspector, eases between points and on tempo ramps (§0.6p, D196–D205) ✅ on `main` (2026-10-13).
 0h. The timeline: patterns and sections, section settings, tempo changes, automation, audio on the timeline, Long Way Home (§0.6o, D180–D195) ✅ on `main` (2026-10-13). Try it in the Arrange layout; later: a loop range on the ruler, automation of more knobs (tune and decay per hit are per step: p-locks), tempo changes in the MIDI clock (when there is one).
 0g. 53 patterns in groups, triplets, patterns that pick notes (§0.6n, D174–D179) ✅ on `main` (2026-10-12).
 0f. Auto, the piano on the keys, the library in the Keys menu, 27 new synths, the synth wizard (§0.6m, D162–D170) ✅ on `main` (2026-10-12).
@@ -746,6 +747,14 @@ lane, **automation lanes** move knobs over the song, and **audio on the timeline
 sections. Automation, tempo changes and audio are anchored to sections, so they move with them.
 Schema 10. The demo song **Long Way Home** shows all of it, with a new four-bar vocal
 (`demo:vox-verse`).
+
+### 0.6p Automation as a table, eases between points (agreed and done 2026-10-13) ✅
+
+The plan is `PLAN-automation-editor.md`. A lane's points (and the tempo changes) open as a
+table in the **Inspector**: On, Position (bar.beat.16th, or section:beat.16th), Value in the
+knob's units, and an **ease in and out** per point (None, Linear, Smooth, Exponential, Bounce,
+with a strength). Drag, scroll or type every cell; insert halfway on the curve; the selection is
+the lane's too. Schema 11 (a held point became an ease out of None). Long Way Home eases.
 
 ### 0.7 Known limitations and later work
 
@@ -1492,6 +1501,35 @@ Format: **Dn — Question.** Default ✅, alternatives.
 
 - **D195 — The timeline's guide and hints.** A chapter (`timeline.md`) with the song as the
   walk-through, a hint for every control; the pattern and song chapters point to it. Alt: —
+- **D196 — Eases per point, in and out.** Each point has an ease in and an ease out; the stretch
+  between two points composes the first's out and the second's in (`in(out(t))`). Types:
+  None (out only: a jump), Linear (default), Smooth, Exponential, Bounce (in only), with a
+  strength per side. Schema 11: `hold` became ease out None; points can be off. Alt: one ease per
+  stretch (simpler, less control); Bézier handles (more to learn).
+- **D197 — Eased curves are sampled per step.** 8 ramps per step for AudioParams, 4 for a
+  synth's macros, the same live and offline; linear stretches as before. Alt:
+  `setValueCurveAtTime` (can't overlap other events, awkward with chasing).
+- **D198 — Tempo ramps ease too.** Tempo changes get on/off and eases (Linear, Smooth,
+  Exponential); eased ramps are integrated numerically. Alt: tempo stays linear.
+- **D199 — The Inspector shows a lane.** Opened from the lane's menu or by double-clicking its
+  header; ← Back to the track, or selecting a track, returns. Alt: a separate Automation panel.
+- **D200 — One selection for the lane and its table.** Points selected on the timeline are the
+  rows selected in the table, and the other way round. Alt: separate selections.
+- **D201 — The table.** One row per point in time order: On, Position (bar.beat.16th and the
+  section), Value (in the knob's units), Ease in, Ease out, a menu; drag, scroll or type
+  everywhere, double-click resets a value. Alt: a form for one point at a time.
+- **D202 — Inserting keeps the line.** A point inserted between two others goes halfway in time,
+  on the curve, with linear eases; one added at the start marker goes on the curve too. Alt: the
+  value of the point before.
+- **D203 — Clicks on the line land on it.** A click within 6 px of the curve adds a point on the
+  curve; elsewhere at the clicked height. The point menu has the eases and On/Off. Alt: every
+  click on the curve.
+- **D204 — Typing values by search.** What you type is matched against the knob's own format by
+  bisection, so every knob takes typed values in its units without a table of inverses;
+  positions take bar.beat.16th or section:beat.16th. Alt: inverse functions per knob.
+- **D205 — Long Way Home eases.** Its Brightness rises smoothly, the high-pass sweeps
+  exponentially, the reverb throw bounces back, and its tempo ramps are smooth; its golden levels
+  are re-recorded for that. Alt: leave the song linear.
 - **D35 — Build order.** ✅ The phases in §7, starting with the mockup (Phase M), each ending with something you can play with.
 
 ---

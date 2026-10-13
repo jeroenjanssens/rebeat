@@ -62,7 +62,7 @@ Exports change a warped clip's pitch along with its speed instead of stretching 
 An automation lane moves a knob over the song: a filter that opens over the build, a send that throws the last word into the reverb, a fade-out.
 
 - Right-click a knob and choose **Automate**, or use **+ Automation** in the toolbar, or the **+** in a track's row.
-- **Click** the lane to add a point, **drag** points (Shift: free), **double-click** or **Delete** to remove them, and drag a box to select several. Right-click a point: **Ramp** to the next point, or **Hold** until it.
+- **Click** the line to add a point on it, or anywhere else in the lane to add one at that height; **drag** points (Shift: free), **double-click** or **Delete** to remove them, drag a box (or Shift+click) to select several. Right-click a point for its [eases](#timeline-eases), to turn it off, or to edit it in the Inspector.
 - **On / Off** in the lane's header: off, the knob's own value plays. Its menu clears the lane, deletes it, or moves it to another knob of the same track (**Pick another knob…**).
 
 **Turning an automated knob overrides its lane**, as in Ableton: the lane dims and the knob's own value plays. **Back to automation** (in the timeline and the transport bar) brings back every overridden lane.

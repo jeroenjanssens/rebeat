@@ -1,6 +1,6 @@
 # Plan: editing automation as a table, eases between points, tempo changes too
 
-Status: agreed and being built 2026-10-13 (decisions D196–D205; Jeroen: "all the proposals").
+Status: agreed and built 2026-10-13 (decisions D196–D205; Jeroen: "all the proposals").
 How we work: on `main`, commit early and often, e2e once at the end of the batch.
 
 The idea in one line: **a lane's points as a table in the Inspector**, with exact positions and

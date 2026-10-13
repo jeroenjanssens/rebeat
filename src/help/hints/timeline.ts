@@ -27,7 +27,7 @@ const hints: Hints = {
   },
   "timeline.tempo": {
     title: "Tempo lane",
-    text: "Tempo changes over the song: jumps and ramps. Open it to edit them; its header shows the start tempo.",
+    text: "Tempo changes over the song: jumps and ramps, eased. Open it to edit them; its header shows the start tempo. Double-click: the changes as a table in the Inspector.",
     guide: "timeline-tempo-changes",
   },
   "timeline.tempo.lane": {
@@ -43,8 +43,8 @@ const hints: Hints = {
   },
   "timeline.lane": {
     title: "Automation lane",
-    text: "A knob over the song. Click to add a point, drag points to move them. Right-click a point: ramp to the next one or hold until it. Turning the knob itself overrides the lane until Back to automation.",
-    keys: "Shift+drag: free · Double-click or Delete: remove · Drag a box: select",
+    text: "A knob over the song. Click the line to add a point on it, elsewhere for one at that height; drag points to move them. Right-click a point for its eases (how the curve arrives and leaves). Turning the knob itself overrides the lane until Back to automation.",
+    keys: "Shift+drag: free · Double-click or Delete: remove · Drag a box or Shift+click: select · Double-click the lane's name: its points in the Inspector",
     guide: "timeline-automation",
   },
   "timeline.lane.on": {
