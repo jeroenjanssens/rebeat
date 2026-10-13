@@ -324,7 +324,7 @@ test("Auto armed starts with Play after the count-in and records a chord per bar
   await expect(page.getByTestId("auto")).toHaveAttribute("data-armed", "true");
 });
 
-test("room for a take: Fit the page, or in song mode Add pages and record a chord per page (D163, D164)", async ({
+test("room for a take: Fit the pattern, or in song mode Add sections and record a chord per section (D163, D164)", async ({
   page,
 }) => {
   const trackId = await autoSetup(page, { autoSync: true, snap: true });
@@ -359,7 +359,7 @@ test("room for a take: Fit the page, or in song mode Add pages and record a chor
     );
   await reset("loop");
   const room = page.getByTestId("take-room");
-  await expect(room).toContainText("Takes 4 bars; the page has 1 bar");
+  await expect(room).toContainText("Takes 4 bars; the pattern has 1 bar");
   await page.getByTestId("fit-page").click();
   await expect(room).toHaveCount(0);
 
