@@ -25,8 +25,8 @@ describe("curve events (D186)", () => {
   it("a held point jumps at the next one", () => {
     const e = curveEvents(pts([0, 0.2, true], [1.5, 0.9]), 1, 2, 10, 1, false);
     expect(e).toEqual([
-      { t: 10.5, v: 0.2, ramp: true },
-      { t: 10.5, v: 0.9, ramp: false },
+      { t: 10.497, v: 0.2, ramp: true },
+      { t: 10.5, v: 0.9, ramp: true },
       { t: 11, v: 0.9, ramp: true },
     ]);
   });

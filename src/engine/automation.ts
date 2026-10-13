@@ -12,6 +12,9 @@ import type { AutoEvent } from "./effects";
 import { sampleInfo } from "./samples";
 
 const EPS = 1e-6;
+/** A jump in a curve (where a held point ends) takes this long: an instant one clicks (a filter
+ * that jumps rings). */
+const JUMP = 0.003;
 
 /**
  * A curve's events over one step, from song position q0 to q1 (heard from `time` for `dur`
@@ -43,9 +46,9 @@ export function curveEvents(
     }
     const prev = points[i - 1];
     if (prev?.hold) {
-      // held until here, then the new value at once
-      out.push({ t: at(p.q), v: prev.value, ramp: true });
-      out.push({ t: at(p.q), v: p.value, ramp: false });
+      // held until here, then the new value at once (in a few milliseconds)
+      out.push({ t: at(p.q) - JUMP, v: prev.value, ramp: true });
+      out.push({ t: at(p.q), v: p.value, ramp: true });
     } else out.push({ t: at(p.q), v: p.value, ramp: true });
   });
   for (; m < marks.length; m++)

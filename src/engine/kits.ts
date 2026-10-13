@@ -247,8 +247,11 @@ const VOWELS: Record<string, [number, number, number]> = {
   i: [300, 2300, 3000],
 };
 
-/** A wordless vocal-like phrase: a sawtooth through moving vowel formants, 2 bars at 112 BPM. */
-function renderVox() {
+/** [beat, length (beats), note, vowel] */
+type Phrase = [number, number, string, string][];
+
+/** A wordless vocal-like phrase: a sawtooth through moving vowel formants, at 112 BPM. */
+function sing(phrase: Phrase) {
   const beat = 60 / 112;
   const formants = VOWELS.a.map((f, i) =>
     new Tone.Filter({ frequency: f, type: "bandpass", Q: 8 - i * 2 }).connect(out()),
@@ -270,8 +273,16 @@ function renderVox() {
   });
   formants.forEach((f) => synth.connect(f));
   vib.connect(synth.detune);
-  // [beat, length (beats), note, vowel]
-  const phrase: [number, number, string, string][] = [
+  for (const [b, len, note, vowel] of phrase) {
+    const t = T + b * beat;
+    synth.triggerAttackRelease(note, len * beat, t, 0.8);
+    formants.forEach((f, i) => f.frequency.linearRampTo(VOWELS[vowel][i], 0.05, t));
+  }
+}
+
+/** The hook: 2 bars in C minor. */
+function renderVox() {
+  sing([
     [0, 0.75, "G4", "o"],
     [1, 0.5, "Bb4", "a"],
     [1.5, 1.25, "C5", "a"],
@@ -281,12 +292,30 @@ function renderVox() {
     [5, 0.5, "F4", "a"],
     [5.5, 1.5, "G4", "a"],
     [7.25, 0.5, "C5", "i"],
-  ];
-  for (const [b, len, note, vowel] of phrase) {
-    const t = T + b * beat;
-    synth.triggerAttackRelease(note, len * beat, t, 0.8);
-    formants.forEach((f, i) => f.frequency.linearRampTo(VOWELS[vowel][i], 0.05, t));
-  }
+  ]);
+}
+
+/** The verse (D194): 4 bars in C minor that answer the hook, up to E♭5 and down to G. */
+function renderVoxVerse() {
+  sing([
+    [0, 0.5, "C5", "a"],
+    [0.5, 0.5, "Bb4", "o"],
+    [1, 1, "G4", "a"],
+    [2.5, 0.5, "G4", "e"],
+    [3, 0.75, "Bb4", "a"],
+    [4, 0.5, "C5", "o"],
+    [4.5, 0.5, "D5", "a"],
+    [5, 1.5, "Eb5", "a"],
+    [6.75, 0.75, "D5", "e"],
+    [8, 0.75, "C5", "o"],
+    [9, 0.5, "Bb4", "a"],
+    [9.5, 1, "C5", "a"],
+    [11, 0.5, "D5", "i"],
+    [11.5, 0.5, "C5", "e"],
+    [12, 0.75, "Bb4", "o"],
+    [13, 0.5, "Ab4", "a"],
+    [13.5, 2, "G4", "a"],
+  ]);
 }
 
 const VOX: SampleInfo & { length: number } = {
@@ -297,7 +326,15 @@ const VOX: SampleInfo & { length: number } = {
   length: (60 / 112) * 8,
 };
 
-export const KIT_SOUNDS: SampleInfo[] = [...SOUNDS, VOX];
+const VOX_VERSE: SampleInfo & { length: number } = {
+  id: "demo:vox-verse",
+  name: "Vox verse 112",
+  category: "vocal",
+  bpm: 112,
+  length: (60 / 112) * 16,
+};
+
+export const KIT_SOUNDS: SampleInfo[] = [...SOUNDS, VOX, VOX_VERSE];
 export const KITS = ["909", "808"];
 
 export function kitSounds(kit: string): KitSound[] {
@@ -313,6 +350,8 @@ export function renderKits(): Promise<void> {
     const all: (SampleInfo & { length: number; render: () => void })[] = [
       ...SOUNDS,
       { ...VOX, render: renderVox },
+      // last: the sounds before it render (and their seeded noise) as they always did
+      { ...VOX_VERSE, render: renderVoxVerse },
     ];
     const gap = 0.25;
     const starts: number[] = [];
@@ -343,7 +382,7 @@ export function renderKits(): Promise<void> {
       const buf = new AudioBuffer({ length: len, sampleRate: sr, numberOfChannels: 1 });
       buf.copyToChannel(data.slice(from, from + len), 0);
       // −6 dBFS, like typical drum samples: a full kit leaves headroom in the mix
-      registerSample(s, normalize(buf, s.id === VOX.id ? 0.4 : 0.5));
+      registerSample(s, normalize(buf, s.id === VOX.id || s.id === VOX_VERSE.id ? 0.4 : 0.5));
     });
   })();
   return rendering;

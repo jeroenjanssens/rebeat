@@ -51,6 +51,7 @@ const projects = [
     "liquid-ladder",
     "around-the-world",
     "laser-highway",
+    "long-way-home",
   ].map((id) => `example:${id}`),
   // Late Night Café streams its sampled instruments, so it needs the network: left out
   ...["empty", "808", "loops"].map((id) => `template:${id}`),

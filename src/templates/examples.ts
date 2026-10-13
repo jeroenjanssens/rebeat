@@ -3,6 +3,7 @@
  * progressions. Basslines and synth parts are written in the style of the originals (they aren't
  * note-for-note copies). Examples are read-only: the first change makes a copy (storage/projects).
  */
+import { longWayHome } from "./arrangement";
 import { makeEffect } from "../model/effects";
 import type { Project } from "../model/project";
 import {
@@ -399,6 +400,13 @@ export const EXAMPLES: Example[] = [
     artist: "Rebeat demo · synthwave",
     year: 2026,
     create: SYNTH_SONGS.laserHighway,
+  },
+  {
+    id: "long-way-home",
+    name: "Long Way Home",
+    artist: "Rebeat demo · the timeline",
+    year: 2026,
+    create: longWayHome,
   },
   {
     id: "around-the-world",
