@@ -5,7 +5,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronDown, Minus, Plug, Plus } from "lucide-react";
-import { useMidi, targetContext, connectedController } from "../../audio-io/midi";
+import { useMidi, targetContext, connectedController, turnKeysKnob } from "../../audio-io/midi";
 import { mapById } from "../../midi/controllers";
 import { resolveTarget, readTarget } from "../../midi/mapping";
 import { soundDefs } from "../../library/synthTrack";
@@ -36,10 +36,14 @@ import { padInput } from "../../state/input";
 import * as engine from "../../engine/engine";
 import { MiniLab3Svg } from "./MiniLab3Svg";
 import { ROLE_COLORS, ROLE_NAMES } from "../../model/suggest";
-import { PlayStylesRow } from "./PlayStylesRow";
+import { PlayStylesCard } from "./PlayStyles";
+import { Card, Line, revealCard } from "./Card";
+import { CONTROLLER_MAPS } from "../../midi/controllers";
+import { chooseControllerMap } from "../../app/MidiSettings";
+import { useShell } from "../../app/shell";
 import { ProgressionPicker } from "./ProgressionPicker";
 import { PATTERNS, patternById, sanitizePlayStyle } from "../../model/perform";
-import { EditSoundButton, KeysChip } from "../../app/KeysChip";
+import { KeysChip } from "../../app/KeysChip";
 import { padColors } from "../../midi/padColors";
 import { GenericControllerView } from "./GenericControllerView";
 import { onControllerEvent } from "../../midi/controllerEvents";
@@ -189,10 +193,12 @@ function PadModeSwitch() {
   );
 }
 
-/** Key mode's key: a chip with a menu of roots and scales, and "Use the page's key". */
+/** Key mode's key: a chip with a menu of roots and scales, "Use the pattern's key", and how the
+ * black knob changes the key (D138: at once, or on its press). */
 function KeyModeChip() {
   const ref = useRef<HTMLButtonElement>(null);
   const key = useSettings((s) => s.keyModeKey);
+  const dial = useSettings((s) => s.keyDial);
   const project = useStore((s) => s.project);
   const pattern = useEditPattern();
   const items = (): MenuItem[] => [
@@ -229,6 +235,18 @@ function KeyModeChip() {
       label: `Use the pattern's key (${keyName(pageKey(project, pattern))})`,
       onSelect: () => setKeyModeKey(keyModeKeyFrom(pageKey(project, pattern))),
     },
+    { separator: true },
+    { heading: "The black knob changes the key" },
+    {
+      label: "At once, as you turn it",
+      checked: dial === "instant",
+      onSelect: () => setKeyDial("instant"),
+    },
+    {
+      label: "When you press it (turning picks the next key)",
+      checked: dial === "press",
+      onSelect: () => setKeyDial("press"),
+    },
   ];
   return (
     <button
@@ -245,202 +263,210 @@ function KeyModeChip() {
   );
 }
 
-/** The row for the pads' Chord and Key modes: in Key mode the active key and the one a press
- * would select, and how the knob turns (D138); the bass (D139) and the transpose in both. */
-function PadChordsRow({ keyMode }: { keyMode: boolean }) {
+/** In Key mode with "on press": the key a press of the black knob would select. */
+function PendingKey() {
   const dial = useSettings((s) => s.keyDial);
-  const bass = useSettings((s) => s.bassOctaves);
+  const pending = useKeys((s) => s.pendingKey);
+  if (dial !== "press" || !pending) return null;
+  return (
+    <button
+      className="tool-btn !h-6 gap-1 border border-dashed border-accent"
+      data-testid="key-mode-pending"
+      data-hint="controller.keyMode.pending"
+      onClick={selectPendingKey}
+    >
+      <span className="text-faint">→</span>
+      <span className="num text-accent">{keyName(pending)}</span>
+      <span className="text-faint text-[11px]">press the knob</span>
+    </button>
+  );
+}
+
+const signed = (v: number) => (v > 0 ? `+${v}` : `${v}`);
+
+/** The Chords card (D140, D148, D154): voicing, smooth voicing, transpose. */
+function ChordsCard() {
   const voicing = useSettings((s) => s.chordVoicing);
-  const suggest = useSettings((s) => s.suggest);
-  const adventure = useSettings((s) => s.suggestAdventure);
-  const padMode = useSettings((s) => s.padMode);
   const smooth = useSettings((s) => s.smoothVoicing);
   const voicingUsed = useKeys((s) => s.voicingUsed);
+  const transpose = useKeys((s) => s.transpose);
+  return (
+    <Card id="chords" title="Chords">
+      <Line label="Voicing">
+        <div className="flex items-center" data-testid="voicing" data-hint="controller.voicing">
+          <button className="tool-btn !h-6" onClick={() => setChordVoicing(voicing - 1)}>
+            <Minus size={12} />
+          </button>
+          <button
+            className="num w-8 text-center text-[12px] text-ink"
+            title="Root position"
+            data-testid="voicing-value"
+            onClick={() => setChordVoicing(0)}
+          >
+            {signed(voicing)}
+          </button>
+          <button className="tool-btn !h-6" onClick={() => setChordVoicing(voicing + 1)}>
+            <Plus size={12} />
+          </button>
+        </div>
+        <div className="segmented" data-hint="controller.voicing.smooth">
+          <button
+            data-active={smooth}
+            aria-pressed={smooth}
+            data-testid="voicing-smooth"
+            title={smooth && voicingUsed !== null ? `Playing ${signed(voicingUsed)}` : undefined}
+            onClick={() => setSmoothVoicing(!smooth)}
+          >
+            Smooth
+            {smooth && voicingUsed !== null && (
+              <span className="num ml-1 text-faint">{signed(voicingUsed)}</span>
+            )}
+          </button>
+        </div>
+      </Line>
+      <Line label="Transpose">
+        <div className="flex items-center" data-testid="transpose" data-hint="controller.transpose">
+          <button className="tool-btn !h-6" onClick={() => setTranspose(transpose - 1)}>
+            <Minus size={12} />
+          </button>
+          <button
+            className="num w-8 text-center text-[12px] text-ink"
+            title="Back to 0"
+            data-testid="transpose-value"
+            onClick={() => setTranspose(0)}
+          >
+            {signed(transpose)}
+          </button>
+          <button className="tool-btn !h-6" onClick={() => setTranspose(transpose + 1)}>
+            <Plus size={12} />
+          </button>
+        </div>
+      </Line>
+    </Card>
+  );
+}
+
+/** The Bass card (D139, D148, D155): octaves down, its own sound, a split. */
+function BassCard() {
+  const bass = useSettings((s) => s.bassOctaves);
   const bassTrack = useSettings((s) => s.bassTrack);
   const bassMode = useSettings((s) => s.bassMode);
   const bassSplit = useSettings((s) => s.bassSplit);
   const tracks = useStore((s) => s.project.tracks);
   const notesTracks = tracks.filter((t) => t.mode === "notes");
   const bassTrackName = tracks.find((t) => t.id === bassTrack)?.name ?? null;
-  const pending = useKeys((s) => s.pendingKey);
-  const transpose = useKeys((s) => s.transpose);
   return (
-    <div className="flex shrink-0 flex-wrap items-center gap-2 px-1" data-testid="pad-chords-row">
-      {keyMode && <KeyModeChip />}
-      {keyMode && dial === "press" && pending && (
-        <button
-          className="tool-btn !h-6 gap-1 border border-dashed border-accent"
-          data-testid="key-mode-pending"
-          data-hint="controller.keyMode.pending"
-          onClick={selectPendingKey}
-        >
-          <span className="text-faint">→</span>
-          <span className="num text-accent">{keyName(pending)}</span>
-          <span className="text-faint text-[11px]">press the knob</span>
-        </button>
-      )}
-      <div className="segmented" data-hint="controller.suggest">
-        <button
-          data-active={suggest}
-          aria-pressed={suggest}
-          data-testid="suggest"
-          onClick={() => setSuggest(!suggest)}
-        >
-          Suggest
-        </button>
-      </div>
-      {padMode === "next" && <ProgressionPicker />}
-      {(suggest || padMode === "next") && (
-        <div
-          className="segmented"
-          data-testid="suggest-adventure"
-          data-hint="controller.suggest.adventure"
-        >
-          {(["Safe", "Common", "Bold"] as const).map((label, level) => (
-            <button
-              key={label}
-              data-active={adventure === level}
-              onClick={() => setSuggestAdventure(level as 0 | 1 | 2)}
-            >
-              {label}
-            </button>
-          ))}
+    <Card
+      id="bass"
+      title="Bass"
+      right={<span className="num text-[10.5px] text-dim">{bass ? `−${bass}` : "Off"}</span>}
+    >
+      <Line label="Octaves">
+        <div className="flex items-center" data-testid="bass" data-hint="controller.bass">
+          {/* − is deeper, + back toward Off */}
+          <button
+            className="tool-btn !h-6"
+            aria-label="Deeper"
+            onClick={() => setBassOctaves(bass + 1)}
+          >
+            <Minus size={12} />
+          </button>
+          <button
+            className="num w-8 text-center text-[12px] text-ink"
+            title="Off"
+            data-testid="bass-value"
+            onClick={() => setBassOctaves(0)}
+          >
+            {bass ? `−${bass}` : "Off"}
+          </button>
+          <button
+            className="tool-btn !h-6"
+            aria-label="Higher"
+            onClick={() => setBassOctaves(bass - 1)}
+          >
+            <Plus size={12} />
+          </button>
         </div>
-      )}
-      <span className="flex-1" />
-      {keyMode && (
-        <>
-          <span className="label">Knob</span>
-          <div className="segmented" data-testid="key-dial">
-            {(["instant", "press"] as const).map((m) => (
+      </Line>
+      <Line label="Sound">
+        <button
+          className="tool-btn !h-6 gap-0.5"
+          data-testid="bass-sound"
+          data-hint="controller.bass.sound"
+          onClick={(e) =>
+            dropdown(e.currentTarget, [
+              {
+                label: "Same as the chord",
+                checked: !bassTrackName,
+                onSelect: () => setBassTrack(null),
+              },
+              ...notesTracks.map((t) => ({
+                label: t.name,
+                checked: t.id === bassTrack,
+                onSelect: () => setBassTrack(t.id),
+              })),
+            ])
+          }
+        >
+          <span className="text-[12px] text-ink">{bassTrackName ?? "Chord's sound"}</span>
+          <ChevronDown size={11} />
+        </button>
+        <div className="segmented" data-hint="controller.bass.split">
+          <button
+            data-active={bassMode === "split"}
+            aria-pressed={bassMode === "split"}
+            data-testid="bass-split"
+            title={`Keys below ${noteName(bassSplit)} play the bass alone`}
+            onClick={() => setBassMode(bassMode === "split" ? "auto" : "split")}
+          >
+            Split{bassMode === "split" ? ` < ${noteName(bassSplit)}` : ""}
+          </button>
+        </div>
+      </Line>
+    </Card>
+  );
+}
+
+/** The Suggest card (D158–D161): the next chord, how bold, and in Next mode the progression and
+ * Auto. */
+function SuggestCard() {
+  const suggest = useSettings((s) => s.suggest);
+  const adventure = useSettings((s) => s.suggestAdventure);
+  const padMode = useSettings((s) => s.padMode);
+  const next = padMode === "next";
+  return (
+    <Card id="suggest" title={next ? "Suggest and Auto" : "Suggest"}>
+      <Line>
+        <div className="segmented" data-hint="controller.suggest">
+          <button
+            data-active={suggest}
+            aria-pressed={suggest}
+            data-testid="suggest"
+            onClick={() => setSuggest(!suggest)}
+          >
+            Suggest
+          </button>
+        </div>
+        {(suggest || next) && (
+          <div
+            className="segmented"
+            data-testid="suggest-adventure"
+            data-hint="controller.suggest.adventure"
+          >
+            {(["Safe", "Common", "Bold"] as const).map((label, level) => (
               <button
-                key={m}
-                data-active={dial === m}
-                data-hint={
-                  m === "instant" ? "controller.keyDial.instant" : "controller.keyDial.press"
-                }
-                onClick={() => setKeyDial(m)}
+                key={label}
+                data-active={adventure === level}
+                onClick={() => setSuggestAdventure(level as 0 | 1 | 2)}
               >
-                {m === "instant" ? "At once" : "On press"}
+                {label}
               </button>
             ))}
           </div>
-        </>
-      )}
-      <span className="label">Voicing</span>
-      <div className="flex items-center" data-testid="voicing" data-hint="controller.voicing">
-        <button className="tool-btn !h-6" onClick={() => setChordVoicing(voicing - 1)}>
-          <Minus size={12} />
-        </button>
-        <button
-          className="num w-8 text-center text-[12px] text-ink"
-          title="Root position"
-          data-testid="voicing-value"
-          onClick={() => setChordVoicing(0)}
-        >
-          {voicing > 0 ? `+${voicing}` : voicing}
-        </button>
-        <button className="tool-btn !h-6" onClick={() => setChordVoicing(voicing + 1)}>
-          <Plus size={12} />
-        </button>
-      </div>
-      <div className="segmented" data-hint="controller.voicing.smooth">
-        <button
-          data-active={smooth}
-          aria-pressed={smooth}
-          data-testid="voicing-smooth"
-          title={
-            smooth && voicingUsed !== null
-              ? `Playing ${voicingUsed > 0 ? "+" : ""}${voicingUsed}`
-              : undefined
-          }
-          onClick={() => setSmoothVoicing(!smooth)}
-        >
-          Smooth
-          {smooth && voicingUsed !== null && (
-            <span className="num ml-1 text-faint">
-              {voicingUsed > 0 ? `+${voicingUsed}` : voicingUsed}
-            </span>
-          )}
-        </button>
-      </div>
-      <span className="label">Bass</span>
-      <div className="flex items-center" data-testid="bass" data-hint="controller.bass">
-        {/* − is deeper, + back toward Off */}
-        <button
-          className="tool-btn !h-6"
-          aria-label="Deeper"
-          onClick={() => setBassOctaves(bass + 1)}
-        >
-          <Minus size={12} />
-        </button>
-        <button
-          className="num w-8 text-center text-[12px] text-ink"
-          title="Off"
-          data-testid="bass-value"
-          onClick={() => setBassOctaves(0)}
-        >
-          {bass ? `−${bass}` : "Off"}
-        </button>
-        <button
-          className="tool-btn !h-6"
-          aria-label="Higher"
-          onClick={() => setBassOctaves(bass - 1)}
-        >
-          <Plus size={12} />
-        </button>
-      </div>
-      <button
-        className="tool-btn !h-6 gap-0.5"
-        data-testid="bass-sound"
-        data-hint="controller.bass.sound"
-        onClick={(e) =>
-          dropdown(e.currentTarget, [
-            {
-              label: "Same as the chord",
-              checked: !bassTrackName,
-              onSelect: () => setBassTrack(null),
-            },
-            ...notesTracks.map((t) => ({
-              label: t.name,
-              checked: t.id === bassTrack,
-              onSelect: () => setBassTrack(t.id),
-            })),
-          ])
-        }
-      >
-        <span className="text-[12px] text-ink">{bassTrackName ?? "Chord's sound"}</span>
-        <ChevronDown size={11} />
-      </button>
-      <div className="segmented" data-hint="controller.bass.split">
-        <button
-          data-active={bassMode === "split"}
-          aria-pressed={bassMode === "split"}
-          data-testid="bass-split"
-          title={`Keys below ${noteName(bassSplit)} play the bass alone`}
-          onClick={() => setBassMode(bassMode === "split" ? "auto" : "split")}
-        >
-          Split{bassMode === "split" ? ` < ${noteName(bassSplit)}` : ""}
-        </button>
-      </div>
-      <span className="label">Transpose</span>
-      <div className="flex items-center" data-testid="transpose" data-hint="controller.transpose">
-        <button className="tool-btn !h-6" onClick={() => setTranspose(transpose - 1)}>
-          <Minus size={12} />
-        </button>
-        <button
-          className="num w-8 text-center text-[12px] text-ink"
-          title="Back to 0"
-          data-testid="transpose-value"
-          onClick={() => setTranspose(0)}
-        >
-          {transpose > 0 ? `+${transpose}` : transpose}
-        </button>
-        <button className="tool-btn !h-6" onClick={() => setTranspose(transpose + 1)}>
-          <Plus size={12} />
-        </button>
-      </div>
-    </div>
+        )}
+      </Line>
+      {next && <ProgressionPicker />}
+    </Card>
   );
 }
 
@@ -684,59 +710,136 @@ export function ControllerPanel() {
     );
   }
 
+  const chordModes = padMode !== "drum";
+  const keyModes = padMode === "key" || padMode === "next";
   return (
-    <div className="flex h-full flex-col gap-1 overflow-hidden p-2" data-testid="controller-panel">
-      {/* Map name header */}
-      <div className="flex shrink-0 items-center gap-2 px-1">
-        <span className="label">{activeMap.name}</span>
-        {detected && detected.id !== activeMap.id && (
-          <span className="text-faint text-[11px]">
-            (map: {activeMap.name}, connected: {detected.name})
-          </span>
-        )}
-        <span className="flex-1" />
-        <KeysChip testId="controller-keys-chip" />
-        <EditSoundButton />
+    <div
+      className="flex h-full flex-col gap-1.5 overflow-hidden p-2"
+      data-testid="controller-panel"
+    >
+      {/* one header row (D213): the map, the pads, the key, the keys */}
+      <div className="flex shrink-0 flex-wrap items-center gap-2 px-1">
+        <MapMenu name={activeMap.name} detected={detected} activeId={activeMap.id} />
         <span className="label">Pads</span>
         <PadModeSwitch />
+        {keyModes && <KeyModeChip />}
+        {keyModes && <PendingKey />}
+        <span className="flex-1" />
+        <KeysChip testId="controller-keys-chip" />
       </div>
-      {padMode !== "drum" && <PadChordsRow keyMode={padMode === "key" || padMode === "next"} />}
-      <PlayStylesRow />
 
-      {/* Device picture or generic slots */}
-      <div className="min-h-0 flex-1 overflow-hidden" data-hint="controller.picture">
-        {isMiniLab ? (
-          <MiniLab3Svg
-            labels={{
-              knobs: kLabels,
-              faders: fLabels,
-              encoder: padMode === "key" || padMode === "next" ? "Key" : "Browse",
-            }}
-            onKeyDown={handleKeyDown}
-            onPadDown={handlePadDown}
-            padMode={padMode}
-            padColors={padColors(
-              project.tracks,
-              padMode,
-              suggestions.map((s) => ROLE_COLORS[s.role]),
+      {/* the picture and the settings column: beside it when wide, under it when narrow */}
+      <div className="@container min-h-0 flex-1">
+        <div className="flex h-full flex-col gap-2 @[880px]:flex-row">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1">
+            <div className="min-h-0 flex-1 overflow-hidden" data-hint="controller.picture">
+              {isMiniLab ? (
+                <MiniLab3Svg
+                  labels={{
+                    knobs: kLabels,
+                    faders: fLabels,
+                    encoder: keyModes ? "Key" : "Browse",
+                  }}
+                  onKeyDown={handleKeyDown}
+                  onPadDown={handlePadDown}
+                  onKnobClick={chordModes ? (i) => revealCard(KNOB_CARDS[i]) : undefined}
+                  onKnobTurn={(i, steps) => turnKnob(i, steps, chordModes)}
+                  padMode={padMode}
+                  padColors={padColors(
+                    project.tracks,
+                    padMode,
+                    suggestions.map((s) => ROLE_COLORS[s.role]),
+                  )}
+                  scaleKey={keyModes ? keyModeKey : null}
+                  nextLabels={padMode === "next" ? suggestions.map((s) => s.name) : undefined}
+                  marks={marks}
+                  padMarks={padMarks}
+                  queuedPad={padMode === "next" ? autoQueued : null}
+                  onLabelPx={setLabelPx}
+                  holdLit={playStyle.latch}
+                />
+              ) : (
+                <GenericControllerView map={activeMap} />
+              )}
+            </div>
+            {!isMiniLab && padMode === "next" && <NextPadsRow />}
+            {!isMiniLab && chordModes && padMode !== "next" && (
+              <ChordPadsRow keyMode={padMode === "key"} />
             )}
-            scaleKey={padMode === "key" || padMode === "next" ? keyModeKey : null}
-            nextLabels={padMode === "next" ? suggestions.map((s) => s.name) : undefined}
-            marks={marks}
-            padMarks={padMarks}
-            queuedPad={padMode === "next" ? autoQueued : null}
-            onLabelPx={setLabelPx}
-            holdLit={playStyle.latch}
-          />
-        ) : (
-          <GenericControllerView map={activeMap} />
-        )}
+            <NotesEquation sounding={sounding} size={isMiniLab ? Math.max(15, labelPx) : 22} />
+          </div>
+          <aside
+            className="scroll-thin flex max-h-[45%] shrink-0 flex-col gap-1.5 overflow-y-auto @[880px]:max-h-none @[880px]:w-[330px]"
+            data-testid="controller-settings"
+          >
+            {chordModes && <ChordsCard />}
+            {chordModes && <BassCard />}
+            {chordModes && <SuggestCard />}
+            <PlayStylesCard />
+          </aside>
+        </div>
       </div>
-      {!isMiniLab && padMode === "next" && <NextPadsRow />}
-      {!isMiniLab && padMode !== "drum" && padMode !== "next" && (
-        <ChordPadsRow keyMode={padMode === "key"} />
-      )}
-      <NotesEquation sounding={sounding} size={isMiniLab ? Math.max(15, labelPx) : 22} />
     </div>
+  );
+}
+
+/** Which card each knob's setting is in, in Chord, Key and Next mode (D140, D148, D150–D153). */
+const KNOB_CARDS = ["chords", "chords", "play", "play", "bass", "play", "play", "play"];
+
+/** Turn a knob in the picture: the keys' setting it is (Chord, Key, Next), or the selected
+ * track's SOUND knob (Drum). */
+function turnKnob(i: number, steps: number, chordModes: boolean) {
+  if (chordModes) return turnKeysKnob(i, steps);
+  const { project, selectedTrackId, commit } = useStore.getState();
+  const track = project.tracks.find((t) => t.id === selectedTrackId);
+  const def = track && soundDefs(track)[i];
+  if (!track || !def) return;
+  const key = `sound.${def.id}`;
+  const by = def.steps ? 1 / (def.steps - 1) : 0.02;
+  commit((p) => {
+    const t = p.tracks.find((x) => x.id === track.id);
+    if (t) t.params[key] = Math.max(0, Math.min(1, (t.params[key] ?? def.default) + steps * by));
+  }, `ctl-knob-${track.id}-${def.id}`);
+}
+
+/** The map's name, with a menu: another map, or the MIDI settings. */
+function MapMenu({
+  name,
+  detected,
+  activeId,
+}: {
+  name: string;
+  detected: ReturnType<typeof connectedController>;
+  activeId: string;
+}) {
+  return (
+    <button
+      className="field"
+      data-testid="controller-map"
+      data-hint="controller.map"
+      title={
+        detected && detected.id !== activeId
+          ? `The map is ${name}; ${detected.name} is connected`
+          : undefined
+      }
+      onClick={(e) =>
+        dropdown(e.currentTarget, [
+          ...CONTROLLER_MAPS.map((m) => ({
+            label: m.name,
+            checked: m.id === activeId,
+            onSelect: () => chooseControllerMap(m.id),
+          })),
+          { separator: true },
+          {
+            label: "MIDI settings…",
+            onSelect: () => useShell.getState().set({ settingsOpen: true }),
+          },
+        ])
+      }
+    >
+      <span className="label !text-ink">{name}</span>
+      {detected && detected.id !== activeId && <span className="text-[10px] text-lit">≠</span>}
+      <ChevronDown size={12} className="text-dim" />
+    </button>
   );
 }

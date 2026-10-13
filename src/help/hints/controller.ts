@@ -1,6 +1,31 @@
 import type { Hints } from "./types";
 
 const hints: Hints = {
+  "controller.map": {
+    title: "Controller map",
+    text: "The map in use: which control does what. Pick another map here, or open the MIDI settings. A ≠ means the connected controller isn't the one this map is for.",
+    guide: "performance-your-controller",
+  },
+  "controller.card.chords": {
+    title: "Chords",
+    text: "How the chord pads and Key mode voice their chords: the inversion (Voicing, knob 1), Smooth (each chord in the inversion nearest the last), and the keys' Transpose (knob 2). Click the title to fold it.",
+    guide: "performance-your-controller",
+  },
+  "controller.card.bass": {
+    title: "Bass",
+    text: "A bass note under every chord, octaves down (knob 5), in the chord's sound or a track of its own, and Split: keys below the split play the bass alone. Click the title to fold it.",
+    guide: "performance-your-controller",
+  },
+  "controller.card.suggest": {
+    title: "Suggest",
+    text: "Marks the next chord to play on the keys, from safe to bold. In Next mode the pads play the suggestions, pad 1 can follow a famous progression, and Auto plays it for you. Click the title to fold it.",
+    guide: "performance-your-controller",
+  },
+  "controller.card.play": {
+    title: "Play",
+    text: "How the keys play, in every pad mode: Strum, Slop, the arpeggiator, a chord pattern, Latch and Balance. A style's settings show on its line while it's on. Click the title to fold it.",
+    guide: "performance-your-controller",
+  },
   "controller.none": {
     title: "No controller",
     text: "Plug in a MIDI controller, then go to Settings → MIDI → Controller to pick its map. Rebeat will recognize a MiniLab 3, MPK Mini MK3 or Launchkey Mini automatically.",
@@ -43,7 +68,7 @@ const hints: Hints = {
   },
   "controller.btn.1": {
     title: "Hold button",
-    text: "The MiniLab's Hold button sends nothing to Rebeat; it's lit while Latch (in the Play row) keeps what the keys play going.",
+    text: "The MiniLab's Hold button sends nothing to Rebeat; it's lit while Latch (in the Play card) keeps what the keys play going.",
     guide: "performance-your-controller",
   },
   "controller.btn.2": {
@@ -149,12 +174,12 @@ const hints: Hints = {
   },
   "controller.keysknob.2": {
     title: "Knob 3: Strum",
-    text: "Plays a chord's notes one after another instead of all at once, like a pick across guitar strings. Far left is off: all notes together. Turning right makes the strum slower, from 10 ms (a quick, tight roll that just softens the attack) to 250 ms (a slow, harp-like spread). Up, Down or Alt is in the Play row.",
+    text: "Plays a chord's notes one after another instead of all at once, like a pick across guitar strings. Far left is off: all notes together. Turning right makes the strum slower, from 10 ms (a quick, tight roll that just softens the attack) to 250 ms (a slow, harp-like spread). Up, Down or Alt is in the Play card.",
     guide: "performance-play-styles",
   },
   "controller.keysknob.3": {
     title: "Knob 4: Arpeggiator",
-    text: "Plays the notes you hold one at a time, over and over, at the song's tempo, instead of together. Far left is off. Turning right makes it faster: quarter notes, eighths, eighth triplets, sixteenths, sixteenth triplets, thirty-seconds. The order (up, down…), the octaves and how long each note lasts are in the Play row.",
+    text: "Plays the notes you hold one at a time, over and over, at the song's tempo, instead of together. Far left is off. Turning right makes it faster: quarter notes, eighths, eighth triplets, sixteenths, sixteenth triplets, thirty-seconds. The order (up, down…), the octaves and how long each note lasts are in the Play card.",
     guide: "performance-play-styles",
   },
   "controller.keysknob.4": {

@@ -250,6 +250,40 @@ interface MiniLab3SvgProps {
   onLabelPx?: (px: number) => void;
   /** Latch is on (D151): the Hold button is drawn lit. */
   holdLit?: boolean;
+  /** A knob clicked (its setting's card, D213). */
+  onKnobClick?: (index: number) => void;
+  /** A knob turned in the picture: dragged up or down, or scrolled, in steps. */
+  onKnobTurn?: (index: number, steps: number) => void;
+}
+
+/** Drag a knob up (more) or down, a step per 6 px; a press that doesn't move is a click. */
+function knobPointer(
+  i: number,
+  onTurn?: (index: number, steps: number) => void,
+  onClick?: (index: number) => void,
+) {
+  return (e: React.PointerEvent) => {
+    if (!onTurn && !onClick) return;
+    e.preventDefault();
+    const start = e.clientY;
+    let done = 0;
+    let moved = false;
+    const move = (ev: PointerEvent) => {
+      const steps = Math.trunc((start - ev.clientY) / 6);
+      if (steps !== done) {
+        moved = true;
+        onTurn?.(i, steps - done);
+        done = steps;
+      }
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      if (!moved) onClick?.(i);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
 }
 
 // ── Component ─────────────────────────────────────────────────────────────
@@ -267,6 +301,8 @@ export function MiniLab3Svg({
   marks = [],
   padMarks = [],
   queuedPad = null,
+  onKnobClick,
+  onKnobTurn,
 }: MiniLab3SvgProps) {
   const chordPads = padMode !== "drum";
   // the device's octave, for the markers (React draws them; the frame loop draws the rest)
@@ -832,7 +868,14 @@ export function MiniLab3Svg({
         const cy = KNOB_CYS[Math.floor(i / 4)];
         const label = labels.knobs[i];
         return (
-          <g key={i} data-hint={chordPads ? `controller.keysknob.${i}` : `controller.knob.${i}`}>
+          <g
+            key={i}
+            data-hint={chordPads ? `controller.keysknob.${i}` : `controller.knob.${i}`}
+            data-knob={i}
+            style={{ cursor: onKnobTurn ? "ns-resize" : undefined }}
+            onPointerDown={knobPointer(i, onKnobTurn, onKnobClick)}
+            onWheel={(e) => onKnobTurn?.(i, e.deltaY < 0 ? 1 : -1)}
+          >
             <title>
               {label?.name ?? `Knob ${i + 1}`}: {label?.value ?? ""}
               {chordPads ? ` — ${KEYS_KNOB_TIPS[i]}` : ""}

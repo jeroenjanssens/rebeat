@@ -29,7 +29,7 @@ import { getLoad, startMainLoad } from "../engine/load";
 import { useSettings } from "../state/settings";
 import { useStore } from "../state/store";
 import { isExampleId } from "../templates/examples";
-import { EditSoundButton, KeysChip } from "./KeysChip";
+import { KeysChip } from "./KeysChip";
 import { LAYOUT_PRESETS, applyPreset, openPanel } from "./layouts";
 import { openGuide } from "./openers";
 import { PANELS } from "./panels";
@@ -549,7 +549,6 @@ export function TransportBar() {
         </button>
       </div>
       <KeysChip className="hidden @[800px]:inline-flex" />
-      <EditSoundButton className="hidden @[800px]:inline-flex" />
 
       <div className="flex-1" />
 

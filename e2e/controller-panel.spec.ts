@@ -342,7 +342,9 @@ test("Key mode: a key plays its chord in the key, the black knob turns the key (
   await expect(transpose).toHaveText("0");
 
   // On press: a turn picks a key next to the active one, a click selects it
-  await page.getByTestId("key-dial").getByRole("button", { name: "On press" }).click();
+  // the black knob's behavior is in the Key chip's menu (D213)
+  await chip.click();
+  await page.locator(".menu .menu-item", { hasText: "When you press it" }).click();
   await midi([0xb0, 114, 65]);
   await expect(page.getByTestId("key-mode-pending")).toContainText("E♭ minor");
   await expect(chip).toContainText("D minor");
@@ -837,4 +839,28 @@ test("a pad let go gets its color again (the MiniLab paints it its own color whi
   await send(page, "Minilab3 MIDI", [0x99, 38, 100]); // pad 3 down
   await send(page, "Minilab3 MIDI", [0x89, 38, 0]); // and up
   await expect.poll(padMsgs).toBeGreaterThan(before);
+});
+
+test("the settings are cards by the picture; a knob in the picture points at its card and turns (D213)", async ({
+  page,
+}) => {
+  await midiDevices(page, ["Minilab3 MIDI"]);
+  await page.getByTestId("midi-use-detected").click();
+  await page.keyboard.press("Escape");
+  await openControllerPanel(page);
+  // Drum mode: only the Play card
+  await expect(page.getByTestId("controller-card-play")).toBeVisible();
+  await expect(page.getByTestId("controller-card-chords")).toHaveCount(0);
+  await page.getByTestId("pad-mode").getByRole("button", { name: "Chord" }).click();
+  const bass = page.getByTestId("controller-card-bass");
+  // fold the Bass card; clicking knob 5 (the bass) opens it again
+  await bass.locator('[data-hint="controller.card.bass"]').click();
+  await expect(bass).toHaveAttribute("data-folded", "true");
+  await page.locator('[data-knob="4"]').click();
+  await expect(bass).not.toHaveAttribute("data-folded", "true");
+  await expect(page.getByTestId("bass-value")).toHaveText("Off");
+  // scrolling knob 1 in the picture turns the voicing
+  await page.locator('[data-knob="0"]').hover();
+  await page.mouse.wheel(0, -100);
+  await expect(page.getByTestId("voicing-value")).toHaveText("+1");
 });

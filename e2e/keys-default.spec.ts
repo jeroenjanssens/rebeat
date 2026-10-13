@@ -60,7 +60,9 @@ test("the Keys menu opens the library: a family, then its sounds (D167)", async 
   await expect(chip).toContainText("Supersaw");
 });
 
-test("Edit sound opens the editor for what the keys play (D173)", async ({ page }) => {
+test("Edit sound, in the Keys menu, opens the editor for what the keys play; a synth editor is followed (D173, D219)", async ({
+  page,
+}) => {
   await page.addInitScript(() => {
     (window as { __REBEAT_TEST_MIC__?: boolean }).__REBEAT_TEST_MIC__ = true;
     if (!localStorage.getItem("rebeat.settings"))
@@ -72,42 +74,31 @@ test("Edit sound opens the editor for what the keys play (D173)", async ({ page 
   await page.goto("/");
   await page.getByTestId("audio-overlay").click();
   await page.locator('[data-testid="audio-status"][data-status="running"]').waitFor();
-  const edit = page.getByTestId("edit-sound").first();
+  const item = (text: string | RegExp) =>
+    page.locator(".menu .menu-item", { hasText: text }).first();
+  const chip = page.getByTestId("keys-chip");
   // the Grand Piano has no editor of its own
-  await expect(edit).toBeDisabled();
-  await expect(edit).toHaveAttribute("title", /no editor of its own/);
-  // a library synth: its synth editor
-  const item = (text: string) => page.locator(".menu .menu-item", { hasText: text }).first();
-  await page.getByTestId("keys-chip").click();
+  await chip.click();
+  await expect(item(/no editor of its own/)).toBeDisabled();
+  await page.keyboard.press("Escape");
+  // a library synth: its synth editor, and the keys follow it from then on
+  await chip.click();
   await item("Library ▸").click();
   await item("Synths ▸").click();
   await item("Supersaw").click();
-  await expect(edit).toBeEnabled();
-  await edit.click();
+  await chip.click();
+  await item("Edit Supersaw in the synth editor").click();
   await expect(page.locator(".dv-tab", { hasText: "Supersaw" })).toBeVisible();
-  // a track that plays a synth: its synth editor
-  const name = await page.evaluate(() => {
-    const s = (
-      window as never as {
-        __rebeat: {
-          store: {
-            getState(): {
-              project: {
-                tracks: { id: string; name: string; mode: string; sound?: { source: string } }[];
-              };
-              setUi(u: object): void;
-            };
-          };
-        };
-      }
-    ).__rebeat.store.getState();
-    const t = s.project.tracks.find((x) => x.mode === "notes" && x.sound?.source === "synth")!;
-    s.setUi({ selectedTrackId: t.id });
-    return t.name;
-  });
-  await page.getByTestId("keys-chip").click();
-  await item("Follow selected track").click();
-  await expect(edit).toHaveAttribute("title", new RegExp(`Edit ${name}'s synth`));
-  await edit.click();
-  await expect(page.getByTestId("synth-editor").first()).toBeVisible();
+  const follows = () =>
+    page.evaluate(async () => {
+      const r = (
+        window as never as {
+          __rebeat: { settings(): Promise<{ getState(): { keysFollowEditor: boolean } }> };
+        }
+      ).__rebeat;
+      return (await r.settings()).getState().keysFollowEditor;
+    });
+  await expect.poll(follows).toBe(true);
+  await chip.click();
+  await expect(item("Follow the synth editor in focus")).toBeVisible();
 });

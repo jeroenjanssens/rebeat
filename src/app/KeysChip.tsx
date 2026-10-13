@@ -1,5 +1,6 @@
 import { useRef } from "react";
-import { Keyboard, SlidersHorizontal } from "lucide-react";
+import { Keyboard } from "lucide-react";
+import { toast } from "../components/Toast";
 import { dropdown, type MenuItem } from "../components/Menu";
 import {
   addKeysSoundAsTrack,
@@ -60,6 +61,7 @@ export function KeysChip({
           </div>
         ),
       },
+      editSoundItem(),
       { separator: true },
       {
         label: "Follow the synth editor in focus",
@@ -183,7 +185,9 @@ export function KeysChip({
 }
 
 /** What the Edit button next to the keys opens for what they play now (D173), and why not. */
-function editTarget(): { label: string; open: () => void } | { label: string; open: null } {
+function editTarget():
+  | { label: string; open: () => void; synth?: boolean }
+  | { label: string; open: null; synth?: boolean } {
   const ed = keysEditor();
   if (ed) return { label: "The keys play the synth editor in focus", open: null };
   const { target } = useKeys.getState();
@@ -198,6 +202,7 @@ function editTarget(): { label: string; open: () => void } | { label: string; op
       return {
         label: `Edit ${entry.name} in the synth editor`,
         open: () => void import("../panels/library/open").then((m) => m.openInstrument(entry)),
+        synth: true,
       };
     if (entry?.source.source === "sample" && entry.source.sampleId)
       return {
@@ -215,6 +220,7 @@ function editTarget(): { label: string; open: () => void } | { label: string; op
     return {
       label: `Edit ${track.name}'s synth in the synth editor`,
       open: () => openSynthEditor(track.id),
+      synth: true,
     };
   const sample = sampleOf(track);
   if (track.sound?.source === "sample" && sample)
@@ -229,29 +235,21 @@ function editTarget(): { label: string; open: () => void } | { label: string; op
 }
 
 /**
- * Edit sound (D173): the editor for what the keys play, next to the Keys chip: the synth editor
- * for a synth (a library one, yours, or a track's), the sample editor for a sample, the Inspector
- * for a track's sampled instrument; greyed out with the reason otherwise.
+ * Edit sound (D173), in the Keys menu: the editor for what the keys play: the synth editor for a
+ * synth (a library one, yours, or a track's), the sample editor for a sample, the Inspector for a
+ * track's sampled instrument; greyed out with the reason otherwise. Opening a synth editor makes
+ * the keys follow it (D219): you hear the patch you're editing.
  */
-export function EditSoundButton({ className = "" }: { className?: string }) {
-  // redraw when what the keys play changes
-  useKeys((s) => s.target);
-  useKeys((s) => s.focused);
-  useSettings((s) => s.keysFollowEditor);
-  useStore((s) => s.selectedTrackId);
-  useStore((s) => s.project.tracks);
+function editSoundItem(): MenuItem {
   const t = editTarget();
-  return (
-    <button
-      className={`tool-btn ${className}`}
-      data-testid="edit-sound"
-      data-hint="transport.editSound"
-      title={t.label}
-      aria-label={t.label}
-      disabled={!t.open}
-      onClick={() => t.open?.()}
-    >
-      <SlidersHorizontal size={13} />
-    </button>
-  );
+  return {
+    label: t.open ? t.label : `Edit sound: ${t.label}`,
+    disabled: !t.open,
+    onSelect: () => {
+      t.open?.();
+      if (!t.synth || useSettings.getState().keysFollowEditor) return;
+      useSettings.getState().set({ keysFollowEditor: true });
+      toast("The keys now follow the synth editor (change it in the Keys menu)");
+    },
+  };
 }

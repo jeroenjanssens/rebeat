@@ -1263,3 +1263,16 @@ kbd,
     opacity: 0;
   }
 }
+
+/* a Controller card a knob label pointed at (D213) */
+.card-flash {
+  animation: card-flash 900ms ease-out;
+}
+@keyframes card-flash {
+  0% {
+    box-shadow: 0 0 0 2px var(--accent);
+  }
+  100% {
+    box-shadow: 0 0 0 2px transparent;
+  }
+}

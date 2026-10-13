@@ -134,6 +134,8 @@ export interface Settings {
   };
   /** The keys play what the active synth editor edits (D132). */
   keysFollowEditor: boolean;
+  /** The Controller panel's cards that are folded (D213), by id. */
+  controllerFolds: Record<string, boolean>;
   /** What a controller's pads 1–8 do: play tracks 1–8 (Drum), make chords (Chord, D137), or
    * add to Key mode's chords (Key, D138). */
   padMode: "drum" | "chord" | "key" | "next";
@@ -243,6 +245,7 @@ export const DEFAULT_SETTINGS: Settings = {
   midiMiniLabPadColors: true,
   keysMix: { volume: 0.8, sendA: 0, sendB: 0 },
   keysFollowEditor: false,
+  controllerFolds: {},
   padMode: "drum",
   keyModeKey: { root: 0, scale: "major" },
   keyDial: "instant",

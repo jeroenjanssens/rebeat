@@ -642,6 +642,15 @@ const STEPPED: Record<
   },
 };
 
+/** Turn a keys setting knob by `steps` (the Controller panel's picture, D213): knob `i` (0..7)
+ * in Chord, Key and Next mode. */
+export function turnKeysKnob(i: number, steps: number) {
+  const k = STEPPED[`knob${i + 1}`];
+  if (!k) return;
+  const next = Math.max(0, Math.min(k.values - 1, k.index() + steps));
+  if (next !== k.index()) k.set(next);
+}
+
 /** Whether the main encoder is the Key dial: in Key mode and Next mode (D138, D159). */
 const keyDialMode = () => ["key", "next"].includes(useSettings.getState().padMode);
 
