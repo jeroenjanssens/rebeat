@@ -56,3 +56,45 @@ test("records into the library's Recordings folder", async ({ page }) => {
     timeout: 10000,
   });
 });
+
+test("Record to the timeline: a take in Song mode becomes audio where it was recorded (D188)", async ({
+  page,
+}) => {
+  await page.getByTestId("project-name").click();
+  await page.getByRole("button", { name: /Loop station/ }).click();
+  await expect(page.getByTestId("project-name")).toContainText("Loop station");
+  await page.evaluate(async () => {
+    const r = (
+      window as never as {
+        __rebeat: {
+          store: {
+            getState(): {
+              setUi(p: object): void;
+              commit(f: (p: { bpm: number; playMode: string }) => void): void;
+            };
+          };
+          settings(): Promise<{ getState(): { set(p: object): void } }>;
+        };
+      }
+    ).__rebeat;
+    const s = r.store.getState();
+    s.commit((p) => {
+      p.bpm = 240;
+      p.playMode = "song";
+    });
+    s.setUi({ loopBars: 1 });
+    // as the clip menu's Record to the timeline sets it
+    (await r.settings()).getState().set({ recordToTimeline: true });
+  });
+  const project = () =>
+    page.evaluate(() => {
+      const p = (
+        window as never as {
+          __rebeat: { store: { getState(): { project: { regions?: { sampleId: string }[] } } } };
+        }
+      ).__rebeat.store.getState().project;
+      return JSON.parse(JSON.stringify(p)) as { regions?: { sampleId: string }[] };
+    });
+  await page.keyboard.press("r");
+  await expect.poll(async () => (await project()).regions?.length ?? 0, { timeout: 15000 }).toBe(1);
+});

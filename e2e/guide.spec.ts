@@ -29,6 +29,7 @@ test("the guide opens, links resolve and search finds sections", async ({ page }
   for (const id of new Set(panelIds))
     expect([
       "drum-machine",
+      "timeline",
       "library",
       "inspector",
       "mixer",
