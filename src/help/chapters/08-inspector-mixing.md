@@ -19,18 +19,27 @@ Each track has a chain of **insert effects** that its sound goes through, in ord
 - The arrows move it up or down the chain; × removes it.
 - Its knobs set the parameters. **Mix** blends the dry and the processed sound.
 
-| Effect                                           | Does                                                                                                                                              |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **EQ3**                                          | Three-band equalizer (low, mid, high) with adjustable crossover points.                                                                           |
-| **Filter**                                       | Low-pass, high-pass or band-pass filter with an LFO that moves the cutoff.                                                                        |
-| **Compressor**                                   | Evens out the level; Makeup brings it back up.                                                                                                    |
-| **Distortion**                                   | Saturation, from warm to fuzzy, with a tone control and output level.                                                                             |
-| **Bitcrusher**                                   | Lo-fi: fewer bits.                                                                                                                                |
-| **Delay**                                        | Echoes in time with the song (1/32 to 1/2 notes), optionally ping-pong.                                                                           |
-| **Reverb**                                       | Room and hall reverb.                                                                                                                             |
-| **Chorus**, **Phaser**, **Tremolo**, **AutoPan** | Movement and width.                                                                                                                               |
-| **Pump**                                         | Ducks the sound on every beat (1/2, 1/4 or 1/8) and lets it swell back, like a sidechain to the kick. It follows the song's beat, in exports too. |
-| **Limiter**                                      | Keeps peaks under a ceiling (part of the master chain).                                                                                           |
+| Effect                                | Does                                                                                                                                                               |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **EQ3**                               | Three-band equalizer (low, mid, high) with adjustable crossover points.                                                                                            |
+| **Parametric EQ**                     | Six bands: a low cut, a low shelf, two peaks with their own width (Q), a high shelf and a high cut. A picture draws the curve. The cuts are off at their far ends. |
+| **Filter**                            | Low-pass, high-pass or band-pass filter with an LFO that moves the cutoff.                                                                                         |
+| **Auto-Wah**                          | A band-pass that opens as the sound gets louder (an envelope filter): Base, Range in octaves, Sensitivity, Q.                                                      |
+| **Compressor**                        | Evens out the level; Makeup brings it back up.                                                                                                                     |
+| **Gate**                              | Silences the sound below its threshold; Release smooths it, Floor sets how far it closes.                                                                          |
+| **Distortion**                        | Saturation, from warm to fuzzy, with a tone control and output level.                                                                                              |
+| **Saturator**                         | Tube (asymmetric, even harmonics) or tape (soft) saturation, with the wow and flutter of a tape machine.                                                           |
+| **Bitcrusher**                        | Lo-fi: fewer bits.                                                                                                                                                 |
+| **Delay**                             | Echoes in time with the song (1/32 to 1/2 notes), optionally ping-pong.                                                                                            |
+| **Reverb**                            | Room and hall reverb.                                                                                                                                              |
+| **Chorus**, **Flanger**, **Phaser**   | Movement and width: a chorus thickens, a flanger sweeps a short delay (with feedback for the jet-plane whoosh), a phaser sweeps notches.                           |
+| **Tremolo**, **Vibrato**, **AutoPan** | The volume, the pitch or the position wobbles at a rate.                                                                                                           |
+| **Freq Shifter**                      | Moves every frequency by the same Hz (inharmonic: from a shimmer to metal); Ring mod blends in a ring modulator.                                                   |
+| **Pump**                              | Ducks the sound on every beat (1/2, 1/4 or 1/8) and lets it swell back, like a sidechain to the kick. It follows the song's beat, in exports too.                  |
+| **Utility**                           | Gain (±24 dB), stereo width (0% mono to 200%) and phase. A mono sound stays mono.                                                                                  |
+| **Limiter**                           | Keeps peaks under a ceiling (part of the master chain).                                                                                                            |
+
+Every effect knob can be [automated](#timeline-automation), and so can every effect's on/off, except a few that build the effect again when they change (the Reverb's size, decay and pre-delay, the Delay's ping-pong, the Filter's type).
 
 The **FX** encoder bank in the drum machine controls the same effects (◀ ▶ picks the effect).
 

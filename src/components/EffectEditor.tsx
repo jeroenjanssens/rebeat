@@ -11,6 +11,7 @@ import {
   type FxTarget,
 } from "../state/effectActions";
 import { Encoder } from "./Encoder";
+import { EqCurve } from "./EqCurve";
 
 /** One effect in a chain: bypass, reorder, remove, and its parameters as encoders. */
 export function EffectEditor({
@@ -113,6 +114,7 @@ export function EffectEditor({
           </button>
         )}
       </div>
+      {effect.name === "Parametric EQ" && <EqCurve params={effect.params} color={color} />}
       <div className="grid grid-cols-[repeat(auto-fill,minmax(54px,1fr))] gap-y-1.5 px-1 py-2">
         {defs.map((def) => (
           <Encoder

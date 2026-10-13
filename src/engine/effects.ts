@@ -3,7 +3,7 @@
  * the same definitions drive track inserts, buses, the master chain and offline rendering.
  */
 import * as Tone from "tone";
-import { DELAY_TIMES, EFFECT_PARAMS, PUMP_RATES, lin, toUnit } from "../model/params";
+import { DELAY_TIMES, EFFECT_PARAMS, FX_UNIT, PUMP_RATES, lin, toUnit } from "../model/params";
 import { FlatEQ } from "./tone";
 import { NOT_AUTOMATABLE } from "../model/automation";
 import type { Effect } from "../model/types";
@@ -490,12 +490,327 @@ function build(name: string, p: Params): Inner {
       const l = new Tone.Limiter(-1);
       return { nodes: [l], knobs: { ceiling: [k(l.threshold, toUnit.db(-24, 0))] } };
     }
+    // ── the newer effects (D216): every knob an AudioParam from the start ──
+    case "Parametric EQ": {
+      const biquad = (type: BiquadFilterType, q = 1) => {
+        const f = raw.createBiquadFilter();
+        f.type = type;
+        f.Q.value = q;
+        return f;
+      };
+      // low cut, low shelf, two peaks, high shelf, high cut; the cuts are off at their far end
+      const lc = biquad("highpass", Math.SQRT1_2);
+      const ls = biquad("lowshelf");
+      const p1 = biquad("peaking");
+      const p2 = biquad("peaking");
+      const hs = biquad("highshelf");
+      const hc = biquad("lowpass", Math.SQRT1_2);
+      const input = new Tone.Gain(1);
+      const out = new Tone.Gain(1);
+      Tone.connect(input, lc);
+      lc.connect(ls);
+      ls.connect(p1);
+      p1.connect(p2);
+      p2.connect(hs);
+      hs.connect(hc);
+      Tone.connect(hc, out);
+      const nyquist = raw.sampleRate / 2;
+      const db = toUnit.db(-15, 15);
+      const ap = (n: BiquadFilterNode) =>
+        n as unknown as { frequency: Schedulable; gain: Schedulable; Q: Schedulable };
+      return {
+        nodes: [],
+        io: { input, output: out },
+        extra: [input, out],
+        knobs: {
+          lowCut: [k(ap(lc).frequency, (x) => FX_UNIT.lowCut(x) ?? 1, { exp: true })],
+          lowFreq: [k(ap(ls).frequency, hzOf, { exp: true })],
+          lowGain: [k(ap(ls).gain, db)],
+          p1Freq: [k(ap(p1).frequency, hzOf, { exp: true })],
+          p1Gain: [k(ap(p1).gain, db)],
+          p1Q: [k(ap(p1).Q, FX_UNIT.eqQ, { exp: true })],
+          p2Freq: [k(ap(p2).frequency, hzOf, { exp: true })],
+          p2Gain: [k(ap(p2).gain, db)],
+          p2Q: [k(ap(p2).Q, FX_UNIT.eqQ, { exp: true })],
+          highFreq: [k(ap(hs).frequency, hzOf, { exp: true })],
+          highGain: [k(ap(hs).gain, db)],
+          highCut: [
+            k(ap(hc).frequency, (x) => Math.min(nyquist, FX_UNIT.highCut(x) ?? nyquist), {
+              exp: true,
+            }),
+          ],
+        },
+      };
+    }
+    case "Gate": {
+      // the level (|x|, smoothed) against the threshold opens a gain; the floor is how far it
+      // closes, and Release smooths the opening and closing
+      const input = new Tone.Gain(1);
+      const out = new Tone.Gain(1);
+      const vca = raw.createGain();
+      Tone.connect(input, vca);
+      Tone.connect(vca, out);
+      const abs = new Tone.WaveShaper((x) => Math.abs(x), 1024);
+      const envelope = raw.createBiquadFilter();
+      envelope.type = "lowpass";
+      envelope.frequency.value = 40;
+      const open = new Tone.GreaterThan(0.1);
+      const smooth = raw.createBiquadFilter();
+      smooth.type = "lowpass";
+      smooth.Q.value = 0.5;
+      const range = new Tone.Gain(1);
+      input.connect(abs);
+      Tone.connect(abs, envelope);
+      Tone.connect(envelope, open);
+      Tone.connect(open, smooth);
+      Tone.connect(smooth, range);
+      Tone.connect(range, vca.gain);
+      const floor = (x: number) => (x <= 0.001 ? 0 : Tone.dbToGain(lin(-80, 0)(x)));
+      const v = vca as unknown as { gain: Schedulable };
+      const sm = smooth as unknown as { frequency: Schedulable };
+      return {
+        nodes: [],
+        io: { input, output: out },
+        extra: [input, out, abs, open, range],
+        knobs: {
+          threshold: [k(open.comparator, (x) => Tone.dbToGain(lin(-80, 0)(x)))],
+          release: [
+            k(sm.frequency, (x) => 1 / (2 * Math.PI * (ms(5, 1000, x) || 0.005)), { exp: true }),
+          ],
+          floor: [k(v.gain, floor), k(range.gain, (x) => 1 - floor(x))],
+        },
+      };
+    }
+    case "Flanger": {
+      // a short delay a side swept by an LFO (the sides 180° apart), fed back for the comb's
+      // ring; a delay in a feedback loop can't be shorter than a render quantum (3 ms)
+      const lfoL = new Tone.LFO({ frequency: 0.3, min: 0, max: 1, phase: 0 });
+      const lfoR = new Tone.LFO({ frequency: 0.3, min: 0, max: 1, phase: 180 });
+      lfoL.frequency.connect(lfoR.frequency);
+      const side = (lfo: Tone.LFO) => {
+        const delay = raw.createDelay(0.1);
+        const swing = new Tone.Gain(0);
+        const fb = raw.createGain();
+        const sum = raw.createGain();
+        lfo.connect(swing);
+        Tone.connect(swing, delay.delayTime);
+        sum.connect(delay);
+        delay.connect(fb);
+        fb.connect(sum);
+        return { delay, swing, fb, sum };
+      };
+      const L = side(lfoL);
+      const R = side(lfoR);
+      const s = stereo([L.sum, L.delay], [R.sum, R.delay]);
+      const out = new Tone.Gain(1);
+      s.merge.connect(out);
+      lfoL.start();
+      lfoR.start();
+      const base = (q: Params, x = val(name, q, "delay")) => ms(3, 15, x);
+      const depth = (q: Params, x = val(name, q, "depth")) => x;
+      const P = (n: AudioParam) => n as unknown as Schedulable;
+      return {
+        nodes: [],
+        io: { input: s.input, output: out },
+        extra: [s.input, out, s.split, s.merge, lfoL, lfoR, L.swing, R.swing],
+        knobs: {
+          rate: [k(lfoL.frequency, (x) => rate(0.05, 10, x))],
+          // the delay swings from its base up to base × (1 + depth)
+          delay: [
+            ...[L, R].map((d) => k(P(d.delay.delayTime), (x, q) => base(q, x))),
+            ...[L, R].map((d) => k(d.swing.gain, (x, q) => base(q, x) * depth(q))),
+          ],
+          depth: [L, R].map((d) => k(d.swing.gain, (x, q) => base(q) * x)),
+          feedback: [L, R].map((d) => k(P(d.fb.gain), (x) => (x - 0.5) * 1.9)),
+        },
+      };
+    }
+    case "Saturator": {
+      // a tube curve (asymmetric: even harmonics) and a tape curve (soft, symmetric), mixed by
+      // Character; wow and flutter wobble a short delay, as a tape machine's speed does
+      const pre = new Tone.Gain(1);
+      const tube = new Tone.WaveShaper((x) => Math.tanh(DRIVE_MAX * x * (1 + 0.25 * x)), 8192);
+      const tape = new Tone.WaveShaper((x) => Math.tanh(DRIVE_MAX * x * 0.8) / Math.tanh(1), 8192);
+      tube.oversample = "2x";
+      tape.oversample = "2x";
+      const tubeG = new Tone.Gain(1);
+      const tapeG = new Tone.Gain(0);
+      const post = new Tone.Gain(1);
+      pre.fan(tube, tape);
+      tube.connect(tubeG);
+      tape.connect(tapeG);
+      tubeG.connect(post);
+      tapeG.connect(post);
+      const dc = new Tone.Filter(20, "highpass");
+      // its base is the wobbles' depth, so with neither it's no delay at all (a fixed one would
+      // comb against the dry sound at a partial mix)
+      const wobble = raw.createDelay(0.05);
+      const wow = new Tone.LFO({ frequency: 0.6, min: -1, max: 1 }).start();
+      const flutter = new Tone.LFO({ frequency: 7.5, min: -1, max: 1 }).start();
+      const wowG = new Tone.Gain(0);
+      const flutterG = new Tone.Gain(0);
+      wow.connect(wowG);
+      flutter.connect(flutterG);
+      Tone.connect(wowG, wobble.delayTime);
+      Tone.connect(flutterG, wobble.delayTime);
+      const tone = new Tone.Filter(12000, "lowpass");
+      const out = new Tone.Gain(1);
+      post.connect(dc);
+      Tone.connect(dc, wobble);
+      Tone.connect(wobble, tone);
+      tone.connect(out);
+      const g = (x: number) => 1 + x * 20;
+      const wowDepth = (x: number) => x * x * 0.004;
+      const flutterDepth = (x: number) => x * x * 0.0004;
+      const delayBase = wobble.delayTime as unknown as Schedulable;
+      return {
+        nodes: [],
+        io: { input: pre, output: out },
+        extra: [pre, tube, tape, tubeG, tapeG, post, dc, wow, flutter, wowG, flutterG, tone, out],
+        knobs: {
+          drive: [k(pre.gain, (x) => g(x) / DRIVE_MAX), k(post.gain, (x) => 1 / Math.sqrt(g(x)))],
+          character: [k(tubeG.gain, (x) => 1 - x), k(tapeG.gain, (x) => x)],
+          tone: [k(tone.frequency, hzOf, { exp: true })],
+          // up to ±4 ms slowly (a warped record), ±0.4 ms fast (a worn transport)
+          wow: [
+            k(wowG.gain, wowDepth),
+            k(delayBase, (x, q) => wowDepth(x) + flutterDepth(val(name, q, "flutter"))),
+          ],
+          flutter: [
+            k(flutterG.gain, flutterDepth),
+            k(delayBase, (x, q) => wowDepth(val(name, q, "wow")) + flutterDepth(x)),
+          ],
+          output: [k(out.gain, (x) => Tone.dbToGain(toUnit.db(-12, 12)(x)))],
+        },
+      };
+    }
+    case "Vibrato": {
+      const vib = new Tone.Vibrato({ frequency: 5, depth: 0.3, maxDelay: 0.01 });
+      vib.wet.value = 1;
+      return {
+        nodes: [vib],
+        knobs: {
+          rate: [k(vib.frequency, (x) => rate(0.5, 12, x))],
+          depth: [k(vib.depth, (x) => x)],
+        },
+      };
+    }
+    case "Auto-Wah": {
+      // the level (|x|, smoothed) opens a band-pass from its base up `range` octaves, through
+      // the filter's detune (cents), so every knob is an AudioParam
+      const input = new Tone.Gain(1);
+      const out = new Tone.Gain(1);
+      const filter = raw.createBiquadFilter();
+      filter.type = "bandpass";
+      const abs = new Tone.WaveShaper((x) => Math.abs(x), 1024);
+      const envelope = raw.createBiquadFilter();
+      envelope.type = "lowpass";
+      envelope.frequency.value = 12;
+      const amount = new Tone.Gain(0);
+      Tone.connect(input, filter);
+      Tone.connect(filter, out);
+      input.connect(abs);
+      Tone.connect(abs, envelope);
+      Tone.connect(envelope, amount);
+      Tone.connect(amount, filter.detune);
+      // cents per unit of level: full range at a level of 0.25 with Sens at 50%
+      const cents = (range: number, sens: number) =>
+        FX_UNIT.octaves(range) * 1200 * 4 * (0.1 + sens * 1.8);
+      const f = filter as unknown as { frequency: Schedulable; Q: Schedulable };
+      return {
+        nodes: [],
+        io: { input, output: out },
+        extra: [input, out, abs, amount],
+        knobs: {
+          base: [k(f.frequency, hzOf, { exp: true })],
+          range: [k(amount.gain, (x, q) => cents(x, val(name, q, "sens")))],
+          sens: [k(amount.gain, (x, q) => cents(val(name, q, "range"), x))],
+          q: [k(f.Q, (x) => 0.7 + x * x * 12)],
+        },
+      };
+    }
+    case "Freq Shifter": {
+      // shifts every frequency by the same Hz (inharmonic, unlike a pitch shift); Ring mod
+      // blends in the input times a sine at the same frequency (both sidebands)
+      const input = new Tone.Gain(1);
+      const out = new Tone.Gain(1);
+      const shifter = new Tone.FrequencyShifter(0);
+      shifter.wet.value = 1;
+      const shiftG = new Tone.Gain(1);
+      const ringVca = new Tone.Gain(0);
+      const ringOsc = new Tone.Oscillator(200, "sine").start();
+      const ringG = new Tone.Gain(0);
+      input.connect(shifter);
+      shifter.connect(shiftG);
+      shiftG.connect(out);
+      input.connect(ringVca);
+      ringOsc.connect(ringVca.gain);
+      ringVca.connect(ringG);
+      ringG.connect(out);
+      return {
+        nodes: [],
+        io: { input, output: out },
+        extra: [input, out, shifter, shiftG, ringVca, ringOsc, ringG],
+        knobs: {
+          shift: [
+            k(shifter.frequency, (x) => FX_UNIT.shift(x)),
+            k(ringOsc.frequency, (x) => Math.max(0.1, Math.abs(FX_UNIT.shift(x)))),
+          ],
+          ring: [k(shiftG.gain, (x) => 1 - x), k(ringG.gain, (x) => x)],
+        },
+      };
+    }
+    case "Utility": {
+      // an AudioWorklet (public/worklets/utility.js): its output has its input's channels, so
+      // a mono sound stays mono; its parameters follow these signals (they can be automated).
+      // Until it's loaded the sound passes straight through.
+      const input = new Tone.Gain(1);
+      const out = new Tone.Gain(1);
+      const gain = new Tone.Signal(1);
+      const width = new Tone.Signal(1);
+      const phase = new Tone.Signal(1);
+      input.connect(out);
+      let node: AudioWorkletNode | null = null;
+      const ready = loadUtility(raw).then(() => {
+        if (input.disposed) return;
+        node = new AudioWorkletNode(raw, "rebeat-utility");
+        Tone.connect(gain, node.parameters.get("gain")!);
+        Tone.connect(width, node.parameters.get("width")!);
+        Tone.connect(phase, node.parameters.get("phase")!);
+        input.disconnect(out);
+        Tone.connect(input, node);
+        Tone.connect(node, out);
+      });
+      return {
+        nodes: [],
+        io: { input, output: out },
+        ready,
+        extra: [input, out, gain, width, phase, { dispose: () => node?.disconnect() }],
+        knobs: {
+          gain: [k(gain, (x) => Tone.dbToGain(toUnit.db(-24, 24)(x)))],
+          width: [k(width, FX_UNIT.width)],
+          phase: [k(phase, (x) => (x >= 0.5 ? -1 : 1), { stepped: true })],
+        },
+      };
+    }
     default: {
       // unknown effects pass the sound through untouched
       const g = new Tone.Gain(1);
       return { nodes: [g], knobs: {} };
     }
   }
+}
+
+const utilityModules = new WeakMap<BaseAudioContext, Promise<void>>();
+
+/** The Utility's worklet, loaded once per context (live or offline). */
+function loadUtility(ctx: BaseAudioContext): Promise<void> {
+  let p = utilityModules.get(ctx);
+  if (!p) {
+    p = ctx.audioWorklet.addModule(`${import.meta.env.BASE_URL}worklets/utility.js`);
+    utilityModules.set(ctx, p);
+  }
+  return p;
 }
 
 /** The pre-gain's top: the Distortion's curve is tanh(DRIVE_MAX · x), reached at full drive. */
@@ -626,7 +941,7 @@ function shape(fx: Effect) {
 
 /** A chain of effects between two nodes, reconciled against data. */
 /** Effects whose output goes on after their input stops. */
-const HOLDS_SOUND = new Set(["Reverb", "Delay", "Chorus", "Phaser"]);
+const HOLDS_SOUND = new Set(["Reverb", "Delay", "Chorus", "Phaser", "Flanger"]);
 
 export class FxChain {
   private nodes: FxNode[] = [];

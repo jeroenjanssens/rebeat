@@ -149,6 +149,30 @@ export const MIX_PARAMS: ParamDef[] = [
 const rate = (lo: number, hi: number) => (v: number) => `${expo(lo, hi)(v).toFixed(2)}Hz`;
 const MIX = (d: number): ParamDef => ({ id: "mix", label: "Mix", default: d, format: pct });
 
+/** Real values of the newer effects' knobs (D216), shared by their labels and the engine. */
+export const FX_UNIT = {
+  /** A frequency shift in Hz: ±2000, finer near 0. */
+  shift: (v: number) => Math.sign(v - 0.5) * 2000 * (2 * v - 1) ** 2,
+  /** A cut filter's frequency; its far end is off (null). */
+  lowCut: (v: number) => (v <= 0.005 ? null : expo(20, 20000)(v)),
+  highCut: (v: number) => (v >= 0.995 ? null : expo(20, 20000)(v)),
+  eqQ: expo(0.3, 12),
+  width: lin(0, 2),
+  octaves: lin(0, 6),
+};
+const shift = (v: number) => {
+  const f = Math.round(FX_UNIT.shift(v));
+  return `${f > 0 ? "+" : ""}${f}Hz`;
+};
+const cut = (f: (v: number) => number | null) => (v: number) => {
+  const x = f(v);
+  return x === null ? "Off" : hz(v);
+};
+const bipolarPct = (v: number) => {
+  const p = Math.round((v - 0.5) * 190);
+  return `${p > 0 ? "+" : ""}${p}%`;
+};
+
 /** How often Pump ducks: every half note, quarter or eighth. */
 export const PUMP_RATES = ["1/2", "1/4", "1/8"];
 
@@ -169,6 +193,14 @@ export const EFFECT_SHORT: Record<string, string> = {
   AutoPan: "Pan",
   Pump: "Pump",
   Limiter: "Lim",
+  "Parametric EQ": "PEQ",
+  Gate: "Gate",
+  Flanger: "Flng",
+  Saturator: "Sat",
+  Vibrato: "Vib",
+  "Auto-Wah": "Wah",
+  "Freq Shifter": "Shft",
+  Utility: "Util",
 };
 
 /** Insert/bus/master effects. Values are normalized; the engine maps them (effects.ts). */
@@ -288,6 +320,85 @@ export const EFFECT_PARAMS: Record<string, ParamDef[]> = {
     MIX(1),
   ],
   Limiter: [{ id: "ceiling", label: "Ceiling", default: 0.95, format: db(-24, 0) }],
+  // the newer effects (D216)
+  "Parametric EQ": [
+    { id: "lowCut", label: "Low cut", default: 0, format: cut(FX_UNIT.lowCut) },
+    { id: "lowFreq", label: "Lo shelf", default: 0.25, format: hz },
+    { id: "lowGain", label: "Lo gain", bipolar: true, default: 0.5, format: db(-15, 15) },
+    { id: "p1Freq", label: "Freq 1", default: 0.45, format: hz },
+    { id: "p1Gain", label: "Gain 1", bipolar: true, default: 0.5, format: db(-15, 15) },
+    { id: "p1Q", label: "Q 1", default: 0.35, format: (v) => FX_UNIT.eqQ(v).toFixed(2) },
+    { id: "p2Freq", label: "Freq 2", default: 0.7, format: hz },
+    { id: "p2Gain", label: "Gain 2", bipolar: true, default: 0.5, format: db(-15, 15) },
+    { id: "p2Q", label: "Q 2", default: 0.35, format: (v) => FX_UNIT.eqQ(v).toFixed(2) },
+    { id: "highFreq", label: "Hi shelf", default: 0.85, format: hz },
+    { id: "highGain", label: "Hi gain", bipolar: true, default: 0.5, format: db(-15, 15) },
+    { id: "highCut", label: "High cut", default: 1, format: cut(FX_UNIT.highCut) },
+  ],
+  Gate: [
+    { id: "threshold", label: "Thresh", default: 0.5, format: db(-80, 0) },
+    { id: "release", label: "Release", default: 0.35, format: ms(5, 1000) },
+    { id: "floor", label: "Floor", default: 0, format: (v) => (v <= 0.001 ? "-∞" : db(-80, 0)(v)) },
+  ],
+  Flanger: [
+    { id: "rate", label: "Rate", default: 0.3, format: rate(0.05, 10) },
+    { id: "depth", label: "Depth", default: 0.6, format: pct },
+    { id: "delay", label: "Delay", default: 0.3, format: ms(3, 15) },
+    { id: "feedback", label: "Feedbk", bipolar: true, default: 0.75, format: bipolarPct },
+    MIX(0.5),
+  ],
+  Saturator: [
+    { id: "drive", label: "Drive", default: 0.35, format: pct },
+    {
+      id: "character",
+      label: "Tube·Tape",
+      default: 0,
+      format: (v) => `${Math.round(v * 100)}% tape`,
+    },
+    { id: "tone", label: "Tone", default: 0.85, format: hz },
+    { id: "wow", label: "Wow", default: 0, format: pct },
+    { id: "flutter", label: "Flutter", default: 0, format: pct },
+    { id: "output", label: "Output", bipolar: true, default: 0.5, format: db(-12, 12) },
+    MIX(1),
+  ],
+  Vibrato: [
+    { id: "rate", label: "Rate", default: 0.5, format: rate(0.5, 12) },
+    { id: "depth", label: "Depth", default: 0.3, format: pct },
+    MIX(1),
+  ],
+  "Auto-Wah": [
+    { id: "base", label: "Base", default: 0.3, format: hz },
+    {
+      id: "range",
+      label: "Range",
+      default: 0.6,
+      format: (v) => `${FX_UNIT.octaves(v).toFixed(1)} oct`,
+    },
+    { id: "sens", label: "Sens", default: 0.5, format: pct },
+    { id: "q", label: "Q", default: 0.35, format: pct },
+    MIX(1),
+  ],
+  "Freq Shifter": [
+    { id: "shift", label: "Shift", bipolar: true, default: 0.6, format: shift },
+    { id: "ring", label: "Ring mod", default: 0, format: pct },
+    MIX(1),
+  ],
+  Utility: [
+    { id: "gain", label: "Gain", bipolar: true, default: 0.5, format: db(-24, 24) },
+    {
+      id: "width",
+      label: "Width",
+      default: 0.5,
+      format: (v) => `${Math.round(FX_UNIT.width(v) * 100)}%`,
+    },
+    {
+      id: "phase",
+      label: "Phase",
+      default: 0,
+      steps: 2,
+      format: (v) => (v >= 0.5 ? "Inverted" : "Normal"),
+    },
+  ],
 };
 
 export const EFFECT_TYPES = Object.keys(EFFECT_PARAMS);

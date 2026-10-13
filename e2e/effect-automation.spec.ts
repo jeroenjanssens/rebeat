@@ -30,7 +30,7 @@ const render = (page: Page, fx: string, param: string, values: number[] | null) 
         Chorus: { rate: 0.35, depth: 0.6, delay: 0.4, mix: 1 },
         Phaser: { rate: 0.3, octaves: 0.5, base: 0.4, q: 0.3, mix: 1 },
       };
-      track.effects = [{ id: fxId, name: fx, params: defaults[fx as string], bypass: false }];
+      track.effects = [{ id: fxId, name: fx, params: defaults[fx as string] ?? {}, bypass: false }];
       project.playMode = "song";
       project.automation = values
         ? [
@@ -120,4 +120,29 @@ test("the knob picker: search an effect's knob, then move the lane from the Insp
   await picker.locator('[data-knob$=":fx:fx-trem:spread"]').click();
   await expect.poll(target).toMatch(/:fx:fx-trem:spread$/);
   await expect(page.getByTestId("inspector-knob")).toContainText("Tremolo Spread");
+});
+
+test("the newer effects pass sound; a flat Parametric EQ and a neutral Utility change nothing (D216)", async ({
+  page,
+}) => {
+  const rms = (x: number[]) => Math.sqrt(x.reduce((s, v) => s + v * v, 0) / x.length);
+  const plain = await render(page, "None", "mix", null);
+  for (const fx of [
+    "Parametric EQ",
+    "Gate",
+    "Flanger",
+    "Saturator",
+    "Vibrato",
+    "Auto-Wah",
+    "Freq Shifter",
+    "Utility",
+  ]) {
+    const out = await render(page, fx, "mix", null);
+    expect(out.every(Number.isFinite), fx).toBe(true);
+    expect(rms(out), fx).toBeGreaterThan(0.001);
+    if (fx === "Parametric EQ" || fx === "Utility") {
+      const apart = rms(out.map((v, i) => v - plain[i])) / rms(plain);
+      expect(apart, fx).toBeLessThan(0.05);
+    }
+  }
 });
