@@ -16,6 +16,8 @@ export interface FxNode {
   /** Effects that follow the beat (Pump): the page step at `time`, from `posQ` for `stepQ`
    * quarter notes of `secPerQ` seconds each. */
   onStep?(time: number, posQ: number, stepQ: number, secPerQ: number): void;
+  /** Effects synced to the tempo follow a tempo change at its audio time (D192). */
+  tempo?(bpm: number, time: number): void;
   dispose(): void;
 }
 
@@ -35,6 +37,7 @@ type Inner = {
   set: (p: Record<string, number>, bpm: number) => void;
   ready?: Promise<void>;
   onStep?: FxNode["onStep"];
+  tempo?: FxNode["tempo"];
 };
 
 const v = (p: Record<string, number>, k: string, d = 0.5) => p[k] ?? d;
@@ -120,14 +123,18 @@ function build(name: string, p: Record<string, number>): Inner {
       const d = pingPong ? new Tone.PingPongDelay(0.25, 0.35) : new Tone.FeedbackDelay(0.25, 0.35);
       d.wet.value = 1;
       const tone = new Tone.Filter(6000, "lowpass");
+      let quarters = 0.5;
       return {
         nodes: [d, tone],
         set: (p, bpm) => {
           const note = DELAY_TIMES[Math.round(v(p, "time", 4 / 7) * (DELAY_TIMES.length - 1))];
-          d.delayTime.rampTo(DELAY_QUARTERS[note] * (60 / bpm), 0.05);
+          quarters = DELAY_QUARTERS[note];
+          d.delayTime.rampTo(quarters * (60 / bpm), 0.05);
           d.feedback.value = Math.min(0.95, v(p, "feedback", 0.35));
           tone.frequency.value = toUnit.hz(v(p, "tone", 0.7));
         },
+        // the echo follows the tempo, ramping over the step (a jump would click)
+        tempo: (bpm, time) => d.delayTime.linearRampToValueAtTime(quarters * (60 / bpm), time),
       };
     }
     case "Reverb": {
@@ -265,6 +272,7 @@ export function createFx(fx: Effect, bpm: number): FxNode {
       dry.gain.rampTo(1 - mix, 0.02);
     },
     onStep: inner.onStep,
+    tempo: inner.tempo,
     dispose() {
       for (const n of [input, output, dry, wet, ...inner.nodes]) n.dispose();
     },
@@ -331,6 +339,12 @@ export class FxChain {
   /** A page step for the effects that follow the beat (Pump, D104). */
   step(time: number, posQ: number, stepQ: number, secPerQ: number) {
     for (const n of this.nodes) n.onStep?.(time, posQ, stepQ, secPerQ);
+  }
+
+  /** A tempo change at an audio time, for the effects synced to it (D192). */
+  tempo(bpm: number, time: number) {
+    this.lastBpm = bpm;
+    for (const n of this.nodes) n.tempo?.(bpm, time);
   }
 
   /** Resolves when every effect can process audio (reverb impulse responses are built). */

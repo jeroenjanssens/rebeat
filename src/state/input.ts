@@ -4,7 +4,7 @@
  * (clears a step the first time you play onto it per loop pass). Snap on = starts and lengths
  * snap to Q's grid; Snap off = exact timing stored as Note.offset (D127, D128).
  */
-import { position, positionAt } from "../engine/transport";
+import { position, positionAt, tempoNow } from "../engine/transport";
 import { audioContext } from "../engine/context";
 import { chordInKey, snapToKey } from "../model/notes";
 import { pageKey, slotPattern } from "../model/project";
@@ -170,7 +170,7 @@ export function padInput(track: Track, velocity: number, notes?: number[]) {
       lane.stepSizeOverride,
       pattern.stepCount,
       lane.stepCountOverride,
-      s.project.bpm,
+      tempoNow(),
       pos.progress,
       s.quantize,
     );
@@ -310,6 +310,8 @@ export function recordNoteOn(
   const lane = pattern.lanes[trackId];
   if (!lane) return null;
   if (track.mode !== "notes") return null;
+  // a transposed section (D183) moves its notes: write them so they sound as played there
+  pitch -= slot.transpose ?? 0;
 
   detectLoopWrap(pos.progress);
 
@@ -318,14 +320,14 @@ export function recordNoteOn(
     lane.stepSizeOverride,
     pattern.stepCount,
     lane.stepCountOverride,
-    s.project.bpm,
+    tempoNow(),
     pos.progress,
     s.quantize,
   );
   const { len, laneQ, grid } = step;
   const { snap, recordMode } = useSettings.getState();
   // the hit's position, and the note's own delay after it, in lane steps
-  const laneStepSec = (60 / s.project.bpm) * laneQ;
+  const laneStepSec = (60 / tempoNow()) * laneQ;
   const ratio = STEP_SIZE_QUARTERS[pattern.stepSize] / laneQ;
   const hit = timed ? pos.progress * pattern.stepCount * ratio : step.exact;
   const spread = (timing.spread ?? 0) / laneStepSec;
@@ -422,7 +424,7 @@ export function recordNoteOff(id: number | null, at?: number): void {
   // Current exact position in lane steps (same latency correction as note-on)
   const ctx = audioContext();
   const latency = ctx.outputLatency || ctx.baseLatency || 0;
-  const laneStepSec = (60 / s.project.bpm) * laneQ;
+  const laneStepSec = (60 / tempoNow()) * laneQ;
   // a timed note-off is exactly on the grid; a key's is where it's heard (latency corrected)
   const nowExact =
     pos.progress * pattern.stepCount * ratio - (at === undefined ? latency / laneStepSec : 0);

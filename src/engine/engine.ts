@@ -58,6 +58,9 @@ interface Clip {
   bufferDuration: number;
   from: number;
   until: number;
+  /** The sample's own tempo (warped clips follow tempo changes, D192), and its pitch factor. */
+  clipBpm: number | null;
+  repitch: number;
 }
 
 interface Master {
@@ -94,6 +97,10 @@ export interface EngineScope {
   buses: Map<string, BusChannel>;
   lastTracks: Map<string, { track: Track; audible: boolean; bpm: number }>;
   live: boolean;
+  /** The tempo the transport plays at (D192: tempo changes); null = the project's. */
+  tempo: number | null;
+  /** The tempo the graph was last reconciled at. */
+  builtBpm: number;
 }
 
 export function newScope(live = false): EngineScope {
@@ -110,6 +117,8 @@ export function newScope(live = false): EngineScope {
     buses: new Map(),
     lastTracks: new Map(),
     live,
+    tempo: null,
+    builtBpm: 120,
   };
 }
 
@@ -257,7 +266,9 @@ export function reconcile(project: Project = useStore.getState().project) {
     S.lastTracks.delete(id);
     stopClip(id);
   }
-  const bpm = project.bpm;
+  // while the song plays its tempo changes, synced things follow the transport's tempo
+  const bpm = S.tempo ?? project.bpm;
+  S.builtBpm = bpm;
   for (const t of project.tracks) {
     const audible = isAudible(t.id, project);
     const last = S.lastTracks.get(t.id);
@@ -774,7 +785,7 @@ export function startClip(track: Track, time: number, pageDur: number, oneshot: 
   const buffer = getBuffer(sampleId);
   if (!buffer || !sampleId) return;
   const p = track.params;
-  const bpm = useStore.getState().project.bpm;
+  const bpm = S.tempo ?? useStore.getState().project.bpm;
   const clipBpm = sampleInfo(sampleId)?.bpm;
   const pitch = toUnit.semis(12)(p["sound.pitch"] ?? 0.5);
   // warp: follow the song tempo; without a known tempo the clip plays at its own speed
@@ -868,6 +879,8 @@ export function startClip(track: Track, time: number, pageDur: number, oneshot: 
     bufferDuration: buffer.duration,
     from: t,
     until: end,
+    clipBpm: (p["sound.warp"] ?? 1) >= 0.5 && clipBpm ? clipBpm : null,
+    repitch: warp ? 1 : Math.pow(2, pitch / 12),
   });
   S.activeUntil.set(track.id, end + 0.1);
 }
@@ -1008,6 +1021,31 @@ export function effectsStep(time: number, posQ: number, stepQ: number, secPerQ: 
   for (const ch of S.channels.values()) ch.step(time, posQ, stepQ, secPerQ);
   for (const b of S.buses.values()) b.step(time, posQ, stepQ, secPerQ);
   S.master?.fx.step(time, posQ, stepQ, secPerQ);
+}
+
+/**
+ * A tempo change at an audio time (D192), from the transport (live and offline): synced delays,
+ * the synths' synced LFOs and warped clips follow it. `null` (stop) goes back to the project's
+ * tempo.
+ */
+export function tempoStep(bpm: number | null, time: number) {
+  const to = bpm ?? (S.live ? useStore.getState().project.bpm : S.builtBpm);
+  const was = S.tempo ?? S.builtBpm;
+  S.tempo = bpm;
+  if (was === to) return;
+  for (const ch of S.channels.values()) ch.tempo(to, time);
+  for (const ch of S.liveChannels.values()) ch.tempo(to, time);
+  for (const b of S.buses.values()) b.tempo(to, time);
+  S.master?.fx.tempo(to, time);
+  for (const v of [...S.synths.values(), ...S.liveVoices.values()]) v.synth?.tempo(to, time);
+  for (const c of S.clips.values()) {
+    if (!c.clipBpm) continue;
+    const rate = to / c.clipBpm;
+    // the live stretch keeps the pitch; repitching (offline) bends it with the speed (§0.7)
+    if (c.warp) c.warp.schedule({ output: Math.max(time, audioNow()), rate });
+    for (const src of c.sources) src.playbackRate.setValueAtTime(rate * c.repitch, time);
+    c.rate = rate;
+  }
 }
 
 /** How long stop takes to fade the master out (and back in): instant, without a click. */

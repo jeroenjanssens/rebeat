@@ -7,7 +7,7 @@
  */
 import { audioNow, onPanic } from "../engine/engine";
 import { startTicker } from "../engine/ticker";
-import { playStartTime } from "../engine/transport";
+import { playStartTime, tempoNow } from "../engine/transport";
 import { laneNotes, type ChordInfo, type ChordPattern } from "../model/patterns";
 import {
   arpNote,
@@ -159,7 +159,7 @@ function stepDur(s: PlayStyle): number {
   const quarters = s.pattern.on
     ? 1 / patternById(s.pattern.id).division
     : STEP_SIZE_QUARTERS[s.arp.rate];
-  return (quarters * 60) / useStore.getState().project.bpm;
+  return (quarters * 60) / tempoNow();
 }
 
 /** Put the grid on the transport's steps (playing) or start it now (stopped). */

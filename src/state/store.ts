@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { produce, type Draft } from "immer";
 import { demoProject } from "../templates/nightDrive";
 import { slotPattern, type PlayMode, type Project } from "../model/project";
-import type { Step } from "../model/types";
+import type { SongAnchor, Step } from "../model/types";
 
 export type FnKey =
   | "shift"
@@ -72,6 +72,8 @@ export interface UiState {
   };
   playSlotId: string;
   queuedSlotId: string | null;
+  /** Where Play starts (D190): a position in the edited section; null = its start. */
+  startAt: SongAnchor | null;
   jogOpen: Record<string, boolean>;
   clipboard: Step[] | null;
   euclidOpen: boolean;
@@ -131,6 +133,7 @@ export const useStore = create<State>()((set, get) => ({
       editSlotId: p.slots[0]?.id ?? "",
       playSlotId: p.slots[0]?.id ?? "",
       queuedSlotId: null,
+      startAt: null,
       selectedSteps: {},
       cursor: null,
       fxIndex: 0,
@@ -173,6 +176,7 @@ export const useStore = create<State>()((set, get) => ({
   looper: { status: "idle", trackId: "", start: 0, end: 0 },
   playSlotId: project.slots[1].id,
   queuedSlotId: null,
+  startAt: null,
   jogOpen: {},
   clipboard: null,
   euclidOpen: false,

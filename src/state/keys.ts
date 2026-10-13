@@ -17,7 +17,7 @@ import {
   playKeysSample,
 } from "../engine/engine";
 import { noteName, type Key } from "../model/notes";
-import { playStartTime } from "../engine/transport";
+import { nextBarTime, playStartTime, tempoNow } from "../engine/transport";
 import {
   progressionById,
   progressionChords,
@@ -1041,7 +1041,7 @@ export function autoUnit(): { beats: number; pattern: boolean } {
 /** Seconds between Auto's chord changes. */
 function changeDur(): number {
   const every = Math.max(1, useSettings.getState().autoEvery);
-  return (every * autoUnit().beats * 60) / useStore.getState().project.bpm;
+  return (every * autoUnit().beats * 60) / tempoNow();
 }
 
 /** A root note for a suggestion: its pitch class in the octave nearest the last key. */
@@ -1183,7 +1183,10 @@ export function toggleAuto() {
 function nextBar(): number {
   const { project } = useStore.getState();
   const [beats, unit] = project.timeSignature ?? [4, 4];
-  const bar = (beats * (4 / unit) * 60) / project.bpm;
+  // every section starts a bar (D185): the transport knows where the next one is
+  const next = nextBarTime();
+  if (next !== null) return next;
+  const bar = (beats * (4 / unit) * 60) / tempoNow();
   const start = playStartTime();
   return start + Math.max(0, Math.ceil((audioNow() + 0.01 - start) / bar)) * bar;
 }

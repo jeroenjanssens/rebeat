@@ -156,7 +156,8 @@ function SectionThumb({
   useEffect(() => {
     if (!isPlay) return;
     return onFrame(() => {
-      if (progress.current) progress.current.style.transform = `scaleX(${position().progress})`;
+      if (progress.current)
+        progress.current.style.transform = `scaleX(${position().sectionProgress})`;
     });
   }, [isPlay]);
 

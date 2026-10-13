@@ -314,7 +314,11 @@ type Event =
   | { at: number; kind: "off"; id: number }
   | { at: number; kind: "releaseAll" }
   /** A parameter lock on the macros (values), or its end (null: back unless locked again since). */
-  | { at: number; kind: "macros"; id: number; values: number[] | null };
+  | { at: number; kind: "macros"; id: number; values: number[] | null }
+  /** The tempo from here (D192: tempo changes), for synced LFOs. */
+  | { at: number; kind: "tempo"; bpm: number }
+  /** Automated macro values from here (D186); null: that macro isn't automated. */
+  | { at: number; kind: "automate"; values: (number | null)[] };
 
 /** Values that MIDI and the UI send: mod wheel, aftertouch, pitch bend, macros. */
 export interface Controls {
@@ -331,6 +335,8 @@ export class SynthCore {
   /** The patch as sent, before macros; and a step's macro lock on top. */
   private base!: SynthPatch;
   private lock: { id: number; values: number[] } | null = null;
+  /** Automated macro values (D186), under a lock. */
+  private auto: (number | undefined)[] = [];
   private voices: Voice[] = Array.from({ length: 16 }, () => new Voice());
   private globalLfos = [new LfoState(), new LfoState(), new LfoState()];
   private events: Event[] = [];
@@ -351,7 +357,8 @@ export class SynthCore {
   /** A new patch (or macro values). Macros move their targets before anything else. */
   setPatch(patch: SynthPatch) {
     this.base = patch;
-    this.patch = applyMacros(this.lock ? withMacroValues(patch, this.lock.values) : patch);
+    const automated = this.auto.length ? withMacroValues(patch, this.auto) : patch;
+    this.patch = applyMacros(this.lock ? withMacroValues(automated, this.lock.values) : automated);
   }
 
   /** Lock the macros at `values` from `at` (samples); `values` null ends lock `id`. */
@@ -359,8 +366,15 @@ export class SynthCore {
     this.queue({ at, kind: "macros", id, values });
   }
 
-  setTempo(bpm: number) {
-    this.bpm = bpm;
+  /** The tempo, now or from `at` (samples). */
+  setTempo(bpm: number, at?: number) {
+    if (at === undefined) this.bpm = bpm;
+    else this.queue({ at, kind: "tempo", bpm });
+  }
+
+  /** Automated macro values from `at` (samples); null leaves a macro to its knob. */
+  automateMacros(values: (number | null)[], at: number) {
+    this.queue({ at, kind: "automate", values });
   }
 
   /** Schedule a note; `at` and `end` are in samples. */
@@ -397,8 +411,9 @@ export class SynthCore {
         e.value = 0;
       }
     }
-    if (this.lock) {
+    if (this.lock || this.auto.length) {
       this.lock = null;
+      this.auto = [];
       this.setPatch(this.base);
     }
   }
@@ -444,6 +459,14 @@ export class SynthCore {
   // ---------- notes ----------
 
   private handle(e: Event) {
+    if (e.kind === "tempo") {
+      this.bpm = e.bpm;
+      return;
+    }
+    if (e.kind === "automate") {
+      this.auto = e.values.some((v) => v !== null) ? e.values.map((v) => v ?? undefined) : [];
+      return this.setPatch(this.base);
+    }
     if (e.kind === "macros") {
       if (e.values) this.lock = { id: e.id, values: e.values };
       else if (this.lock?.id === e.id) this.lock = null;

@@ -4,8 +4,8 @@ import { setStepVelocity, stepVelocity, type Lane } from "../model/types";
 import { demoProject } from "../templates/nightDrive";
 
 const trigger = vi.fn();
-vi.mock("tone", () => ({}));
-vi.mock("./metronome", () => ({ click: vi.fn() }));
+vi.mock("tone", () => ({ getDraw: () => ({ schedule: vi.fn(), cancel: vi.fn() }) }));
+vi.mock("./metronome", () => ({ click: vi.fn(), silenceMetronome: vi.fn() }));
 vi.mock("./ticker", () => ({ startTicker: vi.fn() }));
 vi.mock("./engine", () => ({
   audioNow: () => 0,
@@ -15,11 +15,13 @@ vi.mock("./engine", () => ({
   stopClip: vi.fn(),
   panic: vi.fn(),
   effectsStep: vi.fn(),
+  tempoStep: vi.fn(),
   ungate: vi.fn(),
   trigger: (...args: unknown[]) => trigger(...args),
 }));
 
-const { playStep } = await import("./transport");
+const { playStep, play, scheduledSteps, sectionFill, stepSeconds } = await import("./transport");
+const { useStore } = await import("../state/store");
 
 /** The demo with one lit step on a drum and an instrument track, on an otherwise empty page. */
 function setup() {
@@ -107,5 +109,66 @@ describe("playStep", () => {
     playStep(p, pattern, 0, 10, 0.125, 0, false);
     expect(startClip).toHaveBeenCalledWith(vox, 10, expect.any(Number), true);
     expect(callFor(vox.id)).toBeUndefined();
+  });
+});
+
+describe("section settings (D183)", () => {
+  beforeEach(() => trigger.mockClear());
+
+  it("a track muted in a section is silent there, and plays in its clone", () => {
+    const { p, pattern, drum, inst } = setup();
+    const section = { id: "s", patternId: pattern.id, repeats: 1, mutes: [drum.id] };
+    playStep(p, pattern, 0, 10, 0.125, 0, false, undefined, undefined, { section });
+    expect(callFor(drum.id)).toBeUndefined();
+    expect(callFor(inst.id)).toBeDefined();
+    trigger.mockClear();
+    playStep(p, pattern, 0, 10, 0.125, 0, false, undefined, undefined, {
+      section: { ...section, mutes: undefined },
+    });
+    expect(callFor(drum.id)).toBeDefined();
+  });
+
+  it("transpose adds to the pattern's", () => {
+    const { p, pattern, inst } = setup();
+    pattern.transpose = 1;
+    const section = { id: "s", patternId: pattern.id, repeats: 1, transpose: 2 };
+    playStep(p, pattern, 0, 10, 0.125, 0, false, undefined, undefined, { section });
+    expect((callFor(inst.id)![2] as { transpose: number }).transpose).toBe(3);
+  });
+
+  it("fill on the last repeat, or on every repeat", () => {
+    const s = { id: "s", patternId: "p", repeats: 2 };
+    expect(sectionFill({ ...s, fill: "last" }, 0, 2)).toBe(false);
+    expect(sectionFill({ ...s, fill: "last" }, 1, 2)).toBe(true);
+    expect(sectionFill({ ...s, fill: "all" }, 0, 2)).toBe(true);
+    expect(sectionFill(s, 1, 2)).toBe(false);
+  });
+});
+
+describe("playing from anywhere (D190) and tempo changes (D192)", () => {
+  afterEach(() => useStore.getState().setUi({ playing: false, startAt: null }));
+
+  it("starts at the start marker's section, repeat and step", () => {
+    const p = demoProject();
+    p.slots[1].repeats = 2;
+    useStore.getState().loadProject(p, "t");
+    const slot = p.slots[1];
+    const stepQ = 0.25;
+    // the second repeat, step 3
+    const at = p.patterns[slot.patternId].stepCount * stepQ + 3 * stepQ;
+    useStore.getState().setUi({ editSlotId: slot.id, startAt: { slotId: slot.id, at } });
+    play();
+    const first = scheduledSteps()[0];
+    expect(first).toMatchObject({ slotId: slot.id, repeat: 1, pageStep: 3 });
+  });
+
+  it("steps get shorter through a ramp up", () => {
+    const p = demoProject();
+    const pattern = p.patterns[p.slots[0].patternId];
+    const before = stepSeconds(p, pattern, 0, 0);
+    // the first section is a bar (4 quarters): ramp to double the tempo at its end
+    p.tempo = [{ slotId: p.slots[0].id, at: 3.99, bpm: p.bpm * 2, ramp: true }];
+    expect(stepSeconds(p, pattern, 0, 0)).toBeLessThan(before);
+    expect(stepSeconds(p, pattern, 3.74, 0)).toBeLessThan(before * 0.55);
   });
 });

@@ -1,6 +1,14 @@
-/** Standard MIDI File (type 1) export of the song or one page. */
+/** Standard MIDI File (type 1) export of the song or one section. */
+import { blockOf, layout, type Block } from "./arrangement";
 import type { Project } from "./project";
-import { STEP_SIZE_QUARTERS, type Pattern, type SoundCategory, type Track } from "./types";
+import { tempoAt, tempoMap } from "./tempoMap";
+import {
+  STEP_SIZE_QUARTERS,
+  type Pattern,
+  type Section,
+  type SoundCategory,
+  type Track,
+} from "./types";
 
 const PPQ = 480;
 /** Every channel except 10 (index 9), which is for drums. */
@@ -46,32 +54,48 @@ function trackChunk(events: Ev[]): number[] {
   return [...str("MTrk"), ...u32(body.length), ...body];
 }
 
+/** One repeat of a section, as it plays: its pattern, its settings, how many steps. */
+export interface Play {
+  pattern: Pattern;
+  section: Section;
+  steps: number;
+}
+
+/** The repeats in order (the song, or one section once). */
+export function playsInOrder(project: Project, range: "song" | "section", slotId?: string): Play[] {
+  const blocks: Block[] =
+    range === "section" ? [blockOf(project, slotId ?? "") ?? layout(project)[0]] : layout(project);
+  return blocks.flatMap((b) =>
+    Array.from({ length: range === "section" ? 1 : b.repeats }, () => ({
+      pattern: b.pattern,
+      section: b.section,
+      steps: b.steps,
+    })),
+  );
+}
+
+/** The patterns in order (the song, or one section). */
 export function patternsInOrder(
   project: Project,
   range: "song" | "section",
   slotId?: string,
 ): Pattern[] {
-  if (range === "section") {
-    const slot = project.slots.find((s) => s.id === slotId) ?? project.slots[0];
-    return [project.patterns[slot.patternId]];
-  }
-  return project.slots.flatMap((s) =>
-    Array.from({ length: s.repeats }, () => project.patterns[s.patternId]),
-  );
+  return playsInOrder(project, range, slotId).map((p) => p.pattern);
 }
 
-function trackEvents(track: Track, patterns: Pattern[], channel: number): Ev[] {
+function trackEvents(track: Track, plays: Play[], channel: number): Ev[] {
   const ev: Ev[] = [
     { tick: 0, data: [0xff, 0x03, ...vlq(str(track.name).length), ...str(track.name)] },
   ];
   let offset = 0;
-  for (const pattern of patterns) {
+  for (const { pattern, section, steps } of plays) {
     const stepTicks = STEP_SIZE_QUARTERS[pattern.stepSize] * PPQ;
     const lane = pattern.lanes[track.id];
-    if (lane && track.mode !== "clip") {
+    // muted in this section (D183): nothing from it here
+    if (lane && track.mode !== "clip" && !section.mutes?.includes(track.id)) {
       const len = lane.stepCountOverride ?? pattern.stepCount;
       const laneTicks = STEP_SIZE_QUARTERS[lane.stepSizeOverride ?? pattern.stepSize] * PPQ;
-      const count = Math.floor((pattern.stepCount * stepTicks) / laneTicks);
+      const count = Math.floor((steps * stepTicks) / laneTicks);
       for (let i = 0; i < count; i++) {
         const s = lane.steps[i % len];
         if (!s.on) continue;
@@ -79,7 +103,11 @@ function trackEvents(track: Track, patterns: Pattern[], channel: number): Ev[] {
         const notes =
           track.mode === "notes"
             ? (s.notes ?? []).map((n) => ({
-                pitch: n.pitch + (track.transpose ?? 0) + (pattern.transpose ?? 0),
+                pitch:
+                  n.pitch +
+                  (track.transpose ?? 0) +
+                  (pattern.transpose ?? 0) +
+                  (section.transpose ?? 0),
                 // fractional lengths are preserved (D128)
                 len: n.length,
                 vel: n.velocity,
@@ -106,7 +134,28 @@ function trackEvents(track: Track, patterns: Pattern[], channel: number): Ev[] {
         }
       }
     }
-    offset += pattern.stepCount * stepTicks;
+    offset += steps * stepTicks;
+  }
+  return ev;
+}
+
+const setTempo = (tick: number, bpm: number): Ev => {
+  const t = Math.round(60_000_000 / bpm);
+  return { tick, data: [0xff, 0x51, 0x03, (t >> 16) & 255, (t >> 8) & 255, t & 255] };
+};
+
+/** The tempo map as Set Tempo events (D193): a jump as one, a ramp as one every 16th. */
+function tempoEvents(project: Project, from: number, to: number): Ev[] {
+  const tick = (q: number) => Math.round((q - from) * PPQ);
+  const ev: Ev[] = [setTempo(0, tempoAt(project, from))];
+  for (const s of tempoMap(project)) {
+    if (s.end <= from || s.q >= to) continue;
+    if (s.bpm === s.to) {
+      if (s.q > from) ev.push(setTempo(tick(s.q), s.bpm));
+      continue;
+    }
+    for (let q = Math.max(from, s.q); q < Math.min(to, s.end); q += 0.25)
+      ev.push(setTempo(tick(q), tempoAt(project, q + 0.125)));
   }
   return ev;
 }
@@ -116,12 +165,14 @@ export function exportMidi(
   range: "song" | "section",
   slotId?: string,
 ): Uint8Array {
-  const patterns = patternsInOrder(project, range, slotId);
-  const tempo = Math.round(60_000_000 / project.bpm);
+  const plays = playsInOrder(project, range, slotId);
   const [num, den] = project.timeSignature;
+  const block = range === "section" ? blockOf(project, slotId ?? "") : undefined;
+  const from = block?.start ?? 0;
+  const to = from + plays.reduce((q, p) => q + p.steps * STEP_SIZE_QUARTERS[p.pattern.stepSize], 0);
   const conductor = trackChunk([
     { tick: 0, data: [0xff, 0x03, ...vlq(str(project.name).length), ...str(project.name)] },
-    { tick: 0, data: [0xff, 0x51, 0x03, (tempo >> 16) & 255, (tempo >> 8) & 255, tempo & 255] },
+    ...tempoEvents(project, from, to),
     { tick: 0, data: [0xff, 0x58, 0x04, num, Math.round(Math.log2(den)), 24, 8] },
   ]);
   let melodic = 0;
@@ -130,7 +181,7 @@ export function exportMidi(
     .map((t) => {
       // hits on channel 10 (the drums); notes get their own channels (skipping 10)
       const ch = t.mode === "hits" ? 9 : MELODIC_CHANNELS[melodic++ % MELODIC_CHANNELS.length];
-      return trackChunk(trackEvents(t, patterns, ch));
+      return trackChunk(trackEvents(t, plays, ch));
     });
   const header = [
     ...str("MThd"),

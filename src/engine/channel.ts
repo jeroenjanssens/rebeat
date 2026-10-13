@@ -50,6 +50,11 @@ export class BusChannel {
     this.fx.step(time, posQ, stepQ, secPerQ);
   }
 
+  /** A tempo change at an audio time (D192). */
+  tempo(bpm: number, time: number) {
+    this.fx.tempo(bpm, time);
+  }
+
   update(bus: Bus, bpm: number) {
     this.fx.sync(bus.effects, bpm);
     this.fader.gain.rampTo(bus.mute ? 0 : faderGain(bus.volume), 0.02);
@@ -129,6 +134,11 @@ export class TrackChannel {
   /** A page step, for effects that follow the beat (Pump, D104). */
   step(time: number, posQ: number, stepQ: number, secPerQ: number) {
     this.fx.step(time, posQ, stepQ, secPerQ);
+  }
+
+  /** A tempo change at an audio time (D192). */
+  tempo(bpm: number, time: number) {
+    this.fx.tempo(bpm, time);
   }
 
   update(track: Track, audible: boolean, bpm: number) {

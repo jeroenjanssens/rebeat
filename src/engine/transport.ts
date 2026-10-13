@@ -4,10 +4,19 @@
  * moment it is heard (via Tone.Draw), so visuals bypass React.
  */
 import * as Tone from "tone";
+import { blockOf, positionOf, stepPosition, type Block } from "../model/arrangement";
+import { secondsBetween, tempoAt } from "../model/tempoMap";
 import { laneStepsWithin } from "../model/timing";
 import { arpOrder } from "../model/notes";
 import type { Project } from "../model/project";
-import { STEP_SIZE_QUARTERS, clipOf, type Pattern, type Step, type Track } from "../model/types";
+import {
+  STEP_SIZE_QUARTERS,
+  clipOf,
+  type Pattern,
+  type Section,
+  type Step,
+  type Track,
+} from "../model/types";
 import { useSettings } from "../state/settings";
 import { isAudible, useStore } from "../state/store";
 import {
@@ -18,6 +27,7 @@ import {
   startClip,
   stopAll,
   stopClip,
+  tempoStep,
   trigger,
   ungate,
 } from "./engine";
@@ -48,6 +58,14 @@ export interface ScheduledStep {
   pageStep: number;
   /** Absolute step counter since play. */
   tick: number;
+  /** Steps the section plays per repeat (its `steps`, else the pattern's). */
+  steps: number;
+  /** Which repeat of the section. */
+  repeat: number;
+  /** Where the step is in the song, in quarter notes (D181). */
+  songQ: number;
+  /** The tempo at the step (D192). */
+  bpm: number;
 }
 
 let stopTicker: (() => void) | null = null;
@@ -90,6 +108,30 @@ export function stepDuration(pattern: Pattern, bpm: number, index: number, globa
   return index % 2 === 0 ? base * 2 * swing : base * (2 - 2 * swing);
 }
 
+/**
+ * A step's length in seconds at song position q (D192): the tempo map's seconds over the step,
+ * with the swing's share of each pair of steps. Without tempo changes, the same as stepDuration.
+ */
+export function stepSeconds(project: Project, pattern: Pattern, q: number, index: number) {
+  const stepQ = STEP_SIZE_QUARTERS[pattern.stepSize];
+  const base = secondsBetween(project, q, q + stepQ);
+  const swing = pattern.swing ?? project.swing;
+  return index % 2 === 0 ? base * 2 * swing : base * (2 - 2 * swing);
+}
+
+/** One repeat of a section in seconds: its steps' lengths (with swing) through the tempo map. */
+export function repeatSeconds(project: Project, block: Block, repeat: number) {
+  let t = 0;
+  for (let i = 0; i < block.steps; i++)
+    t += stepSeconds(project, block.pattern, stepPosition(block, repeat, i), i);
+  return t;
+}
+
+/** The FILL conditions pass: held or latched Fill, or the section's own fill (D183). */
+export function sectionFill(section: Section | undefined, repeat: number, repeats: number) {
+  return section?.fill === "all" || (section?.fill === "last" && repeat === repeats - 1);
+}
+
 export function pageDuration(pattern: Pattern, bpm: number, globalSwing = 0.5) {
   let d = 0;
   for (let i = 0; i < pattern.stepCount; i++) d += stepDuration(pattern, bpm, i, globalSwing);
@@ -108,14 +150,49 @@ export function position() {
       cur = history[i];
       break;
     }
-  if (!s.playing || !cur) return { pattern, pageStep: 0, progress: 0, time: now };
+  if (!s.playing || !cur)
+    return { pattern, pageStep: 0, progress: 0, sectionProgress: 0, time: now };
   const frac = Math.min(1, Math.max(0, (now - cur.time) / cur.dur));
   return {
     pattern: cur.pattern,
     pageStep: cur.pageStep,
+    /** Through the pattern (for recording). */
     progress: (cur.pageStep + frac) / cur.pattern.stepCount,
+    /** Through the steps the section plays (for progress bars). */
+    sectionProgress: (cur.pageStep + frac) / cur.steps,
     time: now,
   };
+}
+
+/** The current step (the newest one heard by now), or null while stopped. */
+function currentStep(time = audioNow()): ScheduledStep | null {
+  for (let i = history.length - 1; i >= 0; i--) if (history[i].time <= time) return history[i];
+  return null;
+}
+
+/** The playhead in song time, quarter notes (null while stopped or counting in). */
+export function songPosition(): number | null {
+  const now = audioNow();
+  const cur = currentStep(now);
+  if (!useStore.getState().playing || !cur) return null;
+  const frac = Math.min(1, Math.max(0, (now - cur.time) / cur.dur));
+  return cur.songQ + frac * STEP_SIZE_QUARTERS[cur.pattern.stepSize];
+}
+
+/** Where Play starts (D190): the start marker in the edited section, else its start. */
+export function startPosition(): number {
+  const s = useStore.getState();
+  const block = blockOf(s.project, s.editSlotId) ?? blockOf(s.project, s.project.slots[0].id);
+  if (!block) return 0;
+  const at = s.startAt?.slotId === block.section.id ? s.startAt.at : 0;
+  return block.start + Math.min(at, block.span - 1e-6);
+}
+
+/** The tempo now (D192): the playing step's, else the tempo where Play starts. */
+export function tempoNow(): number {
+  const s = useStore.getState();
+  const cur = s.playing ? currentStep() : null;
+  return cur?.bpm ?? tempoAt(s.project, startPosition());
 }
 
 /**
@@ -163,10 +240,7 @@ export function nextBeatTime(): number | null {
   if (!cur) return null;
   const spb = stepsPerBeat(cur.pattern);
   const left = spb - (cur.pageStep % spb);
-  return (
-    cur.time +
-    left * (60 / useStore.getState().project.bpm) * STEP_SIZE_QUARTERS[cur.pattern.stepSize]
-  );
+  return cur.time + left * (60 / cur.bpm) * STEP_SIZE_QUARTERS[cur.pattern.stepSize];
 }
 
 /** Audio time of the next bar line while playing. */
@@ -176,7 +250,7 @@ export function nextBarTime(): number | null {
   if (!cur) return null;
   const spb = stepsPerBeat(cur.pattern);
   const bar = spb * useStore.getState().project.timeSignature[0];
-  const stepSec = (60 / useStore.getState().project.bpm) * STEP_SIZE_QUARTERS[cur.pattern.stepSize];
+  const stepSec = (60 / cur.bpm) * STEP_SIZE_QUARTERS[cur.pattern.stepSize];
   const left = bar - (cur.pageStep % bar);
   return cur.time + left * stepSec;
 }
@@ -275,8 +349,17 @@ function arpeggiate(
   }
 }
 
+export interface StepContext {
+  /** The section playing (its mutes and transpose, D183). */
+  section?: Section;
+  /** The tempo at the step (D192); default the project's. */
+  bpm?: number;
+  /** How long the section's repeat lasts, for clips (default: the pattern at the step's tempo). */
+  repeatDur?: number;
+}
+
 /**
- * Play every track's sound for one page step (shared by the live transport and offline
+ * Play every track's sound for one step of a section (shared by the live transport and offline
  * rendering). Fills `triggered` and `laneSteps` for the visuals.
  */
 export function playStep(
@@ -289,22 +372,29 @@ export function playStep(
   fill: boolean,
   triggered = new Set<string>(),
   laneSteps = new Map<string, number>(),
+  ctx: StepContext = {},
 ) {
+  const bpm = ctx.bpm ?? project.bpm;
   const qPage = STEP_SIZE_QUARTERS[pattern.stepSize];
-  const secPerQ = 60 / project.bpm;
+  const secPerQ = 60 / bpm;
+  const mutes = ctx.section?.mutes;
+  const transpose = (pattern.transpose ?? 0) + (ctx.section?.transpose ?? 0) || undefined;
   effectsStep(time, pageStep * qPage, qPage, secPerQ);
   for (const track of project.tracks) {
     const lane = pattern.lanes[track.id];
     if (!lane) continue;
-    const audible = isAudible(track.id, project);
+    // muted in this section (D183): silent here, its clones play it
+    const mutedHere = !!mutes?.includes(track.id);
+    const audible = isAudible(track.id, project) && !mutedHere;
     if (track.mode === "clip") {
       const clip = clipOf(lane);
       if (pageStep === 0) {
-        if (clip.active) {
+        // a muted track's clip still starts (unmuting brings it back); muted here, it doesn't
+        if (clip.active && !mutedHere) {
           startClip(
             track,
             time,
-            pageDuration(pattern, project.bpm, project.swing),
+            ctx.repeatDur ?? pageDuration(pattern, bpm, project.swing),
             clip.launchMode === "oneshot",
           );
           if (audible) triggered.add(track.id);
@@ -321,11 +411,11 @@ export function playStep(
       // Hits keep the notes a track had in Notes mode, but don't play them
       const notes = track.mode === "notes" ? step.notes : undefined;
       if (track.arp?.on && notes?.length) {
-        arpeggiate(track, step, t, d, pattern.transpose ?? 0, project.bpm);
+        arpeggiate(track, step, t, d, transpose ?? 0, bpm);
         return;
       }
       trigger(track, step.accent ? 1 : step.velocity, {
-        transpose: pattern.transpose,
+        transpose,
         time: t + step.nudge * d,
         ratchet: step.ratchet,
         stepDur: d,
@@ -355,22 +445,28 @@ export function playStep(
   }
 }
 
+/** The block of a section, or the first one (a section that was just deleted). */
+function blockFor(project: Project, id: string): Block {
+  return blockOf(project, id) ?? blockOf(project, project.slots[0].id)!;
+}
+
 function scheduleStep(time: number) {
   const state = useStore.getState();
   const { project } = state;
-  let slot = project.slots.find((x) => x.id === slotId) ?? project.slots[0];
-  let pattern = project.patterns[slot.patternId];
+  let block = blockFor(project, slotId);
+  let slot = block.section;
+  let pattern = block.pattern;
 
   pageStep += 1;
   if (repeat) {
     repeat.start ??= Math.max(0, Math.floor((pageStep - 1) / repeat.length) * repeat.length);
-    if (pageStep >= repeat.start + repeat.length || pageStep >= pattern.stepCount)
+    if (pageStep >= repeat.start + repeat.length || pageStep >= block.steps)
       pageStep = repeat.start;
   }
-  const atEnd = pageStep >= pattern.stepCount;
+  const atEnd = pageStep >= block.steps;
   const next = pageStep > 0 ? nextSlot(atEnd, pattern) : null;
   if (next === END) {
-    // the song is over: stop when the last page has been heard
+    // the song is over: stop when the last section has been heard
     ending = true;
     Tone.getDraw().schedule(() => stop(), time);
     return;
@@ -380,8 +476,9 @@ function scheduleStep(time: number) {
     pageStep = 0;
     if (next && next !== slot.id) {
       repeatCount = 0;
-      slot = project.slots.find((x) => x.id === next)!;
-      pattern = project.patterns[slot.patternId];
+      block = blockFor(project, next);
+      slot = block.section;
+      pattern = block.pattern;
       slotId = slot.id;
       const newSlot = slot.id;
       if (state.queuedSlotId) state.setUi({ queuedSlotId: null });
@@ -397,8 +494,12 @@ function scheduleStep(time: number) {
     }
   }
 
-  const dur = stepDuration(pattern, project.bpm, pageStep, project.swing);
-  const fill = state.fillHeld || state.fillLatched;
+  // in Loop mode the section's repeats go round, so its automation and tempo do too
+  const rep = repeatCount % block.repeats;
+  const songQ = stepPosition(block, rep, pageStep);
+  const dur = stepSeconds(project, pattern, songQ, pageStep);
+  const bpm = tempoAt(project, songQ + block.stepQ / 2);
+  const fill = state.fillHeld || state.fillLatched || sectionFill(slot, rep, block.repeats);
   const cycle = cycles.get(slot.id) ?? 0;
   const triggered = new Set<string>();
   const laneSteps = new Map<string, number>();
@@ -409,9 +510,26 @@ function scheduleStep(time: number) {
     click(time, beat % project.timeSignature[0] === 0);
   }
 
-  playStep(project, pattern, pageStep, time, dur, cycle, fill, triggered, laneSteps);
+  const repeatDur = pageStep === 0 ? repeatSeconds(project, block, rep) : 0;
+  tempoStep(bpm, time);
+  playStep(project, pattern, pageStep, time, dur, cycle, fill, triggered, laneSteps, {
+    section: slot,
+    bpm,
+    repeatDur,
+  });
 
-  const info: ScheduledStep = { time, dur, slotId: slot.id, pattern, pageStep, tick };
+  const info: ScheduledStep = {
+    time,
+    dur,
+    slotId: slot.id,
+    pattern,
+    pageStep,
+    tick,
+    steps: block.steps,
+    repeat: rep,
+    songQ,
+    bpm,
+  };
   history.push(info);
   if (history.length > 64) history.shift();
   for (const fn of stepHooks) fn(info);
@@ -428,24 +546,29 @@ function onTick() {
   while (nextTime < horizon && !ending) scheduleStep(nextTime);
 }
 
+/** Play from the edited section, at the start marker if there is one (D190). */
 export function play() {
   const s = useStore.getState();
   if (s.playing) return;
   initEngine();
   // tracks muted by a stop open again
   ungate();
-  pageStep = -1;
+  const { project } = s;
+  const from = startPosition();
+  const at = positionOf(project, from);
   tick = 0;
   ending = false;
-  repeatCount = 0;
   cycles.clear();
   history.length = 0;
-  slotId = s.editSlotId;
-  s.setUi({ playing: true, playSlotId: s.editSlotId, queuedSlotId: null });
+  slotId = at.block.section.id;
+  // start inside the section: its repeat (for 1:2 conditions) and the step before
+  repeatCount = at.repeat;
+  if (at.repeat) cycles.set(slotId, at.repeat);
+  pageStep = at.step - 1;
+  s.setUi({ playing: true, playSlotId: slotId, queuedSlotId: null });
   let start = audioNow() + 0.06;
-  const { project } = s;
   if (project.countIn) {
-    const beat = 60 / project.bpm;
+    const beat = 60 / tempoAt(project, from);
     const beats = project.timeSignature[0] * useSettings.getState().countInBars;
     for (let i = 0; i < beats; i++) click(start + i * beat, i % project.timeSignature[0] === 0);
     start += beats * beat;
@@ -464,6 +587,7 @@ export function stop() {
   if (useSettings.getState().ringOutOnStop) stopAll();
   else panic();
   silenceMetronome();
+  tempoStep(null, audioNow());
   // library previews too: stop means quiet
   void import("../library/audition").then((a) => (a.stopPreview(), a.stopAudition()));
   Tone.getDraw().cancel(0);

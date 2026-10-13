@@ -4,9 +4,11 @@
  */
 import { renderOffline } from "./offline";
 import type { Project } from "../model/project";
+import { blockOf, layout, stepPosition, type Block } from "../model/arrangement";
+import { tempoAt } from "../model/tempoMap";
 import type { Section, Pattern } from "../model/types";
-import { newScope, reconcile, scopeReady, scopeSettled, withScope } from "./engine";
-import { pageDuration, playStep, stepDuration } from "./transport";
+import { newScope, reconcile, scopeReady, scopeSettled, tempoStep, withScope } from "./engine";
+import { playStep, repeatSeconds, sectionFill, stepSeconds } from "./transport";
 
 export interface RenderOptions {
   range: "song" | "section";
@@ -22,27 +24,35 @@ export interface RenderOptions {
 export interface TimelineEntry {
   slot: Section;
   pattern: Pattern;
+  block: Block;
+  /** Which repeat of the section. */
+  repeat: number;
+  /** Seconds from the render's start. */
   start: number;
   /** How many times this slot has played before (for 1:2 conditions). */
   cycle: number;
 }
 
+/** The repeats to render, in order, with their start times through the tempo map (D192). */
 export function timeline(project: Project, opts: Pick<RenderOptions, "range" | "slotId">) {
   const entries: TimelineEntry[] = [];
   let t = 0;
-  const cycles = new Map<string, number>();
-  const slots =
+  const blocks =
     opts.range === "section"
-      ? [project.slots.find((s) => s.id === opts.slotId) ?? project.slots[0]]
-      : project.slots;
-  for (const slot of slots) {
-    const pattern = project.patterns[slot.patternId];
-    const times = opts.range === "section" ? 1 : slot.repeats;
+      ? [blockOf(project, opts.slotId ?? "") ?? layout(project)[0]]
+      : layout(project);
+  for (const block of blocks) {
+    const times = opts.range === "section" ? 1 : block.repeats;
     for (let r = 0; r < times; r++) {
-      const cycle = cycles.get(slot.id) ?? 0;
-      cycles.set(slot.id, cycle + 1);
-      entries.push({ slot, pattern, start: t, cycle });
-      t += pageDuration(pattern, project.bpm, project.swing);
+      entries.push({
+        slot: block.section,
+        pattern: block.pattern,
+        block,
+        repeat: r,
+        start: t,
+        cycle: r,
+      });
+      t += repeatSeconds(project, block, r);
     }
   }
   return { entries, duration: t };
@@ -66,9 +76,19 @@ export async function renderProject(project: Project, opts: RenderOptions): Prom
       withScope(scope, () => {
         for (const e of entries) {
           let t = e.start;
-          for (let step = 0; step < e.pattern.stepCount; step++) {
-            const d = stepDuration(e.pattern, proj.bpm, step, proj.swing);
-            playStep(proj, e.pattern, step, t, d, e.cycle, false);
+          const { block } = e;
+          const fill = sectionFill(e.slot, e.repeat, block.repeats);
+          const repeatDur = repeatSeconds(proj, block, e.repeat);
+          for (let step = 0; step < block.steps; step++) {
+            const q = stepPosition(block, e.repeat, step);
+            const d = stepSeconds(proj, e.pattern, q, step);
+            const bpm = tempoAt(proj, q + block.stepQ / 2);
+            tempoStep(bpm, t);
+            playStep(proj, e.pattern, step, t, d, e.cycle, fill, undefined, undefined, {
+              section: e.slot,
+              bpm,
+              repeatDur,
+            });
             t += d;
           }
         }

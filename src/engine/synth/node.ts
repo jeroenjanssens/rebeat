@@ -31,6 +31,10 @@ export interface WorkletSynth {
   control(name: keyof Controls, value: number): void;
   /** A step's macro lock: the macros at `values` from `time` until `end`. */
   lockMacros(values: number[], time: number, end: number): void;
+  /** The tempo from `time` (tempo changes, D192). */
+  tempo(bpm: number, time: number): void;
+  /** Automated macro values from `time` (D186); null: not automated. */
+  automate(values: (number | null)[], time: number): void;
   /** Ask for (or stop) modulation reports, and read the latest. */
   monitor(on: boolean): void;
   modulation(): number[] | null;
@@ -111,6 +115,8 @@ export function workletSynth(dest: Tone.Gain | { input: AudioNode }): WorkletSyn
       controls[name] = value;
       send({ type: "control", name, value });
     },
+    tempo: (bpm, at) => send({ type: "tempo", bpm, at }),
+    automate: (values, at) => send({ type: "automate", values, at }),
     lockMacros(values, time, end) {
       const id = next++;
       send({ type: "macros", id, values, at: time });

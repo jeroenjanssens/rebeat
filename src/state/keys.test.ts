@@ -31,7 +31,12 @@ vi.mock("../engine/engine", () => ({
 }));
 
 // the play styles' clock: unit tests drive it with flushPerform
-vi.mock("../engine/transport", () => ({ playStartTime: () => 0 }));
+vi.mock("../engine/transport", () => ({
+  playStartTime: () => 0,
+  nextBarTime: () => null,
+  // the demo project's tempo (no tempo changes)
+  tempoNow: () => 112,
+}));
 vi.mock("../engine/ticker", () => ({ startTicker: () => () => {} }));
 
 // --- input mock ---

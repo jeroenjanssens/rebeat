@@ -23,7 +23,11 @@ vi.mock("../engine/transport", () => {
     const pageSec = (pattern.stepCount * 60) / s.project.bpm / 4;
     return { slotId: slot.id, pattern, pageStep: 0, progress: mockProgress + t / pageSec, time: t };
   };
-  return { position: () => at(0), positionAt: at };
+  return {
+    position: () => at(0),
+    positionAt: at,
+    tempoNow: () => useStore.getState().project.bpm,
+  };
 });
 
 vi.mock("../engine/context", () => ({
