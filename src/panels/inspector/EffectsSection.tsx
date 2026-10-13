@@ -1,10 +1,9 @@
 import { useRef } from "react";
-import { Plus } from "lucide-react";
+import { MoreHorizontal, Plus } from "lucide-react";
 import { EffectEditor } from "../../components/EffectEditor";
-import { dropdown } from "../../components/Menu";
-import { EFFECT_TYPES } from "../../model/params";
+import { addEffectItems, chainMenu } from "../../components/fxMenus";
+import { contextMenu, dropdown } from "../../components/Menu";
 import type { Track } from "../../model/types";
-import { addEffect } from "../../state/effectActions";
 import { Section } from "./InspectorPanel";
 
 /** The track's insert effects: add, reorder, bypass, dry/wet, parameters. */
@@ -15,24 +14,27 @@ export function EffectsSection({ track }: { track: Track }) {
     <Section
       title="Effects"
       right={
-        <button
-          ref={addRef}
-          className="tool-btn !h-6"
-          title="Add an effect"
-          data-hint="inspector.effects.add"
-          onClick={() =>
-            dropdown(
-              addRef.current!,
-              EFFECT_TYPES.filter((t) => t !== "Limiter").map((t) => ({
-                label: t,
-                onSelect: () => addEffect(target, t),
-              })),
-            )
-          }
-          data-testid="add-effect"
-        >
-          <Plus size={12} /> Add
-        </button>
+        <span className="flex items-center">
+          <button
+            ref={addRef}
+            className="tool-btn !h-6"
+            title="Add an effect"
+            data-hint="inspector.effects.add"
+            onClick={() => dropdown(addRef.current!, addEffectItems(target))}
+            data-testid="add-effect"
+          >
+            <Plus size={12} /> Add
+          </button>
+          <button
+            className="tool-btn !h-6"
+            title="Copy or paste the effects"
+            data-hint="inspector.effects.menu"
+            data-testid="effects-menu"
+            onClick={(e) => contextMenu(e, chainMenu(target, track.effects, e))}
+          >
+            <MoreHorizontal size={12} />
+          </button>
+        </span>
       }
     >
       <div className="flex flex-col gap-1.5">

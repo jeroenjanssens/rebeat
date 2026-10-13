@@ -1,4 +1,6 @@
-import { ChevronDown, ChevronUp, Power, X } from "lucide-react";
+import { ChevronDown, ChevronUp, MoreHorizontal, Power, X } from "lucide-react";
+import { contextMenu } from "./Menu";
+import { effectMenu } from "./fxMenus";
 import { EFFECT_PARAMS } from "../model/params";
 import type { Effect } from "../model/types";
 import {
@@ -51,7 +53,14 @@ export function EffectEditor({
       className="rounded-md border border-line bg-surface/60"
       style={{ opacity: effect.bypass ? 0.55 : 1 }}
     >
-      <div className="flex h-7 items-center gap-1 border-b border-line px-1.5">
+      <div
+        className="flex h-7 items-center gap-1 border-b border-line px-1.5"
+        onContextMenu={
+          target && !local
+            ? (e) => contextMenu(e, effectMenu(target, index, effect, e, removable))
+            : undefined
+        }
+      >
         <button
           className="tool-btn !h-5 !min-w-5 !p-0"
           data-active={!effect.bypass}
@@ -82,6 +91,17 @@ export function EffectEditor({
         >
           <ChevronDown size={11} />
         </button>
+        {target && !local && (
+          <button
+            className="tool-btn !h-5 !min-w-5 !p-0"
+            title="Copy, paste, duplicate, copy to other tracks"
+            data-hint="inspector.fx.menu"
+            data-testid="fx-menu"
+            onClick={(e) => contextMenu(e, effectMenu(target, index, effect, e, removable))}
+          >
+            <MoreHorizontal size={11} />
+          </button>
+        )}
         {removable && (
           <button
             className="tool-btn !h-5 !min-w-5 !p-0"

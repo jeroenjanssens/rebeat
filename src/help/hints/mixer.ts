@@ -9,7 +9,7 @@ const hints: Hints = {
   },
   "mixer.track.fx": {
     title: "Insert effects",
-    text: "Opens the insert effect chain for this track. Click inside to add, reorder or remove effects.",
+    text: "Opens the insert effect chain for this track. Click inside to add, reorder or remove effects. Right-click it to copy, paste or remove the effects, or copy them to other tracks.",
     guide: "mixing-effects",
   },
   "mixer.track.mute": {
@@ -36,7 +36,7 @@ const hints: Hints = {
   },
   "mixer.bus.fx": {
     title: "Bus effects",
-    text: "Opens the effect chain for this return bus. The reverb and delay live here by default.",
+    text: "Opens the effect chain for this return bus. The reverb and delay live here by default. Right-click it to copy, paste or remove the effects, or copy them to other tracks.",
     guide: "mixing-effects",
   },
   "mixer.keys": {
@@ -53,7 +53,7 @@ const hints: Hints = {
   },
   "mixer.master.fx": {
     title: "Master chain",
-    text: "Opens the master effect chain (EQ, compressor and limiter by default). Changes affect everything you hear.",
+    text: "Opens the master effect chain (EQ, compressor and limiter by default). Changes affect everything you hear. Right-click it to copy, paste or remove the effects, or copy them to other tracks.",
     guide: "mixing-effects",
   },
   "mixer.master.scope": {

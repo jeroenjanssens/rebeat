@@ -292,6 +292,19 @@ export const EFFECT_PARAMS: Record<string, ParamDef[]> = {
 
 export const EFFECT_TYPES = Object.keys(EFFECT_PARAMS);
 
+/** The Add effect menus' groups (D217), in their order; names without parameters are left out. */
+export const EFFECT_GROUPS: { name: string; effects: string[] }[] = [
+  { name: "Dynamics", effects: ["Compressor", "Gate", "Limiter", "Pump"] },
+  { name: "EQ & filter", effects: ["EQ3", "Parametric EQ", "Filter", "Auto-Wah"] },
+  { name: "Drive", effects: ["Distortion", "Saturator", "Bitcrusher"] },
+  {
+    name: "Modulation",
+    effects: ["Chorus", "Flanger", "Phaser", "Tremolo", "Vibrato", "AutoPan", "Freq Shifter"],
+  },
+  { name: "Space", effects: ["Delay", "Reverb"] },
+  { name: "Utility", effects: ["Utility"] },
+].map((g) => ({ ...g, effects: g.effects.filter((e) => e in EFFECT_PARAMS) }));
+
 export const CONDITIONS = ["—", "1:2", "2:2", "1:3", "1:4", "FILL", "!FILL"];
 
 /** STEP bank: encoder ↔ step field mapping. */

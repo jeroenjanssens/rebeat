@@ -119,8 +119,18 @@ const hints: Hints = {
 
   "inspector.effects.add": {
     title: "Add effect",
-    text: "Adds a new insert effect at the end of this track's effect chain. Choose from EQ, filter, compressor, distortion, delay, reverb, and more.",
+    text: "Adds a new insert effect at the end of this track's effect chain, from its group: Dynamics, EQ & filter, Drive, Modulation, Space, Utility.",
     guide: "mixing-effects",
+  },
+  "inspector.effects.menu": {
+    title: "Effects menu",
+    text: "Copy the track's effects, paste copied ones (replacing the chain or after it), copy the chain to other tracks, or remove every effect.",
+    guide: "mixing-copying-effects",
+  },
+  "inspector.fx.menu": {
+    title: "Effect menu",
+    text: "Copy this effect, duplicate it, paste a copied effect after it, paste a copied effect's settings onto it (same type: its automation and MIDI mappings stay), or copy it to other tracks. Right-click the effect's header for the same menu.",
+    guide: "mixing-copying-effects",
   },
 
   // ─── Effect editor controls ──────────────────────────────────────────────

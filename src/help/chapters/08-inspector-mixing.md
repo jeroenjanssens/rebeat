@@ -14,7 +14,7 @@ The [Inspector](panel:inspector) shows everything about the selected track:
 
 Each track has a chain of **insert effects** that its sound goes through, in order. In the Inspector:
 
-- **+ Add** adds an effect at the end of the chain.
+- **+ Add** adds an effect at the end of the chain. The effects are in groups: Dynamics, EQ & filter, Drive, Modulation, Space and Utility.
 - The power button switches an effect off (bypass) without removing it.
 - The arrows move it up or down the chain; × removes it.
 - Its knobs set the parameters. **Mix** blends the dry and the processed sound.
@@ -33,6 +33,14 @@ Each track has a chain of **insert effects** that its sound goes through, in ord
 | **Limiter**                                      | Keeps peaks under a ceiling (part of the master chain).                                                                                           |
 
 The **FX** encoder bank in the drum machine controls the same effects (◀ ▶ picks the effect).
+
+### Copying effects
+
+- **One effect:** its header's **⋯** (or right-click the header) has **Copy**, **Duplicate**, **Paste after it**, **Paste settings** and **Copy to…**.
+  - **Paste settings** takes the knobs of a copied effect of the same type. The effect stays the same one, so its automation lanes and MIDI mappings keep working.
+  - **Copy to…** lists every track, the buses and the master (and **Every track**): tick where it goes, then **Copy**. Copies go at the end of each chain.
+- **A whole chain:** right-click an **FX** button (on a drum machine row, or a strip in the mixer), or use the **⋯** next to **+ Add** in the Inspector. **Copy effects**, then **Paste: replace the chain** or **Paste after the chain** on another track, or **Copy the chain to…**; **Remove all effects** empties it.
+- Copied effects stay on the clipboard when you open another project. Every paste is one undo step. Tracks don't take the Limiter: it's skipped when pasting onto one.
 
 ## Sends: reverb and delay
 

@@ -13,6 +13,8 @@ export interface MenuItem {
   /** An icon after the check mark (panels in the layout menu). */
   icon?: LucideIcon;
   separator?: boolean;
+  /** A group's name above its items (not clickable). */
+  heading?: string;
   /** Custom content instead of a clickable row. */
   render?: (close: () => void) => ReactNode;
 }
@@ -91,6 +93,12 @@ export function MenuHost() {
     >
       {open.items.map((item, i) => {
         if (item.separator) return <div key={i} className="menu-sep" />;
+        if (item.heading)
+          return (
+            <div key={i} className="label px-2 pb-0.5 pt-1.5 !text-[9px]">
+              {item.heading}
+            </div>
+          );
         if (item.render) return <div key={i}>{item.render(close)}</div>;
         return (
           <button

@@ -1,3 +1,4 @@
+import { chainMenu } from "../../components/fxMenus";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { droppedInstrument, droppedSamples, isSampleDrag } from "../../library/drop";
 import {
@@ -481,6 +482,10 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
                 title={track.effects.map((f) => f.name).join(" → ") || "No effects"}
                 data-hint="dm.track.fx"
                 onPointerDown={(e) => e.stopPropagation()}
+                onContextMenu={(e) => {
+                  e.stopPropagation();
+                  contextMenu(e, chainMenu({ track: track.id }, track.effects, e));
+                }}
                 onClick={() => {
                   setUi({ selectedTrackId: track.id, bank: "fx", fxIndex: 0 });
                   focusPanel("inspector");

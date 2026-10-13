@@ -4,13 +4,14 @@ import { EffectEditor } from "../../components/EffectEditor";
 import { Encoder } from "../../components/Encoder";
 import { ROLES } from "../../midi/mapping";
 import { Fader } from "../../components/Fader";
-import { useMenu } from "../../components/Menu";
+import { contextMenu, useMenu } from "../../components/Menu";
+import { chainMenu } from "../../components/fxMenus";
 import { VMeter } from "../../components/VMeter";
 import * as engine from "../../engine/engine";
 import type { Bus } from "../../model/effects";
-import { EFFECT_SHORT, EFFECT_TYPES, MIX_PARAMS, VOLUME_FORMAT } from "../../model/params";
+import { EFFECT_GROUPS, EFFECT_SHORT, MIX_PARAMS, VOLUME_FORMAT } from "../../model/params";
 import type { Effect, Track } from "../../model/types";
-import { addEffect, type FxTarget } from "../../state/effectActions";
+import { accepts, addEffect, type FxTarget } from "../../state/effectActions";
 import { useStore } from "../../state/store";
 import { useKeys } from "../../state/keys";
 import { useSettings } from "../../state/settings";
@@ -103,10 +104,16 @@ function ChainEditor({
           data-hint="mixer.fx.add"
         >
           <option value="">+ Add effect</option>
-          {EFFECT_TYPES.map((t) => (
-            <option key={t} value={t}>
-              {t}
-            </option>
+          {EFFECT_GROUPS.map((g) => (
+            <optgroup key={g.name} label={g.name}>
+              {g.effects
+                .filter((t) => accepts(target, t))
+                .map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+            </optgroup>
           ))}
         </select>
       </div>
@@ -279,6 +286,7 @@ function TrackStrip({
         title={track.effects.map((f) => f.name).join(" → ") || "No insert effects"}
         data-hint="mixer.track.fx"
         onPointerDown={(e) => e.stopPropagation()}
+        onContextMenu={(e) => contextMenu(e, chainMenu({ track: track.id }, track.effects, e))}
         onClick={() =>
           chainPopover(
             fxRef.current!,
@@ -372,6 +380,7 @@ function BusStrip({ bus, faderH }: { bus: Bus; faderH: number }) {
         ref={fxRef}
         className="num h-[18px] w-full truncate rounded-[3px] border border-line px-1 text-[9.5px] text-dim hover:text-ink"
         data-hint="mixer.bus.fx"
+        onContextMenu={(e) => contextMenu(e, chainMenu({ bus: bus.id }, bus.effects, e))}
         onClick={() =>
           chainPopover(fxRef.current!, { bus: bus.id }, `${bus.name} bus`, bus.effects)
         }
@@ -422,6 +431,7 @@ function MasterStrip({ faderH }: { faderH: number }) {
         ref={fxRef}
         className="num h-[18px] w-full truncate rounded-[3px] border border-line px-1 text-[9.5px] text-dim hover:text-ink"
         data-hint="mixer.master.fx"
+        onContextMenu={(e) => contextMenu(e, chainMenu("master", master.effects, e))}
         onClick={() => chainPopover(fxRef.current!, "master", "Master chain", master.effects)}
         title={master.effects.map((f) => `${f.name}${f.bypass ? " (off)" : ""}`).join(" → ")}
       >

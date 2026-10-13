@@ -196,7 +196,7 @@ const hints: Hints = {
   },
   "dm.track.fx": {
     title: "Effects",
-    text: "Shows how many effects are on this track. Click to open the Inspector and edit or add effects.",
+    text: "Shows how many effects are on this track. Click to open the Inspector and edit or add effects. Right-click it to copy, paste or remove the effects, or copy them to other tracks.",
     guide: "drum-machine-tracks",
   },
   "dm.track.scope": {
