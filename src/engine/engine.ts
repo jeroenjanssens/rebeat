@@ -1158,15 +1158,26 @@ export function startRegion(
     env.gain.setValueAtTime(level, until - fadeOut);
     env.gain.linearRampToValueAtTime(0, until);
   }
-  src.connect(env);
-  Tone.connect(env, dest);
-  src.start(t, offset);
-  src.stop(until + 0.005);
-  src.onended = () => env.disconnect();
+  // live, a warped sample off its own tempo (or repitched) is time-stretched, as clips are;
+  // offline it's repitched (§0.7)
+  const warp =
+    S.live && (Math.abs(ratio - 1) > 0.002 || Math.abs(pitch) > 0.01)
+      ? warper(key, region.sampleId, dest)
+      : null;
+  if (warp) {
+    warp.schedule({ output: t, active: true, input: offset, rate: ratio, semitones: pitch });
+    warp.schedule({ output: until, active: false });
+  } else {
+    src.connect(env);
+    Tone.connect(env, dest);
+    src.start(t, offset);
+    src.stop(until + 0.005);
+    src.onended = () => env.disconnect();
+  }
   S.clips.set(key, {
-    sources: [src],
+    sources: warp ? [] : [src],
     gains: [env],
-    warp: null,
+    warp,
     start: t - into / ratio,
     rate: ratio,
     duration: until - t,
@@ -1177,7 +1188,7 @@ export function startRegion(
     from: t,
     until,
     clipBpm: warpOn ? clipBpm! : null,
-    repitch,
+    repitch: warp ? 1 : repitch,
   });
   S.activeUntil.set(track.id, until + 0.1);
 }

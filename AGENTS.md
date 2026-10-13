@@ -3,10 +3,10 @@
 This file is the fast way in. It explains what Rebeat is, how the code is organized, how the
 pieces talk to each other, how to verify a change, and the gotchas that cost time before.
 `PLAN.md` is the long-form record: the product spec (§1–§3), the original architecture (§4),
-and every design decision (§6, D1–D179). When this file and the code disagree, the code wins.
+and every design decision (§6, D1–D195). When this file and the code disagree, the code wins.
 Please fix this file in the same change.
 
-Status (2026-10-12): every phase of the original roadmap is built, plus several feature batches
+Status (2026-10-13): every phase of the original roadmap is built, plus several feature batches
 (PLAN.md §0.6b–§0.6g). The biggest recent batch is **step tracks** (§0.6f, D93–D98, built on
 the `step-tracks` branch and merged): the drum / instrument / audio track kinds became one kind
 of track with a **sound** (sample, synth, sampled instrument) and a **mode** (Hits, Notes,
@@ -21,7 +21,11 @@ bass, relative knobs, pad colors, Shift + pads, the picture on the photo) and **
 the keys** (§0.6k, D149–D154, plan in `PLAN-playstyles.md`): strum, slop, balance, a live
 arpeggiator, latch, chord patterns, smooth voicing, the bass on its own track; and
 **suggestions** (§0.6l, D158–D160, `PLAN-suggestions.md`): the next chord and the key to press, a
-Next pad mode. Left: tests
+Next pad mode. The latest batch is **the timeline** (§0.6o, D180–D195, `PLAN-timeline.md`):
+"page" became **pattern** and **section**, a Timeline panel draws the sections in song time,
+sections have their own settings (mutes, transpose, fill, a shorter length) that keep clones
+linked, and tempo changes, automation and audio on the timeline (all anchored to sections,
+schema 10), with the demo song Long Way Home. Left: tests
 with real hardware (mic, MIDI, Launchpad/Push), signing the desktop release, the license (D6),
 and the "later" items in PLAN.md §0.7. The repository is public and `main` deploys to GitHub
 Pages.
@@ -99,7 +103,7 @@ pnpm prettier --write src e2e && pnpm tsc --noEmit && pnpm eslint . && pnpm vite
   && pnpm playwright test --workers=4
 ```
 
-Expect about 350 unit tests and about 210 e2e tests (around 7 minutes, most of it the golden
+Expect about 570 unit tests and about 250 e2e tests (around 7 minutes, most of it the golden
 levels renders). Visual changes are
 also checked in a real browser: a throwaway Playwright spec that takes a screenshot works well
 (delete it afterwards).
@@ -131,7 +135,11 @@ src/
   model/               pure data and operations (no React, no audio):
                        - types.ts (Track, Lane, Step, Note, Sound…), project.ts (setMode…)
                        - tracks.ts (modes and sounds: player, sampleOf, hitNoteOf, canClip…)
-                       - schema.ts (versions + migrations, now v9), params.ts (knob definitions, toUnit)
+                       - schema.ts (versions + migrations, now v10), params.ts (knob definitions, toUnit)
+                       - arrangement.ts (D181: sections laid out in quarter notes, bars, anchors,
+                         curve values, keeping anchors on delete/copy/unroll), tempoMap.ts (D192:
+                         jumps and ramps, exact seconds), automation.ts (D189: what can be
+                         automated, knob values, thinning)
                        - fixtures/v6/ (every example and template as schema 6 saved it, gzipped)
                        - synth.ts (patch v2, macros), synthV1.ts (old patches, read only)
                        - patchParams.ts (the synth editor's knob table), randomize.ts
@@ -156,12 +164,17 @@ src/
                        - perform.ts (D149): the play styles' scheduler (timed notes on the audio
                          clock) and rhythm engine (arp, patterns); keys.ts plays through it
                        - trackActions, effectActions, clipActions
+                       - timelineActions (sections, tempo changes, automation, regions: one commit
+                         each), automationOverride (Ableton-style overrides, the typed tempo,
+                         D191, D193), recordAutomation, automationKnob (Automate in knob menus)
   engine/              audio (no React):
                        - context.ts (native AudioContext + Tone)
                        - engine.ts (scoped graph: channels, voices, clips, metering, scratch)
                        - channel.ts (track/bus strips), effects.ts, tone.ts (replacements for two
                          Tone nodes)
-                       - transport.ts (lookahead scheduler), ticker.ts (timing worker)
+                       - transport.ts (lookahead scheduler: sections, settings, the tempo map,
+                         play from the start marker), ticker.ts (timing worker)
+                       - automation.ts (D186, D188: curve events per step, regions in song time)
                        - instruments.ts (voices: synth, sample/multi-sample, smplr, sf2), synth/ (the
                          AudioWorklet synth: core.ts DSP, worklet.ts, node.ts)
                        - kits.ts (808/909 kits synthesized offline), samples.ts (buffers, peaks)
@@ -198,7 +211,9 @@ src/
   panels/              one folder per Dockview panel: drum-machine, library, inspector, mixer,
                        master-scope, piano-roll, sample-editor, performance, synth-editor, guide,
                        beatbox (recordings list, HitWaveform, RecordDialog, ConvertView, ModelView),
-                       controller (the MiniLab 3 drawn live, other maps as lists)
+                       controller (the MiniLab 3 drawn live, other maps as lists),
+                       timeline (D184: ruler, Tempo lane, sections, track rows, curve lanes, regions;
+                       canvases cover only the visible part, ViewCanvas)
   components/          Encoder (knob), Fader, MiniFader, DragValue, Keyboard (piano), Scope,
                        PeaksCanvas, Playhead, Menu (contextMenu/dropdown), Dialog, Toast,
                        EffectEditor, glide (smooth resets), soundIcons…
@@ -294,8 +309,17 @@ from?, sampleId?, rootNote?, zones? }`; `soundFamily(s)` → `sample | synth | i
   `library/synthTrack.ts: soundDefs(track)` returns the right set, and every SOUND UI (encoder
   strip, Inspector, controllers) uses it. Every SOUND id means one thing in every mode (the
   voices' ADSR decay is `sound.envDecay`), so a track keeps every mode's knobs.
-- **Schema**: `model/schema.ts`, currently `SCHEMA_VERSION = 9` (8: MIDI mappings' `mode`; 9: `Note.offset`, a
-  note's own start within its step, −0.5..0.5).
+- `Section` (a slot, saved in `Project.slots`): `{ id, patternId, repeats, mutes?, transpose?,
+fill?: "last" | "all", steps? }`. The settings are the section's own (D183): its clones keep the
+  link.
+- Song time (D181, D187): `SongAnchor { slotId, at }` (quarter notes into the section's span).
+  `Project.tempo?: TempoChange[]` (`{ …anchor, bpm, ramp? }`, after the start tempo `bpm`),
+  `Project.automation?: AutomationLane[]` (`{ id, target (a MIDI-learn target), on, points }`),
+  `Project.regions?: AudioRegion[]` (`{ id, trackId, sampleId, start, length (quarters), offset
+(seconds), gain?, fadeIn?, fadeOut? }`). Ask `model/arrangement.ts` where anything is.
+- **Schema**: `model/schema.ts`, currently `SCHEMA_VERSION = 10` (8: MIDI mappings' `mode`; 9: `Note.offset`, a
+  note's own start within its step, −0.5..0.5; 10: sections' settings, tempo changes, automation,
+  regions, all optional).
   - Every change to the saved shape bumps the version and adds a migration plus a test.
   - `migrate` + `normalizeProject` run on every load.
   - Migration 5 → 6 converted the old SOUND knobs on synth tracks into patch edits (it changes
@@ -537,6 +561,34 @@ onPatchEdit` hook, debounced `saveSoundSoon`).
 - **The panel** (`panels/beatbox/`) handles its own keys (1–8, Enter, Delete, Tab, arrows) and
   stops them from reaching the global shortcuts while it has focus.
 
+### 6.7 The timeline (D180–D195)
+
+- **Words** (D180): the interface says pattern and section; the code still says `slot` and
+  `Pattern`, and saved fields didn't change. Old command ids (`page.next`) and guide anchors
+  resolve through aliases (`commands.ts: commandId`, `guide.ts: guideAnchor`).
+- **Where things are**: `model/arrangement.ts: layout(project)` gives every section as a block
+  (start, length, span, steps) in quarter notes; `toSong`/`toAnchor`, `positionOf`, `bars`
+  (every section starts a bar), `lanePoints`/`curveAt`. Its caches skip immer drafts.
+- **The transport** plays a section's settings (`playStep(…, ctx)`: mutes, transpose, fill,
+  covered tracks), each step's length through the tempo map (`stepSeconds`, identical to before
+  without tempo changes), and every step calls `tempoStep`, `automationStep` and `regionStep`
+  (`engine/automation.ts`); `render.ts` does the same offline. `play()` starts at
+  `startPosition()` (the start marker `startAt`, in the edited section).
+- **Tempo** (D192): the scheduled step has its `bpm`; `transport.tempoNow()` is the tempo now
+  (read by the arp, the play styles, Auto, recording). `engine.tempoStep(bpm, time)` moves synced
+  delays (`FxNode.tempo`), the synths' synced LFOs (a timed `tempo` message) and warped clips.
+- **Automation** (D186, D189, D191): `engine.automateTarget(target, events)` schedules the curve on
+  AudioParams (`effects.ts: schedule`), the synth's macros (`automate` message) or Pump's depth;
+  `releaseAutomation()` at stop hands everything back to the knobs. Automation never writes to
+  the project, so a change to an automated knob's value in the store is a hand on the knob:
+  `state/automationOverride.ts: watchOverrides` overrides the lane (Back to automation).
+- **Regions** (D188): `engine.startRegion` keeps them in `S.clips` under `rgn:<id>` (stop, panic
+  and tempo changes reach them); one sound per track (the track's own clip stops, and
+  `coveredTracks` keeps it from starting).
+- **The panel** (`panels/timeline/`): `SectionsRow` (blocks, drags), `TrackRows` (miniatures,
+  mutes by cell, lanes), `CurveLane` (automation and tempo), `RegionBox`, `ViewCanvas` (a canvas
+  for the visible part only).
+
 ## 7. Testing
 
 **Unit (Vitest, Node).** Tests live next to the code.
@@ -660,6 +712,16 @@ onPatchEdit` hook, debounced `saveSoundSoon`).
   (`applySoon`), `reconcile` leaves a voice alone when only the channel changed
   (`soundChanged`), and the synth editor is memoized on it. New heavy views of a track should do
   the same.
+- **Song positions are quarter notes, not seconds** (D181). Seconds come from the tempo map
+  (`model/tempoMap.ts`); never multiply by `60 / project.bpm` for song time: use
+  `secondsBetween`, or the step's `bpm` (`transport.tempoNow()`).
+- **`reconcile` uses the engine's tempo while playing** (`S.tempo`, set by `tempoStep`), so an edit
+  mid-song doesn't snap synced delays back to the start tempo. Offline scopes use `S.builtBpm`.
+- **Automation doesn't write to the store**, and the override watcher relies on it. Anything new
+  that moves a knob over time does it in the engine (`automateTarget`), never with commits.
+- **Effects that can be automated need an audio-time path**: a param to schedule
+  (`FxNode.automate`). Setting `.value` from JS doesn't reach offline renders (the Filter was
+  rebuilt for this: its cutoff is a signal).
 - **Agent worktrees start from the pushed `origin/main`,** not from local commits: merge `main`
   into them first. ESLint ignores `.claude/` (worktrees live there); vitest only looks in
   `src/`.
@@ -708,6 +770,7 @@ likely to need:
 | 27 new synths, the synth wizard                    | D168–D170                 |
 | Auto: queued pads, Sync to song; Edit sound        | D171–D173                 |
 | Patterns: notation, triplets, picked notes, groups | D174–D179                 |
+| The timeline: pattern and section, settings, tempo | D180–D195                 |
 
 Feature batches and their acceptance criteria are in PLAN.md §0.6b–§0.6h. Known limitations are
 in §0.7.

@@ -1,6 +1,6 @@
 # Panels and layouts {#panels}
 
-Every part of Rebeat lives in a **panel**: [Drum machine](panel:drum-machine), [Library](panel:library), [Inspector](panel:inspector), [Mixer](panel:mixer), [Sample editor](panel:sample-editor), [Piano roll](panel:piano-roll), [Performance](panel:performance), [Master scope](panel:master-scope) and this [Guide](panel:guide).
+Every part of Rebeat lives in a **panel**: [Drum machine](panel:drum-machine), [Timeline](panel:timeline), [Library](panel:library), [Inspector](panel:inspector), [Mixer](panel:mixer), [Sample editor](panel:sample-editor), [Piano roll](panel:piano-roll), [Performance](panel:performance), [Master scope](panel:master-scope) and this [Guide](panel:guide).
 
 ## Arranging panels
 
@@ -13,13 +13,14 @@ Your arrangement is remembered for next time.
 
 ## Layout presets
 
-The layout button in the transport bar (or the command palette) switches between three arrangements:
+The layout button in the transport bar (or the command palette) switches between four arrangements:
 
 | Preset      | Shortcut               | For                                                                                                            |
 | ----------- | ---------------------- | -------------------------------------------------------------------------------------------------------------- |
 | **Compose** | {{key:layout.compose}} | Library left, drum machine center, inspector right; mixer, sample editor and piano roll as tabs at the bottom. |
 | **Perform** | {{key:layout.perform}} | The drum machine with the Performance panel and the Master scope.                                              |
 | **Edit**    | {{key:layout.edit}}    | A large sample editor with the library and inspector, and the drum machine below.                              |
+| **Arrange** | {{key:layout.arrange}} | The [timeline](#timeline) across the top, the drum machine below it, the inspector and library at the side.    |
 
 ## Bigger panels
 

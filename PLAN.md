@@ -12,7 +12,7 @@
 
 ### 0.1 Where we are
 
-- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D179), and the build order is in §7.
+- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D195), and the build order is in §7.
 - Every phase in §7 is built, tested (unit + Playwright e2e) and pushed. The mockup (Phase M) became the app: its components, model and store were kept and extended; `src/mock/` was replaced by the real engine.
 - The desktop app (Phase 10) runs and packages locally (unsigned); signing/notarization need certificates (see `.github/workflows/desktop.yml`).
 
@@ -103,6 +103,7 @@ Key implementation patterns:
 0. Beatbox to step tracks (§0.6h, D105–D118) ✅ merged into `main` (2026-10-10). Decide whether the shipped model may train on beatboxset1 (CC BY-SA, D108). Record and
    label your own sounds (and friends'), export them, and train model 2 with them (`ml/README.md`).
 0b. MIDI controllers (§0.6i, D119–D125) ✅ merged into `main` (2026-10-10). With a device: check what it sends (the Monitor in Settings → MIDI) and fix its map.
+0h. The timeline: patterns and sections, section settings, tempo changes, automation, audio on the timeline, Long Way Home (§0.6o, D180–D195) ✅ on `main` (2026-10-13). Try it in the Arrange layout; later: a loop range on the ruler, automation of more knobs (tune and decay per hit are per step: p-locks), tempo changes in the MIDI clock (when there is one).
 0g. 53 patterns in groups, triplets, patterns that pick notes (§0.6n, D174–D179) ✅ on `main` (2026-10-12).
 0f. Auto, the piano on the keys, the library in the Keys menu, 27 new synths, the synth wizard (§0.6m, D162–D170) ✅ on `main` (2026-10-12).
 0e. Suggestions: the next chord, the key to press, Next pad mode (§0.6l, D158–D160) ✅ on `main` (2026-10-12); later: play-along from the song's chords (PLAN-suggestions.md §4).
@@ -735,9 +736,20 @@ divisions (16ths, 8th and 16th triplets), hits that pick their notes (chord tone
 chords, a walking bass), 31 new patterns (53 in nine groups) and a grouped picker with each
 pattern's rhythm.
 
+### 0.6o The timeline: patterns and sections, tempo changes, automation, audio across sections (agreed and done 2026-10-13) ✅
+
+The plan is `PLAN-timeline.md`. "Page" became **pattern** (what the drum machine edits) and
+**section** (an entry in the song). The **Timeline** panel (and the **Arrange** layout) draws the
+sections in song time. A section has **settings** of its own that keep its clones linked (mutes,
+transpose, fill, play only the first N steps). **Tempo changes** (jumps and ramps) live in a Tempo
+lane, **automation lanes** move knobs over the song, and **audio on the timeline** runs across
+sections. Automation, tempo changes and audio are anchored to sections, so they move with them.
+Schema 10. The demo song **Long Way Home** shows all of it, with a new four-bar vocal
+(`demo:vox-verse`).
+
 ### 0.7 Known limitations and later work
 
-- Offline renders (export, resampling) repitch instead of time-stretching warped clips. Sampled instruments are included (rendering waits for their samples), but the first render of one that was never downloaded needs the network.
+- Offline renders (export, resampling) repitch instead of time-stretching warped clips (and timeline audio): during a tempo change an exported clip bends in pitch (the timeline marks it ⚠). Sampled instruments are included (rendering waits for their samples), but the first render of one that was never downloaded needs the network.
 - Changing the latency mode applies after a reload (the AudioContext is created once).
 - MIDI clock in/out, track groups/folding, and more conditional trigs are "later" items from the plan (D27, §3.3).
 - Hold-step editing uses step selection (Alt+click, Select tool) for parameter locks rather than physically holding a pad.
@@ -1407,6 +1419,79 @@ Format: **Dn — Question.** Default ✅, alternatives.
 - **D177 — 53 patterns in nine groups.** Basics (7), Ballads & keys (6), Rock, pop & soul (5), Jazz & blues (5), Latin (12), Caribbean & African (6), Dance & electronic (5), Hip-hop (2), Folk & country (5): the 22 and Rock push, Jazz waltz, Triplet ballad, Alberti bass, Arpeggio up, Motown stabs, Gospel shout, Stadium eighths, Swing comp, Walking bass, Boogie-woogie, Son clave 2-3, Rumba clave, Habanera, Samba, Cha-cha-chá, Reggaeton, Bolero, Tango marcato, Reggae bubble, Afrobeats, Highlife, Disco stabs, Trance gate, UK garage, Boom bap, Trap, Polka, Train beat, Root–fifth bass, Travis picking. Patterns play as written in any meter (the menu shows each one's: Jeroen). Alt: patterns per meter.
 - **D178 — The grouped pattern picker.** The Play row's pattern button ("Habanera · Latin") opens the groups (with counts), each its patterns: the name, the tag, a line about it and its rhythm (two rows of dots: the chord, the bass); ← Groups. Knob 7 steps through all 53 in group order. Alt: one long list.
 - **D179 — The patterns' guide and hints.** The guide lists every group and pattern; the hints say how many and which kinds. Alt: —
+- **D180 — Pattern and section.** The interface says **pattern** for what the drum machine edits
+  (as drum machines and FL Studio do) and **section** for an entry in the song (as Maschine's
+  arranger does, and as musicians name verse and chorus). "Page" is gone: on Elektron machines
+  it means a 16-step part of a pattern. Saved fields stay (`slots`, `patternId`), so there's no
+  migration; old command ids and guide anchors are aliases. Supersedes D8's wording. Alt: keep
+  "page"; "scene" (Ableton's word, but a scene there is a row of clips, not a song entry).
+- **D181 — The arrangement is the sections.** Patterns are the content and sections place them.
+  A pure `model/arrangement.ts` lays them out in quarter notes, for the timeline, the transport,
+  the render and the MIDI export. Alt: a separate arrangement with its own clips per track (FL
+  Studio's playlist), which would make tracks per section and break clones (D13).
+- **D182 — Schema 10, all optional.** Section settings on the saved slots, `Project.tempo`,
+  `Project.automation`, `Project.regions`; the migration only bumps the version. Alt: an
+  `arrangement` object holding the sections (a bigger migration for nothing).
+- **D183 — Section settings.** Mutes, transpose, fill and play-only-N-steps on a section change
+  it without unlinking it, shown as badges everywhere the section is shown. Per-repeat settings
+  aren't offered: unroll the repeats instead. Alt: unlinking for every change (before).
+- **D184 — The Timeline panel.** A new panel and an Arrange layout; the song strip stays as the
+  compact view with the same gestures. Alt: replace the strip (it loses the compact view in the
+  drum machine).
+- **D185 — Every section starts a bar.** The ruler counts bars from each block's start, and a
+  short section is a short bar. Alt: bars from the song's start (bar lines drift after an odd
+  section).
+- **D186 — Automation lanes by target.** A lane is a MIDI-learn target string with points
+  anchored to sections, linear or held. The engine schedules them per step, live and offline.
+  Alt: automation inside patterns (that's what parameter locks already are, and clones would
+  share it).
+- **D187 — Anchors follow the music.** Points, tempo changes and regions are anchored to a
+  section and an offset. Reorder moves them, delete removes them (and the toast says so), copy
+  duplicates them (Jeroen), unroll and split re-anchor them, a shorter span hides them. Alt:
+  absolute bars (Ableton), which leave automation behind when you move a section.
+- **D188 — Audio regions, one sound per track.** Pieces of samples in song time on Clip tracks,
+  across section boundaries, through the track's channel. A region plays instead of the track's
+  pattern clip while it sounds, and regions on one track don't overlap. A drop below the tracks
+  makes a new audio track, and a drop onto a track with clips shows what it covers. Alt: both
+  play (doubled sound by surprise); pattern clips win (placed audio not heard); clips that run
+  free across sections (D10's alternative).
+- **D189 — Only schedulable knobs automate.** `AUTOMATABLE` lists the targets the engine can move
+  at an audio time: channel values, macros, a few effect params (the Filter's cutoff and resonance,
+  the Delay's feedback, EQ3's gains, Pump's depth, every effect's mix), buses, master, and new
+  master and bus effect targets. The Filter was rebuilt so its cutoff can move at an audio time. The others have no Automate item. Alt: automating anything through
+  the store (a commit per frame, and not in exports).
+- **D190 — Play from anywhere, chase what's running.** A start marker on the ruler. Playing
+  starts at that section, repeat and step, sets the lanes' values and the tempo, and starts
+  regions part-way. Alt: always from a section's start (before).
+- **D191 — Touching an automated knob, as in Ableton.** It overrides its lane (session state)
+  until Back to automation, which brings back every overridden lane. Record automation writes
+  thinned points while recording in Song mode. Alt: the knob edits the lane's point under the
+  playhead.
+- **D192 — Tempo changes.** `project.bpm` is the start tempo, and `project.tempo` lists jumps and
+  ramps (linear in quarter notes) anchored to sections. Step durations are the exact integral,
+  live and offline, and identical to before without changes. Everything timed reads the step's
+  tempo, and synced delays, LFOs and stretched clips follow at their audio time. Exports bend
+  warped audio in a tempo change (marked ⚠). Alt: tempo as an ordinary automation lane (0..1
+  values, and the scheduler's seconds would depend on a knob's curve); one tempo per section
+  (no ramps).
+- **D193 — The Tempo lane and the BPM field.** A lane under the ruler (the start tempo in its
+  header) for jumps and ramps. The BPM field shows the current tempo while playing, and typing
+  or dragging it overrides the map until Back to automation. In Loop mode a section plays the
+  map over its own span, and the MIDI file gets Set Tempo events. Alt: the BPM field edits the
+  start tempo and moves every change with it.
+- **D194 — Long Way Home and a four-bar vocal.** A demo song for the timeline:
+  - section mutes, transpose, fill and a short section on clones
+  - automation across sections
+  - a four-bar vocal over a section change (`demo:vox-verse`, rendered after the other
+    built-ins so their levels don't move)
+  - a tempo jump, an accelerando and a ritardando.
+
+  It uses only built-in sounds, and its vocals stay out of the tempo changes and the key change,
+  so it renders the same offline. Alt: adding the features to an existing song (it would change
+  that song's golden levels); the 2-bar hook alone.
+
+- **D195 — The timeline's guide and hints.** A chapter (`timeline.md`) with the song as the
+  walk-through, a hint for every control; the pattern and song chapters point to it. Alt: —
 - **D35 — Build order.** ✅ The phases in §7, starting with the mockup (Phase M), each ending with something you can play with.
 
 ---

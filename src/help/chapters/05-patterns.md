@@ -25,3 +25,7 @@ Within a pattern, a track can have its **own length** (it loops sooner, for poly
 - In **Song** mode, the sections play in order, each as often as its repeat count (right-click → Repeat). After the last section the song starts over, unless you switch looping off with the loop button next to **Loop / Song**.
 - While playing, **click a section to queue it**: it starts at the end of the current section, or on the next bar or beat if you choose so in [Settings](#settings).
 - **Follow** (header bar) makes the drum machine show whichever section is playing.
+
+## Sections on the timeline
+
+The [timeline](#timeline) shows the same sections drawn to scale, with what only makes sense in song time: a section's own settings (mutes, transpose, fill, a shorter length) that keep its clones linked, tempo changes, automation and audio that runs across sections.

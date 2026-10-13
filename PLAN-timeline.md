@@ -1,7 +1,8 @@
 # Plan: the Timeline: patterns and sections, a linear arrangement, automation, audio and tempo across the song
 
-Status: agreed 2026-10-13 (decisions D180–D195; Jeroen's answers are in §13). How we work: on
-`main`, commit early and often, e2e once at the end of the batch.
+Status: agreed and built 2026-10-13 (decisions D180–D195; Jeroen's answers are in §13; what the
+build changed is in §15). How we work: on `main`, commit early and often, e2e once at the end of
+the batch.
 
 The idea in one line: **patterns are the content, sections place them in the song, and the
 timeline shows the sections in song time.** The song order is already a timeline with one lane
@@ -389,16 +390,16 @@ What a section can change without breaking the link to its clones:
 A knob can be automated when the engine can move it at an audio time. `model/automation.ts`
 holds the table `AUTOMATABLE`, and each entry says how its value reaches the audio:
 
-| Target                                               | How                                                                                                                                |
-| ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `track:<id>:volume`, `mix.pan`, `mix.width`          | ramps on the channel's fader, panner, widener                                                                                      |
-| `track:<id>:mix.sendA`, `mix.sendB`                  | ramps on the send gains (throws still win: the higher of the two, as now)                                                          |
-| `track:<id>:mix.low/mid/high`                        | ramps on `FlatEQ`'s gains                                                                                                          |
-| `track:<id>:sound.cutoff`, `sound.reso` (samples)    | ramps on the channel filter (as `lockStep` does)                                                                                   |
-| `track:<id>:sound.macro1..8` (synths)                | a new worklet message `automate(macro, value, time)`; the core glides at control rate                                              |
-| `track:<id>:fx:<id>:<param>` for some effects        | `FxNode.automate(param, value, time)`: Filter cutoff/reso, Delay mix/feedback, Reverb mix, Distortion drive, EQ3 gains, Pump depth |
-| `bus:<id>` (volume), `master:volume`                 | ramps on the faders                                                                                                                |
-| `master:fx:<id>:<param>`, `bus:<id>:fx:<id>:<param>` | the same effect params (new targets, also learnable by MIDI)                                                                       |
+| Target                                               | How                                                                                                                       |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `track:<id>:volume`, `mix.pan`, `mix.width`          | ramps on the channel's fader, panner, widener                                                                             |
+| `track:<id>:mix.sendA`, `mix.sendB`                  | ramps on the send gains (throws still win: the higher of the two, as now)                                                 |
+| `track:<id>:mix.low/mid/high`                        | ramps on `FlatEQ`'s gains                                                                                                 |
+| `track:<id>:sound.cutoff`, `sound.reso` (samples)    | ramps on the channel filter (as `lockStep` does)                                                                          |
+| `track:<id>:sound.macro1..8` (synths)                | a new worklet message `automate(macro, value, time)`; the core glides at control rate                                     |
+| `track:<id>:fx:<id>:<param>` for some effects        | `FxNode.automate(param, events)`: Filter cutoff/reso, Delay feedback, EQ3 gains, Pump depth, and every effect's mix (§15) |
+| `bus:<id>` (volume), `master:volume`                 | ramps on the faders                                                                                                       |
+| `master:fx:<id>:<param>`, `bus:<id>:fx:<id>:<param>` | the same effect params (new targets, also learnable by MIDI)                                                              |
 
 These have no Automate item for now:
 
@@ -417,7 +418,7 @@ Tempo isn't a knob here: it has its own lane (§8).
 - **The engine owns an automated value while playing**:
   - `reconcile` leaves an automated target's param alone (`S.automated`), so the store's value
     doesn't fight the curve
-  - stopped, the lane's value at the start marker plays, so what you see is what plays.
+  - stopped, every automated value goes back to its knob (§15), so the knobs show what plays.
 - **Chasing** (D190):
   - starting anywhere sets every lane's value at that position before the first step
   - a jump (a queued section, Loop) sets the values at the new position.
@@ -818,3 +819,23 @@ section change:
 
 - **D195 — The timeline's guide and hints.** A chapter (`timeline.md`) with the song as the
   walk-through, a hint for every control; the pattern and song chapters point to it. Alt: —
+
+## 15. What the build changed
+
+- **Stopped, the knobs play** (D186): at stop every automated value goes back to its knob
+  (`engine.releaseAutomation`), instead of the lane's value at the start marker. Play chases the
+  lanes from wherever it starts, and a stopped knob shows what you hear.
+- **Distortion's drive isn't automatable** (D189): it's a waveshaper curve, not a param. Every
+  effect's **mix** is (its wet and dry gains), so the list is: the Filter's cutoff and
+  resonance, the Delay's feedback, EQ3's gains, Pump's depth, and every effect's mix.
+- **The Filter effect was rebuilt** (D189): Tone's AutoFilter can't move its cutoff at an audio
+  time, so the Filter is a plain filter with its cutoff as a signal and the sweep's LFO added on
+  top (from the cutoff up `depth × 4` octaves, as before). The golden levels didn't move.
+- **Jumps take 3 ms** (D186): where a held point ends, the curve ramps to the next value in 3 ms.
+  An instant jump made a filter ring (the demo's high-pass drop peaked above 0 dBFS).
+- **Timeline audio is kept with the clips** (D188): `S.clips` under `rgn:<id>`, so stop, panic
+  and tempo changes reach it without new code. Live, a warped sample off its own tempo is
+  time-stretched as a clip is (a stretch node per region); offline it's repitched (§0.7).
+- **Loop mode** (D190): automation jumps back to the section's values each time round; audio
+  that started in an earlier section doesn't start part-way.
+- **Record automation** is the **Auto** button next to Rec (D191).
