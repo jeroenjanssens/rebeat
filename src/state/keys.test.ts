@@ -760,6 +760,7 @@ describe("Auto: the progression plays itself (D162)", () => {
     useSettings.getState().set({
       autoSync: false,
       autoEvery: 1,
+      autoBeats: null,
       autoLoop: true,
       playStyle: performModel.DEFAULT_PLAY_STYLE,
     });
@@ -785,6 +786,47 @@ describe("Auto: the progression plays itself (D162)", () => {
       (a, b) => a - b,
     );
     expect(times[1] - times[0]).toBeCloseTo(bar(), 3);
+  });
+
+  it("changes faster than a bar: every 2, 1 or ½ beat, in one stepper list (D218)", () => {
+    expect(keysApi.autoSteps().map((s) => s.label)).toEqual([
+      "½ beat",
+      "1 beat",
+      "½ bar",
+      "1 bar",
+      "2 bars",
+      "3 bars",
+      "4 bars",
+      "6 bars",
+      "8 bars",
+    ]);
+    keysApi.stepAutoEvery(-1);
+    expect(useSettings.getState().autoBeats).toBe(2);
+    keysApi.stepAutoEvery(-1);
+    expect(useSettings.getState().autoBeats).toBe(1);
+    startAuto();
+    for (let b = 0; b < 8; b++) flushPerform((b * bar()) / 4);
+    const times = [...new Set(holdNote.mock.calls.map((c) => (c as unknown[])[3] as number))].sort(
+      (a, b) => a - b,
+    );
+    // a chord a beat
+    expect(times[1] - times[0]).toBeCloseTo(bar() / 4, 3);
+    expect(chordsPlayed().filter((n) => n.length >= 3).length).toBeGreaterThanOrEqual(4);
+    keysApi.stepAutoEvery(1);
+    keysApi.stepAutoEvery(1);
+    expect(useSettings.getState().autoBeats).toBe(null);
+    expect(useSettings.getState().autoEvery).toBe(1);
+  });
+
+  it("in 3/4, a half bar isn't a beat step", () => {
+    project.timeSignature = [3, 4];
+    expect(
+      keysApi
+        .autoSteps()
+        .map((s) => s.label)
+        .slice(0, 4),
+    ).toEqual(["½ beat", "1 beat", "2 beats", "1 bar"]);
+    project.timeSignature = [4, 4];
   });
 
   it("counts in patterns when one plays: the waltz changes every three beats", () => {

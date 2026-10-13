@@ -14,8 +14,10 @@ import {
 } from "../../model/suggest";
 import { keyName } from "../../model/notes";
 import {
-  AUTO_EVERY,
-  autoUnit,
+  autoBeatsPerChange,
+  autoStepIndex,
+  autoSteps,
+  stepAutoEvery,
   chordHistory,
   keysTrack,
   setNextProgression,
@@ -38,13 +40,14 @@ import { useSettings } from "../../state/settings";
 export function ProgressionPicker() {
   const id = useSettings((s) => s.nextProgression);
   const auto = useKeys((s) => s.auto);
-  const every = useSettings((s) => s.autoEvery);
+  useSettings((s) => s.autoEvery);
+  useSettings((s) => s.autoBeats);
+  useStore((s) => s.project.timeSignature);
+  const steps = autoSteps();
+  const stepIndex = autoStepIndex();
   const loop = useSettings((s) => s.autoLoop);
   const sync = useSettings((s) => s.autoSync);
   useSettings((s) => s.playStyle);
-  const unit = autoUnit();
-  const unitName = (n: number) =>
-    unit.pattern ? (n === 1 ? "pattern" : "patterns") : n === 1 ? "bar" : "bars";
   const set = useSettings.getState().set;
   useSettings((s) => s.keyModeKey);
   // the suggestions change after every chord: where we are in the progression too
@@ -107,7 +110,7 @@ export function ProgressionPicker() {
   };
 
   return (
-    <div className="flex items-center gap-1.5" data-hint="controller.progression">
+    <div className="flex flex-wrap items-center gap-1.5" data-hint="controller.progression">
       <span className="label">Pad 1</span>
       <button
         className="tool-btn !h-6 gap-0.5"
@@ -161,24 +164,20 @@ export function ProgressionPicker() {
       <div className="flex items-center" data-testid="auto-every" data-hint="controller.auto.every">
         <button
           className="tool-btn !h-6"
-          aria-label="Less often"
-          onClick={() => {
-            const i = AUTO_EVERY.indexOf(every as (typeof AUTO_EVERY)[number]);
-            set({ autoEvery: AUTO_EVERY[Math.max(0, i - 1)] });
-          }}
+          aria-label="More often"
+          disabled={stepIndex === 0}
+          onClick={() => stepAutoEvery(-1)}
         >
           −
         </button>
         <span className="num px-1 text-[12px] text-ink" data-testid="auto-every-value">
-          {every} {unitName(every)}
+          {steps[stepIndex]?.label}
         </span>
         <button
           className="tool-btn !h-6"
-          aria-label="More often"
-          onClick={() => {
-            const i = AUTO_EVERY.indexOf(every as (typeof AUTO_EVERY)[number]);
-            set({ autoEvery: AUTO_EVERY[Math.min(AUTO_EVERY.length - 1, i + 1)] });
-          }}
+          aria-label="Less often"
+          disabled={stepIndex === steps.length - 1}
+          onClick={() => stepAutoEvery(1)}
         >
           +
         </button>
@@ -197,7 +196,7 @@ export function ProgressionPicker() {
           Sync to song
         </button>
       </div>
-      {fits && <TakeRoom chords={chords.length} every={every} unit={unit.beats * 4} />}
+      {fits && <TakeRoom chords={chords.length} every={1} unit={autoBeatsPerChange() * 4} />}
     </div>
   );
 }
@@ -226,7 +225,7 @@ function TakeRoom({ chords, every, unit }: { chords: number; every: number; unit
   if (!short && !check.clones.length && !check.repeats.length) return null;
   return (
     <span
-      className="flex items-center gap-1.5 text-[11px]"
+      className="flex flex-wrap items-center gap-1.5 text-[11px]"
       data-testid="take-room"
       data-hint="controller.auto.room"
     >

@@ -1040,6 +1040,8 @@ let autoPress: Pressed | null = null;
 /** How hard Auto plays its chords. */
 const AUTO_VELOCITY = 0.8;
 export const AUTO_EVERY = [1, 2, 3, 4, 6, 8] as const;
+/** Faster than a bar (D218): changes every so many beats. */
+export const AUTO_BEATS = [0.5, 1, 2] as const;
 
 /** A unit Auto counts in, in beats (quarter notes): the pattern's length when one plays (any
  * division, D175), else a bar. */
@@ -1050,10 +1052,58 @@ export function autoUnit(): { beats: number; pattern: boolean } {
   return { beats: (beats * 4) / unit, pattern: false };
 }
 
+/** Beats between Auto's changes: every so many beats (D218), or units. */
+export function autoBeatsPerChange(): number {
+  const { autoBeats, autoEvery } = useSettings.getState();
+  if (autoBeats) return autoBeats;
+  return Math.max(1, autoEvery) * autoUnit().beats;
+}
+
 /** Seconds between Auto's chord changes. */
 function changeDur(): number {
-  const every = Math.max(1, useSettings.getState().autoEvery);
-  return (every * autoUnit().beats * 60) / tempoNow();
+  return (autoBeatsPerChange() * 60) / tempoNow();
+}
+
+/** How often Auto can change (D218): ½, 1 or 2 beats (when shorter than its unit), then every
+ * 1–8 units; one list for the stepper. */
+export function autoSteps(): { beats: number | null; every: number; label: string }[] {
+  const unit = autoUnit();
+  const [beats, value] = useStore.getState().project.timeSignature ?? [4, 4];
+  const barBeats = (beats * 4) / value;
+  const name = (n: number) =>
+    unit.pattern ? (n === 1 ? "pattern" : "patterns") : n === 1 ? "bar" : "bars";
+  const short = AUTO_BEATS.filter((b) => b < unit.beats - 1e-9).map((b) => ({
+    beats: b,
+    every: 1,
+    label:
+      !unit.pattern && Math.abs(b * 2 - barBeats) < 1e-9
+        ? "½ bar"
+        : b === 0.5
+          ? "½ beat"
+          : `${b} beat${b === 1 ? "" : "s"}`,
+  }));
+  return [
+    ...short,
+    ...AUTO_EVERY.map((n) => ({ beats: null, every: n, label: `${n} ${name(n)}` })),
+  ];
+}
+
+/** Where Auto's setting is in `autoSteps()`. */
+export function autoStepIndex(): number {
+  const { autoBeats, autoEvery } = useSettings.getState();
+  const steps = autoSteps();
+  const i = steps.findIndex((s) =>
+    autoBeats ? s.beats === autoBeats : s.beats === null && s.every === autoEvery,
+  );
+  // a beat setting longer than this unit allows: the unit itself
+  return i >= 0 ? i : steps.findIndex((s) => s.beats === null && s.every === 1);
+}
+
+/** Step how often Auto changes: −1 more often, +1 less often. */
+export function stepAutoEvery(dir: -1 | 1) {
+  const steps = autoSteps();
+  const next = steps[Math.max(0, Math.min(steps.length - 1, autoStepIndex() + dir))];
+  useSettings.getState().set({ autoBeats: next.beats, autoEvery: next.every });
 }
 
 /** A root note for a suggestion: its pitch class in the octave nearest the last key. */

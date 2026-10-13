@@ -219,7 +219,7 @@ const hints: Hints = {
   },
   "controller.auto.every": {
     title: "Change every",
-    text: "How often Auto moves to the next chord: every 1, 2, 3, 4, 6 or 8 patterns when a pattern plays (so a change never lands in the middle of its rhythm: a two-bar Bossa changes every two bars, a three-beat Waltz never drifts), or bars when none does.",
+    text: "How often Auto moves to the next chord: every 1, 2, 3, 4, 6 or 8 patterns when a pattern plays (so a change never lands in the middle of its rhythm: a two-bar Bossa changes every two bars, a three-beat Waltz never drifts), or bars when none does. Below one, it changes faster: every 2 beats (half a bar in 4/4), every beat or every half beat; a pattern keeps its place in time across the changes.",
     guide: "performance-suggestions",
   },
   "controller.auto.options": {

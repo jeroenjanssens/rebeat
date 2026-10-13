@@ -257,6 +257,7 @@ async function autoSetup(page: Page, more: object = {}) {
       padMode: "next",
       nextProgression: "royalroad",
       autoEvery: 1,
+      autoBeats: null,
       ...more,
     });
     return t.id;
@@ -446,4 +447,20 @@ test("the pattern picker's groups, and a triplet pattern recorded in triplets (D
   // some chord notes off the 16th grid by a third (triplets), none snapped onto it
   const offsets = steps.flatMap((s) => s.notes.map((n) => Math.abs(n.offset ?? 0)));
   expect(offsets.some((o) => Math.abs(o - 1 / 3) < 0.05)).toBe(true);
+});
+
+test("Auto changes faster than a bar: the stepper goes to beats (D218)", async ({ page }) => {
+  await autoSetup(page, { autoSync: false });
+  const value = page.getByTestId("auto-every-value");
+  await expect(value).toHaveText("1 bar");
+  await page.getByTestId("auto-every").getByRole("button", { name: "More often" }).click();
+  await expect(value).toHaveText("½ bar");
+  await page.getByTestId("auto-every").getByRole("button", { name: "More often" }).click();
+  await expect(value).toHaveText("1 beat");
+  // a chord a beat: at 120 BPM all four of the royal road within about two seconds
+  const line = page.getByTestId("controller-notes");
+  await page.getByTestId("auto").click();
+  for (const chord of [/=\s*F$/, /=\s*G$/, /=\s*Em$/, /=\s*Am$/])
+    await expect(line).toHaveText(chord, { timeout: 2500 });
+  await page.getByTestId("auto").click();
 });

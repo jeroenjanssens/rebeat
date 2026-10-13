@@ -153,6 +153,9 @@ export interface Settings {
   /** Auto (D162): change every this many patterns (bars without a pattern); go round again; sync
    * to the song (armed until Play, after the count-in; stops with it, D172), else on its own. */
   autoEvery: number;
+  /** Auto's changes faster than its unit (D218): every 2, 1 or ½ beat; null: every `autoEvery`
+   * units. */
+  autoBeats: number | null;
   autoLoop: boolean;
   autoSync: boolean;
   /** Key mode's own key (D138), independent of the project. */
@@ -260,6 +263,7 @@ export const DEFAULT_SETTINGS: Settings = {
   suggestAdventure: 1,
   nextProgression: null,
   autoEvery: 1,
+  autoBeats: null,
   autoLoop: true,
   autoSync: false,
   keysTarget: { kind: "sound", source: "catalog", id: "smplr:piano", name: "Grand Piano" },
