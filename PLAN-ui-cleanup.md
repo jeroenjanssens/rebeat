@@ -107,3 +107,19 @@ synth editor in focus" (and says so). It stays on until unticked in the Keys men
 Schema stays 11. Golden levels must not change. Playwright runs once at the end.
 
 ## Deviations (filled in while building)
+
+- The **drum machine's Swing** didn't get a "song swing" entry: the song's swing is in BPM ▾ (the
+  pattern's swing still falls back to it).
+- The **Flanger's** shortest delay is 3 ms: in Web Audio a delay inside a feedback loop can't be
+  shorter than one render quantum.
+- The **Parametric EQ's** six bands are a low cut, a low shelf, two peaks, a high shelf and a high
+  cut. The **Gate's** Release smooths both its opening and its closing.
+- The **Utility** is an AudioWorklet (`public/worklets/utility.js`). An effect built from
+  Split/Merge always made a mono track stereo, and so 3 dB louder past the panner. It has no
+  bass-mono band.
+- The **Keys strip** has no solo, and its effects can't be automated (the keys aren't part of the
+  song). MIDI learn works on its level, pan and sends; its effect knobs in the popup don't offer
+  learn yet.
+- The **Controller picture's** knobs in Drum mode turn the selected track's SOUND knobs. A click
+  points at a card only in Chord, Key and Next mode.
+- **Auto's** − button now means more often. Before, its labels were swapped.

@@ -27,7 +27,10 @@ sections have their own settings (mutes, transpose, fill, a shorter length) that
 linked, and tempo changes, automation and audio on the timeline (all anchored to sections,
 schema 10), with the demo song Long Way Home; and then **automation as a table** (§0.6p,
 D196–D205, `PLAN-automation-editor.md`): a lane's points in the Inspector, eases in and out per
-point and on tempo ramps, schema 11. Left: tests
+point and on tempo ramps, schema 11; and **a tidier interface** (§0.6q, D206–D219,
+`PLAN-ui-cleanup.md`): the Controller panel's cards, a smaller top bar with ▾ menus, every effect
+knob automatable with a grouped knob picker, a full Keys strip, copying effects, eight new
+effects, Auto at beat speeds. Left: tests
 with real hardware (mic, MIDI, Launchpad/Push), signing the desktop release, the license (D6),
 and the "later" items in PLAN.md §0.7. The repository is public and `main` deploys to GitHub
 Pages.
@@ -127,7 +130,8 @@ src/
                        main.tsx also exposes window.__rebeat (see §8)
   app/                 shell UI and glue:
                        - Dock (Dockview), panels.tsx (the panel registry, lazy), layouts (presets)
-                       - TransportBar, commands (registry, shortcuts), defaultCommands, CommandPalette
+                       - TransportBar (Play, Rec ▾, BPM ▾, the metronome ▾: D214, D215), commands
+                         (registry, shortcuts), defaultCommands, CommandPalette
                        - dialogs: Settings (+ MidiSettings, Calibration), ProjectBrowser, Export,
                          SampleExport, Welcome
                        - openers.ts: open a sample/synth editor tab, the guide, focus a panel
@@ -214,19 +218,21 @@ src/
   panels/              one folder per Dockview panel: drum-machine, library, inspector, mixer,
                        master-scope, piano-roll, sample-editor, performance, synth-editor, guide,
                        beatbox (recordings list, HitWaveform, RecordDialog, ConvertView, ModelView),
-                       controller (the MiniLab 3 drawn live, other maps as lists),
+                       controller (the MiniLab 3 drawn live, other maps as lists; the settings as
+                       Cards: Chords, Bass, Suggest, Play, D213),
                        timeline (D184: ruler, Tempo lane, sections, track rows, curve lanes, regions;
                        canvases cover only the visible part, ViewCanvas); inspector/automation/
                        (D199–D204: the point table, its sources, ScrubField, parsing)
   components/          Encoder (knob), Fader, MiniFader, DragValue, Keyboard (piano), Scope,
-                       PeaksCanvas, Playhead, Menu (contextMenu/dropdown), Dialog, Toast,
-                       EffectEditor, glide (smooth resets), soundIcons…
+                       PeaksCanvas, Playhead, Menu (contextMenu/dropdown, headings), Dialog, Toast,
+                       EffectEditor, fxMenus (Add effect by group, copy/paste, Copy to…), EqCurve,
+                       KnobPicker (D208), glide (smooth resets), soundIcons…
   render/              raf.ts (one shared animation loop), useCanvas, theme (tokens), thumbnail
   help/                chapters/*.md (the user guide, one file per topic), guide.ts (renderer),
                        hints/ (explain-mode texts keyed by data-hint ids)
   templates/           builder.ts (song-writing helpers), examples.ts (example songs), showcase.ts,
                        synthSongs.ts, nightDrive.ts, index.ts (new-project templates)
-public/worklets/       recorder.js, scratch.js (plain JS AudioWorklets)
+public/worklets/       recorder.js, scratch.js, utility.js (plain JS AudioWorklets)
 public/models/beatbox/ the beatbox model per version (model.onnx, model.json, report.md)
 ml/                    training the beatbox model (uv): data, onsets (port of onsets.ts), synth,
                        windows, model, train, evaluate, tune, export; README.md, DATA.md
@@ -272,7 +278,9 @@ About 38k lines of TypeScript, with 31 unit test files next to the code (`*.test
    - The master chain is EQ3 → compressor → limiter → master fader. Send buses: A = reverb,
      B = delay.
 7. **Effects are data**: `{ id, name, params, bypass }`, built by a factory in `effects.ts`.
-   `model/params.ts` defines their knobs (`EFFECT_PARAMS`).
+   `model/params.ts` defines their knobs (`EFFECT_PARAMS`, `EFFECT_GROUPS`). Each built effect
+   has a `knobs` table (knob → AudioParams with units), used to set the knobs and to automate them
+   (D206); what isn't an AudioParam is in its `set`.
 8. **Platform layer.** File dialogs, storage persistence and full screen go through
    `platform/` (web or Electron). Load it lazily from modules that unit tests import, because
    it touches `window`.
@@ -728,6 +736,17 @@ onPatchEdit` hook, debounced `saveSoundSoon`).
   `secondsBetween`, or the step's `bpm` (`transport.tempoNow()`).
 - **`reconcile` uses the engine's tempo while playing** (`S.tempo`, set by `tempoStep`), so an edit
   mid-song doesn't snap synced delays back to the start tempo. Offline scopes use `S.builtBpm`.
+- **A new effect's knobs go in its `knobs` table** (`engine/effects.ts`), each an AudioParam with
+  the knob's unit, or it can't be automated: `missingAutomation()` (the e2e test) lists the ones
+  without, and only knobs in `NOT_AUTOMATABLE` (`model/automation.ts`) may be missing. Setting a
+  Tone `Param`'s `.value` cancels what's scheduled on it, so an automated knob is skipped when
+  another is set; a target that depends on two knobs is listed under both.
+- **Channel counts matter before the panner.** A mono track gets an equal-power pan law; an
+  insert that makes it stereo (a Split/Merge, an `explicit` 2-channel input) makes it 3 dB louder.
+  Tone's stereo effects (Chorus, Phaser, Tremolo) always did; the Utility is a worklet so its
+  output has its input's channels.
+- **The Keys strip's effects are settings, not project data** (`keysMix`, FxTarget `"keys"`):
+  `editEffects` handles them without a commit, and `state/keys.ts` pushes `keysMix` to the engine.
 - **Automation doesn't write to the store**, and the override watcher relies on it. Anything new
   that moves a knob over time does it in the engine (`automateTarget`), never with commits.
 - **Effects that can be automated need an audio-time path**: a param to schedule
@@ -783,6 +802,8 @@ likely to need:
 | Patterns: notation, triplets, picked notes, groups | D174–D179                 |
 | The timeline: pattern and section, settings, tempo | D180–D195                 |
 | Automation as a table, eases                       | D196–D205                 |
+| Effects automatable, knob picker, effect clipboard | D206–D211, D216–D217      |
+| Keys strip, Controller cards, top bar, Auto, Edit  | D212–D215, D218–D219      |
 
 Feature batches and their acceptance criteria are in PLAN.md §0.6b–§0.6h. Known limitations are
 in §0.7.

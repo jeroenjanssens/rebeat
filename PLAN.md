@@ -12,7 +12,7 @@
 
 ### 0.1 Where we are
 
-- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D205), and the build order is in §7.
+- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D219), and the build order is in §7.
 - Every phase in §7 is built, tested (unit + Playwright e2e) and pushed. The mockup (Phase M) became the app: its components, model and store were kept and extended; `src/mock/` was replaced by the real engine.
 - The desktop app (Phase 10) runs and packages locally (unsigned); signing/notarization need certificates (see `.github/workflows/desktop.yml`).
 
@@ -103,6 +103,7 @@ Key implementation patterns:
 0. Beatbox to step tracks (§0.6h, D105–D118) ✅ merged into `main` (2026-10-10). Decide whether the shipped model may train on beatboxset1 (CC BY-SA, D108). Record and
    label your own sounds (and friends'), export them, and train model 2 with them (`ml/README.md`).
 0b. MIDI controllers (§0.6i, D119–D125) ✅ merged into `main` (2026-10-10). With a device: check what it sends (the Monitor in Settings → MIDI) and fix its map.
+0j. A tidier interface, effects everywhere (§0.6q, D206–D219) ✅ on `main` (2026-10-13): the Controller panel's cards, a smaller top bar, every effect knob automatable with a grouped knob picker, a full Keys strip, copying effects, eight new effects, Auto at beat speeds, Edit sound following the editor.
 0i. Editing automation as a table in the Inspector, eases between points and on tempo ramps (§0.6p, D196–D205) ✅ on `main` (2026-10-13).
 0h. The timeline: patterns and sections, section settings, tempo changes, automation, audio on the timeline, Long Way Home (§0.6o, D180–D195) ✅ on `main` (2026-10-13). Try it in the Arrange layout; later: a loop range on the ruler, automation of more knobs (tune and decay per hit are per step: p-locks), tempo changes in the MIDI clock (when there is one).
 0g. 53 patterns in groups, triplets, patterns that pick notes (§0.6n, D174–D179) ✅ on `main` (2026-10-12).
@@ -755,6 +756,20 @@ table in the **Inspector**: On, Position (bar.beat.16th, or section:beat.16th), 
 knob's units, and an **ease in and out** per point (None, Linear, Smooth, Exponential, Bounce,
 with a strength). Drag, scroll or type every cell; insert halfway on the curve; the selection is
 the lane's too. Schema 11 (a held point became an ease out of None). Long Way Home eases.
+
+### 0.6q A tidier interface, effects everywhere (agreed and done 2026-10-13) ✅
+
+The plan is `PLAN-ui-cleanup.md` (its last section lists where the build differs). The
+**Controller panel** has one header row and its settings as foldable **cards** beside the picture
+(Chords, Bass, Suggest, Play); the picture's knobs point at their card and turn. The **top bar**
+keeps Play, **Rec ▾** (recording options), the position, **BPM ▾** (tap, time signature, swing),
+the metronome ▾ (count-in), Loop | Song and the Keys; the rest moved into those menus and the
+panels. **Every effect knob** can be automated (and every effect's On), picked in a **knob
+picker** grouped by Sound, Mix and Effects, also from the Inspector's table. The mixer's **Keys
+strip** is laid out like a track's, with effects, pan and mute. Effects can be **copied and
+pasted** (one or a chain, Paste settings, Copy to…). **Eight new effects**: Parametric EQ, Gate,
+Flanger, Saturator, Vibrato, Auto-Wah, Freq Shifter, Utility. **Auto** changes every 2, 1 or ½
+beat too, and **Edit sound** (in the Keys menu) makes the keys follow the synth editor it opens.
 
 ### 0.7 Known limitations and later work
 
@@ -1530,6 +1545,55 @@ Format: **Dn — Question.** Default ✅, alternatives.
 - **D205 — Long Way Home eases.** Its Brightness rises smoothly, the high-pass sweeps
   exponentially, the reverb throw bounces back, and its tempo ramps are smooth; its golden levels
   are re-recorded for that. Alt: leave the song linear.
+- **D206 — Every effect knob can be automated.** Each effect's knobs are a table of
+  AudioParams (with the knob's unit), used both to set them and to automate them, so an
+  automated knob isn't reset by another knob's edit. Chorus, Phaser and Tremolo are built from
+  Tone's parts as Tone wires them (they sound the same) so their depth, delay, octaves, base and
+  spread are AudioParams; the Distortion's drive is gains around a fixed curve; stepped knobs
+  jump. Not automatable: Reverb size, decay and pre-delay, Delay ping-pong, Filter type (they
+  rebuild the effect). Alt: automate only the knobs that already were AudioParams.
+- **D207 — Every effect's On can be automated.** On and off are gains around the effect (off:
+  the input goes straight out), stepped. Alt: bypass stays a store-only switch.
+- **D208 — One knob picker.** A popover with a search box and a tree: owner → Sound / Mix /
+  Effects → each effect ("Tremolo 2" for a second one) → its knobs and its On; greyed knobs say
+  why. Used by + Automation, a track's +, Pick another knob… (any owner now) and the lane's knob
+  in the Inspector's table. Alt: cascading submenus (no search, fiddly).
+- **D209 — Lanes outlive their effect.** Removing an effect keeps its lanes, named "Effect
+  removed": undo, or pick another knob. Alt: delete them with the effect.
+- **D210 — An app-level effect clipboard.** Copy an effect or a chain; it survives opening another
+  project. Copies get new ids. Pasting is one undo step; tracks skip the Limiter. Alt: the system
+  clipboard (between windows, but text in the user's clipboard).
+- **D211 — Paste settings keeps the effect.** Pasting a copied effect's knobs onto one of the same
+  type keeps its id, so its automation lanes and MIDI mappings keep working. Alt: replace it.
+- **D212 — The Keys strip is a full channel, in settings.** Effects, sends, pan, level, mute (an
+  empty solo slot keeps strips lined up), saved with the settings (`keysMix`), not the project,
+  without undo; MIDI learn targets `keys:…`. Alt: per project (undoable, but the keys aren't
+  part of a song).
+- **D213 — The Controller panel's cards.** One header row (map, pads, key, keys); the settings as
+  foldable cards beside the picture (under it when narrow): Chords, Bass, Suggest in Chord, Key
+  and Next mode, Play in every mode, one line per style with its details on its line. The
+  picture's knobs point at their card and turn. The black knob's At once / On press moved into the
+  Key chip's menu. Alt: a tab row (one group at a time); only the knobs on the picture.
+- **D214 — One global transport, smaller.** The top bar keeps Play, Rec, the position, the tempo,
+  the metronome, Loop | Song, the Keys and the app's buttons; panels don't get Play buttons of
+  their own (they can be closed; every DAW has one transport). Alt: a transport strip per panel.
+- **D215 — Options behind a ▾.** Rec ▾: arm automation (an A on Rec), Overdub/Replace, Snap and
+  its grid, Clip length; BPM ▾: Tap, time signature, song swing; the metronome ▾: count-in. They
+  also stay where they're used (the drum machine's Q, the piano roll's Overdub and Snap, the
+  Timeline's Arm and ruler, a Clip track's Inspector). Alt: keep them all in the bar.
+- **D216 — Eight new effects.** The usual core of DAW effects that Rebeat lacked: Parametric EQ
+  (six bands, a curve), Gate, Flanger, Saturator (tube to tape, wow and flutter), Vibrato,
+  Auto-Wah, Freq Shifter (with ring mod), Utility (an AudioWorklet, so mono stays mono). Every
+  knob automatable. Later: multiband compression, a transient shaper, real sidechain, convolution
+  reverb, vocoder, pitch shifter, granular delay. Alt: a smaller batch.
+- **D217 — Effects in groups.** The Add effect menus group them: Dynamics, EQ & filter, Drive,
+  Modulation, Space, Utility. Alt: one alphabetical list.
+- **D218 — Auto at beat speeds.** `autoBeats` (2, 1 or ½ beat) changes faster than Auto's unit;
+  one stepper over ½ beat … 8 bars (beat steps only when shorter than the unit); a pattern keeps
+  its place across the changes. Alt: also ¼ beat (rarely musical with chords).
+- **D219 — Edit sound follows the editor.** Opening a synth editor from Edit sound (now in the
+  Keys menu) turns on Follow the synth editor in focus, and says so; it stays on until unticked.
+  Alt: only while that editor is open (a hidden mode).
 - **D35 — Build order.** ✅ The phases in §7, starting with the mockup (Phase M), each ending with something you can play with.
 
 ---
