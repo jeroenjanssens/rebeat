@@ -31,6 +31,7 @@ import {
 } from "../../state/timelineActions";
 import { CurveLane, type LanePoint } from "./CurveLane";
 import { openInInspector, pointMenu } from "./pointMenu";
+import { onReveal } from "./reveal";
 import { TEMPO_TYPES } from "../../model/ease";
 import {
   HEADER,
@@ -168,7 +169,7 @@ function TempoLane({ ppq, width }: { ppq: number; width: number }) {
             data-testid="tempo-lane-toggle"
             onClick={() => useSettings.getState().set({ timelineTempoOpen: !open })}
           >
-            {open ? "▾" : "▸"} Tempo{points.length ? ` · ${points.length}` : ""}
+            {open ? "▾ Tempo" : `▸ Tempo${points.length ? ` · ${points.length}` : ""}`}
           </button>
           {open && (
             <DragValue
@@ -324,6 +325,20 @@ export function Timeline() {
           if (x < sc.scrollLeft || x > sc.scrollLeft + visible - 20)
             sc.scrollLeft = Math.max(0, x - visible / 3);
         }
+      }),
+    [ppq],
+  );
+
+  // a row clicked in the Inspector's table: show its point (D200)
+  useEffect(
+    () =>
+      onReveal((q) => {
+        const sc = scroller.current;
+        if (!sc) return;
+        const x = q * ppq;
+        const visible = sc.clientWidth - HEADER;
+        if (x < sc.scrollLeft + 20 || x > sc.scrollLeft + visible - 20)
+          sc.scrollTo({ left: Math.max(0, x - visible / 2), behavior: "smooth" });
       }),
     [ppq],
   );

@@ -9,6 +9,7 @@ import { EffectsSection } from "./EffectsSection";
 import { NotesSection, SoundSection } from "./SoundSection";
 import { MODE_LABEL, ModeIcon, SoundIcon, trackSoundKind } from "../../components/soundIcons";
 import { MidiSection } from "./MidiSection";
+import { AutomationInspector } from "./automation/AutomationInspector";
 
 export function Section({
   title,
@@ -71,6 +72,13 @@ function EncoderGrid({
 }
 
 export function InspectorPanel() {
+  // a lane's points, or the tempo changes, instead of the track (D199)
+  const inspect = useStore((s) => s.inspect);
+  if (inspect) return <AutomationInspector />;
+  return <TrackInspector />;
+}
+
+function TrackInspector() {
   const track = useSelectedTrack();
   const commit = useStore((s) => s.commit);
   const index = useStore((s) => s.project.tracks.findIndex((t) => t.id === track?.id));
