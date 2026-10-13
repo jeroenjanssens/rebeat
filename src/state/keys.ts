@@ -10,6 +10,7 @@ import { create } from "zustand";
 import {
   audioNow,
   createKeysChannel,
+  setKeysChannelMix,
   disposeKeysChannel,
   getKeysChannel,
   holdNote,
@@ -145,6 +146,17 @@ export const useKeys = create<KeysState>()(() => ({
   lastKey: null,
   auto: { running: false, armed: false, nextAt: null, dur: 2, queued: null },
 }));
+
+/** The Keys strip follows its settings (D212): the mixer, MIDI and effect edits all set them. */
+useSettings.subscribe((s, prev) => {
+  if (s.keysMix !== prev.keysMix) setKeysChannelMix(s.keysMix);
+});
+
+/** Change the Keys strip: level, sends, pan, mute, effects. */
+export function setKeysMix(patch: Partial<ReturnType<typeof useSettings.getState>["keysMix"]>) {
+  const settings = useSettings.getState();
+  settings.set({ keysMix: { ...settings.keysMix, ...patch } });
+}
 
 export function setKeysTarget(target: KeysTarget) {
   // picking a target is picking it instead of the synth editor

@@ -327,17 +327,27 @@ interface KeysChannel {
   track: Track;
 }
 
-/** The Keys strip's level and sends (fader position and 0..1 sends, as a track's). */
+/** The Keys strip (D126, D212): level, sends, pan (as a track's), mute and insert effects. */
 export interface KeysMix {
   volume: number;
   sendA: number;
   sendB: number;
+  pan?: number;
+  mute?: boolean;
+  effects?: Track["effects"];
 }
 
 const withMix = (track: Track, mix: KeysMix): Track => ({
   ...track,
   volume: mix.volume,
-  params: { ...track.params, "mix.sendA": mix.sendA, "mix.sendB": mix.sendB },
+  mute: !!mix.mute,
+  effects: mix.effects ?? [],
+  params: {
+    ...track.params,
+    "mix.sendA": mix.sendA,
+    "mix.sendB": mix.sendB,
+    "mix.pan": mix.pan ?? 0.5,
+  },
 });
 
 let keysChannelEntry: KeysChannel | null = null;
@@ -353,7 +363,7 @@ export function createKeysChannel(sound: Track, mix: KeysMix): KeysChannel {
   const ch = new TrackChannel(ensureMaster().input);
   ch.sendA.connect(bus("bus-a").input);
   ch.sendB.connect(bus("bus-b").input);
-  ch.update(track, true, useStore.getState().project.bpm);
+  ch.update(track, !track.mute, useStore.getState().project.bpm);
   const v = createInstrument(track, ch.input);
   v.update(track, useStore.getState().project.bpm);
   keysChannelEntry = { channel: ch, voice: v, track };
@@ -365,7 +375,7 @@ export function setKeysChannelMix(mix: KeysMix) {
   const e = keysChannelEntry;
   if (!e) return;
   e.track = withMix(e.track, mix);
-  e.channel.update(e.track, true, useStore.getState().project.bpm);
+  e.channel.update(e.track, !e.track.mute, useStore.getState().project.bpm);
 }
 
 /** Peak level (0..1) of the Keys strip. */
@@ -1041,6 +1051,7 @@ export function tempoStep(bpm: number | null, time: number) {
   if (was === to) return;
   for (const ch of S.channels.values()) ch.tempo(to, time);
   for (const ch of S.liveChannels.values()) ch.tempo(to, time);
+  keysChannelEntry?.channel.tempo(to, time);
   for (const b of S.buses.values()) b.tempo(to, time);
   S.master?.fx.tempo(to, time);
   for (const v of [...S.synths.values(), ...S.liveVoices.values()]) v.synth?.tempo(to, time);
@@ -1239,6 +1250,7 @@ export function panic() {
   flushTimer = window.setTimeout(() => {
     for (const ch of S.channels.values()) ch.flush();
     for (const ch of S.liveChannels.values()) ch.flush();
+    keysChannelEntry?.channel.flush();
     for (const b of S.buses.values()) b.flush();
     // the master's filters (EQ, the performance filters) ring briefly too: all of it
     m.fx.flush(true);

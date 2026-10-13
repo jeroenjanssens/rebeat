@@ -18,6 +18,7 @@ import {
   keyDialTurn,
   setBassOctaves,
   setChordVoicing,
+  setKeysMix,
   setPlayStyle,
   playSuggestion,
   setTranspose,
@@ -778,7 +779,10 @@ function applyMapping(map: MidiMapping, m: MidiMessage, scope: "project" | "glob
   const mode = knobMode(map, m.value);
 
   const current =
-    pending.get(target) ?? readTarget(target, useStore.getState().project) ?? lastSet.get(target);
+    pending.get(target) ??
+    readTarget(target, useStore.getState().project) ??
+    keysValue(target) ??
+    lastSet.get(target);
   const settings = useSettings.getState();
   let v: number;
   if (mode === "absolute") {
@@ -1055,12 +1059,43 @@ function applySoon(target: string, v: number) {
 }
 
 /** Set a mapped parameter from a 0..1 value (continuous) or fire it (buttons). */
+/** The Keys strip's knobs (D212): "keys:volume", "keys:mix.pan", "keys:fx:<id>:<param>". */
+function setKeysTarget(id: string, key: string, v: number) {
+  const mix = useSettings.getState().keysMix;
+  if (id === "volume") return setKeysMix({ volume: v });
+  if (id === "mix.pan") return setKeysMix({ pan: v });
+  if (id === "mix.sendA") return setKeysMix({ sendA: v });
+  if (id === "mix.sendB") return setKeysMix({ sendB: v });
+  if (id === "fx") {
+    const [fxId, param] = key.split(":");
+    setKeysMix({
+      effects: (mix.effects ?? []).map((f) =>
+        f.id === fxId ? { ...f, params: { ...f.params, [param]: v } } : f,
+      ),
+    });
+  }
+}
+
+/** A Keys strip knob's value, for relative knobs and pickup. */
+function keysValue(target: string): number | null {
+  const [kind, id, ...rest] = target.split(":");
+  if (kind !== "keys") return null;
+  const mix = useSettings.getState().keysMix;
+  if (id === "volume") return mix.volume;
+  if (id === "mix.pan") return mix.pan ?? 0.5;
+  if (id === "mix.sendA") return mix.sendA;
+  if (id === "mix.sendB") return mix.sendB;
+  const [fxId, param] = rest;
+  return mix.effects?.find((f) => f.id === fxId)?.params[param] ?? null;
+}
+
 export function applyTarget(target: string, v: number, continuous: boolean) {
   const [kind, id, ...rest] = target.split(":");
   const key = rest.join(":");
   const commit = useStore.getState().commit;
   if (kind === "command") return void (v > 0 && runCommand(id + (key ? `:${key}` : "")));
   if (kind === "perf") return setPerfControl(id, v, continuous);
+  if (kind === "keys") return setKeysTarget(id, key, v);
   commit((p) => {
     const setFx = (list: { id?: string; params: Record<string, number> }[], k: string) => {
       const [, fxId, param] = k.split(":");

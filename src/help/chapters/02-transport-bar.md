@@ -37,7 +37,7 @@ The **Keys** chip in the transport bar shows what the keys play: by default it f
 
 - **Follow selected track** — the keys always play whatever track you click on in the drum machine. This is the default.
 - **A specific track** — the keys stay on that track even when you select a different one. Useful when you want to play a bass line while editing the drums above it.
-- **A library sound** — the keys play a sound from the library without adding it to the project. The sound plays through a **Keys** strip in the mixer (it appears while a library sound is active), so you can add reverb and delay just like a track. Recent library sounds appear at the bottom of the menu.
+- **A library sound** — the keys play a sound from the library without adding it to the project. The sound plays through a **Keys** strip in the mixer (it appears while a library sound is active), laid out like a track's: insert effects (**FX**), Reverb and Delay sends, pan, level and mute. Its settings are yours, the same in every project. Recent library sounds appear at the bottom of the menu.
 
 To put a library sound on the keys from the library panel: hover over it and click the keyboard icon, or press **K** with it selected. You can then play it with your MIDI keyboard, the on-screen pads, or the computer keys.
 

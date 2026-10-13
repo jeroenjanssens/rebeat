@@ -41,7 +41,17 @@ const hints: Hints = {
   },
   "mixer.keys": {
     title: "Keys strip",
-    text: "While the keys play a library sound that isn't on a track, this strip sets its level and its Reverb and Delay sends. It plays through the master, so the performance tools reach it, but it isn't in exports: use Add as a track to keep it.",
+    text: "While the keys play a library sound that isn't on a track, this strip is its channel: insert effects, Reverb and Delay sends, pan, level and mute, as on a track. Its settings are yours, the same in every project (they aren't undone). It plays through the master, so the performance tools reach it, but it isn't in exports: use Add as a track to keep it.",
+    guide: "keys-target",
+  },
+  "mixer.keys.fx": {
+    title: "Keys effects",
+    text: "The effects on the keys' sound, while it isn't on a track. Click to edit them; right-click to copy, paste or remove them. They stay when you open another project.",
+    guide: "keys-target",
+  },
+  "mixer.keys.mute": {
+    title: "Mute the keys",
+    text: "Silences the keys' sound while it isn't on a track.",
     guide: "keys-target",
   },
   // ── Master strip ─────────────────────────────────────────────────────────

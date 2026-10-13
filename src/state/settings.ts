@@ -2,6 +2,7 @@
 import { DEFAULT_PLAY_STYLE, type PlayStyle } from "../model/perform";
 import { create } from "zustand";
 import type { MidiMapping } from "../model/project";
+import type { Effect } from "../model/types";
 import type { PadsChannel } from "../midi/mapping";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { platform } from "../platform";
@@ -121,8 +122,16 @@ export interface Settings {
   midiMiniLabHandshake: boolean;
   /** Light the MiniLab 3's pads in the colors of what they play (D144). */
   midiMiniLabPadColors: boolean;
-  /** The Keys strip (a library sound on the keys, D126): level and sends. */
-  keysMix: { volume: number; sendA: number; sendB: number };
+  /** The Keys strip (a library sound on the keys, D126): level, sends, and (D212) pan, mute and
+   * insert effects. Your instrument's channel: the same in every project, not undone. */
+  keysMix: {
+    volume: number;
+    sendA: number;
+    sendB: number;
+    pan?: number;
+    mute?: boolean;
+    effects?: Effect[];
+  };
   /** The keys play what the active synth editor edits (D132). */
   keysFollowEditor: boolean;
   /** What a controller's pads 1–8 do: play tracks 1–8 (Drum), make chords (Chord, D137), or

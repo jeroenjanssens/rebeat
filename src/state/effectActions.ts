@@ -5,17 +5,29 @@ import { makeEffect } from "../model/effects";
 import { uid } from "../model/id";
 import type { Project } from "../model/project";
 import type { Effect } from "../model/types";
+import { useSettings } from "./settings";
 import { useStore } from "./store";
 
-export type FxTarget = { track: string } | { bus: string } | "master";
+/** Where an effect chain is: a track, a bus, the master, or the Keys strip (D212, in settings). */
+export type FxTarget = { track: string } | { bus: string } | "master" | "keys";
 
 function list(p: Draft<Project>, target: FxTarget): Effect[] | undefined {
+  if (target === "keys") return undefined;
   if (target === "master") return p.master.effects;
   if ("track" in target) return p.tracks.find((t) => t.id === target.track)?.effects;
   return p.buses.find((b) => b.id === target.bus)?.effects;
 }
 
+/** The Keys strip's effects are settings: edited as a copy, no undo. */
+function editKeysEffects(fn: (fx: Effect[]) => void) {
+  const settings = useSettings.getState();
+  const fx: Effect[] = JSON.parse(JSON.stringify(settings.keysMix.effects ?? []));
+  fn(fx);
+  settings.set({ keysMix: { ...settings.keysMix, effects: fx } });
+}
+
 export function editEffects(target: FxTarget, fn: (fx: Effect[]) => void, key?: string) {
+  if (target === "keys") return editKeysEffects(fn);
   useStore.getState().commit((p) => {
     const l = list(p, target);
     if (l) fn(l);
@@ -89,8 +101,11 @@ export const removeAllEffects = (target: FxTarget) =>
 
 /** Copy effects to the end of other chains, in one undo step. */
 export function copyEffectsTo(targets: FxTarget[], effects: Effect[]) {
+  if (targets.includes("keys")) editKeysEffects((l) => void l.push(...fresh(effects)));
+  const others = targets.filter((t) => t !== "keys");
+  if (!others.length) return;
   useStore.getState().commit((p) => {
-    for (const target of targets) {
+    for (const target of others) {
       const l = list(p, target);
       if (l) l.push(...fresh(effects).filter((e) => accepts(target, e.name)));
     }

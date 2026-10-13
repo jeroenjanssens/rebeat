@@ -91,6 +91,8 @@ if (import.meta.env.DEV || import.meta.env.MODE === "test") {
         midi: () => import("./audio-io/midi").then((m) => m.useMidi),
         settings: () => import("./state/settings").then((m) => m.useSettings),
         // which knobs each effect can move at an audio time (D206)
+        // the keys (D126): what they play, the Keys strip
+        keys: () => import("./state/keys"),
         missingAutomation: () => import("./engine/effects").then((m) => m.missingAutomation()),
       };
     },

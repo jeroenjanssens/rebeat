@@ -13,7 +13,7 @@ import { EFFECT_GROUPS, EFFECT_SHORT, MIX_PARAMS, VOLUME_FORMAT } from "../../mo
 import type { Effect, Track } from "../../model/types";
 import { accepts, addEffect, type FxTarget } from "../../state/effectActions";
 import { useStore } from "../../state/store";
-import { useKeys } from "../../state/keys";
+import { setKeysMix, useKeys } from "../../state/keys";
 import { useSettings } from "../../state/settings";
 
 const PAN = MIX_PARAMS.find((p) => p.id === "pan")!;
@@ -72,6 +72,8 @@ function chainPopover(
   ]);
 }
 
+const NO_FX: Effect[] = [];
+
 /** Reads live data from the store so the popover updates while you turn knobs. */
 function ChainEditor({
   target,
@@ -85,13 +87,18 @@ function ChainEditor({
   removable: boolean;
   initial: Effect[];
 }) {
-  const effects = useStore((s) =>
+  const projectFx = useStore((s) =>
     target === "master"
       ? s.project.master.effects
-      : "track" in target
-        ? (s.project.tracks.find((t) => t.id === target.track)?.effects ?? [])
-        : (s.project.buses.find((b) => b.id === target.bus)?.effects ?? []),
+      : target === "keys"
+        ? null
+        : "track" in target
+          ? (s.project.tracks.find((t) => t.id === target.track)?.effects ?? [])
+          : (s.project.buses.find((b) => b.id === target.bus)?.effects ?? []),
   );
+  // the Keys strip's effects are settings (D212)
+  const keysFx = useSettings((s) => s.keysMix.effects);
+  const effects = projectFx ?? keysFx ?? NO_FX;
   return (
     <div className="flex w-[300px] flex-col gap-1.5 p-2">
       <div className="flex items-center">
@@ -442,22 +449,21 @@ function MasterStrip({ faderH }: { faderH: number }) {
 }
 
 /**
- * The Keys strip (D126): while the keys play a library sound that isn't on a track, its level
- * and sends. It's a live instrument: it plays through the master but isn't in exports.
+ * The Keys strip (D126, D212): while the keys play a library sound that isn't on a track, its
+ * channel, laid out as a track's: effects, sends, pan, level, mute. It's a live instrument: it
+ * plays through the master but isn't in exports, and its settings are yours, not the project's.
  */
 function KeysStrip({ faderH, compact }: { faderH: number; compact: boolean }) {
   const target = useKeys((s) => s.target);
   const mix = useSettings((s) => s.keysMix);
+  const fxRef = useRef<HTMLButtonElement>(null);
   if (target.kind !== "sound") return null;
-  const set = (patch: Partial<typeof mix>) => {
-    const next = { ...useSettings.getState().keysMix, ...patch };
-    useSettings.getState().set({ keysMix: next });
-    engine.setKeysChannelMix(next);
-  };
+  const effects = mix.effects ?? NO_FX;
+  const color = "var(--lit)";
   return (
     <Strip
       name={`Keys · ${target.name}`}
-      color="var(--lit)"
+      color={color}
       testId="keys-strip"
       hint="mixer.keys"
       fader={
@@ -465,33 +471,74 @@ function KeysStrip({ faderH, compact }: { faderH: number; compact: boolean }) {
           value={mix.volume}
           height={faderH}
           hint="mixer.keys"
-          onChange={(volume) => set({ volume })}
+          onChange={(volume) => setKeysMix({ volume })}
+          midi={{
+            target: "keys:volume",
+            label: "Keys · Level",
+            global: { target: "keys:volume", label: "Keys · Level" },
+          }}
         />
       }
       meter={<VMeter read={() => engine.keysLevel()} height={faderH} />}
       footer={
         <>
           <span className="num text-[9.5px] text-dim">{VOLUME_FORMAT(mix.volume)}</span>
-          <span className="label !text-[8.5px]">Keys</span>
+          <div className="flex gap-0.5">
+            <SmallButton
+              label="M"
+              lit={!!mix.mute}
+              color="#f59e0b"
+              title="Mute the keys"
+              hint="mixer.keys.mute"
+              onClick={() => setKeysMix({ mute: !mix.mute })}
+            />
+            {/* no solo for the keys: an empty slot keeps the strips lined up */}
+            <span className="h-[18px] w-[22px]" />
+          </div>
+          <span className="num text-[9px] text-faint">K</span>
         </>
       }
     >
+      <button
+        ref={fxRef}
+        className="num h-[18px] w-full truncate rounded-[3px] border border-line px-1 text-[9.5px] text-dim hover:text-ink"
+        title={effects.map((f) => f.name).join(" → ") || "No insert effects"}
+        data-hint="mixer.keys.fx"
+        data-testid="keys-fx"
+        onPointerDown={(e) => e.stopPropagation()}
+        onContextMenu={(e) => contextMenu(e, chainMenu("keys", effects, e))}
+        onClick={() => chainPopover(fxRef.current!, "keys", "Keys · inserts", effects, color)}
+      >
+        {fxLabel(effects)}
+      </button>
       {!compact && (
-        <div className="flex">
-          {[SEND_A, SEND_B].map((def) => (
-            <Encoder
-              key={def.id}
-              def={def}
-              size={26}
-              width={36}
-              short
-              color="var(--lit)"
-              value={def.id === "sendA" ? mix.sendA : mix.sendB}
-              hint={`param.mix.${def.id}`}
-              onChange={(v) => set(def.id === "sendA" ? { sendA: v } : { sendB: v })}
-            />
-          ))}
-        </div>
+        <>
+          <div className="flex">
+            {[SEND_A, SEND_B].map((def) => (
+              <Encoder
+                key={def.id}
+                def={def}
+                size={26}
+                width={36}
+                short
+                color={color}
+                value={def.id === "sendA" ? mix.sendA : mix.sendB}
+                hint={`param.mix.${def.id}`}
+                onChange={(v) => setKeysMix(def.id === "sendA" ? { sendA: v } : { sendB: v })}
+                midiTarget={`keys:mix.${def.id}`}
+              />
+            ))}
+          </div>
+          <Encoder
+            def={PAN}
+            size={26}
+            color={color}
+            value={mix.pan ?? 0.5}
+            hint="param.mix.pan"
+            onChange={(pan) => setKeysMix({ pan })}
+            midiTarget="keys:mix.pan"
+          />
+        </>
       )}
     </Strip>
   );
