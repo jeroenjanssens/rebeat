@@ -15,36 +15,32 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Link2, Plus, Repeat } from "lucide-react";
+import { Link2, Plus, Repeat, VolumeX } from "lucide-react";
 import { InlineEdit } from "../../components/InlineEdit";
 import { contextMenu, type MenuItem } from "../../components/Menu";
 import { position } from "../../engine/transport";
-import {
-  cloneSlot,
-  copySlot,
-  deleteSlot,
-  linkCount,
-  newSlot,
-  unlinkSlot,
-  type Project,
-} from "../../model/project";
-import { LINK_COLORS, TRACK_PALETTE } from "../../model/colors";
-import {
-  STEP_COUNT_PRESETS,
-  STEP_SIZES,
-  type Section,
-  type Pattern,
-  type Track,
-} from "../../model/types";
+import { cloneSlot, copySlot, linkCount, newSlot, type Project } from "../../model/project";
+import type { Pattern, Section, Track } from "../../model/types";
 import { onFrame } from "../../render/raf";
 import { alpha, token } from "../../render/theme";
 import { useCanvas } from "../../render/useCanvas";
 import { applyHeld } from "../../state/actions";
 import { useStore } from "../../state/store";
 import { restrictToHorizontalAxis } from "./dndModifiers";
+import { sectionMenu } from "./sectionMenu";
+import { sectionSummary } from "../../state/timelineActions";
 import type { SizeClass } from "./layout";
 
-function Thumbnail({ pattern, tracks }: { pattern: Pattern; tracks: Track[] }) {
+/** A pattern in miniature, in the track colors; tracks muted in the section are dimmed. */
+export function Thumbnail({
+  pattern,
+  tracks,
+  mutes,
+}: {
+  pattern: Pattern;
+  tracks: Track[];
+  mutes?: string[];
+}) {
   const { ref } = useCanvas(
     (ctx, { width: w, height: h }) => {
       ctx.clearRect(0, 0, w, h);
@@ -58,6 +54,7 @@ function Thumbnail({ pattern, tracks }: { pattern: Pattern; tracks: Track[] }) {
         const lane = pattern.lanes[t.id];
         const y = 2 + r * rh;
         if (!lane) return;
+        ctx.globalAlpha = mutes?.includes(t.id) ? 0.25 : 1;
         if (t.mode === "clip") {
           ctx.fillStyle = clipOf(lane).active ? alpha(t.color, 0.75) : alpha(t.color, 0.12);
           ctx.fillRect(2, y + rh * 0.2, w - 4, Math.max(1, rh * 0.6));
@@ -76,52 +73,35 @@ function Thumbnail({ pattern, tracks }: { pattern: Pattern; tracks: Track[] }) {
         }
       });
     },
-    [pattern, tracks],
+    [pattern, tracks, mutes],
   );
   return <canvas ref={ref} className="block h-full w-full rounded-[3px]" />;
 }
 
-function pageChips(
-  label: string,
-  options: { label: string; active: boolean; onClick: () => void; color?: string }[],
-): MenuItem {
-  return {
-    render: (close) => (
-      <div className="px-2 py-1.5">
-        <div className="label mb-1.5">{label}</div>
-        <div className="flex max-w-[260px] flex-wrap gap-1">
-          {options.map((o) =>
-            o.color ? (
-              <button
-                key={o.label}
-                className="h-4 w-4 rounded-sm"
-                style={{
-                  background: o.color,
-                  outline: o.active ? "2px solid var(--select)" : undefined,
-                }}
-                onClick={() => {
-                  o.onClick();
-                  close();
-                }}
-              />
-            ) : (
-              <button
-                key={o.label}
-                className="tool-btn !h-6 border border-line"
-                data-active={o.active}
-                onClick={() => {
-                  o.onClick();
-                  close();
-                }}
-              >
-                {o.label}
-              </button>
-            ),
-          )}
-        </div>
-      </div>
-    ),
-  };
+/** What a section changes from its pattern (D183), as small badges; hover says it in words. */
+export function SectionBadges({ project, slot }: { project: Project; slot: Section }) {
+  const summary = sectionSummary(project, slot);
+  if (!summary.length) return null;
+  return (
+    <span
+      className="num flex items-center gap-1 text-[9px] text-lit"
+      title={`This section: ${summary.join(" · ")}`}
+      data-hint="dm.section.settings"
+      data-testid="section-badges"
+    >
+      {slot.mutes?.length ? (
+        <span className="flex items-center gap-px">
+          <VolumeX size={9} />
+          {slot.mutes.length}
+        </span>
+      ) : null}
+      {slot.transpose ? (
+        <span>{slot.transpose > 0 ? `+${slot.transpose}` : slot.transpose}</span>
+      ) : null}
+      {slot.fill ? <span>F</span> : null}
+      {slot.steps ? <span>{slot.steps}st</span> : null}
+    </span>
+  );
 }
 
 function SectionThumb({
@@ -161,66 +141,7 @@ function SectionThumb({
     });
   }, [isPlay]);
 
-  const items = (): MenuItem[] => [
-    { label: "New section", onSelect: () => commit((p) => void newSlot(p, slot.id)) },
-    {
-      label: "Copy section",
-      shortcut: "⇧COPY",
-      onSelect: () => commit((p) => void copySlot(p, slot.id)),
-    },
-    {
-      label: "Clone section (linked)",
-      shortcut: "⇧DUPL",
-      onSelect: () => commit((p) => void cloneSlot(p, slot.id)),
-    },
-    { label: "Unlink", disabled: !linked, onSelect: () => commit((p) => unlinkSlot(p, slot.id)) },
-    {
-      label: "Delete",
-      disabled: project.slots.length < 2,
-      onSelect: () => {
-        const next = project.slots[index === 0 ? 1 : index - 1].id;
-        commit((p) => deleteSlot(p, slot.id));
-        setUi({
-          ...(isEdit ? { editSlotId: next } : {}),
-          ...(slot.id === playSlotId ? { playSlotId: next } : {}),
-        });
-      },
-    },
-    { separator: true },
-    pageChips(
-      "Repeat",
-      [1, 2, 3, 4, 6, 8, 12, 16].map((n) => ({
-        label: `×${n}`,
-        active: slot.repeats === n,
-        onClick: () => commit((p) => void (p.slots.find((s) => s.id === slot.id)!.repeats = n)),
-      })),
-    ),
-    pageChips(
-      "Steps",
-      STEP_COUNT_PRESETS.map((n) => ({
-        label: String(n),
-        active: pattern.stepCount === n,
-        onClick: () => commit((p) => void (p.patterns[pattern.id].stepCount = n)),
-      })),
-    ),
-    pageChips(
-      "Step size",
-      STEP_SIZES.map((sz) => ({
-        label: sz,
-        active: pattern.stepSize === sz,
-        onClick: () => commit((p) => void (p.patterns[pattern.id].stepSize = sz)),
-      })),
-    ),
-    pageChips(
-      "Color",
-      [...LINK_COLORS, ...TRACK_PALETTE.filter((_, i) => i % 3 === 0)].map((c) => ({
-        label: c,
-        color: c,
-        active: pattern.linkColor === c,
-        onClick: () => commit((p) => void (p.patterns[pattern.id].linkColor = c)),
-      })),
-    ),
-  ];
+  const items = (): MenuItem[] => sectionMenu(project, slot, index);
 
   return (
     <div
@@ -258,7 +179,7 @@ function SectionThumb({
         }}
       >
         <div style={{ height: size === "large" ? 56 : size === "compact" ? 30 : 44 }}>
-          <Thumbnail pattern={pattern} tracks={project.tracks} />
+          <Thumbnail pattern={pattern} tracks={project.tracks} mutes={slot.mutes} />
         </div>
         <div className="mt-1 flex items-center gap-1 px-0.5">
           <span
@@ -284,6 +205,7 @@ function SectionThumb({
               {slot.repeats}
             </span>
           )}
+          <SectionBadges project={project} slot={slot} />
           {linked && (
             <Link2 size={11} style={{ color: pattern.linkColor }} aria-label="Linked (clone)" />
           )}

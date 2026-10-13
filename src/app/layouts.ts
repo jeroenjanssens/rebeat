@@ -3,12 +3,14 @@ import type { AddPanelOptions, DockviewApi, SerializedDockview } from "dockview-
 import { platform } from "../platform";
 import { panelDef } from "./panels";
 
-export type LayoutPreset = "compose" | "perform" | "edit";
+export type LayoutPreset = "compose" | "arrange" | "perform" | "edit";
 
 export const LAYOUT_PRESETS: { id: LayoutPreset; label: string }[] = [
   { id: "compose", label: "Compose" },
   { id: "perform", label: "Perform" },
   { id: "edit", label: "Edit" },
+  // last, so the others keep their shortcuts (⌘⌥1–3)
+  { id: "arrange", label: "Arrange" },
 ];
 
 const KEY = "rebeat.layout";
@@ -48,6 +50,15 @@ export function applyPreset(api: DockviewApi, preset: LayoutPreset) {
     api.getPanel("inspector")?.api.setSize({ width: Math.round(width * 0.19) });
     api.getPanel("mixer")?.api.setSize({ height: Math.round(height * 0.26) });
     api.getPanel("mixer")?.api.setActive();
+  } else if (preset === "arrange") {
+    // the timeline across the top, the drum machine below it, the Inspector at the side (D184)
+    openPanel(api, "drum-machine");
+    openPanel(api, "timeline", { referencePanel: "drum-machine", direction: "above" });
+    openPanel(api, "inspector", { referencePanel: "drum-machine", direction: "right" });
+    openPanel(api, "library", { referencePanel: "inspector", direction: "within" });
+    api.getPanel("timeline")?.api.setSize({ height: Math.round(height * 0.42) });
+    api.getPanel("inspector")?.api.setSize({ width: Math.round(width * 0.2) });
+    api.getPanel("inspector")?.api.setActive();
   } else if (preset === "perform") {
     openPanel(api, "drum-machine");
     openPanel(api, "performance", { referencePanel: "drum-machine", direction: "right" });

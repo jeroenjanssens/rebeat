@@ -13,6 +13,7 @@ import {
   BookOpen,
   Cable,
   Joystick,
+  ChartGantt,
 } from "lucide-react";
 import { DrumMachine } from "../panels/drum-machine/DrumMachine";
 import { InspectorPanel } from "../panels/inspector/InspectorPanel";
@@ -41,6 +42,9 @@ const GuidePanel = lazyPanel(() => import("../panels/guide/GuidePanel").then((m)
 const SampleEditorPanel = lazyPanel(() =>
   import("../panels/sample-editor/SampleEditorPanel").then((m) => m.SampleEditorPanel),
 );
+const TimelinePanel = lazyPanel(() =>
+  import("../panels/timeline/Timeline").then((m) => () => <m.Timeline />),
+);
 const ControllerPanel = lazyPanel(() =>
   import("../panels/controller/ControllerPanel").then((m) => m.ControllerPanel),
 );
@@ -67,6 +71,15 @@ export const PANELS: PanelDef[] = [
     component: DrumMachine,
     minWidth: 420,
     minHeight: 320,
+  },
+  {
+    id: "timeline",
+    title: "Timeline",
+    // sections as bars in song time (D184)
+    icon: ChartGantt,
+    component: TimelinePanel,
+    minWidth: 360,
+    minHeight: 140,
   },
   {
     id: "library",

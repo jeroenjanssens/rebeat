@@ -30,6 +30,7 @@ export type ThemeId =
 export type ThemeSetting = ThemeId | "system";
 export type LatencyMode = "interactive" | "balanced" | "playback";
 export type PageSwitch = "page" | "bar" | "beat";
+export type TimelineSnap = "bar" | "beat" | "16th" | "off";
 
 export const THEMES: { id: ThemeId; label: string; dark: boolean }[] = [
   { id: "studio-dark", label: "Studio Dark", dark: true },
@@ -87,6 +88,12 @@ export interface Settings {
   speakerMode: boolean;
   autosave: boolean;
   pageSwitch: PageSwitch;
+  /** The timeline (D184): pixels per quarter note, what snaps, which track rows show. */
+  timelineZoom: number;
+  timelineSnap: TimelineSnap;
+  timelineTracks: "all" | "used" | "none";
+  /** The Tempo lane open (else a thin line). */
+  timelineTempoOpen: boolean;
   countInBars: number;
   midiInputs: Record<string, boolean>;
   /** Start Web MIDI with the audio (the user enabled it once). */
@@ -205,6 +212,10 @@ export const DEFAULT_SETTINGS: Settings = {
   speakerMode: false,
   autosave: true,
   pageSwitch: "page",
+  timelineZoom: 10,
+  timelineSnap: "bar",
+  timelineTracks: "all",
+  timelineTempoOpen: false,
   countInBars: 1,
   midiInputs: {},
   midiEnabled: false,
