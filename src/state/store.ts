@@ -74,6 +74,8 @@ export interface UiState {
   queuedSlotId: string | null;
   /** Where Play starts (D190): a position in the edited section; null = its start. */
   startAt: SongAnchor | null;
+  /** Record automation (D191): knob turns while recording in Song mode become points. */
+  recordAutomation: boolean;
   jogOpen: Record<string, boolean>;
   clipboard: Step[] | null;
   euclidOpen: boolean;
@@ -177,6 +179,7 @@ export const useStore = create<State>()((set, get) => ({
   playSlotId: project.slots[1].id,
   queuedSlotId: null,
   startAt: null,
+  recordAutomation: false,
   jogOpen: {},
   clipboard: null,
   euclidOpen: false,

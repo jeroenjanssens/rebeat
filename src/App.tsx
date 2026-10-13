@@ -24,6 +24,7 @@ import { useStore } from "./state/store";
 import { startProjects } from "./storage/projects";
 import { startLibrary } from "./library/library";
 import { watchOverrides } from "./state/automationOverride";
+import { watchRecordAutomation } from "./state/recordAutomation";
 
 export function App() {
   useAppearance();
@@ -34,8 +35,9 @@ export function App() {
       installKeyboard(),
       installHints(window),
       trackFullscreen(),
-      // turning an automated knob overrides its lane (D191)
+      // turning an automated knob overrides its lane, or records it (D191)
       watchOverrides(),
+      watchRecordAutomation(),
       // the SHIFT function button follows the Shift key
       addKeyHook((e, down) => {
         if (e.key === "Shift") useStore.getState().setUi({ shiftHeld: down });

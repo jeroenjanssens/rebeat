@@ -268,6 +268,7 @@ export function TransportBar() {
   const projectId = useStore((s) => s.projectId);
   const quantize = useStore((s) => s.quantize);
   const recording = useStore((s) => s.recording);
+  const recordAutomation = useStore((s) => s.recordAutomation);
   const loopBars = useStore((s) => s.loopBars);
   const loopRef = useRef<HTMLButtonElement>(null);
   const { commit, setUi } = useStore.getState();
@@ -355,6 +356,20 @@ export function TransportBar() {
       >
         <Circle size={11} fill={recording ? "currentColor" : "none"} />
         <span className="hidden @[1000px]:inline">Rec</span>
+      </button>
+      <button
+        className="hw-btn !min-h-[28px] hidden @[950px]:inline-flex"
+        data-lit={recordAutomation}
+        onClick={() => setUi({ recordAutomation: !recordAutomation })}
+        title={
+          recordAutomation
+            ? "Record automation: on. While recording in Song mode, knob turns become automation points"
+            : "Record automation: off (click to record knob turns as automation)"
+        }
+        data-hint="transport.record-automation"
+        data-testid="record-automation"
+      >
+        Auto
       </button>
       <button
         className="hw-btn !min-h-[28px] hidden @[950px]:inline-flex"

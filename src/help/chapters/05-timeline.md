@@ -67,7 +67,7 @@ An automation lane moves a knob over the song: a filter that opens over the buil
 
 **Turning an automated knob overrides its lane**, as in Ableton: the lane dims and the knob's own value plays. **Back to automation** (in the timeline and the transport bar) brings back every overridden lane.
 
-With **Record automation** on (next to Record), knob turns while recording in Song mode become points. They're thinned so the lane stays easy to edit.
+With **Auto** on (Record automation, next to Rec), knob turns while recording in Song mode become points. They're thinned so the lane stays easy to edit.
 
 Knobs that can be automated: track levels, pan, width, sends and EQ, a sample's filter, a synth's macros, the master's and the buses' levels, and some effect knobs (the Filter's cutoff and resonance, the Delay's mix and feedback, the Reverb's mix, EQ3's gains, Pump's depth, and every effect's mix). Other knobs don't show Automate.
 
