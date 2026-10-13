@@ -261,7 +261,7 @@ export function SectionsRow({
               />
             )}
             <div
-              className="absolute -right-[3px] top-0 h-full w-[7px] cursor-ew-resize"
+              className="absolute -right-[3px] top-0 z-10 h-full w-[7px] cursor-ew-resize"
               data-hint="timeline.section-edge"
               data-testid="timeline-block-edge"
               onPointerDown={(e) => onEdgeDown(b, e)}

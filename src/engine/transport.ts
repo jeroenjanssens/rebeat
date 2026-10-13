@@ -524,7 +524,8 @@ function scheduleStep(time: number) {
   // automation and timeline audio follow song time; a jump (a start, a queued section, a loop
   // going round) sets the lanes' values there, and in Song mode starts audio already playing
   const q1 = songQ + block.stepQ;
-  const jumped = Math.abs(songQ - lastQ) > 1e-6;
+  // (the first step has nothing before it: lastQ is NaN, and that's a jump too)
+  const jumped = !(Math.abs(songQ - lastQ) <= 1e-6);
   lastQ = q1;
   automationStep(project, songQ, q1, time, dur);
   regionStep(project, songQ, q1, time, dur, jumped && project.playMode === "song");
