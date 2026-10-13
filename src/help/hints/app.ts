@@ -10,7 +10,7 @@ const hints: Hints = {
   },
   "transport.play": {
     title: "Play / Stop",
-    text: "Start or stop playback. Playback begins at the page you're editing.",
+    text: "Start or stop playback. Playback begins at the section you're editing.",
     command: "transport.toggle",
     guide: "transport-bar",
   },
@@ -22,7 +22,7 @@ const hints: Hints = {
   },
   "transport.loop": {
     title: "Loop length",
-    text: "Sets how long a loop recording runs: the page length, or 1, 2, 4, or 8 bars.",
+    text: "Sets how long a loop recording runs: the pattern length, or 1, 2, 4, or 8 bars.",
     guide: "transport-bar",
   },
   "transport.position": {
@@ -60,7 +60,7 @@ const hints: Hints = {
   },
   "transport.swing": {
     title: "Swing",
-    text: "Adds a shuffle feel to the whole song. 50% is straight; higher values delay every second step. Pages and tracks can have their own swing too.",
+    text: "Adds a shuffle feel to the whole song. 50% is straight; higher values delay every second step. Patterns and tracks can have their own swing too.",
     keys: "Drag or scroll · Double-click: reset to 50% (straight)",
     guide: "transport-bar",
   },
@@ -81,7 +81,7 @@ const hints: Hints = {
   },
   "transport.playmode": {
     title: "Playback mode",
-    text: "Page loops the current page; Song plays all your pages in order with their repeat counts. Saved with the project.",
+    text: "Loop repeats the current section; Song plays all your sections in order with their repeat counts. Saved with the project.",
     command: "transport.mode",
     guide: "transport-bar",
   },
@@ -215,7 +215,7 @@ const hints: Hints = {
   // ── Export dialog ────────────────────────────────────────────────────────
   "app.export.range": {
     title: "Export range",
-    text: "Song renders the whole arrangement; Current page renders only the page you're editing right now.",
+    text: "Song renders the whole arrangement; This section renders only the section you're editing right now.",
     guide: "projects-exporting-audio-and-midi",
   },
   "app.export.source": {
@@ -409,9 +409,9 @@ const hints: Hints = {
     text: "Saves your project automatically a moment after each change. Recommended — without it, changes may be lost if you close the tab.",
     guide: "settings-projects",
   },
-  "app.settings.pageswitch": {
-    title: "Page switch",
-    text: "When you queue a different page while playing, this sets when the switch happens: at the end of the page, on the next bar, or on the next beat.",
+  "app.settings.section-switch": {
+    title: "Switching sections",
+    text: "When a queued section starts while playing: at the end of the section, on the next bar, or on the next beat.",
     guide: "settings-projects",
   },
   "app.settings.countinlen": {
@@ -453,7 +453,7 @@ const hints: Hints = {
   },
   "app.midi.mackie": {
     title: "Mackie Control",
-    text: "This input's transport buttons run Rebeat's: Play, Stop, Record, Cycle (loop or song), rewind and forward (pages), the jog wheel. Inputs named MCU are Mackie Control already.",
+    text: "This input's transport buttons run Rebeat's: Play, Stop, Record, Cycle (loop or song), rewind and forward (sections), the jog wheel. Inputs named MCU are Mackie Control already.",
     guide: "performance-your-controller",
   },
   "app.midi.controller": {

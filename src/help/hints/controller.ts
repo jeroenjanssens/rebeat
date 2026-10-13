@@ -113,7 +113,7 @@ const hints: Hints = {
   },
   "controller.keyMode.key": {
     title: "Key mode's key",
-    text: "The key Key mode plays in, its own (the song's key isn't touched). Pick a root and a scale, or copy the page's key. On a MiniLab 3, turn the black knob to change the root, Shift + turn to change the scale.",
+    text: "The key Key mode plays in, its own (the song's key isn't touched). Pick a root and a scale, or copy the pattern's key. On a MiniLab 3, turn the black knob to change the root, Shift + turn to change the scale.",
     guide: "performance-key-mode",
   },
   "controller.keyMode.pending": {
@@ -204,7 +204,7 @@ const hints: Hints = {
   },
   "controller.auto.room": {
     title: "Room for the take",
-    text: "Whether what Auto plays fits before the recording wraps around. Loop mode: the page has to be as long as the progression (chords × every); Fit the page makes it so (up to 128 steps), Spread over pages adds pages and switches to song mode. Song mode: Add pages adds copies of this page (the drums go on, the keys' lane empty); Make copies gives pages that share a pattern their own (they'd get each other's chords); Unroll repeats turns a page that plays twice into two.",
+    text: "Whether what Auto plays fits before the recording wraps around. Loop mode: the pattern has to be as long as the progression (chords × every); Fit the pattern makes it so (up to 128 steps), Spread over sections adds sections and switches to song mode. Song mode: Add sections adds copies of this section (the drums go on, the keys' lane empty); Make copies gives sections that share a pattern their own (they'd get each other's chords); Unroll repeats turns a section that plays twice into two.",
     guide: "performance-suggestions",
   },
   "controller.suggest": {

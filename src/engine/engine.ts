@@ -1002,7 +1002,7 @@ export function stopAll() {
 /**
  * A page step for the effects that follow the beat (Pump, D104), on every track, bus and the
  * master: from `posQ` quarter notes into the page, `stepQ` long, at `time`. Called by
- * `playPageStep`, so it's the same live and offline.
+ * `playStep`, so it's the same live and offline.
  */
 export function effectsStep(time: number, posQ: number, stepQ: number, secPerQ: number) {
   for (const ch of S.channels.values()) ch.step(time, posQ, stepQ, secPerQ);

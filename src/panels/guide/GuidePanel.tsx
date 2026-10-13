@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { runCommand, useCommands } from "../../app/commands";
 import { focusPanel } from "../../app/openers";
 import type { PanelProps } from "../../app/panels";
-import { CHAPTERS, renderChapter } from "../../help/guide";
+import { CHAPTERS, guideAnchor, renderChapter } from "../../help/guide";
 import { useSettings } from "../../state/settings";
 
 /** The user guide: a table of contents with search, and the chapters (D70). */
@@ -33,7 +33,8 @@ export function GuidePanel({ params }: PanelProps) {
     [q],
   );
 
-  const goTo = (id: string) => {
+  const goTo = (to: string) => {
+    const id = guideAnchor(to);
     const el = body.current?.querySelector(`#guide-${CSS.escape(id)}`);
     if (!el) return;
     el.scrollIntoView({ block: "start" });

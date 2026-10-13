@@ -418,16 +418,16 @@ export function SettingsDialog() {
                     hint="app.settings.autosave"
                   />
                 </Row>
-                <Row label="Page switch" hint="When a queued page starts while playing">
+                <Row label="Switching sections" hint="When a queued section starts while playing">
                   <Segmented
                     value={s.pageSwitch}
                     options={[
-                      { id: "page", label: "End of page" },
+                      { id: "page", label: "End of section" },
                       { id: "bar", label: "Next bar" },
                       { id: "beat", label: "Next beat" },
                     ]}
                     onChange={(pageSwitch) => set({ pageSwitch })}
-                    hint="app.settings.pageswitch"
+                    hint="app.settings.section-switch"
                   />
                 </Row>
                 <Row label="Count-in length">

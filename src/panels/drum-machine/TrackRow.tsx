@@ -280,17 +280,17 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
       ...(steps
         ? [
             chips(
-              "Track length on this page",
+              "Track length in this pattern",
               [undefined, 3, 5, 6, 7, 12].map((n) => ({
-                label: n === undefined ? "Page" : String(n),
+                label: n === undefined ? "Pattern" : String(n),
                 active: lane.stepCountOverride === n,
                 onClick: () => updateLane((l) => (l.stepCountOverride = n)),
               })),
             ),
             chips(
-              "Track rate on this page",
+              "Track rate in this pattern",
               [undefined, ...STEP_SIZES].map((sz) => ({
-                label: sz ?? "Page",
+                label: sz ?? "Pattern",
                 active: lane.stepSizeOverride === sz,
                 onClick: () => updateLane((l) => (l.stepSizeOverride = sz)),
               })),
@@ -298,7 +298,7 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
             chips(
               "Track swing",
               [undefined, 0.5, 0.54, 0.58, 0.62, 0.66].map((v) => ({
-                label: v === undefined ? "Page" : `${Math.round(v * 100)}%`,
+                label: v === undefined ? "Pattern" : `${Math.round(v * 100)}%`,
                 active: lane.swingOverride === v,
                 onClick: () => updateLane((l) => (l.swingOverride = v)),
               })),
@@ -499,7 +499,9 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
                   className="tool-btn !h-[16px] !min-w-[16px] bg-panel/80 !p-0"
                   data-active={clipOf(lane).active}
                   title={
-                    clipOf(lane).active ? "Clip active on this page" : "Clip inactive on this page"
+                    clipOf(lane).active
+                      ? "Clip active in this pattern"
+                      : "Clip inactive in this pattern"
                   }
                   data-hint="dm.track.clip-active"
                   data-testid="clip-active"

@@ -162,7 +162,7 @@ const hints: Hints = {
   },
   "beatbox.convert.repeats": {
     title: "Repetitions",
-    text: "Fold into one pattern: every repetition votes, and a step keeps a hit when most of them have it (velocity and nudge averaged). Keep every bar: the whole take, on pages one after the other.",
+    text: "Fold into one pattern: every repetition votes, and a step keeps a hit when most of them have it (velocity and nudge averaged). Keep every bar: the whole take, in sections one after the other.",
     guide: "beatbox-converting",
   },
   "beatbox.convert.bars": {
@@ -192,7 +192,7 @@ const hints: Hints = {
   },
   "beatbox.convert.create": {
     title: "Create tracks",
-    text: "Add one step track per class to the page you're editing (or new pages for Keep every bar), and mute the take's Clip track. One undo takes it all back.",
+    text: "Add one step track per class to the pattern you're editing (or new sections for Keep every bar), and mute the take's Clip track. One undo takes it all back.",
     guide: "beatbox-converting",
   },
 

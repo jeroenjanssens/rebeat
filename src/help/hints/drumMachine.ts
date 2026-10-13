@@ -9,30 +9,30 @@ const hints: Hints = {
     command: "dm.view",
     guide: "drum-machine-the-header-bar",
   },
-  "dm.header.page-name": {
-    title: "Page name",
-    text: "The number and name of the page you're editing. Click the name to rename it.",
+  "dm.header.pattern-name": {
+    title: "Section and pattern name",
+    text: "The number of the section you're editing and its pattern's name. Click the name to rename the pattern.",
     guide: "drum-machine-the-header-bar",
   },
   "dm.header.steps": {
     title: "Steps",
-    text: "How many steps this page has (8 to 128). Fewer steps hide the extras without deleting them, so you can grow the page again later. Type a custom number under Custom.",
+    text: "How many steps this pattern has (8 to 128). Fewer steps hide the extras without deleting them, so you can grow the pattern again later. Type a custom number under Custom.",
     guide: "drum-machine-the-header-bar",
   },
   "dm.header.size": {
     title: "Step size",
-    text: "The length of one step: 1/4, 1/8, 1/8T, 1/16, 1/16T or 1/32. Steps × size is the total page length.",
+    text: "The length of one step: 1/4, 1/8, 1/8T, 1/16, 1/16T or 1/32. Steps × size is the total pattern length.",
     guide: "drum-machine-the-header-bar",
   },
   "dm.header.swing": {
     title: "Swing",
-    text: "The page's own swing amount. It follows the song's swing until you change it (the label then shows Swing·P). Double-click to follow the song swing again.",
+    text: "The pattern's own swing amount. It follows the song's swing until you change it (the label then shows Swing·P). Double-click to follow the song swing again.",
     keys: "Double-click: reset to song swing",
     guide: "drum-machine-the-header-bar",
   },
   "dm.header.key": {
     title: "Key and scale",
-    text: "The key and scale used for note names, the note pads and scale lock. Pick the root note and scale, or give just this page its own key.",
+    text: "The key and scale used for note names, the note pads and scale lock. Pick the root note and scale, or give just this pattern its own key.",
     guide: "drum-machine-the-header-bar",
   },
   "dm.header.tool.draw": {
@@ -80,7 +80,7 @@ const hints: Hints = {
   },
   "dm.header.follow": {
     title: "Follow",
-    text: "When on, the drum machine automatically shows whichever page is playing. Turn it off to keep editing a different page while the song plays.",
+    text: "When on, the drum machine automatically shows whichever section is playing. Turn it off to keep editing a different section while the song plays.",
     guide: "drum-machine-the-header-bar",
   },
   "dm.header.lanes": {
@@ -94,27 +94,27 @@ const hints: Hints = {
     guide: "drum-machine-the-header-bar",
   },
 
-  // ─────────────────────────────────── Page strip ────────────────────────────────────
-  "dm.page.thumb": {
-    title: "Page",
-    text: "Click to edit this page. While the song is playing, clicking also queues it to start when the current page ends. The progress bar underneath shows how far along the playing page is.",
-    keys: "Drag: reorder · Alt+drag: copy · Alt+Shift+drag: clone · Right-click: page options",
-    guide: "drum-machine-the-page-strip",
+  // ─────────────────────────────────── Song strip ────────────────────────────────────
+  "dm.section.thumb": {
+    title: "Section",
+    text: "Click to edit this section. While the song is playing, clicking also queues it to start when the current section ends. The progress bar underneath shows how far along the playing section is.",
+    keys: "Drag: reorder · Alt+drag: copy · Alt+Shift+drag: clone · Right-click: section options",
+    guide: "drum-machine-the-song-strip",
   },
-  "dm.page.add": {
-    title: "Add page",
-    text: "Add a new empty page after the current one, with the same step count and step size.",
-    guide: "drum-machine-the-page-strip",
+  "dm.section.add": {
+    title: "New section",
+    text: "Add a section with a new, empty pattern after the current one, with the same step count and step size.",
+    guide: "drum-machine-the-song-strip",
   },
-  "dm.page.song-loop": {
+  "dm.section.song-loop": {
     title: "Loop song",
-    text: "In Song mode: when on, the song starts over after the last page. When off, it stops at the end.",
-    guide: "pages-playing-a-song",
+    text: "In Song mode: when on, the song starts over after the last section. When off, it stops at the end.",
+    guide: "patterns-playing-a-song",
   },
-  "dm.page.mode": {
+  "dm.section.mode": {
     title: "Playback mode",
-    text: "Loop page repeats the current page indefinitely. Song plays all pages in order, each for its repeat count, then loops or stops. Saved with the project.",
-    guide: "pages-playing-a-song",
+    text: "Loop repeats the current section indefinitely. Song plays all sections in order, each for its repeat count, then loops or stops. Saved with the project.",
+    guide: "patterns-playing-a-song",
   },
 
   // ─────────────────────────────────── Encoder strip ─────────────────────────────────
@@ -167,7 +167,7 @@ const hints: Hints = {
   },
   "dm.track.name": {
     title: "Track name",
-    text: "Click to rename this track. Right-click for more options: duplicate, delete, color, replace sound, copy/paste steps, and per-page settings like length and rate.",
+    text: "Click to rename this track. Right-click for more options: duplicate, delete, color, replace sound, copy/paste steps, and per-pattern settings like length and rate.",
     keys: "Right-click: track options",
     guide: "drum-machine-tracks",
   },
@@ -207,7 +207,7 @@ const hints: Hints = {
   },
   "dm.track.clip-active": {
     title: "Clip active",
-    text: "Turn the audio clip on or off for this page. When off, the clip is silent on this page but keeps playing on pages where it's active.",
+    text: "Turn the audio clip on or off in this pattern. When off, the clip is silent in this pattern but keeps playing in patterns where it's active.",
     guide: "drum-machine-clip-mode",
   },
   "dm.track.scratch": {
@@ -223,12 +223,12 @@ const hints: Hints = {
   },
   "dm.track.clip-launch": {
     title: "Launch mode",
-    text: "Loop: the clip loops and restarts at the top of each page. 1-shot: the clip plays once from the start then stops.",
+    text: "Loop: the clip loops and restarts at the top of each pattern. 1-shot: the clip plays once from the start then stops.",
     guide: "drum-machine-clip-mode",
   },
   "dm.display.mode": {
     title: "Play as",
-    text: "How the selected step track plays: Hits (one hit per step), Notes (notes and chords) or Clip (its sample across the page; samples only). Switching keeps the steps, the notes and the clip, so you can switch back.",
+    text: "How the selected step track plays: Hits (one hit per step), Notes (notes and chords) or Clip (its sample across the pattern; samples only). Switching keeps the steps, the notes and the clip, so you can switch back.",
     guide: "drum-machine-step-tracks",
   },
   "dm.track.add": {
@@ -267,7 +267,7 @@ const hints: Hints = {
   },
   "dm.fn.copy": {
     title: "Copy",
-    text: "Copy the selected track's steps to the clipboard. Hold and click a track to copy its steps; hold and click a page to copy the whole page. Shift+Copy copies the page.",
+    text: "Copy the selected track's steps to the clipboard. Hold and click a track to copy its steps; hold and click a section to copy it. Shift+Copy copies the section.",
     command: "edit.copy",
     guide: "drum-machine-function-buttons",
   },
@@ -279,19 +279,19 @@ const hints: Hints = {
   },
   "dm.fn.clear": {
     title: "Clear",
-    text: "Clear the selected steps, or all steps on the track if nothing is selected. Shift+Clear clears the whole page. Hold and click a track or page to clear it.",
+    text: "Clear the selected steps, or all steps on the track if nothing is selected. Shift+Clear clears the whole pattern. Hold and click a track or section to clear it.",
     command: "edit.clear",
     guide: "drum-machine-function-buttons",
   },
   "dm.fn.dupl": {
     title: "Duplicate",
-    text: "Duplicate the selected track. Hold and click a page to copy it. Shift+Dupl clones the page — a linked copy that shares its pattern with the original.",
+    text: "Duplicate the selected track. Hold and click a section to copy it. Shift+Dupl clones the section: a new section that shares its pattern with the original (linked).",
     command: "dm.duplicate",
     guide: "drum-machine-function-buttons",
   },
   "dm.fn.double": {
     title: "Double / halve",
-    text: "Double the page length and copy all steps into the new half. Shift+×2 halves the page, removing the second half.",
+    text: "Double the pattern length and copy all steps into the new half. Shift+×2 halves the pattern, removing the second half.",
     command: "dm.double",
     guide: "drum-machine-function-buttons",
   },
@@ -398,7 +398,7 @@ const hints: Hints = {
   },
   "dm.pads.step-count": {
     title: "Track step count",
-    text: "Set the number of steps for this track on this page. A shorter count makes the track loop inside the page — great for polyrhythms (e.g. 3 or 5 against 16).",
+    text: "Set the number of steps for this track in this pattern. A shorter count makes the track loop inside the pattern — great for polyrhythms (e.g. 3 or 5 against 16).",
     guide: "pad-view",
   },
   "dm.pads.back": {

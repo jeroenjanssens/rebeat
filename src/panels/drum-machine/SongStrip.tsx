@@ -32,7 +32,7 @@ import { LINK_COLORS, TRACK_PALETTE } from "../../model/colors";
 import {
   STEP_COUNT_PRESETS,
   STEP_SIZES,
-  type PageSlot,
+  type Section,
   type Pattern,
   type Track,
 } from "../../model/types";
@@ -124,13 +124,13 @@ function pageChips(
   };
 }
 
-function PageThumb({
+function SectionThumb({
   slot,
   index,
   project,
   size,
 }: {
-  slot: PageSlot;
+  slot: Section;
   index: number;
   project: Project;
   size: SizeClass;
@@ -161,14 +161,14 @@ function PageThumb({
   }, [isPlay]);
 
   const items = (): MenuItem[] => [
-    { label: "New page", onSelect: () => commit((p) => void newSlot(p, slot.id)) },
+    { label: "New section", onSelect: () => commit((p) => void newSlot(p, slot.id)) },
     {
-      label: "Copy page",
+      label: "Copy section",
       shortcut: "⇧COPY",
       onSelect: () => commit((p) => void copySlot(p, slot.id)),
     },
     {
-      label: "Clone page (linked)",
+      label: "Clone section (linked)",
       shortcut: "⇧DUPL",
       onSelect: () => commit((p) => void cloneSlot(p, slot.id)),
     },
@@ -234,7 +234,7 @@ function PageThumb({
         width: w,
       }}
       className={`page-thumb group relative shrink-0 cursor-pointer rounded-md p-1 ${isQueued ? "queued" : ""}`}
-      data-hint="dm.page.thumb"
+      data-hint="dm.section.thumb"
       {...attributes}
       {...listeners}
       onClick={() => {
@@ -301,7 +301,7 @@ function PageThumb({
   );
 }
 
-export function PageStrip({ sizeClass }: { sizeClass: SizeClass }) {
+export function SongStrip({ sizeClass }: { sizeClass: SizeClass }) {
   const project = useStore((s) => s.project);
   const { songLoop, editSlotId, setUi, setPlayMode, commit } = useStore();
   const playMode = useStore((s) => s.project.playMode);
@@ -351,14 +351,20 @@ export function PageStrip({ sizeClass }: { sizeClass: SizeClass }) {
             strategy={horizontalListSortingStrategy}
           >
             {project.slots.map((slot, i) => (
-              <PageThumb key={slot.id} slot={slot} index={i} project={project} size={sizeClass} />
+              <SectionThumb
+                key={slot.id}
+                slot={slot}
+                index={i}
+                project={project}
+                size={sizeClass}
+              />
             ))}
           </SortableContext>
         </DndContext>
         <button
           className="tool-btn ml-1 shrink-0 self-stretch border border-dashed border-line-strong"
-          title="New page"
-          data-hint="dm.page.add"
+          title="New section"
+          data-hint="dm.section.add"
           onClick={() => {
             let id = "";
             commit((p) => void (id = newSlot(p, editSlotId)));
@@ -377,15 +383,15 @@ export function PageStrip({ sizeClass }: { sizeClass: SizeClass }) {
               ? "Song loops (click to stop at the end)"
               : "Song stops at the end (click to loop)"
           }
-          data-hint="dm.page.song-loop"
+          data-hint="dm.section.song-loop"
           onClick={() => setUi({ songLoop: !songLoop })}
         >
           <Repeat size={13} />
         </button>
       )}
-      <div className="segmented shrink-0" title="Playback mode" data-hint="dm.page.mode">
+      <div className="segmented shrink-0" title="Playback mode" data-hint="dm.section.mode">
         <button data-active={playMode === "loop"} onClick={() => setPlayMode("loop")}>
-          Loop page
+          Loop
         </button>
         <button data-active={playMode === "song"} onClick={() => setPlayMode("song")}>
           Song

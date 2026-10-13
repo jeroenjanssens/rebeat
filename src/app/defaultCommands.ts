@@ -34,7 +34,7 @@ const shell = () => useShell.getState();
 const settings = () => useSettings.getState();
 
 /** Edit the page next to the one being edited; while playing it's queued, as a click does. */
-function stepPage(dir: 1 | -1) {
+function stepSection(dir: 1 | -1) {
   const s = store();
   const i = s.project.slots.findIndex((x) => x.id === s.editSlotId);
   const next = s.project.slots[Math.max(0, Math.min(s.project.slots.length - 1, i + dir))];
@@ -98,16 +98,16 @@ export function defaultCommands(): Command[] {
       run: toggleAuto,
     },
     {
-      id: "page.next",
-      title: "Next page",
-      category: "Pages",
-      run: () => stepPage(1),
+      id: "section.next",
+      title: "Next section",
+      category: "Sections",
+      run: () => stepSection(1),
     },
     {
-      id: "page.previous",
-      title: "Previous page",
-      category: "Pages",
-      run: () => stepPage(-1),
+      id: "section.previous",
+      title: "Previous section",
+      category: "Sections",
+      run: () => stepSection(-1),
     },
     {
       id: "track.next",
@@ -140,7 +140,7 @@ export function defaultCommands(): Command[] {
     },
     {
       id: "transport.mode",
-      title: "Toggle loop page / song",
+      title: "Toggle loop / song",
       category: "Transport",
       keys: ["L"],
       run: () => store().setPlayMode(store().project.playMode === "loop" ? "song" : "loop"),
@@ -333,7 +333,7 @@ export function defaultCommands(): Command[] {
     },
     {
       id: "dm.double",
-      title: "Double page (×2)",
+      title: "Double the pattern (×2)",
       category: "Drum machine",
       run: () => fnClick("double"),
     },

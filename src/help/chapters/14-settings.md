@@ -32,11 +32,11 @@ Enable MIDI, choose inputs, connect a Launchpad or Push, and see or remove MIDI 
 
 ## Projects
 
-| Setting             | What it does                                                                                        |
-| ------------------- | --------------------------------------------------------------------------------------------------- |
-| **Autosave**        | Save changes automatically (recommended).                                                           |
-| **Page switch**     | When a queued page starts: at the **end of the page**, on the **next bar** or on the **next beat**. |
-| **Count-in length** | One or two bars.                                                                                    |
+| Setting                | What it does                                                                                              |
+| ---------------------- | --------------------------------------------------------------------------------------------------------- |
+| **Autosave**           | Save changes automatically (recommended).                                                                 |
+| **Switching sections** | When a queued section starts: at the **end of the section**, on the **next bar** or on the **next beat**. |
+| **Count-in length**    | One or two bars.                                                                                          |
 
 ## Storage
 

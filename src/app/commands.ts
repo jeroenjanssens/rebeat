@@ -55,19 +55,29 @@ export function useCommands(): Command[] {
   return allCommands();
 }
 
+/** Commands that were renamed (D180: pages became sections): their old ids still work. */
+const ALIASES: Record<string, string> = {
+  "page.next": "section.next",
+  "page.previous": "section.previous",
+};
+
+/** A command id as it is now (old ids, saved in shortcuts and MIDI mappings, still resolve). */
+export const commandId = (id: string) => ALIASES[id] ?? id;
+
 export function runCommand(id: string) {
-  const c = registry.get(id);
+  const c = registry.get(commandId(id));
   if (c && (c.enabled?.() ?? true)) c.run();
 }
 
 /** End a held command (a controller's button came up, D122). */
 export function releaseCommand(id: string) {
-  registry.get(id)?.release?.();
+  registry.get(commandId(id))?.release?.();
 }
 
 /** The active shortcuts of a command (user overrides win over defaults). */
 export function keysFor(c: Command, overrides = useSettings.getState().shortcuts): string[] {
-  const o = overrides[c.id];
+  const old = Object.keys(ALIASES).find((k) => ALIASES[k] === c.id);
+  const o = overrides[c.id] ?? (old ? overrides[old] : undefined);
   if (o !== undefined) return o ? o.split(" | ") : [];
   return c.keys ?? [];
 }

@@ -232,7 +232,7 @@ function TakeRoom({ chords, every, unit }: { chords: number; every: number; unit
     >
       {short && (
         <span className="text-faint">
-          Takes {bars(needs)}; {song ? "the song has" : "the page has"} {bars(check.has)}
+          Takes {bars(needs)}; {song ? "the song has" : "the pattern has"} {bars(check.has)}
           {song ? " from here" : ""}
         </span>
       )}
@@ -243,7 +243,7 @@ function TakeRoom({ chords, every, unit }: { chords: number; every: number; unit
             data-testid="fit-page"
             onClick={() => commit((p) => fitPage(p, slotId, needs))}
           >
-            Fit the page
+            Fit the pattern
           </button>
           <button
             className="tool-btn !h-6"
@@ -255,7 +255,7 @@ function TakeRoom({ chords, every, unit }: { chords: number; every: number; unit
               })
             }
           >
-            Spread over pages
+            Spread over sections
           </button>
         </>
       )}
@@ -265,14 +265,14 @@ function TakeRoom({ chords, every, unit }: { chords: number; every: number; unit
           data-testid="add-pages"
           onClick={() => commit((p) => void addPages(p, slotId, needs, empty))}
         >
-          Add pages
+          Add sections
         </button>
       )}
       {song && check.clones.length > 0 && (
         <button
           className="tool-btn !h-6"
           data-testid="make-copies"
-          title="Pages that share a pattern would get each other's chords"
+          title="Sections that share a pattern would get each other's chords"
           onClick={() => commit((p) => makeCopies(p, check.clones))}
         >
           Make copies
@@ -282,7 +282,7 @@ function TakeRoom({ chords, every, unit }: { chords: number; every: number; unit
         <button
           className="tool-btn !h-6"
           data-testid="unroll"
-          title="A page that plays more than once would get its chords written over each other"
+          title="A section that plays more than once would get its chords written over each other"
           onClick={() => commit((p) => check.repeats.forEach((id) => unroll(p, id)))}
         >
           Unroll repeats

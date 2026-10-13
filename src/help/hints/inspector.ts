@@ -41,7 +41,7 @@ const hints: Hints = {
   },
   "inspector.mode": {
     title: "Play as",
-    text: "How this step track plays its sound. Hits: one hit per step at the step's pitch (drums, but a synth can play hits too). Notes: notes and chords, with the piano roll and the arpeggiator. Clip: its sample across the page, for loops and recordings (samples only). Switching keeps everything, so you can switch back.",
+    text: "How this step track plays its sound. Hits: one hit per step at the step's pitch (drums, but a synth can play hits too). Notes: notes and chords, with the piano roll and the arpeggiator. Clip: its sample across the pattern, for loops and recordings (samples only). Switching keeps everything, so you can switch back.",
     guide: "drum-machine-step-tracks",
   },
   "inspector.sound.family": {

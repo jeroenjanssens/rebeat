@@ -51,7 +51,7 @@ export function KeyMenu({ compact = false }: { compact?: boolean }) {
     })),
     { separator: true },
     {
-      label: override ? "Use the project key on this page" : "Own key for this page",
+      label: override ? "Use the project key in this pattern" : "Own key for this pattern",
       onSelect: () =>
         commit((p) => {
           const pat = p.patterns[pattern.id];
@@ -64,11 +64,11 @@ export function KeyMenu({ compact = false }: { compact?: boolean }) {
     <button
       ref={ref}
       className="field"
-      title={override ? "Key (this page)" : "Key (project)"}
+      title={override ? "Key (this pattern)" : "Key (project)"}
       data-hint="dm.header.key"
       onClick={() => dropdown(ref.current!, items())}
     >
-      <span className="label">{override ? "Page key" : "Key"}</span>
+      <span className="label">{override ? "Pattern key" : "Key"}</span>
       <span className="num text-ink">
         {compact ? pitchClassName(key.root, true) : keyName(key)}
       </span>

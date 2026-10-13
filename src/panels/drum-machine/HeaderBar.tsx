@@ -214,7 +214,7 @@ export function HeaderBar({
       format={(v) => `${v}%`}
       onChange={(v) => setPattern((p) => (p.swing = v / 100), "swing")}
       onReset={() => setPattern((p) => (p.swing = undefined))}
-      title="Page swing · double-click = follow the global swing"
+      title="Pattern swing · double-click = follow the global swing"
     />
   );
 
@@ -229,8 +229,8 @@ export function HeaderBar({
         </button>
       </div>
 
-      {/* fixed widths (the longest page name and number), so the controls after them don't move */}
-      <div className="flex min-w-0 items-center gap-1.5 px-1" data-hint="dm.header.page-name">
+      {/* fixed widths (the longest pattern name and section number), so the controls after them don't move */}
+      <div className="flex min-w-0 items-center gap-1.5 px-1" data-hint="dm.header.pattern-name">
         <WidestOf texts={[String(slots.length)]} className="num text-[13px] font-semibold">
           <span style={{ color: pattern.linkColor }}>{pageNumber}</span>
         </WidestOf>
@@ -251,7 +251,7 @@ export function HeaderBar({
         label="Steps"
         value={String(pattern.stepCount)}
         items={stepItems}
-        title="Steps on this page"
+        title="Steps in this pattern"
         hint="dm.header.steps"
       />
       {!compact && (
@@ -329,7 +329,7 @@ export function HeaderBar({
           <button
             className="tool-btn"
             data-active={follow}
-            title="Follow the playing page"
+            title="Follow the playing section"
             data-hint="dm.header.follow"
             onClick={() => setUi({ follow: !follow })}
           >
@@ -363,7 +363,7 @@ export function HeaderBar({
               ...quantizeItems().map((i) => ({ ...i, label: `Quantize ${i.label}` })),
               { separator: true },
               {
-                label: "Follow playing page",
+                label: "Follow the playing section",
                 checked: follow,
                 onSelect: () => setUi({ follow: !follow }),
               },

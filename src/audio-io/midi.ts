@@ -408,8 +408,8 @@ const MACKIE: Record<number, [string, string]> = {
   93: ["transport.stop", "Stop"],
   95: ["transport.record", "Record"],
   86: ["transport.mode", "Loop/song"],
-  91: ["page.previous", "Previous page"],
-  92: ["page.next", "Next page"],
+  91: ["section.previous", "Previous section"],
+  92: ["section.next", "Next section"],
 };
 
 function mackie(m: MidiMessage): string | null {
@@ -419,7 +419,7 @@ function mackie(m: MidiMessage): string | null {
   }
   if (m.type === "cc" && m.number === 60) {
     const d = relativeDelta("relsign", m.value);
-    if (d) runCommand(d > 0 ? "page.next" : "page.previous");
+    if (d) runCommand(d > 0 ? "section.next" : "section.previous");
     return "Mackie: jog wheel";
   }
   return m.type === "noteoff" ? "Mackie" : null;

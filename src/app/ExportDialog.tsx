@@ -19,7 +19,7 @@ import { useStore } from "../state/store";
 import { addSampleTracks } from "../state/trackActions";
 import { useShell } from "./shell";
 
-type Range = "song" | "page";
+type Range = "song" | "section";
 
 const safe = (s: string) => s.replace(/[\\/:*?"<>|]+/g, "-").trim() || "export";
 
@@ -38,7 +38,7 @@ export function ExportDialog() {
   const name = safe(
     range === "song"
       ? project.name
-      : `${project.name} - ${project.patterns[project.slots.find((s) => s.id === editSlotId)?.patternId ?? ""]?.name ?? "page"}`,
+      : `${project.name} - ${project.patterns[project.slots.find((s) => s.id === editSlotId)?.patternId ?? ""]?.name ?? "section"}`,
   );
 
   const run = async (label: string, fn: () => Promise<void>) => {
@@ -106,7 +106,7 @@ export function ExportDialog() {
         ? project.tracks.find((t) => t.id === track)?.name
         : range === "song"
           ? project.name
-          : "Page";
+          : "Section";
       const id = await saveRecording(
         audioBufferChannels(buf),
         buf.sampleRate,
@@ -128,8 +128,8 @@ export function ExportDialog() {
             <button data-active={range === "song"} onClick={() => setRange("song")}>
               Song
             </button>
-            <button data-active={range === "page"} onClick={() => setRange("page")}>
-              Current page
+            <button data-active={range === "section"} onClick={() => setRange("section")}>
+              This section
             </button>
           </div>
           <span className="num text-dim">{duration.toFixed(1)} s</span>

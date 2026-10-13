@@ -70,7 +70,7 @@ export function FloatingTransport() {
           data-active={playMode === "loop"}
           onClick={() => useStore.getState().setPlayMode("loop")}
         >
-          Page
+          Loop
         </button>
         <button
           data-active={playMode === "song"}

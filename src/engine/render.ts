@@ -4,13 +4,13 @@
  */
 import { renderOffline } from "./offline";
 import type { Project } from "../model/project";
-import type { PageSlot, Pattern } from "../model/types";
+import type { Section, Pattern } from "../model/types";
 import { newScope, reconcile, scopeReady, scopeSettled, withScope } from "./engine";
-import { pageDuration, playPageStep, stepDuration } from "./transport";
+import { pageDuration, playStep, stepDuration } from "./transport";
 
 export interface RenderOptions {
-  range: "song" | "page";
-  /** The page for range "page". */
+  range: "song" | "section";
+  /** The section for range "section". */
   slotId?: string;
   /** Only this track (for stems and resampling one track). */
   soloTrackId?: string;
@@ -20,7 +20,7 @@ export interface RenderOptions {
 }
 
 export interface TimelineEntry {
-  slot: PageSlot;
+  slot: Section;
   pattern: Pattern;
   start: number;
   /** How many times this slot has played before (for 1:2 conditions). */
@@ -32,12 +32,12 @@ export function timeline(project: Project, opts: Pick<RenderOptions, "range" | "
   let t = 0;
   const cycles = new Map<string, number>();
   const slots =
-    opts.range === "page"
+    opts.range === "section"
       ? [project.slots.find((s) => s.id === opts.slotId) ?? project.slots[0]]
       : project.slots;
   for (const slot of slots) {
     const pattern = project.patterns[slot.patternId];
-    const times = opts.range === "page" ? 1 : slot.repeats;
+    const times = opts.range === "section" ? 1 : slot.repeats;
     for (let r = 0; r < times; r++) {
       const cycle = cycles.get(slot.id) ?? 0;
       cycles.set(slot.id, cycle + 1);
@@ -68,7 +68,7 @@ export async function renderProject(project: Project, opts: RenderOptions): Prom
           let t = e.start;
           for (let step = 0; step < e.pattern.stepCount; step++) {
             const d = stepDuration(e.pattern, proj.bpm, step, proj.swing);
-            playPageStep(proj, e.pattern, step, t, d, e.cycle, false);
+            playStep(proj, e.pattern, step, t, d, e.cycle, false);
             t += d;
           }
         }

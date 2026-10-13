@@ -469,7 +469,7 @@ export function PadView({ sizeClass, width }: { sizeClass: SizeClass; width: num
               </button>
             ))}
             <span className="ml-2 text-[10.5px] text-faint">
-              Page has {pattern.stepCount} steps; shorter tracks loop inside it.
+              The pattern has {pattern.stepCount} steps; shorter tracks loop inside it.
             </span>
           </div>
         )}

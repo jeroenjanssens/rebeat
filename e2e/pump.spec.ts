@@ -30,7 +30,7 @@ test("Pump ducks a held chord on every beat, in an offline render too (D104)", a
         : [];
       for (const t of p.tracks) t.mute = t !== chords;
       // the verse: a chord held for six steps from the start of the page
-      const b = await r.renderProject(p, { range: "page", slotId: p.slots[1].id, tail: 0 });
+      const b = await r.renderProject(p, { range: "section", slotId: p.slots[1].id, tail: 0 });
       const d = b.getChannelData(0);
       const sr = b.sampleRate;
       const beat = 60 / p.bpm;

@@ -22,7 +22,7 @@ The [project browser](command:project.home) ({{key:project.home}}, or click the 
 
 | Option                             | What it does                                                                                                   |
 | ---------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| **Song / Current page**            | What to render.                                                                                                |
+| **Song / This section**            | What to render.                                                                                                |
 | **Source**                         | The full mix, or a single track.                                                                               |
 | **Format**                         | WAV (16-bit, 24-bit or 32-bit float), MP3 (128, 192 or 320 kbit/s) or OGG (small, good or best quality).       |
 | **Stems**                          | One file per track, in a zip.                                                                                  |
@@ -34,7 +34,7 @@ Sampled instruments (piano, strings…) are included: one that hasn't been downl
 
 ## Undo
 
-Every change to a project can be undone ({{key:edit.undo}}) and redone ({{key:edit.redo}}): steps, tracks, pages, mixer settings, effects… A drag (of a knob, a fader, a painted row of steps) counts as one change.
+Every change to a project can be undone ({{key:edit.undo}}) and redone ({{key:edit.redo}}): steps, tracks, patterns and sections, mixer settings, effects… A drag (of a knob, a fader, a painted row of steps) counts as one change.
 
 ## Install as an app
 

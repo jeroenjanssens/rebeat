@@ -19,7 +19,7 @@ vi.mock("./engine", () => ({
   trigger: (...args: unknown[]) => trigger(...args),
 }));
 
-const { playPageStep } = await import("./transport");
+const { playStep } = await import("./transport");
 
 /** The demo with one lit step on a drum and an instrument track, on an otherwise empty page. */
 function setup() {
@@ -46,7 +46,7 @@ function setup() {
 const callFor = (trackId: string) =>
   trigger.mock.calls.find(([t]) => (t as { id: string }).id === trackId);
 
-describe("playPageStep", () => {
+describe("playStep", () => {
   beforeEach(() => trigger.mockClear());
   afterEach(() => vi.restoreAllMocks());
 
@@ -54,7 +54,7 @@ describe("playPageStep", () => {
     const { p, pattern, drum, inst, dStep, iStep } = setup();
     setStepVelocity(dStep, 0.3);
     setStepVelocity(iStep, 0.5);
-    playPageStep(p, pattern, 0, 10, 0.125, 0, false);
+    playStep(p, pattern, 0, 10, 0.125, 0, false);
     expect(callFor(drum.id)![1]).toBe(0.3);
     const notes = (callFor(inst.id)![2] as { notes: { velocity: number }[] }).notes;
     // the chord keeps its balance: the loudest note gets the value
@@ -69,12 +69,12 @@ describe("playPageStep", () => {
     dStep.probability = 0.5;
     iStep.probability = 0.5;
     vi.spyOn(Math, "random").mockReturnValue(0.4);
-    playPageStep(p, pattern, 0, 10, 0.125, 0, false);
+    playStep(p, pattern, 0, 10, 0.125, 0, false);
     expect((callFor(drum.id)![2] as { time: number }).time).toBeCloseTo(10 + 0.2 * 0.125);
     expect((callFor(inst.id)![2] as { time: number }).time).toBeCloseTo(10 - 0.1 * 0.125);
     trigger.mockClear();
     vi.spyOn(Math, "random").mockReturnValue(0.6);
-    playPageStep(p, pattern, 0, 10, 0.125, 0, false);
+    playStep(p, pattern, 0, 10, 0.125, 0, false);
     expect(callFor(drum.id)).toBeUndefined();
     expect(callFor(inst.id)).toBeUndefined();
   });
@@ -85,7 +85,7 @@ describe("playPageStep", () => {
     dStep.gate = 0.5;
     // a Notes track's step also has a hit pitch, and a Hits track may keep notes
     dStep.notes = [{ pitch: 72, length: 1, velocity: 1 }];
-    playPageStep(p, pattern, 0, 10, 0.125, 0, false);
+    playStep(p, pattern, 0, 10, 0.125, 0, false);
     const hit = callFor(drum.id)![2] as { pitch: number; gate: number; notes?: unknown };
     expect(hit).toMatchObject({ pitch: 3, gate: 0.5 });
     expect(hit.notes).toBeUndefined();
@@ -96,7 +96,7 @@ describe("playPageStep", () => {
     const { p, pattern, inst, iStep } = setup();
     inst.mode = "hits";
     iStep.pitch = -2;
-    playPageStep(p, pattern, 0, 10, 0.125, 0, false);
+    playStep(p, pattern, 0, 10, 0.125, 0, false);
     const hit = callFor(inst.id)![2] as { pitch: number; notes?: unknown };
     expect(hit.pitch).toBe(-2);
     expect(hit.notes).toBeUndefined();
@@ -104,7 +104,7 @@ describe("playPageStep", () => {
     const vox = p.tracks.find((t) => t.mode === "clip")!;
     pattern.lanes[vox.id].clip = { active: true, launchMode: "oneshot" };
     trigger.mockClear();
-    playPageStep(p, pattern, 0, 10, 0.125, 0, false);
+    playStep(p, pattern, 0, 10, 0.125, 0, false);
     expect(startClip).toHaveBeenCalledWith(vox, 10, expect.any(Number), true);
     expect(callFor(vox.id)).toBeUndefined();
   });

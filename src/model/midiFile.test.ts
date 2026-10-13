@@ -5,7 +5,7 @@ import { exportMidi } from "./midiFile";
 describe("MIDI export", () => {
   it("writes a type-1 file with a conductor track and one track per drum/instrument track", () => {
     const p = demoProject();
-    const bytes = exportMidi(p, "page", "slot-verse");
+    const bytes = exportMidi(p, "section", "slot-verse");
     expect(String.fromCharCode(...bytes.slice(0, 4))).toBe("MThd");
     expect(bytes[9]).toBe(1); // format 1
     const tracks = (bytes[10] << 8) | bytes[11];
@@ -19,10 +19,10 @@ describe("MIDI export", () => {
     const p = demoProject();
     const bass = p.tracks.find((t) => t.name === "Bass")!;
     const notesOn = (b: Uint8Array) => [...b].filter((x) => (x & 0xf0) === 0x90 && x !== 0x99);
-    const before = notesOn(exportMidi(p, "page", "slot-verse")).length;
+    const before = notesOn(exportMidi(p, "section", "slot-verse")).length;
     // the bass synth playing hits: drums now, on channel 10, at its category's GM note
     bass.mode = "hits";
-    const bytes = exportMidi(p, "page", "slot-verse");
+    const bytes = exportMidi(p, "section", "slot-verse");
     expect(notesOn(bytes).length).toBeLessThan(before);
     expect([...bytes].some((b) => b === 0x99)).toBe(true);
   });

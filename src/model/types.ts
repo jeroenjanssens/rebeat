@@ -47,11 +47,11 @@ export interface Note {
 export interface Lane {
   steps: Step[]; // always MAX_STEPS long; steps beyond the count are kept, just hidden
   stepCountOverride?: number;
-  /** The track's own step size on this page (polyrhythms); default = the page's. */
+  /** The track's own step size in this pattern (polyrhythms); default = the pattern's. */
   stepSizeOverride?: StepSize;
   /** The track's own swing (0.5..0.75); default = page/global swing. */
   swingOverride?: number;
-  /** Clip mode: whether the clip plays on this page, and how. */
+  /** Clip mode: whether the clip plays in this pattern, and how. */
   clip?: ClipSettings;
 }
 
@@ -153,11 +153,12 @@ export interface Pattern {
   lanes: Record<string, Lane>;
   /** The page's own key (overrides the project key). */
   keyOverride?: { root: number; scale: string };
-  /** Transpose instrument tracks on this page, in semitones. */
+  /** Transpose the Notes tracks in this pattern, in semitones. */
   transpose?: number;
 }
 
-export interface PageSlot {
+/** An entry in the song: it plays a pattern ×repeats (saved in `Project.slots`). */
+export interface Section {
   id: string;
   patternId: string;
   repeats: number;

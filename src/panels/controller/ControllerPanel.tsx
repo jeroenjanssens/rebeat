@@ -226,7 +226,7 @@ function KeyModeChip() {
     })),
     { separator: true },
     {
-      label: `Use the page's key (${keyName(pageKey(project, pattern))})`,
+      label: `Use the pattern's key (${keyName(pageKey(project, pattern))})`,
       onSelect: () => setKeyModeKey(keyModeKeyFrom(pageKey(project, pattern))),
     },
   ];

@@ -45,6 +45,18 @@ const plain = (md: string) =>
 const sectionId = (chapter: string | undefined, title: string) =>
   chapter ? `${chapter}-${slug(title)}` : slug(title);
 
+/** Anchors that were renamed (D180: pages became patterns and sections), so old links still work. */
+const ANCHOR_ALIASES: Record<string, string> = {
+  pages: "patterns",
+  "pages-copies-and-clones": "patterns-copies-and-clones",
+  "pages-length-and-timing-per-page": "patterns-length-and-timing-per-pattern",
+  "pages-playing-a-song": "patterns-playing-a-song",
+  "drum-machine-the-page-strip": "drum-machine-the-song-strip",
+};
+
+/** A guide anchor as it is now. */
+export const guideAnchor = (id: string) => ANCHOR_ALIASES[id] ?? id;
+
 const HEADING = /^(#{1,3}) (.+?)(?: \{#([\w-]+)\})?\s*$/;
 
 function parseChapter(source: string): Chapter {

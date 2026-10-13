@@ -7,10 +7,10 @@ const hints: Hints = {
     text: "Triggers this track. Higher on the pad is louder. While recording, hits are written into the pattern.",
     guide: "performance-the-performance-panel",
   },
-  // ── Page launcher ─────────────────────────────────────────────────────────
-  "perf.page": {
-    title: "Page / pattern slot",
-    text: "Click to select this page for editing, or to queue it to play next (when the transport is running). The playing page is lit; the queued one pulses.",
+  // ── Section launcher ────────────────────────────────────────────────────────
+  "perf.section": {
+    title: "Section",
+    text: "Click to select this section for editing, or to queue it to play next (when the transport is running). The playing section is lit; the queued one pulses.",
     guide: "performance-the-performance-panel",
   },
   // ── Mutes ─────────────────────────────────────────────────────────────────

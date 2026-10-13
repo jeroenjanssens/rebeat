@@ -89,8 +89,11 @@ test("the play mode is saved with the project and starts as song", async ({ page
   await expect(mode.getByRole("button", { name: "Song" })).toHaveAttribute("data-active", "true");
 
   // switching in an example doesn't make a copy
-  await mode.getByRole("button", { name: "Page" }).click();
-  await expect(mode.getByRole("button", { name: "Page" })).toHaveAttribute("data-active", "true");
+  await mode.getByRole("button", { name: "Loop", exact: true }).click();
+  await expect(mode.getByRole("button", { name: "Loop", exact: true })).toHaveAttribute(
+    "data-active",
+    "true",
+  );
   expect(await id()).toMatch(/^example:/);
 
   // in your own project it's saved
@@ -101,12 +104,15 @@ test("the play mode is saved with the project and starts as song", async ({ page
   });
   await page.keyboard.press("l");
   await expect(mode.getByRole("button", { name: "Song" })).toHaveAttribute("data-active", "true");
-  await mode.getByRole("button", { name: "Page" }).click();
+  await mode.getByRole("button", { name: "Loop", exact: true }).click();
   await expect(page.getByTestId("save-status")).toHaveAttribute("data-status", "saved", {
     timeout: 5000,
   });
   await page.reload();
   await page.getByTestId("audio-overlay").click();
   await waitForProject(page);
-  await expect(mode.getByRole("button", { name: "Page" })).toHaveAttribute("data-active", "true");
+  await expect(mode.getByRole("button", { name: "Loop", exact: true })).toHaveAttribute(
+    "data-active",
+    "true",
+  );
 });

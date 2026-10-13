@@ -7,7 +7,7 @@ import { FunctionBar } from "./FunctionBar";
 import { HeaderBar } from "./HeaderBar";
 import { geometry, useSizeClass } from "./layout";
 import { PadView } from "./PadView";
-import { PageStrip } from "./PageStrip";
+import { SongStrip } from "./SongStrip";
 import { TrackList } from "./TrackList";
 
 /** The drum machine panel: header, page strip, display + encoders, tracks or pads, function buttons. */
@@ -27,7 +27,7 @@ export function DrumMachine() {
       data-size={sizeClass}
     >
       <HeaderBar sizeClass={sizeClass} effectiveZoom={geo.effectiveZoom} />
-      <PageStrip sizeClass={sizeClass} />
+      <SongStrip sizeClass={sizeClass} />
       {hasTracks && <EncoderStrip sizeClass={sizeClass} />}
       {view === "grid" || !hasTracks ? (
         <TrackList geo={geo} />

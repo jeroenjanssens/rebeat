@@ -26,5 +26,5 @@ In this browser, saved automatically. Use **Export .rebeat** to keep a copy else
 
 - Hover over a button to see what it does and its shortcut; turn on **Explain mode** ({{key:app.explain}}) for the full story.
 - Press {{key:app.palette}} and type what you want to do.
-- Right-click almost anything (a track name, a page, a pad, a sample, a clip, a knob) for more options.
+- Right-click almost anything (a track name, a section, a pad, a sample, a clip, a knob) for more options.
 - Undo is always there: {{key:edit.undo}}.

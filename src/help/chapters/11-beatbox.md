@@ -61,11 +61,11 @@ A take has a **Convert** tab under its waveform:
 - **Steps**: the step size, 1/16 for most beats.
 - **Timing**: **Snap** puts every hit on its step. **Keep feel** keeps how early or late you were as each step's nudge, by **Strength**.
 - **Velocity**: **Detected** maps loudness to velocities from **Min** to **Max**, so ghost notes stay quiet; **Constant** gives every hit the same velocity. **Drop hits quieter than** leaves out the faintest ones.
-- **Repetitions**: **Fold into one pattern** lets every repetition vote: a step keeps a hit when most repetitions have it, with their velocity and nudge averaged. **Keep every bar** puts the whole take on pages one after another. **Pattern** sets how many bars one pattern is (Auto finds where it repeats). Hits marked **!** disagree with the other repetitions: worth a listen.
+- **Repetitions**: **Fold into one pattern** lets every repetition vote: a step keeps a hit when most repetitions have it, with their velocity and nudge averaged. **Keep every bar** puts the whole take in sections one after another. **Pattern** sets how many bars one pattern is (Auto finds where it repeats). Hits marked **!** disagree with the other repetitions: worth a listen.
 - **Sound**, per class: **Your hit** (the most typical one of the take, saved to the library under **Beatbox**), the matching **kit** sound, or drop any library sample on it.
 - **Hear** loops the **Original**, the **Result** or **Both** together on the preview output.
 
-**Create tracks** adds one step track per class (in Hits mode) to the page you're editing, or new pages with Keep every bar, and mutes the take's Clip track. It's one undo step.
+**Create tracks** adds one step track per class (in Hits mode) to the pattern you're editing, or new sections with Keep every bar, and mutes the take's Clip track. It's one undo step.
 
 ## Datasets {#beatbox-datasets}
 

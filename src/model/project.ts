@@ -8,7 +8,7 @@ import {
   emptyStep,
   laneLength,
   type Lane,
-  type PageSlot,
+  type Section,
   type Pattern,
   type Sound,
   type SoundCategory,
@@ -29,7 +29,7 @@ export interface Project {
   countIn: boolean;
   tracks: Track[];
   patterns: Record<string, Pattern>;
-  slots: PageSlot[];
+  slots: Section[];
   /** Send/return buses (A = reverb, B = delay by default). */
   buses: Bus[];
   master: Master;
@@ -151,7 +151,7 @@ function clonePattern(project: Project, source: Pattern, name: string): Pattern 
   return copy;
 }
 
-function insertSlotAfter(project: Project, afterSlotId: string, slot: PageSlot) {
+function insertSlotAfter(project: Project, afterSlotId: string, slot: Section) {
   const i = project.slots.findIndex((s) => s.id === afterSlotId);
   project.slots.splice(i + 1, 0, slot);
 }
@@ -161,7 +161,7 @@ export function copySlot(project: Project, slotId: string): string {
   const source = slotPattern(project, slotId);
   const pattern = clonePattern(project, source, `${source.name} copy`);
   project.patterns[pattern.id] = pattern;
-  const slot: PageSlot = { id: uid("slot"), patternId: pattern.id, repeats: 1 };
+  const slot: Section = { id: uid("slot"), patternId: pattern.id, repeats: 1 };
   insertSlotAfter(project, slotId, slot);
   return slot.id;
 }
@@ -169,7 +169,7 @@ export function copySlot(project: Project, slotId: string): string {
 /** A linked page: a new slot that points to the same pattern. */
 export function cloneSlot(project: Project, slotId: string): string {
   const source = project.slots.find((s) => s.id === slotId)!;
-  const slot: PageSlot = { id: uid("slot"), patternId: source.patternId, repeats: source.repeats };
+  const slot: Section = { id: uid("slot"), patternId: source.patternId, repeats: source.repeats };
   insertSlotAfter(project, slotId, slot);
   return slot.id;
 }
@@ -189,10 +189,10 @@ export function unlinkSlot(project: Project, slotId: string) {
 
 export function newSlot(project: Project, afterSlotId: string): string {
   const current = slotPattern(project, afterSlotId);
-  const pattern = makePattern(project, `Page ${project.slots.length + 1}`, current.stepCount);
+  const pattern = makePattern(project, `Pattern ${project.slots.length + 1}`, current.stepCount);
   pattern.stepSize = current.stepSize;
   project.patterns[pattern.id] = pattern;
-  const slot: PageSlot = { id: uid("slot"), patternId: pattern.id, repeats: 1 };
+  const slot: Section = { id: uid("slot"), patternId: pattern.id, repeats: 1 };
   insertSlotAfter(project, afterSlotId, slot);
   return slot.id;
 }

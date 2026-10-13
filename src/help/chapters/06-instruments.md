@@ -99,7 +99,7 @@ With **Rec** on and the transport playing, notes you play are written into the p
 
 ## The piano roll
 
-The [Piano roll](panel:piano-roll) edits the notes of the selected Notes track on the page you're editing. Pitches run from top (high) to bottom (low), steps from left to right; out-of-key rows are darker and the root row is highlighted.
+The [Piano roll](panel:piano-roll) edits the notes of the selected Notes track in the pattern you're editing. Pitches run from top (high) to bottom (low), steps from left to right; out-of-key rows are darker and the root row is highlighted.
 
 | Do this                                              | To                                                                                        |
 | ---------------------------------------------------- | ----------------------------------------------------------------------------------------- |

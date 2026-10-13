@@ -400,7 +400,7 @@ export function ConvertView({ rec, hits, calibration, onGrid, onFlagged }: Props
         <span className="text-dim" data-testid="beatbox-convert-summary">
           {settings.repeats === "fold"
             ? `${result.repeats}× played, folded into ${result.length} steps`
-            : `${result.pages.length} page${result.pages.length === 1 ? "" : "s"} of ${result.length} steps`}
+            : `${result.pages.length} pattern${result.pages.length === 1 ? "" : "s"} of ${result.length} steps`}
           {result.flagged.length
             ? ` · ${result.flagged.length} hits disagree with the other repetitions (!)`
             : ""}

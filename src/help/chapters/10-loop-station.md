@@ -6,7 +6,7 @@ Step tracks in Clip mode can record loops from your microphone while the beat ke
 
 1. Add a Clip track (**+ Step track → Clip** under the tracks), or start from the **Loop station** template.
 2. **Arm** it with the **●** button on its row. Your browser asks for the microphone the first time; Rebeat then keeps the microphone open for the session.
-3. Choose the loop length with **Loop** in the transport bar: the page length, or 1, 2, 4 or 8 bars.
+3. Choose the loop length with **Loop** in the transport bar: the pattern length, or 1, 2, 4 or 8 bars.
 4. Press **Rec** ({{key:transport.record}}).
    - While playing, recording starts on the **next bar**. The clip shows "Recording on the next bar…", then a red progress bar.
    - When stopped, playback starts first (with a count-in if **1234** is on), and recording starts with it.

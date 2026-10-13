@@ -62,7 +62,7 @@ test("song mode without looping stops after the last page", async ({ page }) => 
 test("a clone shares its pattern; unlinking makes it independent", async ({ page }) => {
   const thumbs = page.locator('[data-panel="drum-machine"] .page-thumb');
   await thumbs.first().click({ button: "right" });
-  await page.locator(".menu").getByRole("button", { name: "Clone page (linked)" }).click();
+  await page.locator(".menu").getByRole("button", { name: "Clone section (linked)" }).click();
   await expect(thumbs).toHaveCount(6);
   const ids = await state(page, "s.project.slots.slice(0, 2).map((x) => x.patternId)");
   expect(ids[0]).toBe(ids[1]);

@@ -42,7 +42,7 @@ function hits(p: Project, patternId: string, track: Track, code: string) {
   });
 }
 
-function withPage(p: Project, name = "Page 1") {
+function withPage(p: Project, name = "Pattern 1") {
   const pattern = makePattern(p, name);
   p.patterns[pattern.id] = pattern;
   p.slots.push({ id: `slot-${pattern.id}`, patternId: pattern.id, repeats: 1 });

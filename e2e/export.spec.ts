@@ -8,7 +8,7 @@ test("renders the current page to a WAV file offline", async ({ page }) => {
   // offline rendering takes a while on a busy machine
   test.setTimeout(90_000);
   await page.keyboard.press("ControlOrMeta+E");
-  await page.getByRole("button", { name: "Current page" }).click();
+  await page.getByRole("button", { name: "This section" }).click();
   const download = page.waitForEvent("download");
   await page.getByTestId("export-wav").click();
   const file = await download;
@@ -39,7 +39,7 @@ const isMp3 = (b: Buffer) =>
 test("exports the current page as MP3", async ({ page }) => {
   test.setTimeout(90_000);
   await page.keyboard.press("ControlOrMeta+E");
-  await page.getByRole("button", { name: "Current page" }).click();
+  await page.getByRole("button", { name: "This section" }).click();
   await page.getByTestId("export-format").getByRole("button", { name: "MP3" }).click();
   await page.getByRole("button", { name: "192 kbit/s" }).click();
   const download = page.waitForEvent("download");
@@ -124,7 +124,7 @@ for (const [song, busiest] of [
       s.setUi({ editSlotId: slot.id });
     }, busiest);
     await page.keyboard.press("ControlOrMeta+E");
-    await page.getByRole("button", { name: "Current page" }).click();
+    await page.getByRole("button", { name: "This section" }).click();
     const download = page.waitForEvent("download");
     await page.getByTestId("export-wav").click();
     const bytes = readFileSync(await (await download).path());

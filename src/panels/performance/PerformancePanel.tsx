@@ -148,7 +148,7 @@ function PageLauncher() {
             className={`hw-btn !min-h-[48px] !items-start !px-2 ${slot.id === queuedSlotId ? "queued" : ""}`}
             data-lit={isPlay}
             style={{ borderLeft: `3px solid ${p.linkColor}` }}
-            data-hint="perf.page"
+            data-hint="perf.section"
             onClick={() => {
               setUi({ editSlotId: slot.id });
               if (playing && slot.id !== playSlotId) setUi({ queuedSlotId: slot.id });
@@ -523,7 +523,7 @@ export function PerformancePanel() {
       <Box title="Pads">
         <Pads />
       </Box>
-      <Box title="Pages" className="@[1100px]:col-span-2">
+      <Box title="Sections" className="@[1100px]:col-span-2">
         <PageLauncher />
       </Box>
       <Box title="Mutes" className="@[720px]:col-span-2">

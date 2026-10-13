@@ -48,10 +48,10 @@ function trackChunk(events: Ev[]): number[] {
 
 export function patternsInOrder(
   project: Project,
-  range: "song" | "page",
+  range: "song" | "section",
   slotId?: string,
 ): Pattern[] {
-  if (range === "page") {
+  if (range === "section") {
     const slot = project.slots.find((s) => s.id === slotId) ?? project.slots[0];
     return [project.patterns[slot.patternId]];
   }
@@ -111,7 +111,11 @@ function trackEvents(track: Track, patterns: Pattern[], channel: number): Ev[] {
   return ev;
 }
 
-export function exportMidi(project: Project, range: "song" | "page", slotId?: string): Uint8Array {
+export function exportMidi(
+  project: Project,
+  range: "song" | "section",
+  slotId?: string,
+): Uint8Array {
   const patterns = patternsInOrder(project, range, slotId);
   const tempo = Math.round(60_000_000 / project.bpm);
   const [num, den] = project.timeSignature;

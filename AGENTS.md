@@ -42,7 +42,7 @@ sequencer**, with:
 - **A full subtractive/FM synth with an editor.**
 - **A mixer** with insert effects (Pump among them: a beat-synced duck), send buses and a master
   chain.
-- **Performance tools**: DJ filter, tape stop, beat repeat, crossfader, mute groups, page queueing.
+- **Performance tools**: DJ filter, tape stop, beat repeat, crossfader, mute groups, section queueing.
 - **MIDI**: learn, note input, pitch bend and mod wheel, Launchpad/Push as grid controllers.
 - **Export**: WAV/MP3/OGG, stems, MIDI files, `.rebeat` project files.
 - **Beatbox**: record or add beatboxing, label its hits, let a small model (trained in `ml/`,
@@ -56,15 +56,16 @@ keyboard-driven, autosaving projects in IndexedDB.
 Vocabulary (PLAN.md §2):
 
 - **Project**: everything that is saved.
-- **Step track** (in code: `Track`): a row in the drum machine; tracks exist on every page. It has
+- **Step track** (in code: `Track`): a row in the drum machine; tracks exist in every pattern. It has
   a **sound** and a **mode**: `hits`, `notes` or `clip` (D93).
 - **Sound**: what makes a track's sound, in three families: a **sample**, a **synth**, or a
   **sampled instrument** (streamed, SoundFont, multi-sample) (D94).
 - **Your sounds**: sounds saved to the library (synth copies, saved track sounds, SoundFonts…).
-- **Page**: a pattern, i.e. the step data for every track.
-- **Slot**: an entry in the song order that points at a pattern.
-  - A **clone** is a slot that shares its pattern with another.
-  - A **copy** is a new pattern.
+- **Pattern**: the step data for every track (called "page" before D180).
+- **Section** (in code: a slot, `Section` in `Project.slots`): an entry in the song; it plays a
+  pattern ×repeats, with its own settings. The song strip and the timeline show sections.
+  - A **clone** is a section that shares its pattern with another (linked).
+  - A **copy** is a section with its own copy of the pattern.
 - **Sample**: immutable audio, identified by its SHA-256.
 - **Sample settings**: non-destructive edits to a sample.
 
@@ -235,7 +236,7 @@ About 38k lines of TypeScript, with 31 unit test files next to the code (`*.test
    - Runtime-only things live in an `EngineScope`: nodes, buffers, voices. `newScope()` plus
      `withScope(scope, fn)` runs the same engine code against an offline context for exports.
 3. **Audio never waits for React.** `transport.ts` is a lookahead scheduler (120 ms) on the audio
-   clock, driven by a worker ticker. `playPageStep` decides what each track plays on each step:
+   clock, driven by a worker ticker. `playStep` decides what each track plays on each step:
    probability, conditions, ratchets, nudge, swing, per-track step size and length, arpeggiator,
    parameter locks.
 4. **Visuals bypass React.**
@@ -261,7 +262,7 @@ About 38k lines of TypeScript, with 31 unit test files next to the code (`*.test
 
 - `Project`:
   - basics: `{ name, bpm, timeSignature, swing, metronome, countIn, key, playMode: "loop" | "song" }`
-  - content: `tracks: Track[]`, `patterns: Record<id, Pattern>`, `slots: PageSlot[]` (the song
+  - content: `tracks: Track[]`, `patterns: Record<id, Pattern>`, `slots: Section[]` (the song
     order: `{ id, patternId, repeats }`)
   - mixing and control: `buses`, `master`, `midiMappings`, `perf` (mute groups, crossfader sides)
 - `Track` (a step track, D93):
@@ -630,7 +631,7 @@ onPatchEdit` hook, debounced `saveSoundSoon`).
   voices implement `panic()` (return true if they can only be muted), effects with memory are in
   `HOLDS_SOUND` (`effects.ts`), and nodes outside the engine's chains register `onPanic` (the
   performance filters do).
-- **Effects that follow the beat get page steps** from `playPageStep` (`effectsStep`, D104), the
+- **Effects that follow the beat get page steps** from `playStep` (`effectsStep`, D104), the
   same live and offline. A new beat-synced effect implements `onStep`.
 - **Training and the app must cut the same windows.** Any change to `onsets.ts` goes into
   `ml/rebeat_ml/onsets.py` too (and the gate into `windows.py`), then retrain and export: the

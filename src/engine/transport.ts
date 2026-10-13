@@ -279,7 +279,7 @@ function arpeggiate(
  * Play every track's sound for one page step (shared by the live transport and offline
  * rendering). Fills `triggered` and `laneSteps` for the visuals.
  */
-export function playPageStep(
+export function playStep(
   project: Project,
   pattern: Pattern,
   pageStep: number,
@@ -409,7 +409,7 @@ function scheduleStep(time: number) {
     click(time, beat % project.timeSignature[0] === 0);
   }
 
-  playPageStep(project, pattern, pageStep, time, dur, cycle, fill, triggered, laneSteps);
+  playStep(project, pattern, pageStep, time, dur, cycle, fill, triggered, laneSteps);
 
   const info: ScheduledStep = { time, dur, slotId: slot.id, pattern, pageStep, tick };
   history.push(info);

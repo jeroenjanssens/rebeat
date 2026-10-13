@@ -345,7 +345,7 @@ export function TransportBar() {
           dropdown(
             loopRef.current!,
             [0, 1, 2, 4, 8].map((n) => ({
-              label: n === 0 ? "Page length" : `${n} bar${n > 1 ? "s" : ""}`,
+              label: n === 0 ? "Pattern length" : `${n} bar${n > 1 ? "s" : ""}`,
               checked: loopBars === n,
               onSelect: () => setUi({ loopBars: n }),
             })),
@@ -353,7 +353,7 @@ export function TransportBar() {
         }
       >
         <span className="label">Loop</span>
-        <span className="num">{loopBars ? `${loopBars} bar` : "Page"}</span>
+        <span className="num">{loopBars ? `${loopBars} bar` : "Pattern"}</span>
       </button>
       <Position />
 
@@ -473,7 +473,7 @@ export function TransportBar() {
           data-active={playMode === "loop"}
           onClick={() => useStore.getState().setPlayMode("loop")}
         >
-          Page
+          Loop
         </button>
         <button
           data-active={playMode === "song"}
