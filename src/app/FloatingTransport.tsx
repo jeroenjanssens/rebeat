@@ -1,15 +1,17 @@
 import { useEffect, useRef, useState } from "react";
-import { Minimize, Play, Square } from "lucide-react";
+import { Circle, Minimize, Play, Square } from "lucide-react";
 import { DragValue } from "../components/DragValue";
 import * as clock from "../engine/transport";
 import { platform } from "../platform";
 import { useStore } from "../state/store";
+import { setTempo } from "./TransportBar";
 
 /** A slim transport that auto-hides; shown in panel full screen. */
 export function FloatingTransport() {
   const playing = useStore((s) => s.playing);
   const bpm = useStore((s) => s.project.bpm);
   const playMode = useStore((s) => s.project.playMode);
+  const recording = useStore((s) => s.recording);
   const [visible, setVisible] = useState(true);
   const timer = useRef(0);
   const hovering = useRef(false);
@@ -54,6 +56,16 @@ export function FloatingTransport() {
         )}
         {playing ? "Stop" : "Play"}
       </button>
+      <button
+        className="hw-btn !min-h-[26px] !flex-row gap-1.5"
+        data-lit={recording}
+        style={recording ? { color: "#ef4444", borderColor: "#ef4444" } : undefined}
+        onClick={() => useStore.getState().setUi({ recording: !recording })}
+        data-hint="transport.record"
+      >
+        <Circle size={10} fill={recording ? "currentColor" : "none"} />
+        Rec
+      </button>
       <span data-hint="transport.bpm">
         <DragValue
           label="BPM"
@@ -62,7 +74,7 @@ export function FloatingTransport() {
           max={300}
           defaultValue={120}
           format={(v) => v.toFixed(0)}
-          onChange={(v) => useStore.getState().commit((p) => void (p.bpm = v), "bpm")}
+          onChange={setTempo}
         />
       </span>
       <div className="segmented" data-hint="transport.playmode">

@@ -3,7 +3,7 @@
  * through the tempo map), the Tempo lane (D193), the tracks in miniature (mutes per section),
  * automation lanes (D186) and audio on the timeline (D188).
  */
-import { Minus, Plus, Repeat, Rows3, ScanLine } from "lucide-react";
+import { Circle, Minus, Plus, Repeat, Rows3, ScanLine } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { DragValue } from "../../components/DragValue";
 import { contextMenu, dropdown } from "../../components/Menu";
@@ -11,6 +11,7 @@ import * as transport from "../../engine/transport";
 import { droppedSamples, isSampleDrag } from "../../library/drop";
 import { bars, layout, songLength, toAnchor, toSong } from "../../model/arrangement";
 import { secondsBetween, songSeconds, tempoAt } from "../../model/tempoMap";
+import { TIME_SIGNATURES } from "../../model/tempo";
 import { onFrame } from "../../render/raf";
 import { alpha, token } from "../../render/theme";
 import { backToAutomation, useOverrides } from "../../state/automationOverride";
@@ -80,6 +81,16 @@ function Ruler({ ppq, width, view }: { ppq: number; width: number; view: View })
       data-hint="timeline.ruler"
       data-testid="timeline-ruler"
       onClick={(e) => place(at(e))}
+      onContextMenu={(e) =>
+        contextMenu(e, [
+          { heading: "Time signature" },
+          ...TIME_SIGNATURES.map(([b, u]) => ({
+            label: `${b}/${u}`,
+            checked: project.timeSignature[0] === b && project.timeSignature[1] === u,
+            onSelect: () => useStore.getState().commit((p) => void (p.timeSignature = [b, u])),
+          })),
+        ])
+      }
       onDoubleClick={(e) => {
         place(at(e));
         if (useStore.getState().playing) transport.stop();
@@ -272,6 +283,7 @@ function zoomTo(z: number) {
 export function Timeline() {
   const project = useStore((s) => s.project);
   const { follow, songLoop, setUi, setPlayMode } = useStore();
+  const recordAutomation = useStore((s) => s.recordAutomation);
   const settings = useSettings();
   const overridden = useOverrides((s) => s.overridden);
   const scroller = useRef<HTMLDivElement>(null);
@@ -470,6 +482,21 @@ export function Timeline() {
           onClick={(e) => pickAutomation(e.currentTarget, startQ)}
         >
           <Plus size={12} /> Automation
+        </button>
+        <button
+          className="tool-btn"
+          data-active={recordAutomation}
+          aria-pressed={recordAutomation}
+          title={
+            recordAutomation
+              ? "Automation armed: while recording in Song mode, knob turns become points (click to disarm)"
+              : "Arm automation: while recording in Song mode, knob turns become points"
+          }
+          data-hint="timeline.arm-automation"
+          data-testid="timeline-arm-automation"
+          onClick={() => setUi({ recordAutomation: !recordAutomation })}
+        >
+          <Circle size={10} fill={recordAutomation ? "currentColor" : "none"} /> Arm
         </button>
         {Object.keys(overridden).length > 0 && (
           <button

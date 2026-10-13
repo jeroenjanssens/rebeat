@@ -16,13 +16,28 @@ const hints: Hints = {
   },
   "transport.record": {
     title: "Record",
-    text: "While playing, pads you hit are written into the pattern. With an armed Clip track it records a loop. Press again to stop recording.",
+    text: "While playing, pads you hit are written into the pattern. With an armed Clip track it records a loop. Press again to stop recording. An A on it means automation is armed too: knob turns become points.",
     command: "transport.record",
     guide: "transport-bar",
   },
+  "transport.record.menu": {
+    title: "Recording options",
+    text: "How recording works: arm automation, Overdub or Replace for notes, Snap and its grid, and how long a Clip track records.",
+    guide: "transport-bar",
+  },
+  "transport.tempo.menu": {
+    title: "Tempo & groove",
+    text: "Tap the tempo, pick the time signature, and set the song's swing.",
+    guide: "transport-bar",
+  },
+  "transport.click.menu": {
+    title: "Metronome and count-in",
+    text: "Turn the metronome on or off, and the count-in: a bar of clicks before playing or recording from a stop.",
+    guide: "transport-bar",
+  },
   "transport.loop": {
-    title: "Loop length",
-    text: "Sets how long a loop recording runs: the pattern length, or 1, 2, 4, or 8 bars.",
+    title: "Clip record length",
+    text: "How long a Clip track records a loop: the pattern's length, or 1, 2, 4 or 8 bars. In Rec ▾ and in a Clip track's Inspector.",
     guide: "transport-bar",
   },
   "transport.position": {
@@ -32,7 +47,7 @@ const hints: Hints = {
   },
   "transport.bpm": {
     title: "Tempo (BPM)",
-    text: "The song's tempo in beats per minute. Drag up or down, or scroll to change it. Double-click to reset to 120.",
+    text: "The song's tempo in beats per minute. Drag up or down, or scroll to change it. Double-click to reset to 120. The time signature shows next to it when it isn't 4/4; ▾ has Tap, the time signature and the song's swing.",
     keys: "Shift+drag: fine adjustment · Double-click: reset to 120",
     guide: "transport-bar",
   },

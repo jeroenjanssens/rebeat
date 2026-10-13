@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  ChevronDown,
   Circle,
   Command as CommandIcon,
   Expand,
@@ -15,7 +16,7 @@ import {
 } from "lucide-react";
 import { DragValue } from "../components/DragValue";
 import { LevelMeter } from "../components/LevelMeter";
-import { contextMenu, dropdown, type MenuItem } from "../components/Menu";
+import { contextMenu, dropdown, useMenu, type MenuItem } from "../components/Menu";
 import { startMidiLearn } from "../midi/learn";
 import * as engine from "../engine/engine";
 import * as clock from "../engine/transport";
@@ -79,36 +80,6 @@ const learnCommand = (id: string, title: string) => (e: React.MouseEvent) =>
       onSelect: () => startMidiLearn(`command:${id}`, title, "global"),
     },
   ]);
-
-function Toggle({
-  lit,
-  onClick,
-  title,
-  hint,
-  command,
-  children,
-}: {
-  lit: boolean;
-  onClick: () => void;
-  title: string;
-  hint?: string;
-  /** The command it runs, for MIDI learn. */
-  command?: { id: string; title: string };
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      className="hw-btn !min-h-[26px] !flex-row gap-1"
-      data-lit={lit}
-      onClick={onClick}
-      title={title}
-      data-hint={hint}
-      onContextMenu={command ? learnCommand(command.id, command.title) : undefined}
-    >
-      {children}
-    </button>
-  );
-}
 
 /** Bar.beat.step position of the playhead, updated on the frame loop (not React). */
 function Position() {
@@ -253,7 +224,223 @@ function AudioStatus() {
         className="h-2 w-2 rounded-full"
         style={{ background: color, boxShadow: `0 0 6px ${color}` }}
       />
-      <span className="label hidden @[1100px]:inline">{text}</span>
+    </span>
+  );
+}
+
+/** A popover under an element: live content that stays open while you use it. */
+function popover(el: HTMLElement, content: (close: () => void) => React.ReactNode) {
+  const r = el.getBoundingClientRect();
+  useMenu.getState().show(r.left, r.bottom + 4, [{ render: content }]);
+}
+
+/** A row in a top-bar popover: a label and its control. */
+function PopRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex min-h-[28px] items-center gap-2">
+      <span className="label w-[86px] shrink-0">{label}</span>
+      {children}
+    </div>
+  );
+}
+
+/** Rec ▾ (D215): how recording works. Automation, Overdub or Replace, Snap and the grid, and
+ * the Clip tracks' recording length. */
+function RecordingPopover() {
+  const recordAutomation = useStore((s) => s.recordAutomation);
+  const quantize = useStore((s) => s.quantize);
+  const loopBars = useStore((s) => s.loopBars);
+  const recordMode = useSettings((s) => s.recordMode);
+  const snap = useSettings((s) => s.snap);
+  const { setUi } = useStore.getState();
+  const setSettings = useSettings.getState().set;
+  return (
+    <div className="flex w-[300px] flex-col gap-1 p-2" data-testid="recording-popover">
+      <div className="label mb-1 !text-ink">Recording</div>
+      <PopRow label="Automation">
+        <button
+          className="hw-btn !min-h-[24px]"
+          data-lit={recordAutomation}
+          onClick={() => setUi({ recordAutomation: !recordAutomation })}
+          data-hint="transport.record-automation"
+          data-testid="record-automation"
+        >
+          {recordAutomation ? "Armed" : "Off"}
+        </button>
+        <span className="text-[10.5px] text-faint">knob turns become points</span>
+      </PopRow>
+      <PopRow label="Notes">
+        <div className="segmented" data-hint="transport.recordMode">
+          <button
+            data-active={recordMode === "overdub"}
+            onClick={() => setSettings({ recordMode: "overdub" })}
+          >
+            Overdub
+          </button>
+          <button
+            data-active={recordMode === "replace"}
+            onClick={() => setSettings({ recordMode: "replace" })}
+          >
+            Replace
+          </button>
+        </div>
+      </PopRow>
+      <PopRow label="Timing">
+        <button
+          className="hw-btn !min-h-[24px] !flex-row gap-1"
+          data-active={snap}
+          onClick={() => setSettings({ snap: !snap })}
+          data-hint="transport.snap"
+        >
+          <Magnet size={11} /> {snap ? "Snap" : "Free"}
+        </button>
+        <div className="segmented" data-hint="transport.quantize">
+          {["1/4", "1/8", "1/16", "1/32"].map((q) => (
+            <button key={q} data-active={quantize === q} onClick={() => setUi({ quantize: q })}>
+              {q}
+            </button>
+          ))}
+        </div>
+      </PopRow>
+      <PopRow label="Clip length">
+        <LoopBars value={loopBars} onChange={(n) => setUi({ loopBars: n })} />
+      </PopRow>
+    </div>
+  );
+}
+
+/** How long a Clip track records (the looper): the pattern, or 1–8 bars. */
+export function LoopBars({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+  return (
+    <div className="segmented" data-hint="transport.loop">
+      {[0, 1, 2, 4, 8].map((n) => (
+        <button key={n} data-active={value === n} onClick={() => onChange(n)}>
+          {n === 0 ? "Pattern" : n}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** BPM ▾ (D215): tap, the time signature and the song's swing. */
+function TempoPopover() {
+  const project = useStore((s) => s.project);
+  const [beats, unit] = project.timeSignature;
+  const { commit } = useStore.getState();
+  const [flash, setFlash] = useState(false);
+  return (
+    <div className="flex w-[290px] flex-col gap-1 p-2" data-testid="tempo-popover">
+      <div className="label mb-1 !text-ink">Tempo & groove</div>
+      <PopRow label="Tap">
+        <button
+          className="hw-btn !min-h-[28px] flex-1"
+          data-lit={flash}
+          title="Tap tempo (T)"
+          data-hint="transport.tap"
+          onContextMenu={learnCommand("transport.tap", "Tap tempo")}
+          onClick={() => {
+            tapTempo();
+            setFlash(true);
+            setTimeout(() => setFlash(false), 90);
+          }}
+        >
+          Tap
+        </button>
+      </PopRow>
+      <PopRow label="Time signature">
+        <div className="flex flex-wrap gap-1" data-hint="transport.timesig">
+          {TIME_SIGNATURES.map(([b, u]) => (
+            <button
+              key={`${b}/${u}`}
+              className="tool-btn num !h-6 border border-line"
+              data-active={b === beats && u === unit}
+              onClick={() => commit((p) => void (p.timeSignature = [b, u]))}
+            >
+              {b}/{u}
+            </button>
+          ))}
+        </div>
+      </PopRow>
+      <PopRow label="Song swing">
+        <span data-hint="transport.swing">
+          <DragValue
+            label="Swing"
+            value={Math.round(project.swing * 100)}
+            min={50}
+            max={75}
+            defaultValue={50}
+            format={(v) => `${v}%`}
+            onChange={(v) => commit((p) => void (p.swing = v / 100), "gswing")}
+            title="The song's swing (patterns can have their own) · drag or scroll · double-click = straight"
+          />
+        </span>
+      </PopRow>
+      {hasTempoChanges(project) && (
+        <p className="text-[10.5px] text-faint">
+          The song has tempo changes: they're in the Timeline's Tempo lane.
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Click ▾ (D215): the metronome, and the count-in with it. */
+function ClickPopover() {
+  const project = useStore((s) => s.project);
+  const { commit } = useStore.getState();
+  return (
+    <div className="flex w-[240px] flex-col gap-1 p-2" data-testid="click-popover">
+      <PopRow label="Metronome">
+        <button
+          className="hw-btn !min-h-[24px]"
+          data-lit={project.metronome}
+          onClick={() => commit((p) => void (p.metronome = !p.metronome))}
+          data-hint="transport.metronome"
+        >
+          {project.metronome ? "On" : "Off"}
+        </button>
+      </PopRow>
+      <PopRow label="Count-in">
+        <button
+          className="hw-btn !min-h-[24px]"
+          data-lit={project.countIn}
+          onClick={() => commit((p) => void (p.countIn = !p.countIn))}
+          data-hint="transport.countin"
+          data-testid="count-in"
+        >
+          {project.countIn ? "1 bar" : "Off"}
+        </button>
+      </PopRow>
+    </div>
+  );
+}
+
+/** A button with a ▾ beside it for its options (the two halves of one control). */
+function Split({
+  children,
+  onMenu,
+  menuTitle,
+  menuHint,
+  testId,
+}: {
+  children: React.ReactNode;
+  onMenu: (el: HTMLElement) => void;
+  menuTitle: string;
+  menuHint: string;
+  testId?: string;
+}) {
+  return (
+    <span className="inline-flex items-stretch">
+      {children}
+      <button
+        className="hw-btn !min-h-[28px] !min-w-0 !rounded-l-none !border-l-0 !px-1"
+        title={menuTitle}
+        data-hint={menuHint}
+        data-testid={testId}
+        onClick={(e) => onMenu(e.currentTarget.parentElement!)}
+      >
+        <ChevronDown size={11} />
+      </button>
     </span>
   );
 }
@@ -266,23 +453,13 @@ export function TransportBar() {
   const overridden = useOverrides((s) => s.overridden);
   const playMode = useStore((s) => s.project.playMode);
   const projectId = useStore((s) => s.projectId);
-  const quantize = useStore((s) => s.quantize);
   const recording = useStore((s) => s.recording);
   const recordAutomation = useStore((s) => s.recordAutomation);
-  const loopBars = useStore((s) => s.loopBars);
-  const loopRef = useRef<HTMLButtonElement>(null);
   const { commit, setUi } = useStore.getState();
   const fullscreen = useShell((s) => s.fullscreen);
   const set = useShell((s) => s.set);
   const explain = useSettings((s) => s.explain);
-  const recordMode = useSettings((s) => s.recordMode);
-  const snap = useSettings((s) => s.snap);
-  const setSettings = useSettings((s) => s.set);
-  const [tapFlash, setTapFlash] = useState(false);
   const layoutRef = useRef<HTMLButtonElement>(null);
-  const sigRef = useRef<HTMLButtonElement>(null);
-  const qRef = useRef<HTMLButtonElement>(null);
-
   const [beats, unit] = project.timeSignature;
 
   const layoutItems = (): MenuItem[] => [
@@ -308,7 +485,7 @@ export function TransportBar() {
         re<span className="text-lit">beat</span>
       </span>
       <button
-        className="hidden max-w-[180px] items-center gap-1.5 truncate rounded px-1.5 py-0.5 text-[12px] text-dim hover:bg-surface hover:text-ink @[900px]:flex"
+        className="hidden max-w-[220px] items-center gap-1.5 truncate rounded px-1.5 py-0.5 text-[12px] text-dim hover:bg-surface hover:text-ink @[700px]:flex"
         title="Projects (Ctrl/Cmd+O)"
         onClick={() => set({ homeOpen: true })}
         data-testid="project-name"
@@ -345,190 +522,85 @@ export function TransportBar() {
         )}
         {playing ? "Stop" : "Play"}
       </button>
-      <button
-        className="hw-btn !min-h-[28px] !flex-row gap-1.5"
-        data-lit={recording}
-        style={recording ? { color: "#ef4444", borderColor: "#ef4444" } : undefined}
-        onClick={() => setUi({ recording: !recording })}
-        onContextMenu={learnCommand("transport.record", "Record")}
-        title="Record (R): live pad recording and armed Clip tracks"
-        data-hint="transport.record"
+      <Split
+        onMenu={(el) => popover(el, () => <RecordingPopover />)}
+        menuTitle="Recording: automation, overdub or replace, snap, the grid, Clip length"
+        menuHint="transport.record.menu"
+        testId="record-menu"
       >
-        <Circle size={11} fill={recording ? "currentColor" : "none"} />
-        <span className="hidden @[1000px]:inline">Rec</span>
-      </button>
-      <button
-        className="hw-btn !min-h-[28px] hidden @[950px]:inline-flex"
-        data-lit={recordAutomation}
-        onClick={() => setUi({ recordAutomation: !recordAutomation })}
-        title={
-          recordAutomation
-            ? "Record automation: on. While recording in Song mode, knob turns become automation points"
-            : "Record automation: off (click to record knob turns as automation)"
-        }
-        data-hint="transport.record-automation"
-        data-testid="record-automation"
-      >
-        Auto
-      </button>
-      <button
-        className="hw-btn !min-h-[28px] hidden @[950px]:inline-flex"
-        data-active={recordMode === "replace"}
-        onClick={() =>
-          setSettings({ recordMode: recordMode === "overdub" ? "replace" : "overdub" })
-        }
-        title={
-          recordMode === "overdub"
-            ? "Overdub: adds notes, keeps existing (click for Replace)"
-            : "Replace: clears a step the first time you play it each loop (click for Overdub)"
-        }
-        data-hint="transport.recordMode"
-      >
-        {recordMode === "overdub" ? "Ovd" : "Rep"}
-      </button>
-      <button
-        ref={loopRef}
-        className="field hidden @[1050px]:inline-flex"
-        title="Loop recording length"
-        data-hint="transport.loop"
-        onClick={() =>
-          dropdown(
-            loopRef.current!,
-            [0, 1, 2, 4, 8].map((n) => ({
-              label: n === 0 ? "Pattern length" : `${n} bar${n > 1 ? "s" : ""}`,
-              checked: loopBars === n,
-              onSelect: () => setUi({ loopBars: n }),
-            })),
-          )
-        }
-      >
-        <span className="label">Loop</span>
-        <span className="num">{loopBars ? `${loopBars} bar` : "Pattern"}</span>
-      </button>
-      <Position />
-
-      <span data-hint="transport.bpm">
-        <DragValue
-          label={tempoChanges ? "BPM ∿" : "BPM"}
-          value={shownTempo}
-          min={20}
-          max={300}
-          step={0.1}
-          defaultValue={120}
-          title={
-            tempoChanges
-              ? "The tempo now (the song has tempo changes) · dragging overrides them until Back to automation"
-              : undefined
-          }
-          format={(v) => (Number.isInteger(v) ? v.toFixed(0) : v.toFixed(1))}
-          onChange={setTempo}
-        />
-      </span>
-      {Object.keys(overridden).length > 0 && (
         <button
-          className="hw-btn !min-h-[26px] !text-lit"
-          title="You turned automated knobs or typed a tempo: bring their automation back"
-          data-hint="timeline.back-to-automation"
-          data-testid="transport-back-to-automation"
-          onClick={backToAutomation}
+          className="hw-btn relative !min-h-[28px] !flex-row gap-1.5 !rounded-r-none"
+          data-lit={recording}
+          style={recording ? { color: "#ef4444", borderColor: "#ef4444" } : undefined}
+          onClick={() => setUi({ recording: !recording })}
+          onContextMenu={learnCommand("transport.record", "Record")}
+          title={
+            recordAutomation
+              ? "Record (R), with automation armed: knob turns become points"
+              : "Record (R): live pad recording and armed Clip tracks"
+          }
+          data-hint="transport.record"
         >
-          ⟲ Auto
+          <Circle size={11} fill={recording ? "currentColor" : "none"} />
+          Rec
+          {recordAutomation && (
+            <span
+              className="num rounded-sm bg-accent px-[3px] text-[8.5px] leading-[12px] text-black"
+              data-testid="record-automation-badge"
+            >
+              A
+            </span>
+          )}
         </button>
-      )}
-      <button
-        className="hw-btn !min-h-[26px]"
-        data-lit={tapFlash}
-        title="Tap tempo (T)"
-        data-hint="transport.tap"
-        onContextMenu={learnCommand("transport.tap", "Tap tempo")}
-        onClick={() => {
-          tapTempo();
-          setTapFlash(true);
-          setTimeout(() => setTapFlash(false), 90);
-        }}
+      </Split>
+      <Position />
+      <Split
+        onMenu={(el) => popover(el, () => <TempoPopover />)}
+        menuTitle="Tempo & groove: tap, time signature, swing"
+        menuHint="transport.tempo.menu"
+        testId="tempo-menu"
       >
-        Tap
-      </button>
-      <button
-        ref={sigRef}
-        className="field num"
-        title="Time signature"
-        data-hint="transport.timesig"
-        onClick={() =>
-          dropdown(
-            sigRef.current!,
-            TIME_SIGNATURES.map(([b, u]) => ({
-              label: `${b}/${u}`,
-              checked: b === beats && u === unit,
-              onSelect: () => commit((p) => void (p.timeSignature = [b, u])),
-            })),
-          )
-        }
+        <span className="inline-flex items-center gap-1" data-hint="transport.bpm">
+          <DragValue
+            label={tempoChanges ? "BPM ∿" : "BPM"}
+            value={shownTempo}
+            min={20}
+            max={300}
+            step={0.1}
+            defaultValue={120}
+            title={
+              tempoChanges
+                ? "The tempo now (the song has tempo changes) · dragging overrides them until Back to automation"
+                : undefined
+            }
+            format={(v) => (Number.isInteger(v) ? v.toFixed(0) : v.toFixed(1))}
+            onChange={setTempo}
+          />
+          {(beats !== 4 || unit !== 4) && (
+            <span className="num pr-1.5 text-[10.5px] text-dim">
+              {beats}/{unit}
+            </span>
+          )}
+        </span>
+      </Split>
+      <Split
+        onMenu={(el) => popover(el, () => <ClickPopover />)}
+        menuTitle="Metronome and count-in"
+        menuHint="transport.click.menu"
+        testId="click-menu"
       >
-        {beats}/{unit}
-      </button>
-      <Toggle
-        lit={project.metronome}
-        onClick={() => commit((p) => void (p.metronome = !p.metronome))}
-        title="Metronome (K)"
-        hint="transport.metronome"
-        command={{ id: "transport.metronome", title: "Metronome on/off" }}
-      >
-        <Timer size={12} />
-        <span className="hidden @[1200px]:inline">Click</span>
-      </Toggle>
-      <Toggle
-        lit={project.countIn}
-        onClick={() => commit((p) => void (p.countIn = !p.countIn))}
-        title="Count-in: one bar of clicks before playing/recording from a stop"
-        hint="transport.countin"
-      >
-        <span>1234</span>
-      </Toggle>
-      <span className="hidden @[1150px]:inline-flex" data-hint="transport.swing">
-        <DragValue
-          label="Swing"
-          value={Math.round(project.swing * 100)}
-          min={50}
-          max={75}
-          defaultValue={50}
-          format={(v) => `${v}%`}
-          onChange={(v) => commit((p) => void (p.swing = v / 100), "gswing")}
-          title="Global swing · drag or scroll · double-click = straight"
-        />
-      </span>
-      <button
-        className="hw-btn !min-h-[28px] hidden @[1200px]:inline-flex"
-        data-active={snap}
-        onClick={() => setSettings({ snap: !snap })}
-        title={
-          snap
-            ? "Snap on: note starts snap to the Q grid (click to record free timing)"
-            : "Snap off: exact timing recorded as sub-step offset (click to snap)"
-        }
-        data-hint="transport.snap"
-      >
-        <Magnet size={12} />
-      </button>
-      <button
-        ref={qRef}
-        className="field hidden @[1250px]:inline-flex"
-        title="Quantize grid for live recording"
-        data-hint="transport.quantize"
-        onClick={() =>
-          dropdown(
-            qRef.current!,
-            ["1/4", "1/8", "1/16", "1/32"].map((q) => ({
-              label: q,
-              checked: quantize === q,
-              onSelect: () => setUi({ quantize: q }),
-            })),
-          )
-        }
-      >
-        <span className="label">Q</span>
-        <span className="num">{quantize}</span>
-      </button>
+        <button
+          className="hw-btn !min-h-[28px] !flex-row gap-1 !rounded-r-none"
+          data-lit={project.metronome}
+          onClick={() => commit((p) => void (p.metronome = !p.metronome))}
+          onContextMenu={learnCommand("transport.metronome", "Metronome on/off")}
+          title={`Metronome (K)${project.countIn ? " · count-in on" : ""}`}
+          data-hint="transport.metronome"
+        >
+          <Timer size={12} />
+          {project.countIn && <span className="num text-[9px] text-dim">1234</span>}
+        </button>
+      </Split>
       <div
         className="segmented"
         title="Playback mode (L)"
@@ -548,14 +620,25 @@ export function TransportBar() {
           Song
         </button>
       </div>
-      <KeysChip className="hidden @[800px]:inline-flex" />
+      {Object.keys(overridden).length > 0 && (
+        <button
+          className="hw-btn !min-h-[26px] !text-lit"
+          title="You turned automated knobs or typed a tempo: bring their automation back"
+          data-hint="timeline.back-to-automation"
+          data-testid="transport-back-to-automation"
+          onClick={backToAutomation}
+        >
+          ⟲ Auto
+        </button>
+      )}
 
       <div className="flex-1" />
 
-      <span className="hidden @[1300px]:flex">
+      <KeysChip className="hidden @[760px]:inline-flex" />
+      <span className="hidden @[1100px]:flex">
         <CpuMeter />
       </span>
-      <span data-hint="transport.masterlevel">
+      <span className="hidden @[960px]:inline" data-hint="transport.masterlevel">
         <LevelMeter read={() => engine.masterLevel()} width={64} height={11} title="Master level" />
       </span>
       <AudioStatus />

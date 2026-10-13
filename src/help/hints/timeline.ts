@@ -94,6 +94,11 @@ const hints: Hints = {
     text: "You turned automated knobs (or typed a tempo), which overrides their lanes. This brings every overridden lane back.",
     guide: "timeline-automation",
   },
+  "timeline.arm-automation": {
+    title: "Arm automation",
+    text: "While recording in Song mode, turning a knob that can be automated writes its moves as points on its lane. The same switch is in Rec ▾ in the top bar, and Rec shows an A while it's armed.",
+    guide: "timeline-automation",
+  },
   "transport.record-automation": {
     title: "Record automation",
     text: "While recording in Song mode, turning a knob that can be automated writes its moves as automation points, where they happen in the song. When the take ends they're thinned and replace the lane's points under them; one undo step.",

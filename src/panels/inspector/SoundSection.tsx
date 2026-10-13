@@ -3,6 +3,7 @@
  * Clip), what plays (a sample, a synth or a sampled instrument) and that sound's own settings,
  * with Edit and Save to Your sounds. Notes mode adds transpose and the arpeggiator (NotesSection).
  */
+import { LoopBars } from "../../app/TransportBar";
 import { useEffect, useRef, useState } from "react";
 import { Library, Pencil } from "lucide-react";
 import { focusPanel, openInBeatbox, openSampleEditor, openSynthEditor } from "../../app/openers";
@@ -181,6 +182,7 @@ export function SoundSection({ track }: { track: Track }) {
             Save to Your sounds
           </button>
         )}
+        {track.mode === "clip" && <ClipLength />}
         {track.mode === "clip" && sampleOf(track) && (
           <button
             className="tool-btn self-start border border-line"
@@ -192,6 +194,17 @@ export function SoundSection({ track }: { track: Track }) {
         )}
       </div>
     </Section>
+  );
+}
+
+/** How long a Clip track records (the looper's length, D215; also in Rec ▾). */
+function ClipLength() {
+  const loopBars = useStore((s) => s.loopBars);
+  return (
+    <div className="flex items-center gap-2">
+      <span className="label">Record length</span>
+      <LoopBars value={loopBars} onChange={(n) => useStore.getState().setUi({ loopBars: n })} />
+    </div>
   );
 }
 

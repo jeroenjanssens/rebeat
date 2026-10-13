@@ -51,14 +51,19 @@ async function notesAtStep(
 
 // ── tests ─────────────────────────────────────────────────────────────────────────────────────
 
-test("record-notes: Snap toggle visible in TransportBar", async ({ page }) => {
+test("record-notes: Snap and Overdub/Replace are in the top bar's Rec ▾ (D215)", async ({
+  page,
+}) => {
   await openApp(page);
-  await expect(page.locator('[data-hint="transport.snap"]')).toBeVisible();
-});
-
-test("record-notes: Overdub/Replace toggle visible in TransportBar", async ({ page }) => {
-  await openApp(page);
-  await expect(page.locator('[data-hint="transport.recordMode"]')).toBeVisible();
+  await page.getByTestId("record-menu").click();
+  const pop = page.getByTestId("recording-popover");
+  await expect(pop.locator('[data-hint="transport.snap"]')).toBeVisible();
+  await expect(pop.locator('[data-hint="transport.recordMode"]')).toBeVisible();
+  await pop.getByRole("button", { name: "Replace" }).click();
+  await expect(pop.getByRole("button", { name: "Replace" })).toHaveAttribute("data-active", "true");
+  // arming automation puts an A on Rec
+  await pop.getByTestId("record-automation").click();
+  await expect(page.getByTestId("record-automation-badge")).toBeVisible();
 });
 
 test("record-notes: chord of two MIDI notes lands in the pattern", async ({ page }) => {
