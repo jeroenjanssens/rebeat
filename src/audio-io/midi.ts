@@ -1062,10 +1062,18 @@ export function applyTarget(target: string, v: number, continuous: boolean) {
   if (kind === "command") return void (v > 0 && runCommand(id + (key ? `:${key}` : "")));
   if (kind === "perf") return setPerfControl(id, v, continuous);
   commit((p) => {
+    const setFx = (list: { id?: string; params: Record<string, number> }[], k: string) => {
+      const [, fxId, param] = k.split(":");
+      const fx = list.find((f) => f.id === fxId);
+      if (fx) fx.params[param] = v;
+    };
     if (kind === "master" && id === "volume") p.master.volume = v;
+    // the master's and the buses' effect knobs (D189): "master:fx:<id>:<param>", "bus:<id>:fx:…"
+    else if (kind === "master" && id === "fx") setFx(p.master.effects, `fx:${key}`);
     else if (kind === "bus") {
       const b = p.buses.find((x) => x.id === id);
-      if (b) b.volume = v;
+      if (b && key.startsWith("fx:")) setFx(b.effects, key);
+      else if (b) b.volume = v;
     } else if (kind === "track") {
       const t = p.tracks.find((x) => x.id === id);
       if (!t) return;

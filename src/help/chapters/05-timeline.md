@@ -69,7 +69,7 @@ An automation lane moves a knob over the song: a filter that opens over the buil
 
 With **Record automation** on (next to Record), knob turns while recording in Song mode become points. They're thinned so the lane stays easy to edit.
 
-Knobs that can be automated: track levels, pan, width, sends and EQ, a sample's filter, a synth's macros, the master's and the buses' levels, and some effect knobs (the Filter's cutoff and resonance, the Delay's mix and feedback, the Reverb's mix, Distortion's drive, EQ3's gains, Pump's depth). Other knobs don't show Automate.
+Knobs that can be automated: track levels, pan, width, sends and EQ, a sample's filter, a synth's macros, the master's and the buses' levels, and some effect knobs (the Filter's cutoff and resonance, the Delay's mix and feedback, the Reverb's mix, EQ3's gains, Pump's depth, and every effect's mix). Other knobs don't show Automate.
 
 ## Audio on the timeline
 

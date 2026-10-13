@@ -16,6 +16,10 @@ vi.mock("./engine", () => ({
   panic: vi.fn(),
   effectsStep: vi.fn(),
   tempoStep: vi.fn(),
+  releaseAutomation: vi.fn(),
+  automateTarget: vi.fn(),
+  automationState: () => ({ last: new Map(), live: false }),
+  startRegion: vi.fn(),
   ungate: vi.fn(),
   trigger: (...args: unknown[]) => trigger(...args),
 }));

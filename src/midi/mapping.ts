@@ -119,8 +119,17 @@ export function resolveTarget(target: string, ctx: TargetContext): string | null
 export function readTarget(target: string, project: Project): number | null {
   const [kind, id, ...rest] = target.split(":");
   const key = rest.join(":");
+  const fxValue = (list: { id?: string; params: Record<string, number> }[], k: string) => {
+    const [, fxId, param] = k.split(":");
+    return list.find((f) => f.id === fxId)?.params[param] ?? null;
+  };
   if (kind === "master" && id === "volume") return project.master.volume;
-  if (kind === "bus") return project.buses.find((b) => b.id === id)?.volume ?? null;
+  if (kind === "master" && id === "fx") return fxValue(project.master.effects, `fx:${key}`);
+  if (kind === "bus") {
+    const b = project.buses.find((x) => x.id === id);
+    if (!b) return null;
+    return key.startsWith("fx:") ? fxValue(b.effects, key) : b.volume;
+  }
   if (kind !== "track") return null;
   const t = project.tracks.find((x) => x.id === id);
   if (!t) return null;

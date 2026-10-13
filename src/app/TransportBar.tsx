@@ -20,6 +20,9 @@ import { startMidiLearn } from "../midi/learn";
 import * as engine from "../engine/engine";
 import * as clock from "../engine/transport";
 import { TIME_SIGNATURES, createTapTempo } from "../model/tempo";
+import { hasTempoChanges } from "../model/tempoMap";
+import { onFrame } from "../render/raf";
+import { backToAutomation, overrideTempo, useOverrides } from "../state/automationOverride";
 import { STEP_SIZE_QUARTERS } from "../model/types";
 import { platform } from "../platform";
 import { getLoad, startMainLoad } from "../engine/load";
@@ -36,8 +39,37 @@ const tap = createTapTempo();
 
 export function tapTempo() {
   const bpm = tap(performance.now());
-  if (bpm) useStore.getState().commit((p) => void (p.bpm = bpm), "bpm");
+  if (bpm) setTempo(bpm);
 }
+
+/**
+ * Set the tempo from the transport: the project's, or, when the song has tempo changes, one
+ * tempo over them until Back to automation (D193; the start tempo is in the Tempo lane).
+ */
+export function setTempo(bpm: number) {
+  const { project, commit } = useStore.getState();
+  if (hasTempoChanges(project)) overrideTempo(bpm);
+  else commit((p) => void (p.bpm = Math.round(bpm * 10) / 10), "bpm");
+}
+
+/** The tempo to show: the project's, or with tempo changes, the tempo now (it moves). */
+function useShownTempo(): number {
+  const project = useStore((s) => s.project);
+  const typed = useOverrides((s) => s.tempo);
+  const changes = hasTempoChanges(project);
+  const [now, setNow] = useState(project.bpm);
+  useEffect(() => {
+    if (!changes) return;
+    return onFrame(() => {
+      const t = Math.round(tempoNow() * 10) / 10;
+      setNow((x) => (x === t ? x : t));
+    });
+  }, [changes]);
+  if (!changes) return project.bpm;
+  return typed ?? now;
+}
+
+const tempoNow = () => clock.tempoNow();
 
 /** Right-click a transport button: MIDI learn its command, in every project (D122). */
 const learnCommand = (id: string, title: string) => (e: React.MouseEvent) =>
@@ -229,6 +261,9 @@ function AudioStatus() {
 export function TransportBar() {
   const playing = useStore((s) => s.playing);
   const project = useStore((s) => s.project);
+  const shownTempo = useShownTempo();
+  const tempoChanges = hasTempoChanges(project);
+  const overridden = useOverrides((s) => s.overridden);
   const playMode = useStore((s) => s.project.playMode);
   const projectId = useStore((s) => s.projectId);
   const quantize = useStore((s) => s.quantize);
@@ -359,16 +394,32 @@ export function TransportBar() {
 
       <span data-hint="transport.bpm">
         <DragValue
-          label="BPM"
-          value={project.bpm}
+          label={tempoChanges ? "BPM ∿" : "BPM"}
+          value={shownTempo}
           min={20}
           max={300}
           step={0.1}
           defaultValue={120}
+          title={
+            tempoChanges
+              ? "The tempo now (the song has tempo changes) · dragging overrides them until Back to automation"
+              : undefined
+          }
           format={(v) => (Number.isInteger(v) ? v.toFixed(0) : v.toFixed(1))}
-          onChange={(v) => commit((p) => void (p.bpm = Math.round(v * 10) / 10), "bpm")}
+          onChange={setTempo}
         />
       </span>
+      {Object.keys(overridden).length > 0 && (
+        <button
+          className="hw-btn !min-h-[26px] !text-lit"
+          title="You turned automated knobs or typed a tempo: bring their automation back"
+          data-hint="timeline.back-to-automation"
+          data-testid="transport-back-to-automation"
+          onClick={backToAutomation}
+        >
+          ⟲ Auto
+        </button>
+      )}
       <button
         className="hw-btn !min-h-[26px]"
         data-lit={tapFlash}

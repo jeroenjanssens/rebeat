@@ -12,7 +12,6 @@ export const AUTOMATABLE_FX: Record<string, string[]> = {
   Filter: ["cutoff", "reso"],
   Delay: ["mix", "feedback"],
   Reverb: ["mix"],
-  Distortion: ["drive"],
   EQ3: ["low", "mid", "high"],
   Pump: ["depth"],
 };
@@ -35,8 +34,14 @@ const mixDef = (id: string) => MIX_PARAMS.find((d) => d.id === id)!;
 function fxKnobs(fx: Effect[], prefix: string, group: string, owner: string): AutomatableKnob[] {
   const out: AutomatableKnob[] = [];
   for (const e of fx) {
-    for (const id of AUTOMATABLE_FX[e.name] ?? []) {
-      const def = (EFFECT_PARAMS[e.name] ?? []).find((d) => d.id === id);
+    const defs = EFFECT_PARAMS[e.name] ?? [];
+    // every effect's mix (its wet and dry gains), and the knobs with an audio-time path
+    const ids = new Set([
+      ...(defs.some((d) => d.id === "mix") ? ["mix"] : []),
+      ...(AUTOMATABLE_FX[e.name] ?? []),
+    ]);
+    for (const id of ids) {
+      const def = defs.find((d) => d.id === id);
       if (!def) continue;
       out.push({
         target: `${prefix}:fx:${e.id}:${id}`,

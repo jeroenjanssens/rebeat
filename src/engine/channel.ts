@@ -7,7 +7,7 @@ import * as Tone from "tone";
 import { toUnit } from "../model/params";
 import type { Track } from "../model/types";
 import type { Bus } from "../model/effects";
-import { FxChain } from "./effects";
+import { FxChain, schedule, type AutoEvent } from "./effects";
 import { Drive, FlatEQ } from "./tone";
 
 const FADE = 0.008;
@@ -53,6 +53,22 @@ export class BusChannel {
   /** A tempo change at an audio time (D192). */
   tempo(bpm: number, time: number) {
     this.fx.tempo(bpm, time);
+  }
+
+  /** Automation (D186): the return level, or one of its effects' knobs. */
+  automate(key: string, events: AutoEvent[]) {
+    if (key === "volume") schedule(this.fader.gain, events, faderGain);
+    else if (key.startsWith("fx:")) {
+      const [, fxId, param] = key.split(":");
+      this.fx.automate(fxId, param, events);
+    }
+  }
+
+  /** Automation ended: the knobs' own values again. */
+  release(bus: Bus, bpm: number) {
+    this.fx.refresh();
+    this.fader.gain.rampTo(bus.mute ? 0 : faderGain(bus.volume), 0.02);
+    void bpm;
   }
 
   update(bus: Bus, bpm: number) {
@@ -139,6 +155,46 @@ export class TrackChannel {
   /** A tempo change at an audio time (D192). */
   tempo(bpm: number, time: number) {
     this.fx.tempo(bpm, time);
+  }
+
+  /**
+   * Automation (D186): a mix knob, the sound's filter (samples), the level, or one of its
+   * effects' knobs ("fx:<id>:<param>"), at audio times.
+   */
+  automate(key: string, events: AutoEvent[]) {
+    const db = toUnit.db(-15, 15);
+    switch (key) {
+      case "volume":
+        return schedule(this.fader.gain, events, faderGain);
+      case "mix.pan":
+        return schedule(this.panner.pan, events, toUnit.pan);
+      case "mix.width":
+        return schedule(this.widener.width, events, (x) => x * 0.5);
+      case "mix.sendA":
+        return schedule(this.sendA.gain, events, (x) => Math.max(x, this.sendBoost.a));
+      case "mix.sendB":
+        return schedule(this.sendB.gain, events, (x) => Math.max(x, this.sendBoost.b));
+      case "mix.low":
+        return schedule(this.eq.low.gain, events, db);
+      case "mix.mid":
+        return schedule(this.eq.mid.gain, events, db);
+      case "mix.high":
+        return schedule(this.eq.high.gain, events, db);
+      case "sound.cutoff":
+        return schedule(this.filter.frequency, events, (x) => Math.min(20000, toUnit.hz(x)), true);
+      case "sound.reso":
+        return schedule(this.filter.Q, events, toUnit.q);
+    }
+    if (key.startsWith("fx:")) {
+      const [, fxId, param] = key.split(":");
+      this.fx.automate(fxId, param, events);
+    }
+  }
+
+  /** Automation ended: everything from the track's knobs again (on the next update). */
+  release() {
+    this.last = {};
+    this.fx.refresh();
   }
 
   update(track: Track, audible: boolean, bpm: number) {

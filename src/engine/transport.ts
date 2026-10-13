@@ -19,6 +19,7 @@ import {
 } from "../model/types";
 import { useSettings } from "../state/settings";
 import { isAudible, useStore } from "../state/store";
+import { playingProject } from "../state/automationOverride";
 import {
   audioNow,
   effectsStep,
@@ -26,11 +27,13 @@ import {
   panic,
   startClip,
   stopAll,
+  releaseAutomation,
   stopClip,
   tempoStep,
   trigger,
   ungate,
 } from "./engine";
+import { automationStep, coveredTracks, regionStep } from "./automation";
 import { click, silenceMetronome } from "./metronome";
 import { notifyTick } from "./load";
 import { startTicker } from "./ticker";
@@ -82,6 +85,8 @@ export function setBeatRepeat(steps: number | null) {
   repeat = steps ? { length: steps, start: null } : null;
 }
 let firstStepTime = 0;
+/** Where the last scheduled step ended in song time (NaN: nothing scheduled yet). */
+let lastQ = NaN;
 const cycles = new Map<string, number>();
 /** Recently scheduled steps, for mapping audio time → position. */
 const history: ScheduledStep[] = [];
@@ -192,7 +197,7 @@ export function startPosition(): number {
 export function tempoNow(): number {
   const s = useStore.getState();
   const cur = s.playing ? currentStep() : null;
-  return cur?.bpm ?? tempoAt(s.project, startPosition());
+  return cur?.bpm ?? tempoAt(playingProject(s.project), startPosition());
 }
 
 /**
@@ -356,6 +361,8 @@ export interface StepContext {
   bpm?: number;
   /** How long the section's repeat lasts, for clips (default: the pattern at the step's tempo). */
   repeatDur?: number;
+  /** Tracks whose timeline audio sounds here: their own clips stay silent (D188). */
+  covered?: Set<string>;
 }
 
 /**
@@ -389,8 +396,9 @@ export function playStep(
     if (track.mode === "clip") {
       const clip = clipOf(lane);
       if (pageStep === 0) {
-        // a muted track's clip still starts (unmuting brings it back); muted here, it doesn't
-        if (clip.active && !mutedHere) {
+        // a muted track's clip still starts (unmuting brings it back); muted here, or with
+        // timeline audio playing on the track, it doesn't
+        if (clip.active && !mutedHere && !ctx.covered?.has(track.id)) {
           startClip(
             track,
             time,
@@ -452,7 +460,8 @@ function blockFor(project: Project, id: string): Block {
 
 function scheduleStep(time: number) {
   const state = useStore.getState();
-  const { project } = state;
+  // a tempo typed over the tempo changes plays instead of them (D193)
+  const project = playingProject(state.project);
   let block = blockFor(project, slotId);
   let slot = block.section;
   let pattern = block.pattern;
@@ -512,10 +521,18 @@ function scheduleStep(time: number) {
 
   const repeatDur = pageStep === 0 ? repeatSeconds(project, block, rep) : 0;
   tempoStep(bpm, time);
+  // automation and timeline audio follow song time; a jump (a start, a queued section, a loop
+  // going round) sets the lanes' values there, and in Song mode starts audio already playing
+  const q1 = songQ + block.stepQ;
+  const jumped = Math.abs(songQ - lastQ) > 1e-6;
+  lastQ = q1;
+  automationStep(project, songQ, q1, time, dur);
+  regionStep(project, songQ, q1, time, dur, jumped && project.playMode === "song");
   playStep(project, pattern, pageStep, time, dur, cycle, fill, triggered, laneSteps, {
     section: slot,
     bpm,
     repeatDur,
+    covered: pageStep === 0 ? coveredTracks(project, songQ) : undefined,
   });
 
   const info: ScheduledStep = {
@@ -560,6 +577,7 @@ export function play() {
   ending = false;
   cycles.clear();
   history.length = 0;
+  lastQ = NaN;
   slotId = at.block.section.id;
   // start inside the section: its repeat (for 1:2 conditions) and the step before
   repeatCount = at.repeat;
@@ -568,7 +586,7 @@ export function play() {
   s.setUi({ playing: true, playSlotId: slotId, queuedSlotId: null });
   let start = audioNow() + 0.06;
   if (project.countIn) {
-    const beat = 60 / tempoAt(project, from);
+    const beat = 60 / tempoAt(playingProject(project), from);
     const beats = project.timeSignature[0] * useSettings.getState().countInBars;
     for (let i = 0; i < beats; i++) click(start + i * beat, i % project.timeSignature[0] === 0);
     start += beats * beat;
@@ -588,6 +606,7 @@ export function stop() {
   else panic();
   silenceMetronome();
   tempoStep(null, audioNow());
+  releaseAutomation();
   // library previews too: stop means quiet
   void import("../library/audition").then((a) => (a.stopPreview(), a.stopAudition()));
   Tone.getDraw().cancel(0);

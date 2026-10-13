@@ -4,6 +4,7 @@ import { contextMenu } from "./Menu";
 import { startMidiLearn } from "../midi/learn";
 import { useGlide } from "./glide";
 import { onFrame } from "../render/raf";
+import { automateItems, useAutomated } from "../state/automationKnob";
 
 interface Props {
   def: ParamDef;
@@ -66,9 +67,12 @@ export function Encoder({
   short,
   hint,
   modRange,
-  live,
+  live: liveProp,
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
+  // an automated knob (D186): an "A" mark, and its dot follows the lane while playing
+  const auto = useAutomated(midiTarget);
+  const live = liveProp ?? auto.live;
   const drag = useRef<{ y: number; v: number } | null>(null);
   const valueRef = useRef(value);
   const changeRef = useRef(onChange);
@@ -134,8 +138,25 @@ export function Encoder({
       style={{ opacity: disabled ? 0.4 : 1, width: width ?? size + 18 }}
       title={`${def.label}: drag or scroll · Shift = fine · double-click = reset`}
     >
-      <div className="label truncate max-w-full">
+      <div className="label flex max-w-full items-center gap-0.5 truncate">
         {short ? (def.short ?? def.label) : def.label}
+        {auto.lane && (
+          <span
+            className="rounded-[2px] px-[2px] text-[7.5px] leading-[10px]"
+            style={{
+              color: auto.overridden ? "var(--lit)" : "var(--accent)",
+              boxShadow: `inset 0 0 0 1px ${auto.overridden ? "var(--lit)" : "var(--accent)"}`,
+            }}
+            title={
+              auto.overridden
+                ? "Automated, overridden: you turned it. Back to automation brings the lane back."
+                : "Automated: it follows its lane on the timeline while the song plays"
+            }
+            data-testid="automated-mark"
+          >
+            A
+          </span>
+        )}
       </div>
       <svg
         width={size}
@@ -173,6 +194,7 @@ export function Encoder({
                   },
                 ]
               : []),
+            ...automateItems(midiTarget),
           ])
         }
       >

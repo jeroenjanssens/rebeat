@@ -108,6 +108,9 @@ function chips(
 }
 
 export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSelected }: Props) {
+  const mutedHere = useStore(
+    (s) => !!s.project.slots.find((x) => x.id === s.editSlotId)?.mutes?.includes(track.id),
+  );
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: track.id,
   });
@@ -327,6 +330,13 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
     transition,
     zIndex: isDragging ? 5 : undefined,
     opacity: isDragging ? 0.85 : 1,
+    // muted in the edited section only (D183): hatched; its clones still play it
+    ...(mutedHere
+      ? {
+          backgroundImage:
+            "repeating-linear-gradient(135deg, var(--hatch) 0 2px, transparent 2px 7px)",
+        }
+      : {}),
   };
 
   // every step track shows what it plays (a one-shot, a loop, a synth or an instrument) and how
@@ -352,6 +362,8 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
         borderRadius: 4,
       }}
       data-track-row={track.id}
+      data-muted-here={mutedHere || undefined}
+      title={mutedHere ? "Muted in this section (its clones still play it)" : undefined}
       onDragOver={(e) => {
         if (!isSampleDrag(e.dataTransfer)) return;
         e.preventDefault();

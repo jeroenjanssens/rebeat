@@ -23,6 +23,7 @@ import { ToastHost, toast } from "./components/Toast";
 import { useStore } from "./state/store";
 import { startProjects } from "./storage/projects";
 import { startLibrary } from "./library/library";
+import { watchOverrides } from "./state/automationOverride";
 
 export function App() {
   useAppearance();
@@ -33,6 +34,8 @@ export function App() {
       installKeyboard(),
       installHints(window),
       trackFullscreen(),
+      // turning an automated knob overrides its lane (D191)
+      watchOverrides(),
       // the SHIFT function button follows the Shift key
       addKeyHook((e, down) => {
         if (e.key === "Shift") useStore.getState().setUi({ shiftHeld: down });

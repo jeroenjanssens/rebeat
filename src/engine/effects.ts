@@ -7,6 +7,41 @@ import { DELAY_TIMES, PUMP_RATES, lin, toUnit } from "../model/params";
 import { Drive, FlatEQ } from "./tone";
 import type { Effect } from "../model/types";
 
+/** A point of an automation curve at an audio time (D186): set to `v` there, or ramp to it. */
+export interface AutoEvent {
+  t: number;
+  /** The knob's position, 0..1. */
+  v: number;
+  ramp: boolean;
+}
+
+/** Anything with AudioParam's scheduling methods (a native AudioParam or a Tone Param). */
+export interface Schedulable {
+  setValueAtTime(value: number, time: number): unknown;
+  linearRampToValueAtTime(value: number, time: number): unknown;
+  exponentialRampToValueAtTime(value: number, time: number): unknown;
+  cancelScheduledValues(time: number): unknown;
+}
+
+/** Params that automation moved, so stop can hand them back to their knobs. */
+export const automatedParams = new Set<Schedulable>();
+
+/** Schedule automation events on a param, through `unit` (knob → real value). */
+export function schedule(
+  param: Schedulable,
+  events: AutoEvent[],
+  unit: (v: number) => number,
+  exp = false,
+) {
+  automatedParams.add(param);
+  for (const e of events) {
+    const x = unit(e.v);
+    if (!e.ramp) param.setValueAtTime(x, e.t);
+    else if (exp && x > 0) param.exponentialRampToValueAtTime(x, e.t);
+    else param.linearRampToValueAtTime(x, e.t);
+  }
+}
+
 export interface FxNode {
   input: Tone.Gain;
   output: Tone.Gain;
@@ -18,6 +53,8 @@ export interface FxNode {
   onStep?(time: number, posQ: number, stepQ: number, secPerQ: number): void;
   /** Effects synced to the tempo follow a tempo change at its audio time (D192). */
   tempo?(bpm: number, time: number): void;
+  /** Automation of one of its knobs (D186, `AUTOMATABLE_FX`). */
+  automate?(param: string, events: AutoEvent[]): void;
   dispose(): void;
 }
 
@@ -38,6 +75,9 @@ type Inner = {
   ready?: Promise<void>;
   onStep?: FxNode["onStep"];
   tempo?: FxNode["tempo"];
+  automate?: FxNode["automate"];
+  /** Nodes outside the chain (sources, LFOs), disposed with it. */
+  extra?: { dispose(): unknown }[];
 };
 
 const v = (p: Record<string, number>, k: string, d = 0.5) => p[k] ?? d;
@@ -56,26 +96,36 @@ function build(name: string, p: Record<string, number>): Inner {
           const lowHz = Math.min(2000, toUnit.hz(v(p, "lowFreq", 0.33)));
           eq.setFrequencies(lowHz, Math.max(lowHz * 1.5, toUnit.hz(v(p, "highFreq", 0.75))));
         },
+        automate: (param, events) => {
+          const band = { low: eq.low, mid: eq.mid, high: eq.high }[param];
+          if (band) schedule(band.gain, events, toUnit.db(-15, 15));
+        },
       };
     }
     case "Filter": {
-      const f = new Tone.AutoFilter({
-        frequency: 1,
-        baseFrequency: 1000,
-        octaves: 0,
-        depth: 1,
-      }).start();
-      f.wet.value = 1;
+      // the cutoff is a signal of its own (so automation can move it at an audio time, D189),
+      // with the sweep's LFO added on top: from the cutoff up `depth × 4` octaves, as AutoFilter
+      const filter = new Tone.Filter({ type: "lowpass", rolloff: -12, Q: 1, frequency: 0 });
+      const base = new Tone.Signal({ value: 1000, units: "frequency" });
+      const lfo = new Tone.LFO({ frequency: 1, min: 0, max: 0 }).start();
+      base.connect(filter.frequency);
+      lfo.connect(filter.frequency);
       return {
-        nodes: [f],
+        nodes: [filter],
+        extra: [base, lfo],
         set: (p) => {
-          f.filter.type = (["lowpass", "highpass", "bandpass"] as const)[
+          filter.type = (["lowpass", "highpass", "bandpass"] as const)[
             Math.round(v(p, "type", 0) * 2)
           ];
-          f.filter.Q.value = toUnit.q(v(p, "reso", 0.3));
-          f.baseFrequency = toUnit.hz(v(p, "cutoff", 0.6));
-          f.octaves = v(p, "depth", 0) * 4;
-          f.frequency.value = rate(0.05, 20, v(p, "rate", 0.3));
+          filter.Q.value = toUnit.q(v(p, "reso", 0.3));
+          const hz = toUnit.hz(v(p, "cutoff", 0.6));
+          base.value = hz;
+          lfo.max = hz * (Math.pow(2, v(p, "depth", 0) * 4) - 1);
+          lfo.frequency.value = rate(0.05, 20, v(p, "rate", 0.3));
+        },
+        automate: (param, events) => {
+          if (param === "cutoff") schedule(base, events, toUnit.hz, true);
+          else if (param === "reso") schedule(filter.Q, events, toUnit.q);
         },
       };
     }
@@ -135,6 +185,9 @@ function build(name: string, p: Record<string, number>): Inner {
         },
         // the echo follows the tempo, ramping over the step (a jump would click)
         tempo: (bpm, time) => d.delayTime.linearRampToValueAtTime(quarters * (60 / bpm), time),
+        automate: (param, events) => {
+          if (param === "feedback") schedule(d.feedback, events, (x) => Math.min(0.95, x));
+        },
       };
     }
     case "Reverb": {
@@ -203,13 +256,19 @@ function build(name: string, p: Record<string, number>): Inner {
       const g = new Tone.Gain(1);
       const param = (g.input as GainNode).gain;
       let q = p;
+      // automated depth (D186): read at each step, as the knob is
+      let depth: number | null = null;
       return {
         nodes: [g],
         set: (next) => (q = next),
+        automate: (param, events) => {
+          // no events: back to the knob
+          if (param === "depth") depth = events.length ? events[events.length - 1].v : null;
+        },
         onStep(time, posQ, stepQ, secPerQ) {
           const rate = PUMP_RATES[Math.round(v(q, "rate") * (PUMP_RATES.length - 1))];
           const every = { "1/2": 2, "1/4": 1, "1/8": 0.5 }[rate] ?? 1;
-          const floor = 1 - v(q, "depth", 0.6);
+          const floor = 1 - (depth ?? v(q, "depth", 0.6));
           const back = lin(0.1, 1)(v(q, "release")) * every * secPerQ;
           // the beats within this step (several when the step is longer than the rate)
           for (
@@ -273,8 +332,16 @@ export function createFx(fx: Effect, bpm: number): FxNode {
     },
     onStep: inner.onStep,
     tempo: inner.tempo,
+    automate(param, events) {
+      // every effect's mix is its wet and dry gains
+      if (param === "mix") {
+        schedule(wet.gain, events, (x) => x);
+        schedule(dry.gain, events, (x) => 1 - x);
+      } else inner.automate?.(param, events);
+    },
     dispose() {
-      for (const n of [input, output, dry, wet, ...inner.nodes]) n.dispose();
+      for (const n of [input, output, dry, wet, ...inner.nodes, ...(inner.extra ?? [])])
+        n.dispose();
     },
   };
   node.update(fx, bpm);
@@ -339,6 +406,20 @@ export class FxChain {
   /** A page step for the effects that follow the beat (Pump, D104). */
   step(time: number, posQ: number, stepQ: number, secPerQ: number) {
     for (const n of this.nodes) n.onStep?.(time, posQ, stepQ, secPerQ);
+  }
+
+  /** Automation of an effect's knob in this chain (D186). */
+  automate(fxId: string, param: string, events: AutoEvent[]) {
+    const i = this.last.findIndex((fx) => fx.id === fxId);
+    if (i >= 0) this.nodes[i]?.automate?.(param, events);
+  }
+
+  /** Back to the knobs (automation ended): every effect set from its data again. */
+  refresh() {
+    this.nodes.forEach((n, i) => {
+      n.automate?.("depth", []);
+      n.update(this.last[i], this.lastBpm);
+    });
   }
 
   /** A tempo change at an audio time, for the effects synced to it (D192). */

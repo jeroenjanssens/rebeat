@@ -348,6 +348,30 @@ describe("synth core", () => {
     expect(level(0.8)).toBeLessThan(level(0.1) / 10);
   });
 
+  it("automated macros move at their time, under a lock; panic hands them back", () => {
+    const p = makePatch({
+      osc: [{ shape: 0 }],
+      filters: [{ cutoff: 1000 }],
+      envs: [{ sustain: 1 }],
+      macros: [
+        { name: "Level", value: 1, targets: [{ path: "output.volume", min: -40, max: -12 }] },
+      ],
+    });
+    const core = new SynthCore(SR, p);
+    core.noteOn(1, 69, 1, 0);
+    core.automateMacros([0], SR * 0.2);
+    // a step's lock still wins over the automation
+    core.lockMacros(1, [1], SR * 0.5);
+    core.lockMacros(1, null, SR * 0.6);
+    const l = new Float32Array(SR);
+    const r = new Float32Array(SR);
+    core.process(l, r, 0, SR);
+    const level = (t: number) => rms(l.subarray(Math.round(t * SR), Math.round((t + 0.05) * SR)));
+    expect(level(0.3)).toBeLessThan(level(0.1) / 10);
+    expect(level(0.52) / level(0.1)).toBeCloseTo(1, 1);
+    expect(level(0.7)).toBeLessThan(level(0.1) / 10);
+  });
+
   it("renders well faster than real time", () => {
     // a big pad: 8 voices × 7-voice supersaw + oscillator 2, ladder filter
     const start = performance.now();

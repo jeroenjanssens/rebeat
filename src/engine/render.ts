@@ -9,6 +9,7 @@ import { tempoAt } from "../model/tempoMap";
 import type { Section, Pattern } from "../model/types";
 import { newScope, reconcile, scopeReady, scopeSettled, tempoStep, withScope } from "./engine";
 import { playStep, repeatSeconds, sectionFill, stepSeconds } from "./transport";
+import { automationStep, coveredTracks, regionStep } from "./automation";
 
 export interface RenderOptions {
   range: "song" | "section";
@@ -74,6 +75,7 @@ export async function renderProject(project: Project, opts: RenderOptions): Prom
       withScope(scope, () => reconcile(proj));
       await scopeReady(scope);
       withScope(scope, () => {
+        let first = true;
         for (const e of entries) {
           let t = e.start;
           const { block } = e;
@@ -84,10 +86,16 @@ export async function renderProject(project: Project, opts: RenderOptions): Prom
             const d = stepSeconds(proj, e.pattern, q, step);
             const bpm = tempoAt(proj, q + block.stepQ / 2);
             tempoStep(bpm, t);
+            const q1 = q + block.stepQ;
+            automationStep(proj, q, q1, t, d);
+            // a section render starts mid-song: audio already playing there starts part-way
+            regionStep(proj, q, q1, t, d, first && opts.range === "section");
+            first = false;
             playStep(proj, e.pattern, step, t, d, e.cycle, fill, undefined, undefined, {
               section: e.slot,
               bpm,
               repeatDur,
+              covered: step === 0 ? coveredTracks(proj, q) : undefined,
             });
             t += d;
           }

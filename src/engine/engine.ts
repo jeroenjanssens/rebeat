@@ -5,11 +5,11 @@
  */
 import * as Tone from "tone";
 import { toUnit } from "../model/params";
-import type { Note, Track } from "../model/types";
+import type { AudioRegion, Note, Track } from "../model/types";
 import type { Project } from "../model/project";
 import { isAudible, useStore } from "../state/store";
 import { BusChannel, TrackChannel, faderGain } from "./channel";
-import { FxChain } from "./effects";
+import { FxChain, automatedParams, schedule, type AutoEvent } from "./effects";
 import { getBuffer, sampleInfo } from "./samples";
 import { warper } from "./stretch";
 import type { StretchNode } from "signalsmith-stretch";
@@ -101,6 +101,10 @@ export interface EngineScope {
   tempo: number | null;
   /** The tempo the graph was last reconciled at. */
   builtBpm: number;
+  /** Automation (D186): where each lane's last step ended (a jump sets its value first), and
+   * the synths' automated macros. */
+  autoLast: Map<string, number>;
+  autoMacros: Map<string, (number | null)[]>;
 }
 
 export function newScope(live = false): EngineScope {
@@ -119,6 +123,8 @@ export function newScope(live = false): EngineScope {
     live,
     tempo: null,
     builtBpm: 120,
+    autoLast: new Map(),
+    autoMacros: new Map(),
   };
 }
 
@@ -1046,6 +1052,134 @@ export function tempoStep(bpm: number | null, time: number) {
     for (const src of c.sources) src.playbackRate.setValueAtTime(rate * c.repitch, time);
     c.rate = rate;
   }
+}
+
+// ---------- automation (D186) and timeline audio (D188) ----------
+
+/** The engine side of a scope's automation, for engine/automation.ts. */
+export function automationState() {
+  return { last: S.autoLast, live: S.live };
+}
+
+/** Automation events for a target (a MIDI-learn target string), at their audio times. */
+export function automateTarget(target: string, events: AutoEvent[]) {
+  if (!events.length) return;
+  const [kind, id, ...rest] = target.split(":");
+  const key = rest.join(":");
+  if (kind === "master") {
+    const m = ensureMaster();
+    if (id === "volume") schedule(m.fader.gain, events, faderGain);
+    else if (id === "fx") m.fx.automate(rest[0], rest[1], events);
+    return;
+  }
+  if (kind === "bus") return S.buses.get(id)?.automate(key || "volume", events);
+  if (kind !== "track") return;
+  const macro = /^sound\.macro(\d)$/.exec(key);
+  if (macro) {
+    // a synth's macros: one message per point, all eight values (null: its knob)
+    const synth = S.synths.get(id)?.synth;
+    if (!synth) return;
+    const values = S.autoMacros.get(id) ?? Array<number | null>(8).fill(null);
+    for (const e of events) {
+      values[Number(macro[1]) - 1] = e.v;
+      synth.automate([...values], e.t);
+    }
+    S.autoMacros.set(id, values);
+    return;
+  }
+  S.channels.get(id)?.automate(key, events);
+}
+
+/** Automation is over (stop): every automated value goes back to its knob. */
+export function releaseAutomation() {
+  const now = audioNow();
+  for (const p of automatedParams) p.cancelScheduledValues(now);
+  automatedParams.clear();
+  S.autoLast.clear();
+  for (const [id] of S.autoMacros) S.synths.get(id)?.synth?.automate([], now);
+  S.autoMacros.clear();
+  const project = useStore.getState().project;
+  for (const ch of S.channels.values()) ch.release();
+  for (const b of project.buses) S.buses.get(b.id)?.release(b, project.bpm);
+  if (S.master) {
+    S.master.fx.refresh();
+    S.master.fader.gain.rampTo(faderGain(project.master.volume), 0.02);
+  }
+  // the channels apply their knobs again
+  S.lastTracks.clear();
+  if (S.live) reconcile(project);
+}
+
+/**
+ * Play a region (D188) from `into` seconds of its sample at `time`, until `until`: through its
+ * track's channel, kept with the clips (`rgn:<id>`), so stop, panic and tempo changes reach it.
+ * One sound per track: the track's own clip stops.
+ */
+export function startRegion(
+  track: Track,
+  region: AudioRegion,
+  time: number,
+  into: number,
+  until: number,
+) {
+  const key = `rgn:${region.id}`;
+  stopClip(key, time);
+  stopClip(track.id, time);
+  const buffer = getBuffer(region.sampleId);
+  if (!buffer || until <= time) return;
+  const p = track.params;
+  const bpm = S.tempo ?? useStore.getState().project.bpm;
+  const clipBpm = sampleInfo(region.sampleId)?.bpm;
+  const warpOn = (p["sound.warp"] ?? 1) >= 0.5 && !!clipBpm;
+  const ratio = warpOn ? bpm / clipBpm! : 1;
+  const pitch = toUnit.semis(12)(p["sound.pitch"] ?? 0.5);
+  const repitch = Math.pow(2, pitch / 12);
+  const offset = region.offset + into;
+  if (offset >= buffer.duration) return;
+  const dest = channel(track.id).input;
+  const level =
+    Math.pow(10, toUnit.db(-12, 12)(p["sound.gain"] ?? 0.5) / 20) *
+    Math.pow(10, (region.gain ?? 0) / 20);
+  const t = Math.max(time, audioNow());
+  const src = raw().createBufferSource();
+  src.buffer = buffer;
+  src.playbackRate.value = ratio * repitch;
+  const env = raw().createGain();
+  env.gain.value = level;
+  // fades, in seconds at the tempo where they are
+  const spq = 60 / bpm;
+  const fadeIn = (region.fadeIn ?? 0) * spq;
+  const fadeOut = (region.fadeOut ?? 0) * spq;
+  if (fadeIn > 0 && into < fadeIn) {
+    env.gain.setValueAtTime(level * (into / fadeIn), t);
+    env.gain.linearRampToValueAtTime(level, t + (fadeIn - into));
+  }
+  if (fadeOut > 0 && until - fadeOut > t) {
+    env.gain.setValueAtTime(level, until - fadeOut);
+    env.gain.linearRampToValueAtTime(0, until);
+  }
+  src.connect(env);
+  Tone.connect(env, dest);
+  src.start(t, offset);
+  src.stop(until + 0.005);
+  src.onended = () => env.disconnect();
+  S.clips.set(key, {
+    sources: [src],
+    gains: [env],
+    warp: null,
+    start: t - into / ratio,
+    rate: ratio,
+    duration: until - t,
+    loopLength: buffer.duration,
+    oneshot: true,
+    offset: 0,
+    bufferDuration: buffer.duration,
+    from: t,
+    until,
+    clipBpm: warpOn ? clipBpm! : null,
+    repitch,
+  });
+  S.activeUntil.set(track.id, until + 0.1);
 }
 
 /** How long stop takes to fade the master out (and back in): instant, without a click. */

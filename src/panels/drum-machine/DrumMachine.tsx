@@ -7,10 +7,10 @@ import { FunctionBar } from "./FunctionBar";
 import { HeaderBar } from "./HeaderBar";
 import { geometry, useSizeClass } from "./layout";
 import { PadView } from "./PadView";
-import { SongStrip } from "./SongStrip";
+import { SectionBar, SongStrip } from "./SongStrip";
 import { TrackList } from "./TrackList";
 
-/** The drum machine panel: header, page strip, display + encoders, tracks or pads, function buttons. */
+/** The drum machine panel: header, song strip, display + encoders, tracks or pads, function buttons. */
 export function DrumMachine() {
   const ref = useRef<HTMLDivElement>(null);
   const view = useStore((s) => s.view);
@@ -28,6 +28,7 @@ export function DrumMachine() {
     >
       <HeaderBar sizeClass={sizeClass} effectiveZoom={geo.effectiveZoom} />
       <SongStrip sizeClass={sizeClass} />
+      <SectionBar />
       {hasTracks && <EncoderStrip sizeClass={sizeClass} />}
       {view === "grid" || !hasTracks ? (
         <TrackList geo={geo} />

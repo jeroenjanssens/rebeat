@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import * as engine from "../../engine/engine";
 import { samplePeaks } from "../../engine/samples";
+import { blockOf, toSong } from "../../model/arrangement";
 import { clipOf, type Lane, type Track } from "../../model/types";
 import { sampleOf } from "../../model/tracks";
 import { contextMenu, type MenuItem } from "../../components/Menu";
@@ -125,6 +126,16 @@ export function ClipView({ track, lane, width, height }: Props) {
   );
 
   const looper = useStore((s) => (s.looper.trackId === track.id ? s.looper : null));
+  // timeline audio on this track over the edited section (D188: one sound per track)
+  const coveredHere = useStore((s) => {
+    const block = blockOf(s.project, s.editSlotId);
+    if (!block) return false;
+    return (s.project.regions ?? []).some((r) => {
+      if (r.trackId !== track.id) return false;
+      const q = toSong(s.project, r.start);
+      return q !== null && q < block.start + block.span && q + r.length > block.start;
+    });
+  });
   const layers = track.layers ?? [];
   return (
     <div
@@ -155,6 +166,15 @@ export function ClipView({ track, lane, width, height }: Props) {
         </span>
       )}
       {looper && <RecordingOverlay looper={looper} />}
+      {coveredHere && (
+        <span
+          className="label pointer-events-none absolute right-1.5 top-1 rounded bg-panel/80 px-1 !text-[8.5px] !text-lit"
+          title="Audio on the timeline plays on this track in this section: the track's own clip is silent while it does"
+          data-testid="clip-covered"
+        >
+          Timeline audio plays here
+        </span>
+      )}
       <div
         ref={head}
         className="pointer-events-none absolute inset-y-0 left-0 w-0.5 rounded bg-ink opacity-0"

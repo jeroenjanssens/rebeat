@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { useGlide } from "./glide";
 import { contextMenu } from "./Menu";
 import { startMidiLearn } from "../midi/learn";
+import { automateItems } from "../state/automationKnob";
 import { VOLUME_FORMAT } from "../model/params";
 
 /** dB marks on the fader scale, as fader positions (0.8 = 0 dB, 40·log10 curve). */
@@ -64,6 +65,7 @@ export function Fader({
                 },
               ]
             : []),
+          ...automateItems(midi.target),
         ])
       }
     >

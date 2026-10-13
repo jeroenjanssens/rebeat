@@ -28,7 +28,7 @@ import { applyHeld } from "../../state/actions";
 import { useStore } from "../../state/store";
 import { restrictToHorizontalAxis } from "./dndModifiers";
 import { sectionMenu } from "./sectionMenu";
-import { sectionSummary } from "../../state/timelineActions";
+import { clearSectionSettings, sectionSummary } from "../../state/timelineActions";
 import type { SizeClass } from "./layout";
 
 /** A pattern in miniature, in the track colors; tracks muted in the section are dimmed. */
@@ -101,6 +101,33 @@ export function SectionBadges({ project, slot }: { project: Project; slot: Secti
       {slot.fill ? <span>F</span> : null}
       {slot.steps ? <span>{slot.steps}st</span> : null}
     </span>
+  );
+}
+
+/** Under the song strip: what the edited section changes for itself (D183), and Clear. */
+export function SectionBar() {
+  const project = useStore((s) => s.project);
+  const editSlotId = useStore((s) => s.editSlotId);
+  const slot = project.slots.find((s) => s.id === editSlotId);
+  if (!slot) return null;
+  const summary = sectionSummary(project, slot);
+  if (!summary.length) return null;
+  return (
+    <div
+      className="flex shrink-0 items-center gap-2 border-b border-line bg-surface/50 px-3 py-1 text-[11px]"
+      data-testid="section-bar"
+      data-hint="dm.section.settings"
+    >
+      <span className="label text-lit">This section</span>
+      <span className="min-w-0 flex-1 truncate text-ink">{summary.join(" · ")}</span>
+      <span className="text-faint">its clones keep the link</span>
+      <button
+        className="tool-btn !h-5 border border-line"
+        onClick={() => clearSectionSettings(slot.id)}
+      >
+        Clear
+      </button>
+    </div>
   );
 }
 
