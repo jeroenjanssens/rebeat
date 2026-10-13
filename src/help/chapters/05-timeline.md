@@ -26,12 +26,12 @@ Deleting a section also deletes what belongs to it: its automation points, its t
 
 A section plays its pattern, but it can change four things for itself only. Its clones keep the link: edit the steps and every clone changes, but these settings stay with the section.
 
-| Setting                         | What it does                                                                                    |
-| ------------------------------- | ----------------------------------------------------------------------------------------------- |
-| **Mute tracks here**            | Those tracks are silent in this section. Click a track's cell on the timeline, or use the menu. |
-| **Transpose**                   | Notes play up or down here (a key change on a clone). Hits and audio don't move.                |
-| **Fill**                        | FILL steps play on the last repeat (or on every repeat), as if you held Fill.                   |
-| **Play only the first … steps** | The section stops early: a two-beat stop, a pickup. **Alt+drag** the right edge to set it.      |
+| Setting                         | What it does                                                                                                                                                                      |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Mute tracks here**            | Those tracks are silent in this section. Click a track's cell on the timeline, use the section menu, or right-click the track in the drum machine: **Mute in this section only**. |
+| **Transpose**                   | Notes play up or down here (a key change on a clone). Hits and audio don't move.                                                                                                  |
+| **Fill**                        | FILL steps play on the last repeat (or on every repeat), as if you held Fill.                                                                                                     |
+| **Play only the first … steps** | The section stops early: a two-beat stop, a pickup. **Alt+drag** the right edge to set it.                                                                                        |
 
 Badges show them everywhere: on the block, in the song strip and in the drum machine. A muted track is hatched in the section's cells. Notes you record into a transposed section are written so they sound as you played them.
 
@@ -63,7 +63,7 @@ An automation lane moves a knob over the song: a filter that opens over the buil
 
 - Right-click a knob and choose **Automate**, or use **+ Automation** in the toolbar, or the **+** in a track's row.
 - **Click** the lane to add a point, **drag** points (Shift: free), **double-click** or **Delete** to remove them, and drag a box to select several. Right-click a point: **Ramp** to the next point, or **Hold** until it.
-- **On / Off** in the lane's header: off, the knob's own value plays.
+- **On / Off** in the lane's header: off, the knob's own value plays. Its menu clears the lane, deletes it, or moves it to another knob of the same track (**Pick another knob…**).
 
 **Turning an automated knob overrides its lane**, as in Ableton: the lane dims and the knob's own value plays. **Back to automation** (in the timeline and the transport bar) brings back every overridden lane.
 
@@ -75,7 +75,8 @@ Knobs that can be automated: track levels, pan, width, sends and EQ, a sample's 
 
 A sample on the timeline plays in song time, across sections: a vocal line over a section change, a long take, a riser into the drop.
 
-- **Drop a sample** below the tracks for a new audio track, or onto a Clip track's row.
+- **Drop a sample** below the tracks for a new audio track, or onto a Clip track's row. A Clip track's own clip can go there too: right-click it in the drum machine, **Place on the timeline**.
+- **Record to the timeline** (in the same menu): a take you record in Song mode goes on the timeline where you recorded it, instead of into the section's clip.
 - **Drag** to move it (Alt: a copy), drag its **edges** to trim it, the small handles at the top corners to **fade** it. Right-click for its gain, **Split at the playhead** (S) and **Delete**.
 - It plays through its track: the track's effects, fader, mute and warp apply.
 

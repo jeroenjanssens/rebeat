@@ -261,6 +261,15 @@ export function setLaneOn(laneId: string, on: boolean) {
   });
 }
 
+/** Move a lane to another knob (its points stay; values are knob positions, 0..1). */
+export function retargetLane(laneId: string, target: string) {
+  store().commit((p) => {
+    if (p.automation?.some((l) => l.target === target && l.id !== laneId)) return;
+    const l = laneOf(p, laneId);
+    if (l) l.target = target;
+  });
+}
+
 export function clearLane(laneId: string) {
   store().commit((p) => {
     const l = laneOf(p, laneId);

@@ -94,6 +94,8 @@ export interface Settings {
   timelineTracks: "all" | "used" | "none";
   /** The Tempo lane open (else a thin line). */
   timelineTempoOpen: boolean;
+  /** A Clip take recorded in Song mode goes on the timeline where it was recorded (D188). */
+  recordToTimeline: boolean;
   countInBars: number;
   midiInputs: Record<string, boolean>;
   /** Start Web MIDI with the audio (the user enabled it once). */
@@ -216,6 +218,7 @@ export const DEFAULT_SETTINGS: Settings = {
   timelineSnap: "bar",
   timelineTracks: "all",
   timelineTempoOpen: false,
+  recordToTimeline: false,
   countInBars: 1,
   midiInputs: {},
   midiEnabled: false,

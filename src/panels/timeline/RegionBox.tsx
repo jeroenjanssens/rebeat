@@ -10,7 +10,7 @@ import { getBuffer, samplePeaks, sampleInfo } from "../../engine/samples";
 import { songPosition, startPosition } from "../../engine/transport";
 import { toSong } from "../../model/arrangement";
 import type { Project } from "../../model/project";
-import { tempoAt, tempoMap } from "../../model/tempoMap";
+import { tempoAt, tempoChangesIn } from "../../model/tempoMap";
 import type { AudioRegion, Track } from "../../model/types";
 import { alpha } from "../../render/theme";
 import { useCanvas } from "../../render/useCanvas";
@@ -35,13 +35,6 @@ export function sampleSecondsPerQuarter(
   const bpm = sampleInfo(sampleId)?.bpm;
   const warp = (track.params["sound.warp"] ?? 1) >= 0.5;
   return warp && bpm ? 60 / bpm : 60 / tempoAt(project, q);
-}
-
-/** Whether the tempo changes between q0 and q1. */
-export function tempoChangesIn(project: Project, q0: number, q1: number) {
-  return tempoMap(project).some(
-    (s) => s.q < q1 && s.end > q0 && (s.bpm !== s.to || (s.q > q0 && s.q < q1)),
-  );
 }
 
 function Waveform({

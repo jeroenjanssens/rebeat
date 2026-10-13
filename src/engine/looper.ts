@@ -12,7 +12,9 @@ import { useStore } from "../state/store";
 import { audioContext } from "./context";
 import { audioNow, startClip } from "./engine";
 import { record } from "./recorder";
-import { nextBarTime, pageDuration, play, playStartTime } from "./transport";
+import { nextBarTime, pageDuration, play, playStartTime, positionAt, tempoNow } from "./transport";
+import { toAnchor } from "../model/arrangement";
+import { hasTempoChanges, tempoChangesIn } from "../model/tempoMap";
 import { STEP_SIZE_QUARTERS } from "../model/types";
 import { slotPattern } from "../model/project";
 import { uid } from "../model/id";
@@ -42,25 +44,35 @@ async function startLoopRecording() {
     const start =
       get().playing && s.playing ? (nextBarTime() ?? audioNow() + 0.05) : playStartTime();
     const pattern = slotPattern(project, get().playSlotId);
+    // the tempo now (tempo changes, D192), not the start tempo
+    const bpm = tempoNow();
     const barSec =
-      (60 / project.bpm) *
+      (60 / bpm) *
       STEP_SIZE_QUARTERS[pattern.stepSize] *
       Math.round(1 / STEP_SIZE_QUARTERS[pattern.stepSize]) *
       project.timeSignature[0];
     const length = get().loopBars
       ? get().loopBars * barSec
-      : pageDuration(pattern, project.bpm, project.swing);
+      : pageDuration(pattern, bpm, project.swing);
     const latency = useSettings.getState().recordLatencyMs / 1000;
     const rec = await record(mic, start, start + length + latency);
     get().setUi({ looper: { status: "waiting", trackId: track.id, start, end: start + length } });
     const waitMs = Math.max(0, (start - audioNow()) * 1000);
+    // where the take starts in the song (for Record to the timeline), read when it's heard
+    let startQ: number | null = null;
     const toRecording = window.setTimeout(() => {
+      startQ = positionAt(start).songQ;
       if (get().looper.status === "waiting")
         get().setUi({ looper: { ...get().looper, status: "recording" } });
     }, waitMs);
     const channels = await rec.done;
     clearTimeout(toRecording);
-    await finish(track.id, channels, latency, length, start + length, project.bpm);
+    startQ ??= positionAt(start).songQ;
+    if (hasTempoChanges(project) && tempoChangesIn(project, startQ, startQ + length / (60 / bpm)))
+      toast("Recorded during a tempo change: the take keeps the tempo it started at");
+    const timeline =
+      useSettings.getState().recordToTimeline && project.playMode === "song" ? startQ : null;
+    await finish(track.id, channels, latency, length, start + length, bpm, timeline);
   } catch (e) {
     toast(`Recording failed: ${e instanceof Error ? e.message : e}`, "error");
   } finally {
@@ -77,6 +89,8 @@ async function finish(
   length: number,
   playAt: number,
   bpm: number,
+  /** Record to the timeline (D188): the take becomes a region at this song position. */
+  timelineQ: number | null = null,
 ) {
   get().setUi({ looper: { ...get().looper, status: "saving" } });
   const sr = audioContext().sampleRate;
@@ -91,6 +105,25 @@ async function finish(
   if (!track) return;
   const id = await saveRecording(loop, sr, `${track.name} ${new Date().toLocaleTimeString()}`, bpm);
   if (!id) return;
+  if (timelineQ !== null) {
+    get().commit((p) => {
+      const t = p.tracks.find((x) => x.id === trackId);
+      if (!t) return;
+      // the track keeps its own clip; a track without one gets the take as its sound
+      if (!sampleOf(t)) t.sound = { source: "sample", sampleId: id };
+      p.regions ??= [];
+      p.regions.push({
+        id: uid("rgn"),
+        trackId,
+        sampleId: id,
+        start: toAnchor(p, timelineQ),
+        length: (length * bpm) / 60,
+        offset: 0,
+      });
+    });
+    toast("Take recorded to the timeline");
+    return;
+  }
   const playSlot = get().playSlotId;
   get().commit((p) => {
     const t = p.tracks.find((x) => x.id === trackId);

@@ -24,6 +24,7 @@ import {
   deleteLane,
   deletePoints,
   movePoint,
+  retargetLane,
   setLaneOn,
   setPointHold,
   toggleMuteHere,
@@ -174,6 +175,26 @@ function Lanes({
                     data-hint="timeline.lane.menu"
                     onClick={(e) =>
                       contextMenu(e, [
+                        {
+                          label: "Pick another knob…",
+                          onSelect: () =>
+                            // after this menu closes: the knobs of the same track (or bus, master)
+                            setTimeout(() =>
+                              contextMenu(
+                                e,
+                                automatableKnobs(project)
+                                  .filter((k) => k.group === knob?.group)
+                                  .map((k) => ({
+                                    label: k.label,
+                                    checked: k.target === lane.target,
+                                    disabled: project.automation?.some(
+                                      (l) => l.target === k.target && l.id !== lane.id,
+                                    ),
+                                    onSelect: () => retargetLane(lane.id, k.target),
+                                  })),
+                              ),
+                            ),
+                        },
                         { label: "Clear its points", onSelect: () => clearLane(lane.id) },
                         { label: "Delete the lane", onSelect: () => deleteLane(lane.id) },
                       ])

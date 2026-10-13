@@ -6,6 +6,8 @@ import { clipOf, type Lane, type Track } from "../../model/types";
 import { sampleOf } from "../../model/tracks";
 import { contextMenu, type MenuItem } from "../../components/Menu";
 import { useStore } from "../../state/store";
+import { useSettings } from "../../state/settings";
+import { addRegion, sampleQuarters } from "../../state/timelineActions";
 import {
   clearClip,
   doubleClip,
@@ -50,6 +52,25 @@ function clipMenu(track: Track): MenuItem[] {
         ]
       : []),
     { label: "Clear clip", disabled: !sampleOf(track), onSelect: () => clearClip(track.id) },
+    { separator: true },
+    {
+      // the clip as audio in song time (D188), at the edited section's start
+      label: "Place on the timeline",
+      disabled: !sampleOf(track),
+      onSelect: () => {
+        const { project, editSlotId } = useStore.getState();
+        const q = blockOf(project, editSlotId)?.start ?? 0;
+        const id = sampleOf(track)!;
+        addRegion(track.id, id, q, sampleQuarters(id, q, (track.params["sound.warp"] ?? 1) >= 0.5));
+        void import("../../app/openers").then((m) => m.focusPanel("timeline"));
+      },
+    },
+    {
+      label: "Record to the timeline",
+      checked: useSettings.getState().recordToTimeline,
+      onSelect: () =>
+        useSettings.getState().set({ recordToTimeline: !useSettings.getState().recordToTimeline }),
+    },
   ];
 }
 

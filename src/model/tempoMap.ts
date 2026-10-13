@@ -123,3 +123,10 @@ export function quarterAt(project: Project, sec: number): number {
 export function songSeconds(project: Project): number {
   return secondsBetween(project, 0, songLength(project));
 }
+
+/** Whether the tempo changes between song positions q0 and q1 (a ramp, or a jump inside). */
+export function tempoChangesIn(project: Project, q0: number, q1: number) {
+  return tempoMap(project).some(
+    (s) => s.q < q1 && s.end > q0 && (s.bpm !== s.to || (s.q > q0 && s.q < q1)),
+  );
+}

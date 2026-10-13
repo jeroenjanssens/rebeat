@@ -222,6 +222,7 @@ export function positionAt(time: number) {
       pattern: first?.pattern ?? s.project.patterns[slot.patternId],
       pageStep: 0,
       progress: 0,
+      songQ: first?.songQ ?? startPosition(),
     };
   }
   const frac = Math.min(1, Math.max(0, (time - cur.time) / cur.dur));
@@ -230,6 +231,8 @@ export function positionAt(time: number) {
     pattern: cur.pattern,
     pageStep: cur.pageStep,
     progress: (cur.pageStep + frac) / cur.pattern.stepCount,
+    /** Where that is in song time (D181). */
+    songQ: cur.songQ + frac * STEP_SIZE_QUARTERS[cur.pattern.stepSize],
   };
 }
 

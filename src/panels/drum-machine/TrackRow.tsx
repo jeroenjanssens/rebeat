@@ -38,6 +38,7 @@ import { STEP_SIZES, clipOf, type Lane, type Pattern, type Track } from "../../m
 import { canClip, player, sampleOf } from "../../model/tracks";
 import { applyHeld, fnClick } from "../../state/actions";
 import { useStore } from "../../state/store";
+import { toggleMuteHere } from "../../state/timelineActions";
 import { ClipView } from "./ClipView";
 import type { Geometry } from "./layout";
 import { ScratchStrip } from "./ScratchStrip";
@@ -227,6 +228,12 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
           })),
       ),
 
+      { separator: true },
+      {
+        // the section's own setting (D183): its clones still play the track
+        label: mutedHere ? "Unmute in this section" : "Mute in this section only",
+        onSelect: () => toggleMuteHere(useStore.getState().editSlotId, track.id),
+      },
       { separator: true },
       {
         label: "Copy steps",
