@@ -130,7 +130,8 @@ export function trackKnobs(track: Track): AutomatableKnob[] {
       label: `${track.name} · ${mixDef(id).label}`,
       group: track.name,
       section: "Mix",
-      name: mixDef(id).label,
+      // the sends are named after their buses ("Reverb"): say they're sends
+      name: id.startsWith("send") ? `${mixDef(id).label} send` : mixDef(id).label,
       def: mixDef(id),
     });
   out.push(...fxKnobs(track.effects, t, track.name, track.name));
@@ -162,6 +163,16 @@ export function pickerKnobs(project: Project): AutomatableKnob[] {
 /** Every automatable knob in a project, grouped by track, then the buses and the master. */
 export function automatableKnobs(project: Project): AutomatableKnob[] {
   return pickerKnobs(project).filter((k) => !k.why);
+}
+
+/**
+ * A lane's name: its knob ("Pad · Brightness", or without the owner "Brightness"), or what
+ * became of it: an effect that was removed (D209), or a knob that's gone.
+ */
+export function laneTitle(project: Project, target: string, short = false): string {
+  const knob = knobFor(project, target);
+  if (knob) return short ? knob.label.split(" · ").slice(1).join(" · ") : knob.label;
+  return target.includes(":fx:") ? "Effect removed" : "Knob gone";
 }
 
 /** The knob a target names, if it can be automated. */

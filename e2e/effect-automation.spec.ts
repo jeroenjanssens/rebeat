@@ -84,3 +84,40 @@ for (const [fx, param, knob, moved] of [
     expect(apart(flat)).toBeLessThan(0.01);
     expect(apart(moving)).toBeGreaterThan(0.1);
   });
+
+test("the knob picker: search an effect's knob, then move the lane from the Inspector (D208)", async ({
+  page,
+}) => {
+  await rb(page, (r) => {
+    r.store.getState().commit((p: Any) => {
+      p.tracks[0].effects = [
+        {
+          id: "fx-trem",
+          name: "Tremolo",
+          params: { rate: 0.5, depth: 0.6, spread: 0, mix: 1 },
+          bypass: false,
+        },
+      ];
+    });
+    r.commands()
+      .find((c: Any) => c.id === "layout.arrange")
+      .run();
+  });
+  await page.getByTestId("timeline-automate").click();
+  await expect(page.getByTestId("knob-picker")).toBeVisible();
+  await page.getByTestId("knob-picker-search").fill("trem rate");
+  await page.keyboard.press("Enter");
+  const target = () => rb(page, (r) => r.store.getState().project.automation?.[0]?.target);
+  await expect.poll(target).toMatch(/:fx:fx-trem:rate$/);
+
+  // the lane's menu → Edit points in the Inspector → its knob → Spread
+  await page.locator('[data-hint="timeline.lane.menu"]').first().click();
+  await page.locator(".menu").getByRole("button", { name: "Edit points in the Inspector" }).click();
+  await page.getByTestId("inspector-knob").click();
+  const picker = page.getByTestId("knob-picker");
+  // opened on the lane's track, with the Tremolo open: its knobs and its On
+  await expect(picker.locator('[data-knob$=":fx:fx-trem:on"]')).toBeVisible();
+  await picker.locator('[data-knob$=":fx:fx-trem:spread"]').click();
+  await expect.poll(target).toMatch(/:fx:fx-trem:spread$/);
+  await expect(page.getByTestId("inspector-knob")).toContainText("Tremolo Spread");
+});

@@ -8,7 +8,8 @@ import { Fragment, type ReactNode } from "react";
 import { contextMenu, type MenuItem } from "../../components/Menu";
 import { curveAt, lanePoints, layout, toSong } from "../../model/arrangement";
 import { IN_TYPES, OUT_TYPES } from "../../model/ease";
-import { automatableKnobs, knobFor, knobValue, targetOwner } from "../../model/automation";
+import { knobFor, knobValue, laneTitle, targetOwner } from "../../model/automation";
+import { openKnobPicker } from "../../components/KnobPicker";
 import type { Project } from "../../model/project";
 import { clipOf, type AutomationLane, type Track } from "../../model/types";
 import { alpha, token } from "../../render/theme";
@@ -163,8 +164,11 @@ function Lanes({
                 onDoubleClick={() => openInInspector({ kind: "lane", id: lane.id })}
                 title="Double-click: edit its points in the Inspector"
               >
-                <span className="truncate text-[10px] text-ink" title={knob?.label ?? lane.target}>
-                  {knob?.label.split(" · ").slice(1).join(" · ") ?? "(gone)"}
+                <span
+                  className={`truncate text-[10px] ${knob ? "text-ink" : "text-faint"}`}
+                  title={knob?.label ?? "Pick another knob in the lane's menu, or undo"}
+                >
+                  {laneTitle(project, lane.target, true)}
                 </span>
                 <span className="flex items-center gap-1">
                   <button
@@ -201,22 +205,8 @@ function Lanes({
                         {
                           label: "Pick another knob…",
                           onSelect: () =>
-                            // after this menu closes: the knobs of the same track (or bus, master)
-                            setTimeout(() =>
-                              contextMenu(
-                                e,
-                                automatableKnobs(project)
-                                  .filter((k) => k.group === knob?.group)
-                                  .map((k) => ({
-                                    label: k.label,
-                                    checked: k.target === lane.target,
-                                    disabled: project.automation?.some(
-                                      (l) => l.target === k.target && l.id !== lane.id,
-                                    ),
-                                    onSelect: () => retargetLane(lane.id, k.target),
-                                  })),
-                              ),
-                            ),
+                            // after this menu closes: every knob, opened on the lane's own
+                            setTimeout(() => pickLaneKnob(e, project, lane.id)),
                         },
                         { label: "Clear its points", onSelect: () => clearLane(lane.id) },
                         { label: "Delete the lane", onSelect: () => deleteLane(lane.id) },
@@ -283,19 +273,42 @@ export function Row({
   );
 }
 
-/** "+ automation" for one owner's knobs. */
-export function automationPicker(
+/** Move a lane to another knob (any owner's; the ones with a lane are taken). */
+export function pickLaneKnob(
+  at: HTMLElement | { clientX: number; clientY: number },
   project: Project,
-  filter: (target: string) => boolean,
-  at: number,
-): MenuItem[] {
-  const knobs = automatableKnobs(project).filter((k) => filter(k.target));
-  const used = new Set((project.automation ?? []).map((l) => l.target));
-  return knobs.map((k) => ({
-    label: k.label,
-    checked: used.has(k.target),
-    onSelect: () => automate(k.target, at, knobValue(project, k.target)),
-  }));
+  laneId: string,
+) {
+  const lane = project.automation?.find((l) => l.id === laneId);
+  if (!lane) return;
+  const owner = targetOwner(lane.target);
+  const group =
+    owner.kind === "track"
+      ? project.tracks.find((t) => t.id === owner.id)?.name
+      : owner.kind === "bus"
+        ? `Bus ${project.buses.find((b) => b.id === owner.id)?.name}`
+        : "Master";
+  openKnobPicker(at, {
+    open: group,
+    current: lane.target,
+    used: new Set((project.automation ?? []).map((l) => l.target)),
+    disableUsed: true,
+    onPick: (target) => retargetLane(laneId, target),
+  });
+}
+
+/** "+ automation": the knob picker (D208), for one owner's knobs or every knob. */
+export function pickAutomation(
+  at: HTMLElement | { clientX: number; clientY: number },
+  q: number,
+  only?: (target: string) => boolean,
+) {
+  const project = useStore.getState().project;
+  openKnobPicker(at, {
+    only,
+    used: new Set((project.automation ?? []).map((l) => l.target)),
+    onPick: (target) => automate(target, q, knobValue(useStore.getState().project, target)),
+  });
 }
 
 export function TrackRows({
@@ -382,13 +395,8 @@ export function TrackRows({
                     data-hint="timeline.track.automate"
                     data-testid="track-automate"
                     onClick={(e) =>
-                      contextMenu(
-                        e,
-                        automationPicker(
-                          project,
-                          (target) => target.startsWith(`track:${t.id}:`),
-                          at,
-                        ),
+                      pickAutomation(e.currentTarget, at, (target) =>
+                        target.startsWith(`track:${t.id}:`),
                       )
                     }
                   >
@@ -457,13 +465,10 @@ export function TrackRows({
                     className="tool-btn !h-4 !min-w-[16px] !px-0.5"
                     title={`Automate a knob of ${o.name}`}
                     onClick={(e) =>
-                      contextMenu(
-                        e,
-                        automationPicker(
-                          project,
-                          (t) => t === o.prefix || t.startsWith(`${o.prefix}:`),
-                          at,
-                        ),
+                      pickAutomation(
+                        e.currentTarget,
+                        at,
+                        (t) => t === o.prefix || t.startsWith(`${o.prefix}:`),
                       )
                     }
                   >

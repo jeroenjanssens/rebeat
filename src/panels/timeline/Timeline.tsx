@@ -45,7 +45,7 @@ import {
   snapQ,
 } from "./geometry";
 import { SectionsRow } from "./SectionsRow";
-import { Row, TrackRows, automationPicker } from "./TrackRows";
+import { Row, TrackRows, pickAutomation } from "./TrackRows";
 import { ViewCanvas, type View } from "./ViewCanvas";
 
 const SNAPS: { id: TimelineSnap; label: string }[] = [
@@ -467,12 +467,7 @@ export function Timeline() {
           title="Automate a knob"
           data-hint="timeline.automate"
           data-testid="timeline-automate"
-          onClick={(e) =>
-            dropdown(
-              e.currentTarget,
-              automationPicker(project, () => true, startQ),
-            )
-          }
+          onClick={(e) => pickAutomation(e.currentTarget, startQ)}
         >
           <Plus size={12} /> Automation
         </button>

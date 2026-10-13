@@ -3,6 +3,17 @@ import type { Hints } from "./types";
 const guide = "timeline-editing-points-in-the-inspector";
 
 const hints: Hints = {
+  "automation.picker": {
+    title: "Pick a knob",
+    text: "Every knob that can be automated: a track's Sound, Mix and Effects, each effect with all its knobs and its On, then the buses and the master. Greyed knobs rebuild their effect when they change, so they can't move over time.",
+    keys: "Type to search · ↑ ↓ to move · → ← to open and close · Enter to pick",
+    guide: "timeline-automation",
+  },
+  "automation.knob": {
+    title: "The lane's knob",
+    text: "Which knob this lane moves. Click to pick another: the points stay where they are, as knob positions.",
+    guide: "timeline-automation",
+  },
   "automation.back": {
     title: "Back to the track",
     text: "Show the selected track in the Inspector again. Choosing another track does the same.",

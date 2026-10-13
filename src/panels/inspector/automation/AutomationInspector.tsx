@@ -3,7 +3,7 @@
  * per point in time order, On, Position, Value, Ease in and Ease out, drag, scroll or type
  * everywhere. It edits the same data as the lane on the timeline, and shares its selection.
  */
-import { ArrowLeft, Plus, X } from "lucide-react";
+import { ArrowLeft, ChevronDown, Plus, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { contextMenu, dropdown } from "../../../components/Menu";
 import { startPosition } from "../../../engine/transport";
@@ -14,6 +14,7 @@ import { useSettings } from "../../../state/settings";
 import { useStore } from "../../../state/store";
 import { setLaneOn } from "../../../state/timelineActions";
 import { revealOnTimeline } from "../../timeline/reveal";
+import { pickLaneKnob } from "../../timeline/TrackRows";
 import { formatInSection, formatPosition, parsePosition } from "./parse";
 import { ScrubField } from "./ScrubField";
 import { laneSource, tempoSource, type PointSource, type Row } from "./sources";
@@ -451,12 +452,26 @@ export function AutomationInspector() {
           <ArrowLeft size={11} /> Back to the track
         </button>
         <div className="flex items-center gap-2">
-          <span
-            className="min-w-0 flex-1 truncate text-[12px] font-semibold text-ink"
-            title={source.title}
-          >
-            {source.title}
-          </span>
+          {lane ? (
+            // the lane's knob: pick another one here (D208)
+            <button
+              className="flex min-w-0 flex-1 items-center gap-1 rounded px-1 py-0.5 text-left text-[12px] font-semibold text-ink hover:bg-surface"
+              title="Pick another knob for this lane"
+              data-testid="inspector-knob"
+              data-hint="automation.knob"
+              onClick={(e) => pickLaneKnob(e.currentTarget, project, lane.id)}
+            >
+              <span className="truncate">{source.title}</span>
+              <ChevronDown size={12} className="shrink-0 text-dim" />
+            </button>
+          ) : (
+            <span
+              className="min-w-0 flex-1 truncate text-[12px] font-semibold text-ink"
+              title={source.title}
+            >
+              {source.title}
+            </span>
+          )}
           {lane && (
             <button
               className="tool-btn !h-5 !px-1.5 text-[10px]"

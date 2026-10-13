@@ -63,13 +63,15 @@ An automation lane moves a knob over the song: a filter that opens over the buil
 
 - Right-click a knob and choose **Automate**, or use **+ Automation** in the toolbar, or the **+** in a track's row.
 - **Click** the line to add a point on it, or anywhere else in the lane to add one at that height; **drag** points (Shift: free), **double-click** or **Delete** to remove them, drag a box (or Shift+click) to select several. Right-click a point for its [eases](#timeline-eases), to turn it off, or to edit it in the Inspector.
-- **On / Off** in the lane's header: off, the knob's own value plays. Its menu clears the lane, deletes it, or moves it to another knob of the same track (**Pick another knob…**).
+- **On / Off** in the lane's header: off, the knob's own value plays. Its menu clears the lane, deletes it, or moves it to another knob (**Pick another knob…**; the points stay).
+
+**+ Automation**, a track's **+** and **Pick another knob…** open the knob picker: a track's **Sound**, **Mix** and **Effects**, with one item per effect (a second Tremolo is "Tremolo 2") that opens to its knobs, then the buses and the master. Type to search ("cow trem rate"), use ↑ ↓ and Enter, → and ← to open and close. The lane's knob in the Inspector's table opens the same picker.
 
 **Turning an automated knob overrides its lane**, as in Ableton: the lane dims and the knob's own value plays. **Back to automation** (in the timeline and the transport bar) brings back every overridden lane.
 
 With **Auto** on (Record automation, next to Rec), knob turns while recording in Song mode become points. They're thinned so the lane stays easy to edit.
 
-Knobs that can be automated: track levels, pan, width, sends and EQ, a sample's filter, a synth's macros, the master's and the buses' levels, and some effect knobs (the Filter's cutoff and resonance, the Delay's mix and feedback, the Reverb's mix, EQ3's gains, Pump's depth, and every effect's mix). Other knobs don't show Automate.
+Knobs that can be automated: track levels, pan, width, sends and EQ, a sample's filter, a synth's macros, the master's and the buses' levels, and **every effect knob**, on tracks, buses and the master, and every effect's **On**. Knobs with steps (a Delay's time, the Bitcrusher's bits, Pump's rate) jump from step to step. A few knobs build their effect again when they change, so they can't move over time: the Reverb's size, decay and pre-delay, the Delay's ping-pong and the Filter's type (the picker greys them). If you remove an effect, its lanes stay, named **Effect removed**: undo, or pick another knob for them.
 
 ## Editing points in the Inspector
 

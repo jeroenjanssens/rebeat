@@ -3,7 +3,7 @@
  * behind one interface, so the table is the same for both.
  */
 import { curveAt, lanePoints, toSong } from "../../../model/arrangement";
-import { knobFor } from "../../../model/automation";
+import { knobFor, laneTitle } from "../../../model/automation";
 import { IN_TYPES, OUT_TYPES, TEMPO_TYPES, type Ease, type EaseType } from "../../../model/ease";
 import type { Project } from "../../../model/project";
 import { tempoAt } from "../../../model/tempoMap";
@@ -77,7 +77,7 @@ export function laneSource(project: Project, laneId: string): PointSource | null
   const resolved = lanePoints(project, lane.points);
   return {
     key: lane.id,
-    title: knob?.label ?? lane.target,
+    title: laneTitle(project, lane.target),
     rows: ordered(
       lane.points.map((p, index) => ({
         index,
