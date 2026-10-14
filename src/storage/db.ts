@@ -66,6 +66,15 @@ export interface InstrumentRecord {
   copyOf?: string;
 }
 
+/** One of your wavetables (D246): its frames are a blob (`wt:<sha>`, Float32, 2048 per frame). */
+export interface WavetableRecord {
+  /** "user:<sha>" (the SHA-256 of the frames) */
+  id: string;
+  name: string;
+  frames: number;
+  createdAt: number;
+}
+
 export interface MetaRecord {
   key: string;
   value: unknown;
@@ -80,6 +89,7 @@ export class RebeatDB extends Dexie {
   beatboxVoices!: EntityTable<BeatboxVoice, "id">;
   beatboxRecordings!: EntityTable<BeatboxRecording, "id">;
   beatboxHits!: EntityTable<BeatboxHit, "id">;
+  wavetables!: EntityTable<WavetableRecord, "id">;
 
   constructor(name = "rebeat") {
     super(name);
@@ -101,6 +111,8 @@ export class RebeatDB extends Dexie {
       beatboxRecordings: "id, voiceId, createdAt",
       beatboxHits: "id, recordingId",
     });
+    // your wavetables (D246); their frames in `blobs`
+    this.version(5).stores({ wavetables: "id, name, createdAt" });
   }
 }
 

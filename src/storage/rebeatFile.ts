@@ -5,7 +5,18 @@
 import { strFromU8, strToU8, unzip, zip } from "fflate";
 import type { Project } from "../model/project";
 import { deserializeProject, projectSampleIds, serializeProject } from "../model/schema";
-import { db, type SampleRecord } from "./db";
+import { db, type SampleRecord, type WavetableRecord } from "./db";
+import { tablesOf } from "../engine/synth/tables";
+import { isSynthTrack, trackPatch } from "../library/synthTrack";
+
+/** Your wavetables the project's synths play (D246). */
+function projectTableIds(project: Project): string[] {
+  const ids = new Set<string>();
+  for (const t of project.tracks)
+    if (isSynthTrack(t))
+      for (const id of tablesOf(trackPatch(t))) if (id.startsWith("user:")) ids.add(id);
+  return [...ids];
+}
 
 const isBuiltIn = (id: string) => id.startsWith("kit:") || id.startsWith("demo:");
 
@@ -43,6 +54,15 @@ export async function exportRebeat(project: Project): Promise<Blob> {
     const blob = await db.blobs.get(id);
     if (blob) files[`soundfonts/${id.slice(4)}`] = new Uint8Array(await blob.blob.arrayBuffer());
   }
+  // wavetables (D246)
+  const tables = (await db.wavetables.bulkGet(projectTableIds(project))).filter(
+    (t): t is WavetableRecord => !!t,
+  );
+  if (tables.length) files["wavetables.json"] = strToU8(JSON.stringify(tables));
+  for (const t of tables) {
+    const blob = await db.blobs.get(`wt:${t.id.slice(5)}`);
+    if (blob) files[`wavetables/${t.id.slice(5)}`] = new Uint8Array(await blob.blob.arrayBuffer());
+  }
   const bytes = await zipAsync(files);
   return new Blob([bytes as Uint8Array<ArrayBuffer>], { type: "application/x-rebeat" });
 }
@@ -72,6 +92,16 @@ export async function importRebeat(file: Blob): Promise<Project> {
     const id = `sf2:${path.slice(11)}`;
     if (!(await db.blobs.get(id)))
       await db.blobs.put({ id, blob: new Blob([data as Uint8Array<ArrayBuffer>]) });
+  }
+  const tables: WavetableRecord[] = files["wavetables.json"]
+    ? JSON.parse(strFromU8(files["wavetables.json"]))
+    : [];
+  if (tables.length) {
+    const { putWavetable } = await import("../library/wavetables");
+    for (const t of tables) {
+      const data = files[`wavetables/${t.id.slice(5)}`];
+      if (data) await putWavetable(t.id, t.name, data);
+    }
   }
   return project;
 }

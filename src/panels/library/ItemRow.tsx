@@ -72,6 +72,13 @@ function sampleMenu(
     },
     { label: "Open in sample editor", onSelect: () => void openSample(item.id, item.name) },
     { label: "Open in Beatbox", onSelect: () => openInBeatbox(item.id, item.name) },
+    {
+      label: "Make a wavetable…",
+      onSelect: () =>
+        void import("../../app/WavetableDialog").then((m) =>
+          m.wavetableFromSample(item.id, item.name),
+        ),
+    },
     { label: "Export…", onSelect: () => useShell.getState().set({ sampleExport: item.id }) },
     ...(item.builtIn || !item.folder
       ? []

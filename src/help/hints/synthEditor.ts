@@ -20,6 +20,8 @@ const knobs: Hints = Object.fromEntries(
 );
 
 const hint = (title: string, text: string) => ({ title, text, guide });
+const wt = (title: string, text: string) => ({ title, text, guide: "instruments-wavetables" });
+const pm = (title: string, text: string) => ({ title, text, guide: "instruments-physical" });
 
 const hints: Hints = {
   ...knobs,
@@ -60,6 +62,80 @@ const hints: Hints = {
     "One cycle of what the oscillators make together. Click it to hear a note.",
   ),
   "synth.fold": hint("Fold", "Fold this section away (or open it again) to keep the editor tidy."),
+  "synth.source": hint(
+    "Source",
+    "What makes the sound: the oscillators (analog shapes or wavetables), or a physical model, where an exciter (a pluck, a strike, a bow, breath) sets a resonator ringing (a string, a tube, a bar, a bell, a drum head, a plate, a glass). The filters, envelopes, LFOs, matrix and macros work the same for both.",
+  ),
+  "synth.osc.type": wt(
+    "Analog or wavetable",
+    "Analog plays the four shapes and morphs between them. Wavetable plays a table of waveforms (frames): Position moves through it, and sweeping it (with the mod envelope, an LFO or a lane) is the wavetable sound.",
+  ),
+  "synth.wt.table": wt(
+    "Wavetable",
+    "Pick a table: 16 factory tables in groups (basic shapes, spectral sweeps, vowels, sync, FM, organ, metal, grit), your own, or make one from a sample or a WAV file. “Add … to a new slot” keeps this table in a slot, so a lane can switch between tables.",
+  ),
+  "synth.osc.warp": wt(
+    "Warp",
+    "How the frame is read, with the Warp knob as its amount: Bend squeezes the cycle to one side (50% is straight), Sync and Formant read it faster (Formant keeps the pitch: vowels), Mirror and Asym fold it, Squeeze sharpens its middle, Quantize crushes it into steps, FM wobbles it with the next oscillator.",
+  ),
+  "synth.osc.smooth": wt(
+    "Smooth",
+    "On: Position blends neighbouring frames, so a sweep is seamless. Off: it jumps from frame to frame, a stepped, digital sound.",
+  ),
+  "synth.wt.picture": {
+    title: "The wavetable",
+    text: "The frames, stacked in depth around the position: the front one is what you hear. Drag sideways to scrub through the table (it's the Position knob); while modulation or a lane moves it, the frame you hear is drawn. Drop a WAV file here to make a table of it.",
+    keys: "Drag: scrub · Shift: finely · Double-click: back · Scroll: nudge · Right-click: MIDI learn, Automate",
+    guide: "instruments-wavetables",
+  },
+  "synth.wt.strip": wt(
+    "The whole table",
+    "Every frame of the table, left to right: click or drag to jump to a place. The dot is where modulation or a lane has it now.",
+  ),
+  "synth.wt.slots": wt(
+    "Table slots",
+    "The tables this oscillator can switch between: slot 1 is its table, the others the tables you added. Click one to play it; automate Table (in the knob picker, or a lane) to switch at a section, like a drop.",
+  ),
+  "synth.hold": hint(
+    "Hold",
+    "Hold a note (the last key you played) while you scrub a picture or turn knobs, so you hear the change without a keyboard. Playing a key lets it go.",
+  ),
+  "synth.phys.exciter": pm(
+    "Exciter",
+    "What sets the resonator ringing: Pluck (a pick or a finger), Strike (a mallet or a hammer), Bow (sticks and slips: sustains), Blow (breath: a reed or a jet on a tube, airy noise on the others), Noise, or the Oscillators (any synth sound rings it).",
+  ),
+  "synth.phys.model": pm(
+    "Resonator",
+    "What rings: a String (guitars, harps, pianos), a Tube (clarinets, flutes), or the partials of a Bar (marimba, vibraphone, kalimba), a Bell, a Membrane (drums), a Plate (gongs, steel) or a Glass (glasses, bowls).",
+  ),
+  "synth.phys.modes": pm(
+    "Partials",
+    "How many partials a bar, bell, membrane, plate or glass has: more is richer and costs more of the CPU.",
+  ),
+  "synth.phys.end": pm(
+    "Tube end",
+    "Closed (a reed: hollow and woody, odd harmonics, like a clarinet) or open (a jet: breathy, like a flute).",
+  ),
+  "synth.phys.body": pm(
+    "Body",
+    "A body around the resonator: a guitar's, a violin's or a cello's box, a piano's soundboard, a wooden box, or a tube under a bar (it follows the note, like a marimba's). Size and Mix shape it.",
+  ),
+  "synth.phys.picture": {
+    title: "The resonator",
+    text: "Drag the top marker to move where it's excited (Position) and the bottom one to move where it's heard (Pickup). Near the end is thin and bright; the middle is round and hollow. The dots are where modulation or a lane has them now.",
+    keys: "Drag a marker · Double-click: back · Right-click: MIDI learn, Automate",
+    guide: "instruments-physical",
+  },
+  "wt.make.mode": wt(
+    "How to cut it",
+    "Cycles: single cycles of the sound's pitch, spread over the part you choose (a sung vowel or a synth sweep becomes a table that moves the way it did). Even slices: frames spread evenly, as they are (drums, noise, field recordings). Whole file: it already is a wavetable (2048-sample frames).",
+  ),
+  "wt.make.region": wt("From and to", "The part of the sound the frames come from."),
+  "wt.make.count": wt("Frames", "How many frames the table has: more is smoother to sweep."),
+  "wt.make.smooth": wt(
+    "Smooth edges",
+    "Fade each frame's ends a little, so a frame that doesn't start and end at the same level doesn't click at every cycle.",
+  ),
   "synth.osc.on": hint(
     "Oscillator on/off",
     "Switch this oscillator on or off. Off oscillators cost nothing.",

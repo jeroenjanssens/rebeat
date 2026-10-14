@@ -663,6 +663,24 @@ export function autoMacros(p: SynthPatch): { macros: Macro[]; movement: ModSlot 
   return { macros, movement };
 }
 
+/**
+ * After the source or an oscillator's type changes: the macros that still have their default
+ * names fit the new sound again (custom ones stay), and so does the Movement slot. Returns the
+ * macros that changed (their track knobs go back to where the new ones rest).
+ */
+export function refreshMacros(p: SynthPatch): number[] {
+  const auto = autoMacros(p);
+  const changed: number[] = [];
+  p.macros.forEach((m, i) => {
+    if (m.name !== DEFAULT_MACROS[i]?.name || !auto.macros[i]) return;
+    p.macros[i] = auto.macros[i];
+    changed.push(i);
+  });
+  const slot = p.matrix.find((s) => s.via === "macro7" && s.source === "lfo2");
+  if (slot && auto.movement && changed.includes(6)) Object.assign(slot, auto.movement);
+  return changed;
+}
+
 /** Give a patch its default macros (and the Movement slot, if the matrix has room). */
 function withAutoMacros(p: SynthPatch, keep: (Macro | undefined)[] = []): SynthPatch {
   const auto = autoMacros(p);

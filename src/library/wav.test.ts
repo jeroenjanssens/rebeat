@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { encodeWav, trimSilence } from "./wav";
+import { decodeWav, encodeWav, trimSilence } from "./wav";
 
 describe("encodeWav", () => {
   it("writes a 16-bit stereo header and samples", () => {
@@ -26,5 +26,18 @@ describe("trimSilence", () => {
     d.fill(0.5, 400, 500);
     const [t] = trimSilence([d], 10000, 0.01, 1);
     expect(t.length).toBe(100 + 2 * 10);
+  });
+});
+
+describe("decodeWav", () => {
+  it("reads PCM as it is, without resampling, mixed to mono", () => {
+    const left = Float32Array.from({ length: 4096 }, (_, i) => Math.sin(i / 10) * 0.5);
+    const right = left.map((x) => -x * 0.5);
+    const bytes = new Uint8Array(encodeWav([left, right], 22050));
+    const d = decodeWav(bytes)!;
+    expect(d.sampleRate).toBe(22050);
+    expect(d.data.length).toBe(4096);
+    expect(d.data[100]).toBeCloseTo((left[100] + right[100]) / 2, 3);
+    expect(decodeWav(new Uint8Array(10))).toBeNull();
   });
 });

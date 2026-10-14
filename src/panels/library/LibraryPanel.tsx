@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { FolderMinus } from "lucide-react";
 import { askRemoveFolder, RemoveFolderDialog } from "./RemoveFolder";
+import { WavetableList } from "./Wavetables";
 import { inFolder } from "../../library/folders";
 import { sampleOf } from "../../model/tracks";
 import { FolderInput, Link2, Upload, Volume2, Wand2 } from "lucide-react";
@@ -525,6 +526,7 @@ export function LibraryPanel() {
                   </Fragment>
                 ))}
               </div>
+              {loc.kind === "instruments" && loc.family === "Your sounds" && <WavetableList />}
             </>
           )}
         </div>

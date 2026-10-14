@@ -4,6 +4,7 @@
  */
 import { planRemoval } from "./folders";
 import { loadUserInstruments } from "./userInstruments";
+import { loadWavetables } from "./wavetables";
 import { DEFAULT_SORT, type SampleSort } from "./sort";
 import { unzipSync } from "fflate";
 import { create } from "zustand";
@@ -430,6 +431,7 @@ export function startLibrary() {
   started = true;
   void refresh();
   void loadUserInstruments();
+  void loadWavetables();
   let last: unknown = null;
   const ensure = () => {
     const { project } = useStore.getState();

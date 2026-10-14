@@ -16,6 +16,7 @@ import { TransportBar } from "./app/TransportBar";
 import { useAppearance } from "./app/useAppearance";
 import { ExportDialog } from "./app/ExportDialog";
 import { SynthWizardDialog } from "./app/SynthWizardDialog";
+import { WavetableDialog } from "./app/WavetableDialog";
 import { SampleExportDialog } from "./app/SampleExportDialog";
 import { WelcomeDialog } from "./app/WelcomeDialog";
 import { ProjectBrowser } from "./app/ProjectBrowser";
@@ -82,6 +83,7 @@ export function App() {
       <ProjectBrowser />
       <ExportDialog />
       <SynthWizardDialog />
+      <WavetableDialog />
       <SampleExportDialog />
       <WelcomeDialog />
       <ToastHost />

@@ -65,3 +65,54 @@ export function trimSilence(
   const pad = Math.round((padMs / 1000) * sampleRate);
   return channels.map((c) => c.slice(Math.max(0, a - pad), Math.min(n, b + 1 + pad)));
 }
+
+/**
+ * A WAV file's samples as they are, mixed to mono, without resampling (decodeAudioData would
+ * resample to the context's rate, which breaks a wavetable's 2048-sample frames). PCM 8, 16, 24
+ * and 32 bits and 32-bit float; null for anything else.
+ */
+export function decodeWav(bytes: Uint8Array): { data: Float32Array; sampleRate: number } | null {
+  const v = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const tag = (at: number) => String.fromCharCode(...bytes.subarray(at, at + 4));
+  if (bytes.length < 44 || tag(0) !== "RIFF" || tag(8) !== "WAVE") return null;
+  let format = 0;
+  let channels = 1;
+  let rate = 44100;
+  let bits = 16;
+  for (let i = 12; i + 8 <= bytes.length;) {
+    const id = tag(i);
+    const size = v.getUint32(i + 4, true);
+    if (id === "fmt ") {
+      format = v.getUint16(i + 8, true);
+      channels = v.getUint16(i + 10, true);
+      rate = v.getUint32(i + 12, true);
+      bits = v.getUint16(i + 22, true);
+      // WAVE_FORMAT_EXTENSIBLE: the real format is in the sub-format GUID
+      if (format === 0xfffe && size >= 40) format = v.getUint16(i + 32, true);
+    } else if (id === "data") {
+      const step = bits / 8;
+      const frames = Math.floor(Math.min(size, bytes.length - i - 8) / (step * channels));
+      const out = new Float32Array(frames);
+      const read = (at: number) => {
+        if (format === 3 && bits === 32) return v.getFloat32(at, true);
+        if (format !== 1) return NaN;
+        if (bits === 8) return (v.getUint8(at) - 128) / 128;
+        if (bits === 16) return v.getInt16(at, true) / 32768;
+        if (bits === 24) {
+          const x = v.getUint8(at) | (v.getUint8(at + 1) << 8) | (v.getInt8(at + 2) << 16);
+          return x / 8388608;
+        }
+        if (bits === 32) return v.getInt32(at, true) / 2147483648;
+        return NaN;
+      };
+      for (let f = 0; f < frames; f++) {
+        let s = 0;
+        for (let c = 0; c < channels; c++) s += read(i + 8 + (f * channels + c) * step);
+        out[f] = s / channels;
+      }
+      return Number.isNaN(out[0] ?? 0) ? null : { data: out, sampleRate: rate };
+    }
+    i += 8 + size + (size % 2);
+  }
+  return null;
+}

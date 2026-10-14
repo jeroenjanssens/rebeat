@@ -14,6 +14,8 @@ export interface SynthFile {
   /** Where the macros are (0..1 each). */
   macros: number[];
   effects: Effect[];
+  /** Your wavetables the patch plays (D246): name and frames (Float32, base64). */
+  tables?: { id: string; name: string; data: string }[];
 }
 
 export const SYNTH_EXT = ".rbsynth";
@@ -52,5 +54,11 @@ export function parseSynthFile(text: string): SynthFile {
       return Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : m.value;
     }),
     effects: Array.isArray(data.effects) ? data.effects : [],
+    tables: Array.isArray(data.tables)
+      ? data.tables.filter(
+          (t) =>
+            typeof t?.id === "string" && t.id.startsWith("user:") && typeof t.data === "string",
+        )
+      : undefined,
   };
 }

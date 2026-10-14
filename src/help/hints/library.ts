@@ -81,6 +81,11 @@ const hints: Hints = {
     text: "Sets how loud samples play when you click them to preview. Doesn't affect the project volume.",
     guide: "library-listening",
   },
+  "library.wavetables": {
+    title: "Your wavetables",
+    text: "Tables you made from samples or files (right-click a sample → Make a wavetable…). Double-click one to put it on the selected synth's first oscillator; right-click to rename or delete it. A synth's table menu lists them too.",
+    guide: "instruments-wavetables",
+  },
   "library.sync": {
     title: "Sync",
     text: "When on, loops preview at the song tempo and start in sync with the beat. Turn it on to audition a loop in context.",

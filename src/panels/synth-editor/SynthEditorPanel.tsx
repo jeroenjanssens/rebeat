@@ -48,11 +48,18 @@ import {
 import { dock } from "../../app/shell";
 import { synthEditorTitle } from "../../app/openers";
 import { EnvelopeView, H, LfoView, W } from "./pictures";
+import { HoldButton, ResonatorPicture, TablePicture } from "./wavetable";
+import { FACTORY_TABLES, tableName } from "../../model/wavetables";
+import { useWavetables } from "../../library/wavetables";
+import { useLibrary } from "../../library/library";
+import { wavetableFromFile, wavetableFromSample } from "../../app/WavetableDialog";
 import { factorySynth } from "../../library/synths";
 import { saveInstrument, useUserInstruments } from "../../library/userInstruments";
 import {
   INIT_PATCH,
+  TABLE_SLOTS,
   applyMacros,
+  refreshMacros,
   setThroughMacros,
   withMacroValues,
   MOD_DESTS,
@@ -258,6 +265,21 @@ function EditorView({ track, target }: { track: Track; target: EditTarget }) {
   const root = useRef<HTMLDivElement>(null);
   // the keyboard's lowest C: two octaves around the track's range
   const [low, setLow] = useState(track.category === "bass" ? 24 : 48);
+  // Hold (D247): a note held while you scrub a picture; the last key played (C4 at first)
+  const [held, setHeld] = useState(false);
+  const holding = useRef<(() => void) | null>(null);
+  const lastKey = useRef(track.category === "bass" ? 36 : 60);
+  const letGo = () => {
+    holding.current?.();
+    holding.current = null;
+    setHeld(false);
+  };
+  const toggleHold = () => {
+    if (holding.current) return letGo();
+    holding.current = target.hold(lastKey.current, 0.8);
+    setHeld(true);
+  };
+  useEffect(() => () => holding.current?.(), []);
 
   /** Change the patch: the first edit of a factory synth makes your copy (editPatch). */
   const onTrack = target.update;
@@ -360,6 +382,8 @@ function EditorView({ track, target }: { track: Track; target: EditTarget }) {
         onChange={(k) => set(d.path, fromKnob(d, k))}
         color={track.color}
         size={34}
+        // room for the longer names (Hardness, Stiffness, Structure)
+        width={d.label.length > 7 ? 66 : undefined}
         hint={hintFor(d.path)}
         midiTarget={target.library ? undefined : `track:${track.id}:synth:${d.path}`}
         learnLabel={`${track.name} · ${paramName(d.path)}`}
@@ -409,8 +433,93 @@ function EditorView({ track, target }: { track: Track; target: EditTarget }) {
     path: string,
   ) => <Toggle on={on} label={label} onFlip={onFlip} hint={hint} {...sw(path)} />;
 
+  /** A knob's live value from the matrix (0..1 knobs only), for a picture's dot. */
+  const liveOf = (path: string, lo = 0, hi = 1) => {
+    const r = ranges.get(path);
+    if (!r || !synth) return undefined;
+    const value = getPath(shown, path);
+    return () => {
+      const m = synth.modulation();
+      return m ? Math.min(hi, Math.max(lo, value + m[DESTS.indexOf(r.dest)])) : null;
+    };
+  };
+  /** Change the source or an oscillator's type: default macros refit the new sound (D257). */
+  const reshape = (fn: (p: SynthPatch) => void) =>
+    onTrack((t) => {
+      let changed: number[] = [];
+      editPatch(t, (p) => {
+        fn(p);
+        changed = refreshMacros(p);
+      });
+      for (const i of changed) delete t.params[macroKey(i)];
+    });
+  const userTables = useWavetables((s) => s.list);
+  const selectedSample = useLibrary((s) => s.selectedId);
+  const sampleNameOf = useLibrary((s) =>
+    s.selectedId ? s.samples.find((x) => x.id === s.selectedId)?.name : undefined,
+  );
+  /** The table menu (D246): factory tables by group, yours, making one, the slots (D248). */
+  const tableMenu = (el: HTMLElement, i: number) => {
+    const o = shown.osc[i];
+    const pick = (id: string) => set(`osc.${i}.table`, id);
+    const groups = [...new Set(FACTORY_TABLES.map((t) => t.group))];
+    const made = (id: string) => pick(id);
+    dropdown(el, [
+      ...groups.flatMap((g) => [
+        { heading: g },
+        ...FACTORY_TABLES.filter((t) => t.group === g).map((t) => ({
+          label: t.name,
+          checked: o.table === t.id,
+          onSelect: () => pick(t.id),
+        })),
+      ]),
+      { heading: "Your tables" },
+      ...(userTables.length
+        ? userTables.map((t) => ({
+            label: t.name,
+            checked: o.table === t.id,
+            onSelect: () => pick(t.id),
+          }))
+        : [{ label: "None yet: make one from a sample", disabled: true }]),
+      { separator: true },
+      {
+        label: sampleNameOf
+          ? `From the selected sample (${sampleNameOf})…`
+          : "From a sample (select one in the library)…",
+        disabled: !sampleNameOf || !selectedSample,
+        onSelect: () =>
+          selectedSample && void wavetableFromSample(selectedSample, sampleNameOf ?? "Table", made),
+      },
+      {
+        label: "Import a file…",
+        onSelect: async () => {
+          const [f] = await platform.files.open({
+            accept: [".wav", ".aif", ".aiff", ".mp3", ".flac", ".ogg"],
+          });
+          if (f) void wavetableFromFile(f, made);
+        },
+      },
+      { separator: true },
+      {
+        label:
+          o.tables.length < TABLE_SLOTS - 1
+            ? `Add ${tableName(o.table)} to a new slot, then pick another`
+            : "All 8 slots are used",
+        disabled: o.tables.length >= TABLE_SLOTS - 1,
+        onSelect: () =>
+          edit((p) => {
+            const x = p.osc[i];
+            x.tables.push(x.table);
+            x.slot = 0;
+          }),
+      },
+    ]);
+  };
+
   const oscBox = (i: 0 | 1 | 2) => {
     const o = shown.osc[i];
+    const wt = o.type === "wavetable";
+    const t = `track:${track.id}:synth:osc.${i}`;
     return (
       <Box
         key={`o${i}`}
@@ -422,6 +531,16 @@ function EditorView({ track, target }: { track: Track; target: EditTarget }) {
         clip={{ kind: "osc", data: o, paste: paste(`osc.${i}`, i === 0 ? ["sync"] : []) }}
       >
         <div className="flex flex-wrap gap-1.5">
+          <Choice
+            value={o.type}
+            options={[
+              ["analog", "Analog"],
+              ["wavetable", "Wavetable"],
+            ]}
+            onPick={(v) => reshape((p) => void (p.osc[i].type = v))}
+            hint="synth.osc.type"
+            {...sw(`osc.${i}.type`)}
+          />
           {toggle(
             o.retrigger,
             "Retrigger",
@@ -438,38 +557,242 @@ function EditorView({ track, target }: { track: Track; target: EditTarget }) {
               `osc.${i}.sync`,
             )}
         </div>
-        <ShapePicker
-          shape={o.shape}
-          pw={o.pw}
-          color={track.color}
-          onPick={(v) => set(`osc.${i}.shape`, v)}
-          onMenu={
-            target.library
-              ? undefined
-              : (e) => {
-                  const t = `track:${track.id}:synth:osc.${i}.shape`;
-                  const name = `${track.name} · ${paramName(`osc.${i}.shape`)}`;
-                  const steps = automateItems(`${t}~steps`).map((m) =>
-                    "label" in m && m.label === "Automate"
-                      ? { ...m, label: "Automate as steps" }
-                      : "label" in m && m.label === "Show its automation"
-                        ? { ...m, label: "Show its automation as steps" }
-                        : m,
-                  );
-                  contextMenu(e, [...controlItems(t, name), ...steps.slice(1)]);
+        {wt ? (
+          <>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                className="input !h-6 min-w-0 max-w-[150px] truncate text-left"
+                onClick={(e) => tableMenu(e.currentTarget, i)}
+                data-hint="synth.wt.table"
+                data-testid={`wt-table-${i}`}
+                title="Pick a wavetable"
+              >
+                {tableName(o.table)} ▾
+              </button>
+              <SwitchSelect
+                value={o.warp}
+                onPick={(v) =>
+                  edit((p) => {
+                    p.osc[i].warp = v as SynthPatch["osc"][number]["warp"];
+                    // Bend is straight at the middle
+                    if (v === "bend" && p.osc[i].warpAmount === 0) p.osc[i].warpAmount = 0.5;
+                  })
                 }
-          }
-        />
-        {knobs(
-          `osc${i}`,
-          (p) =>
-            p.endsWith(".shape") ||
-            (p.endsWith(".pw") && o.shape < 2.5) ||
-            (p.endsWith(".phase") && !o.retrigger),
+                hint="synth.osc.warp"
+                {...sw(`osc.${i}.warp`)}
+              />
+              {toggle(
+                o.smooth,
+                "Smooth",
+                (v) => set(`osc.${i}.smooth`, v),
+                "synth.osc.smooth",
+                `osc.${i}.smooth`,
+              )}
+              <HoldButton on={held} onToggle={toggleHold} />
+            </div>
+            <TablePicture
+              tableId={o.slot > 0 ? (o.tables[o.slot - 1] ?? o.table) : o.table}
+              name={tableName(o.table)}
+              position={o.position}
+              live={liveOf(`osc.${i}.position`)}
+              target={target.library ? undefined : `${t}.position`}
+              color={track.color}
+              onChange={(v) => set(`osc.${i}.position`, v)}
+              onReset={() => set(`osc.${i}.position`, defaults.osc[i].position ?? 0)}
+              onDropFile={(f) => void wavetableFromFile(f, (id) => set(`osc.${i}.table`, id))}
+              onMenu={
+                target.library
+                  ? undefined
+                  : (e) =>
+                      contextMenu(
+                        e,
+                        controlItems(
+                          `${t}.position`,
+                          `${track.name} · ${paramName(`osc.${i}.position`)}`,
+                        ),
+                      )
+              }
+            />
+            {o.tables.length > 0 && (
+              <div
+                className="flex flex-wrap items-center gap-1"
+                data-hint="synth.wt.slots"
+                data-testid={`wt-slots-${i}`}
+              >
+                <span className="label !text-[9px]">Slots</span>
+                {[o.table, ...o.tables].map((id, k) => (
+                  <span key={k} className="inline-flex items-center">
+                    <button
+                      className="tool-btn !h-5 border border-line !px-1.5 !text-[10px]"
+                      data-active={o.slot === k}
+                      onClick={() => set(`osc.${i}.slot`, k)}
+                      title={`Slot ${k + 1}: ${tableName(id)}`}
+                    >
+                      {k + 1} {tableName(id)}
+                    </button>
+                    {k > 0 && (
+                      <button
+                        className="tool-btn !h-5 !px-0.5 text-faint"
+                        title={`Remove slot ${k + 1}`}
+                        onClick={() =>
+                          edit((p) => {
+                            p.osc[i].tables.splice(k - 1, 1);
+                            if (p.osc[i].slot >= k) p.osc[i].slot = Math.max(0, p.osc[i].slot - 1);
+                          })
+                        }
+                      >
+                        ×
+                      </button>
+                    )}
+                  </span>
+                ))}
+                <AutoMark target={target.library ? undefined : `${t}.slot`} />
+              </div>
+            )}
+          </>
+        ) : (
+          <ShapePicker
+            shape={o.shape}
+            pw={o.pw}
+            color={track.color}
+            onPick={(v) => set(`osc.${i}.shape`, v)}
+            onMenu={
+              target.library
+                ? undefined
+                : (e) => {
+                    const name = `${track.name} · ${paramName(`osc.${i}.shape`)}`;
+                    const steps = automateItems(`${t}.shape~steps`).map((m) =>
+                      "label" in m && m.label === "Automate"
+                        ? { ...m, label: "Automate as steps" }
+                        : "label" in m && m.label === "Show its automation"
+                          ? { ...m, label: "Show its automation as steps" }
+                          : m,
+                    );
+                    contextMenu(e, [...controlItems(`${t}.shape`, name), ...steps.slice(1)]);
+                  }
+            }
+          />
+        )}
+        {knobs(`osc${i}`, (p) =>
+          wt
+            ? p.endsWith(".shape") ||
+              p.endsWith(".pw") ||
+              (p.endsWith(".warpAmount") && o.warp === "none") ||
+              (p.endsWith(".phase") && !o.retrigger)
+            : p.endsWith(".shape") ||
+              p.endsWith(".position") ||
+              p.endsWith(".warpAmount") ||
+              (p.endsWith(".pw") && o.shape < 2.5) ||
+              (p.endsWith(".phase") && !o.retrigger),
         )}
       </Box>
     );
   };
+
+  const phys = shown.physical;
+  const physical = shown.source === "physical";
+  const pt = `track:${track.id}:synth:physical`;
+  const physicalBoxes = () => [
+    <Box key="ex" title="Exciter">
+      <div className="flex flex-wrap gap-1.5">
+        <SwitchSelect
+          value={phys.exciter.type}
+          onPick={(v) => set("physical.exciter.type", v)}
+          hint="synth.phys.exciter"
+          {...sw("physical.exciter.type")}
+        />
+        <HoldButton on={held} onToggle={toggleHold} />
+      </div>
+      {knobs(
+        "exciter",
+        // pressure is for bowing, blowing and noise
+        (p) => p.endsWith(".pressure") && !["bow", "blow", "noise"].includes(phys.exciter.type),
+      )}
+    </Box>,
+    <Box key="res" title="Resonator">
+      <div className="flex flex-wrap gap-1.5">
+        <SwitchSelect
+          value={phys.resonator.model}
+          onPick={(v) =>
+            reshape((p) => void (p.physical.resonator.model = v as typeof phys.resonator.model))
+          }
+          hint="synth.phys.model"
+          {...sw("physical.resonator.model")}
+        />
+        {phys.resonator.model === "tube"
+          ? choice(
+              phys.resonator.end,
+              [
+                ["closed", "Closed"],
+                ["open", "Open"],
+              ],
+              (v) => set("physical.resonator.end", v),
+              "synth.phys.end",
+              "physical.resonator.end",
+            )
+          : phys.resonator.model !== "string" &&
+            choice(
+              phys.resonator.modes,
+              [
+                [8, "8"],
+                [16, "16"],
+                [32, "32 partials"],
+              ],
+              (v) => set("physical.resonator.modes", v),
+              "synth.phys.modes",
+              "physical.resonator.modes",
+            )}
+      </div>
+      <ResonatorPicture
+        model={phys.resonator.model}
+        position={phys.exciter.position}
+        pickup={phys.resonator.pickup}
+        livePosition={liveOf("physical.exciter.position", 0.02, 0.98)}
+        livePickup={liveOf("physical.resonator.pickup", 0.02, 0.98)}
+        targets={
+          target.library
+            ? undefined
+            : { position: `${pt}.exciter.position`, pickup: `${pt}.resonator.pickup` }
+        }
+        color={track.color}
+        onPosition={(v) => set("physical.exciter.position", v)}
+        onPickup={(v) => set("physical.resonator.pickup", v)}
+        onResetPosition={() => set("physical.exciter.position", defaults.physical.exciter.position)}
+        onResetPickup={() => set("physical.resonator.pickup", defaults.physical.resonator.pickup)}
+        onMenu={
+          target.library
+            ? undefined
+            : (which, e) => {
+                const path =
+                  which === "position" ? "physical.exciter.position" : "physical.resonator.pickup";
+                contextMenu(
+                  e,
+                  controlItems(
+                    `track:${track.id}:synth:${path}`,
+                    `${track.name} · ${paramName(path)}`,
+                  ),
+                );
+              }
+        }
+      />
+      {knobs("resonator", (p) =>
+        p.endsWith(".structure")
+          ? phys.resonator.model === "string" || phys.resonator.model === "tube"
+          : false,
+      )}
+    </Box>,
+    <Box key="body" title="Body">
+      <div className="flex flex-wrap gap-1.5">
+        <SwitchSelect
+          value={phys.body.type}
+          onPick={(v) => set("physical.body.type", v)}
+          hint="synth.phys.body"
+          {...sw("physical.body.type")}
+        />
+      </div>
+      {phys.body.type !== "none" && knobs("body")}
+    </Box>,
+  ];
 
   const filterBox = (i: 0 | 1) => {
     const f = shown.filters[i];
@@ -780,57 +1103,93 @@ function EditorView({ track, target }: { track: Track; target: EditTarget }) {
           </div>
 
           <div className="scroll-thin flex min-h-0 flex-1 flex-col gap-2 overflow-auto p-2">
-            <Group id="osc" title="Oscillators">
-              {oscBox(0)}
-              {oscBox(1)}
-              {oscBox(2)}
-              <Box title="Sub · noise · ring · FM">
-                <div className="flex flex-wrap gap-1.5">
-                  {choice(
-                    patch.sub.octave,
-                    [
-                      [-1, "Sub −1"],
-                      [-2, "−2"],
-                    ],
-                    (v) => set("sub.octave", v),
-                    "synth.sub.octave",
-                    "sub.octave",
-                  )}
-                  {choice(
-                    patch.sub.shape,
-                    [
-                      ["sine", "Sine"],
-                      ["square", "Square"],
-                    ],
-                    (v) => set("sub.shape", v),
-                    "synth.sub.shape",
-                    "sub.shape",
-                  )}
-                  {choice(
-                    patch.noise.color,
-                    [
-                      ["white", "White"],
-                      ["pink", "Pink"],
-                    ],
-                    (v) => set("noise.color", v),
-                    "synth.noise.color",
-                    "noise.color",
-                  )}
-                  {choice(
-                    patch.fm.route,
-                    [
-                      ["2>1", "FM 2→1"],
-                      ["3>1", "3→1"],
-                      ["3>2", "3→2"],
-                      ["1>1", "1→1"],
-                    ],
-                    (v) => set("fm.route", v),
-                    "synth.fm.route",
-                    "fm.route",
-                  )}
-                </div>
-                {knobs("extra")}
-              </Box>
+            <Group id="osc" title={physical ? "Physical model" : "Oscillators"}>
+              <div className="col-span-full flex flex-wrap items-center gap-2">
+                <span className="label">Source</span>
+                <Choice
+                  value={shown.source}
+                  options={[
+                    ["oscillators", "Oscillators"],
+                    ["physical", "Physical model"],
+                  ]}
+                  onPick={(v) =>
+                    reshape((p) => {
+                      p.source = v;
+                      // a physical model decays by itself: the amp envelope only shapes the ends
+                      if (v === "physical") {
+                        const a = p.envs[0];
+                        a.attack = Math.min(a.attack, 0.005);
+                        a.sustain = 1;
+                        a.release = Math.max(a.release, 1);
+                      }
+                    })
+                  }
+                  hint="synth.source"
+                  {...sw("source")}
+                />
+                {physical && (
+                  <span className="text-[10.5px] text-faint">
+                    {phys.exciter.type === "oscillators"
+                      ? "The oscillators below play into the resonator."
+                      : "It decays by itself: set Decay in the resonator."}
+                  </span>
+                )}
+              </div>
+              {physical && physicalBoxes()}
+              {(!physical || phys.exciter.type === "oscillators") && (
+                <>
+                  {oscBox(0)}
+                  {oscBox(1)}
+                  {oscBox(2)}
+                  <Box title="Sub · noise · ring · FM">
+                    <div className="flex flex-wrap gap-1.5">
+                      {choice(
+                        patch.sub.octave,
+                        [
+                          [-1, "Sub −1"],
+                          [-2, "−2"],
+                        ],
+                        (v) => set("sub.octave", v),
+                        "synth.sub.octave",
+                        "sub.octave",
+                      )}
+                      {choice(
+                        patch.sub.shape,
+                        [
+                          ["sine", "Sine"],
+                          ["square", "Square"],
+                        ],
+                        (v) => set("sub.shape", v),
+                        "synth.sub.shape",
+                        "sub.shape",
+                      )}
+                      {choice(
+                        patch.noise.color,
+                        [
+                          ["white", "White"],
+                          ["pink", "Pink"],
+                        ],
+                        (v) => set("noise.color", v),
+                        "synth.noise.color",
+                        "noise.color",
+                      )}
+                      {choice(
+                        patch.fm.route,
+                        [
+                          ["2>1", "FM 2→1"],
+                          ["3>1", "3→1"],
+                          ["3>2", "3→2"],
+                          ["1>1", "1→1"],
+                        ],
+                        (v) => set("fm.route", v),
+                        "synth.fm.route",
+                        "fm.route",
+                      )}
+                    </div>
+                    {knobs("extra")}
+                  </Box>
+                </>
+              )}
             </Group>
             <Group id="filters" title="Filters">
               {filterBox(0)}
@@ -916,7 +1275,12 @@ function EditorView({ track, target }: { track: Track; target: EditTarget }) {
             low={low}
             scope={root}
             onOctave={(d) => setLow((l) => Math.max(12, Math.min(84, l + 12 * d)))}
-            play={(pitch, velocity) => target.hold(pitch, velocity)}
+            play={(pitch, velocity) => {
+              // a key you play takes over from Hold
+              lastKey.current = pitch;
+              if (holding.current) letGo();
+              return target.hold(pitch, velocity);
+            }}
           />
         </div>
       </div>
@@ -1633,12 +1997,24 @@ function SignalFlow({
   color: string;
   onPlay: () => void;
 }) {
-  const sources = [
-    ...patch.osc.flatMap((o, i) => (o.on && o.level > 0 ? [`Osc ${i + 1}`] : [])),
+  const oscs = [
+    ...patch.osc.flatMap((o, i) =>
+      o.on && o.level > 0
+        ? [o.type === "wavetable" ? `Osc ${i + 1} (${tableName(o.table)})` : `Osc ${i + 1}`]
+        : [],
+    ),
     patch.sub.level > 0 && "Sub",
     patch.noise.level > 0 && "Noise",
     patch.ring > 0 && "Ring",
   ].filter(Boolean);
+  // a physical model: what excites what (D249)
+  const ex = patch.physical.exciter.type;
+  const sources =
+    patch.source === "physical"
+      ? [
+          `${ex === "oscillators" ? oscs.join(" + ") || "Silence" : ex[0].toUpperCase() + ex.slice(1)} → ${patch.physical.resonator.model}${patch.physical.body.type !== "none" ? ` · ${patch.physical.body.type} body` : ""}`,
+        ]
+      : oscs;
   const name = (f: SynthPatch["filters"][number]) =>
     f.model === "ladder" && f.type === "lp" ? "Ladder" : `SVF ${f.type.toUpperCase()}`;
   const filters = patch.filters.filter((f) => f.on).map(name);
