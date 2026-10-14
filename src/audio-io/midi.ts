@@ -38,6 +38,7 @@ import { useStore } from "../state/store";
 import { setPerfControl } from "../engine/perf";
 import { setSynthParam } from "../library/synthTrack";
 import { fromKnob, paramOf } from "../model/patchParams";
+import { patchPath, switchOf, switchValue } from "../model/patchSwitches";
 import { soundDefs } from "../library/synthTrack";
 import {
   detectMode,
@@ -1130,7 +1131,10 @@ export function applyTarget(target: string, v: number, continuous: boolean) {
         // a synth editor knob: the controller turns the knob (0..1 along its curve)
         const path = key.slice(6);
         const d = paramOf(path);
+        const sw = switchOf(path);
         if (d) setSynthParam(t, path, fromKnob(d, v));
+        // a switch (D231): its options along the control's travel
+        else if (sw) setSynthParam(t, patchPath(path), switchValue(sw, v));
       } else t.params[key] = v;
     }
   }, `midi-${target}`);

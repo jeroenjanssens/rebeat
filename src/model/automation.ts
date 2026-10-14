@@ -7,6 +7,7 @@ import { curveAt, lanePoints, type ResolvedPoint } from "./arrangement";
 import { effectivePatch, isSynthTrack, soundDefs, trackPatch } from "../library/synthTrack";
 import { EFFECT_PARAMS, MIX_PARAMS, SOUND_PARAMS, type ParamDef } from "./params";
 import { KNOB_SECTIONS, getPath, knobDef, paramName, paramOf, toKnob } from "./patchParams";
+import { SWITCHES, switchAt, switchDef, switchIndex, switchOf } from "./patchSwitches";
 import type { Project } from "./project";
 import { applyMacros, type SynthPatch } from "./synth";
 import type { AutomationLane, Effect, Track } from "./types";
@@ -123,7 +124,20 @@ function synthKnobs(track: Track): AutomatableKnob[] {
     }
   });
   const out: AutomatableKnob[] = [];
-  for (const section of KNOB_SECTIONS)
+  for (const section of KNOB_SECTIONS) {
+    const part = { id: `synth:${section.id}`, name: section.title };
+    // its switches first (D231), as the editor shows them above the knobs
+    for (const sw of SWITCHES.filter((x) => x.section === section.id))
+      out.push({
+        target: `${t}:synth:${sw.path}`,
+        label: `${track.name} · ${section.short ? `${section.short} · ` : ""}${sw.label}`,
+        group: track.name,
+        section: "Synth",
+        part,
+        name: sw.label,
+        def: switchDef(sw, switchAt(base, sw.path)),
+        note: sw.nextNote ? "From the next note" : undefined,
+      });
     for (const d of section.params) {
       const lfo = /^lfos\.(\d)\.phase$/.exec(d.path);
       const notes: string[] = [];
@@ -147,6 +161,7 @@ function synthKnobs(track: Track): AutomatableKnob[] {
             : undefined,
       });
     }
+  }
   return out;
 }
 
@@ -305,6 +320,11 @@ export function knobValue(project: Project, target: string): number {
   if (key.startsWith("synth:")) {
     // the knob as its editor shows it (macros applied): a hand on it moves this
     const path = key.slice(6);
+    const sw = switchOf(path);
+    if (sw)
+      return isSynthTrack(t)
+        ? switchIndex(sw, switchAt(heardPatch(t), path)) / (sw.options.length - 1)
+        : 0;
     const d = paramOf(path);
     const v = isSynthTrack(t) ? getPath(heardPatch(t), path) : undefined;
     return d && typeof v === "number" ? Math.min(1, Math.max(0, toKnob(d, v))) : 0;

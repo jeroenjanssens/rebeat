@@ -445,6 +445,30 @@ describe("synth core", () => {
     expect(rms(l.subarray(Math.round(0.21 * SR), Math.round(0.3 * SR)))).toBeLessThan(1e-4);
   });
 
+  it("a filter that switches model starts from silence: no burst (D231)", () => {
+    const p = makePatch({
+      osc: [{ shape: 2 }],
+      filters: [{ on: true, model: "svf", type: "lp", cutoff: 800, reso: 0.9 }],
+      envs: [{ sustain: 1 }],
+    });
+    const core = new SynthCore(SR, p);
+    core.noteOn(1, 45, 1, 0);
+    core.automate("filters.0.model", [
+      { at: SR * 0.2, v: "ladder", ramp: false },
+      { at: SR * 0.4, v: "svf", ramp: false },
+    ]);
+    const l = new Float32Array(Math.round(SR * 0.6));
+    const r = new Float32Array(l.length);
+    for (let f = 0; f < l.length; f += 128)
+      core.process(l.subarray(f, f + 128), r.subarray(f, f + 128), f);
+    const steady = peak(l.subarray(Math.round(0.1 * SR), Math.round(0.19 * SR)));
+    // around each switch, nothing much louder than the sound itself
+    for (const t of [0.2, 0.4])
+      expect(peak(l.subarray(Math.round(t * SR), Math.round((t + 0.01) * SR)))).toBeLessThan(
+        steady * 2,
+      );
+  });
+
   it("renders well faster than real time", () => {
     // a big pad: 8 voices × 7-voice supersaw + oscillator 2, ladder filter
     const start = performance.now();

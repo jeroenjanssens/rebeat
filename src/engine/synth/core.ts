@@ -295,6 +295,8 @@ class Voice {
     [new FilterUnit(), new FilterUnit()],
     [new FilterUnit(), new FilterUnit()],
   ];
+  /** Which filter each slot ran last (a switch, D231, starts the other from silence). */
+  filterKind: ("ladder" | "svf" | "")[] = ["", ""];
   /** The mod matrix's output per destination (natural units). */
   mod = new Float64Array(Object.keys(MOD_DESTS).length);
   /** Per control block: oscillator shapes, widths, levels, ring, FM, amp, pan. */
@@ -821,9 +823,17 @@ export class SynthCore {
         mod(`filter${f + 1}.cutoff` as ModDest);
       const cutoff = Math.min(20000, Math.max(20, fl.cutoff * Math.pow(2, octaves)));
       const reso = Math.min(1, Math.max(0, fl.reso + mod(`filter${f + 1}.reso` as ModDest)));
+      const kind = fl.model === "ladder" && fl.type === "lp" ? "ladder" : "svf";
+      const switched = v.filterKind[f] !== kind;
+      v.filterKind[f] = kind;
       for (let ch = 0; ch < 2; ch++) {
         const u = v.filters[ch][f];
-        if (fl.model === "ladder" && fl.type === "lp") u.ladder.set(cutoff, reso, sr);
+        if (switched) {
+          // what the other filter held long ago would ring out: start from silence
+          u.ladder.s.fill(0);
+          u.svf.ic1 = u.svf.ic2 = 0;
+        }
+        if (kind === "ladder") u.ladder.set(cutoff, reso, sr);
         else u.svf.set(cutoff, reso, sr);
       }
     }

@@ -13,7 +13,10 @@ import {
 import { create } from "zustand";
 import { contextMenu, dropdown } from "../../components/Menu";
 import { AutoMark } from "../../components/AutoMark";
-import { controlItems } from "../../state/automationKnob";
+import { switchName, switchOf, switchValue, type SwitchValue } from "../../model/patchSwitches";
+import { onFrame } from "../../render/raf";
+import { useAutomated } from "../../state/automationKnob";
+import { automateItems, controlItems } from "../../state/automationKnob";
 import { RANDOM_GROUPS, randomizePatch } from "../../model/randomize";
 import { SYNTH_EXT, exportSynth, importSynth } from "../../library/rbsynth";
 import { platform } from "../../platform";
@@ -53,9 +56,6 @@ import {
   setThroughMacros,
   withMacroValues,
   MOD_DESTS,
-  MOD_SOURCES,
-  NOTE_LENGTHS,
-  type LfoShape,
   type MacroTarget,
   type ModDest,
   type ModSource,
@@ -89,39 +89,6 @@ import {
   toKnob,
   type PatchParam,
 } from "../../model/patchParams";
-
-const SOURCE_LABEL: Record<ModSource, string> = {
-  lfo1: "LFO 1",
-  lfo2: "LFO 2",
-  lfo3: "LFO 3",
-  env1: "Amp env",
-  env2: "Filter env",
-  env3: "Mod env",
-  velocity: "Velocity",
-  note: "Note",
-  modwheel: "Mod wheel",
-  aftertouch: "Aftertouch",
-  pitchbend: "Pitch bend",
-  random: "Random",
-  macro1: "Macro 1",
-  macro2: "Macro 2",
-  macro3: "Macro 3",
-  macro4: "Macro 4",
-  macro5: "Macro 5",
-  macro6: "Macro 6",
-  macro7: "Macro 7",
-  macro8: "Macro 8",
-};
-
-const LFO_SHAPES: [LfoShape, string][] = [
-  ["sine", "Sine"],
-  ["triangle", "Triangle"],
-  ["rampUp", "Ramp up"],
-  ["rampDown", "Ramp down"],
-  ["square", "Square"],
-  ["sh", "Sample & hold"],
-  ["smooth", "Smooth random"],
-];
 
 const emptySlot = () => ({ source: null, dest: null, amount: 0, via: null });
 
@@ -420,31 +387,27 @@ function EditorView({ track, target }: { track: Track; target: EditTarget }) {
     </div>
   );
 
+  // switches (D231): MIDI learn and Automate in their menus, an A when automated, and while the
+  // song plays they show their lane's choice
+  const sw = (path: string) => ({
+    path,
+    target: target.library ? undefined : `track:${track.id}:synth:${path}`,
+    learnLabel: `${track.name} · ${switchName(path)}`,
+  });
   const choice = <T extends string | number>(
     value: T,
     options: [T, string][],
     onPick: (v: T) => void,
     hint: string,
-  ) => (
-    <div className="segmented" data-hint={hint}>
-      {options.map(([v, label]) => (
-        <button key={String(v)} data-active={value === v} onClick={() => onPick(v)}>
-          {label}
-        </button>
-      ))}
-    </div>
-  );
-  const toggle = (on: boolean, label: string, onFlip: (v: boolean) => void, hint: string) => (
-    <button
-      className="tool-btn !h-6 border border-line !text-[10.5px]"
-      data-active={on}
-      aria-pressed={on}
-      onClick={() => onFlip(!on)}
-      data-hint={hint}
-    >
-      {label}
-    </button>
-  );
+    path: string,
+  ) => <Choice value={value} options={options} onPick={onPick} hint={hint} {...sw(path)} />;
+  const toggle = (
+    on: boolean,
+    label: string,
+    onFlip: (v: boolean) => void,
+    hint: string,
+    path: string,
+  ) => <Toggle on={on} label={label} onFlip={onFlip} hint={hint} {...sw(path)} />;
 
   const oscBox = (i: 0 | 1 | 2) => {
     const o = shown.osc[i];
@@ -455,6 +418,7 @@ function EditorView({ track, target }: { track: Track; target: EditTarget }) {
         on={o.on}
         onToggle={(v) => set(`osc.${i}.on`, v)}
         hint="synth.osc.on"
+        toggleSwitch={sw(`osc.${i}.on`)}
         clip={{ kind: "osc", data: o, paste: paste(`osc.${i}`, i === 0 ? ["sync"] : []) }}
       >
         <div className="flex flex-wrap gap-1.5">
@@ -463,14 +427,38 @@ function EditorView({ track, target }: { track: Track; target: EditTarget }) {
             "Retrigger",
             (v) => set(`osc.${i}.retrigger`, v),
             "synth.osc.retrigger",
+            `osc.${i}.retrigger`,
           )}
-          {i > 0 && toggle(o.sync, "Sync to 1", (v) => set(`osc.${i}.sync`, v), "synth.osc.sync")}
+          {i > 0 &&
+            toggle(
+              o.sync,
+              "Sync to 1",
+              (v) => set(`osc.${i}.sync`, v),
+              "synth.osc.sync",
+              `osc.${i}.sync`,
+            )}
         </div>
         <ShapePicker
           shape={o.shape}
           pw={o.pw}
           color={track.color}
           onPick={(v) => set(`osc.${i}.shape`, v)}
+          onMenu={
+            target.library
+              ? undefined
+              : (e) => {
+                  const t = `track:${track.id}:synth:osc.${i}.shape`;
+                  const name = `${track.name} · ${paramName(`osc.${i}.shape`)}`;
+                  const steps = automateItems(`${t}~steps`).map((m) =>
+                    "label" in m && m.label === "Automate"
+                      ? { ...m, label: "Automate as steps" }
+                      : "label" in m && m.label === "Show its automation"
+                        ? { ...m, label: "Show its automation as steps" }
+                        : m,
+                  );
+                  contextMenu(e, [...controlItems(t, name), ...steps.slice(1)]);
+                }
+          }
         />
         {knobs(
           `osc${i}`,
@@ -492,6 +480,7 @@ function EditorView({ track, target }: { track: Track; target: EditTarget }) {
         on={f.on}
         onToggle={(v) => set(`filters.${i}.on`, v)}
         hint="synth.filter.on"
+        toggleSwitch={sw(`filters.${i}.on`)}
         clip={{ kind: "filter", data: f, paste: paste(`filters.${i}`) }}
       >
         <div className="flex flex-wrap gap-1.5">
@@ -503,6 +492,7 @@ function EditorView({ track, target }: { track: Track; target: EditTarget }) {
             ],
             (v) => set(`filters.${i}.model`, v),
             "synth.filter.model",
+            `filters.${i}.model`,
           )}
           {(f.model === "svf" || f.type !== "lp") &&
             choice(
@@ -515,6 +505,7 @@ function EditorView({ track, target }: { track: Track; target: EditTarget }) {
               ],
               (v) => set(`filters.${i}.type`, v),
               "synth.filter.type",
+              `filters.${i}.type`,
             )}
           {i === 1 &&
             choice(
@@ -525,6 +516,7 @@ function EditorView({ track, target }: { track: Track; target: EditTarget }) {
               ],
               (v) => set("routing", v),
               "synth.filter.routing",
+              "routing",
             )}
         </div>
         {knobs(`filter${i}`)}
@@ -547,7 +539,13 @@ function EditorView({ track, target }: { track: Track; target: EditTarget }) {
           hint="synth.env.view"
         />
         <div className="flex flex-wrap gap-1.5">
-          {toggle(e.loop, "Loop", (v) => set(`envs.${i}.loop`, v), "synth.env.loop")}
+          {toggle(
+            e.loop,
+            "Loop",
+            (v) => set(`envs.${i}.loop`, v),
+            "synth.env.loop",
+            `envs.${i}.loop`,
+          )}
         </div>
         {knobs(`env${i}`)}
       </Box>
@@ -563,31 +561,18 @@ function EditorView({ track, target }: { track: Track; target: EditTarget }) {
         clip={{ kind: "lfo", data: l, paste: paste(`lfos.${i}`) }}
       >
         <div className="flex flex-wrap gap-1.5">
-          <select
-            className="input !h-6"
+          <SwitchSelect
             value={l.shape}
-            onChange={(e) => set(`lfos.${i}.shape`, e.target.value)}
-            data-hint="synth.lfo.shape"
-          >
-            {LFO_SHAPES.map(([v, label]) => (
-              <option key={v} value={v}>
-                {label}
-              </option>
-            ))}
-          </select>
-          <select
-            className="input !h-6"
-            value={l.sync ?? ""}
-            onChange={(e) => set(`lfos.${i}.sync`, e.target.value || null)}
-            data-hint="synth.lfo.sync"
-          >
-            <option value="">Free</option>
-            {NOTE_LENGTHS.map((s) => (
-              <option key={s} value={s}>
-                Sync {s}
-              </option>
-            ))}
-          </select>
+            onPick={(v) => set(`lfos.${i}.shape`, v)}
+            hint="synth.lfo.shape"
+            {...sw(`lfos.${i}.shape`)}
+          />
+          <SwitchSelect
+            value={l.sync}
+            onPick={(v) => set(`lfos.${i}.sync`, v)}
+            hint="synth.lfo.sync"
+            {...sw(`lfos.${i}.sync`)}
+          />
           {choice(
             l.mode,
             [
@@ -596,8 +581,15 @@ function EditorView({ track, target }: { track: Track; target: EditTarget }) {
             ],
             (v) => set(`lfos.${i}.mode`, v),
             "synth.lfo.mode",
+            `lfos.${i}.mode`,
           )}
-          {toggle(l.unipolar, "0..1", (v) => set(`lfos.${i}.unipolar`, v), "synth.lfo.unipolar")}
+          {toggle(
+            l.unipolar,
+            "0..1",
+            (v) => set(`lfos.${i}.unipolar`, v),
+            "synth.lfo.unipolar",
+            `lfos.${i}.unipolar`,
+          )}
         </div>
         <LfoView lfo={l} color={track.color} bpm={bpm} />
         {knobs(`lfo${i}`, (p) => p.endsWith(".rate") && !!l.sync)}
@@ -802,6 +794,7 @@ function EditorView({ track, target }: { track: Track; target: EditTarget }) {
                     ],
                     (v) => set("sub.octave", v),
                     "synth.sub.octave",
+                    "sub.octave",
                   )}
                   {choice(
                     patch.sub.shape,
@@ -811,6 +804,7 @@ function EditorView({ track, target }: { track: Track; target: EditTarget }) {
                     ],
                     (v) => set("sub.shape", v),
                     "synth.sub.shape",
+                    "sub.shape",
                   )}
                   {choice(
                     patch.noise.color,
@@ -820,6 +814,7 @@ function EditorView({ track, target }: { track: Track; target: EditTarget }) {
                     ],
                     (v) => set("noise.color", v),
                     "synth.noise.color",
+                    "noise.color",
                   )}
                   {choice(
                     patch.fm.route,
@@ -831,6 +826,7 @@ function EditorView({ track, target }: { track: Track; target: EditTarget }) {
                     ],
                     (v) => set("fm.route", v),
                     "synth.fm.route",
+                    "fm.route",
                   )}
                 </div>
                 {knobs("extra")}
@@ -883,6 +879,7 @@ function EditorView({ track, target }: { track: Track; target: EditTarget }) {
                     ],
                     (v) => set("voice.mode", v),
                     "synth.voice.mode",
+                    "voice.mode",
                   )}
                   {choice(
                     patch.voice.glideMode,
@@ -892,6 +889,7 @@ function EditorView({ track, target }: { track: Track; target: EditTarget }) {
                     ],
                     (v) => set("voice.glideMode", v),
                     "synth.voice.glideMode",
+                    "voice.glideMode",
                   )}
                   {choice(
                     patch.voice.steal,
@@ -901,6 +899,7 @@ function EditorView({ track, target }: { track: Track; target: EditTarget }) {
                     ],
                     (v) => set("voice.steal", v),
                     "synth.voice.steal",
+                    "voice.steal",
                   )}
                 </div>
                 {knobs("voice")}
@@ -1044,16 +1043,25 @@ function ShapePicker({
   pw,
   color,
   onPick,
+  onMenu,
 }: {
   shape: number;
   pw: number;
   color: string;
   onPick: (shape: number) => void;
+  /** MIDI learn, Automate (the morph) and Automate as steps (D231). */
+  onMenu?: (e: React.MouseEvent) => void;
 }) {
   const w = 22;
   const h = 14;
   return (
-    <div className="flex gap-0.5" role="radiogroup" aria-label="Shape" data-hint="synth.osc.shape">
+    <div
+      className="flex gap-0.5"
+      role="radiogroup"
+      aria-label="Shape"
+      data-hint="synth.osc.shape"
+      onContextMenu={onMenu}
+    >
       {SHAPE_STOPS.map((k) => {
         // how much of this picture you hear (1 when it's exactly this one)
         const amount = Math.max(0, 1 - Math.abs(shape - k) * 2);
@@ -1398,26 +1406,14 @@ function Matrix({
       while (p.matrix.length < 8) p.matrix.push(emptySlot());
       Object.assign(p.matrix[i], change);
     });
-  const sourceSelect = (
-    value: ModSource | null,
-    onPick: (v: ModSource | null) => void,
-    hint: string,
-    none: string,
-  ) => (
-    <select
-      className="input !h-6 min-w-0"
-      value={value ?? ""}
-      onChange={(e) => onPick((e.target.value || null) as ModSource | null)}
-      data-hint={hint}
-    >
-      <option value="">{none}</option>
-      {MOD_SOURCES.map((s) => (
-        <option key={s} value={s}>
-          {SOURCE_LABEL[s]}
-        </option>
-      ))}
-    </select>
-  );
+  const slotSwitch = (i: number, part: "source" | "dest" | "via") => {
+    const path = `matrix.${i}.${part}`;
+    return {
+      path,
+      target: target && `${target}${path}`,
+      learnLabel: `${name} · ${switchName(path)}`,
+    };
+  };
   return (
     <div
       className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_100px_minmax(0,1fr)] items-center gap-x-1.5 gap-y-1 text-[11px]"
@@ -1429,22 +1425,21 @@ function Matrix({
       <span className="label">Via</span>
       {slots.flatMap((s, i) => [
         <span key={`s${i}`} className="contents" data-slot={i}>
-          {sourceSelect(s.source, (v) => setSlot(i, { source: v }), "synth.matrix.source", "—")}
+          <SwitchSelect
+            value={s.source}
+            onPick={(v) => setSlot(i, { source: v as ModSource | null })}
+            hint="synth.matrix.source"
+            {...slotSwitch(i, "source")}
+          />
         </span>,
-        <select
-          key={`d${i}`}
-          className="input !h-6 min-w-0"
-          value={s.dest ?? ""}
-          onChange={(e) => setSlot(i, { dest: (e.target.value || null) as ModDest | null })}
-          data-hint="synth.matrix.dest"
-        >
-          <option value="">—</option>
-          {(Object.keys(MOD_DESTS) as ModDest[]).map((d) => (
-            <option key={d} value={d}>
-              {MOD_DESTS[d].label}
-            </option>
-          ))}
-        </select>,
+        <span key={`d${i}`} className="contents">
+          <SwitchSelect
+            value={s.dest}
+            onPick={(v) => setSlot(i, { dest: v as ModDest | null })}
+            hint="synth.matrix.dest"
+            {...slotSwitch(i, "dest")}
+          />
+        </span>,
         <span
           key={`a${i}`}
           className="flex items-center gap-1"
@@ -1469,7 +1464,12 @@ function Matrix({
           <AutoMark target={target && `${target}matrix.${i}.amount`} />
         </span>,
         <span key={`v${i}`} className="contents">
-          {sourceSelect(s.via, (v) => setSlot(i, { via: v }), "synth.matrix.via", "always")}
+          <SwitchSelect
+            value={s.via}
+            onPick={(v) => setSlot(i, { via: v as ModSource | null })}
+            hint="synth.matrix.via"
+            {...slotSwitch(i, "via")}
+          />
         </span>,
       ])}
     </div>
@@ -1514,6 +1514,7 @@ function Box({
   hint,
   wide,
   clip,
+  toggleSwitch,
 }: {
   title: string;
   children: React.ReactNode;
@@ -1523,6 +1524,8 @@ function Box({
   wide?: boolean;
   /** Copy this block's settings, or paste another block's of the same kind. */
   clip?: { kind: ClipKind; data: object; paste: (data: Record<string, unknown>) => void };
+  /** Its On as a switch (D231): learnable and automatable. */
+  toggleSwitch?: SwitchProps;
 }) {
   const [open, setOpen] = useState(true);
   const copied = useClip((s) => s.clip);
@@ -1573,17 +1576,7 @@ function Box({
             )}
           </>
         )}
-        {onToggle && (
-          <button
-            className="tool-btn !h-5 border border-line !px-1.5 !text-[10px]"
-            data-active={on}
-            aria-pressed={on}
-            onClick={() => onToggle(!on)}
-            data-hint={hint}
-          >
-            {on ? "On" : "Off"}
-          </button>
-        )}
+        {onToggle && <BoxToggle on={!!on} onToggle={onToggle} hint={hint} sw={toggleSwitch} />}
       </div>
       {open && children}
     </section>
@@ -1689,5 +1682,150 @@ function SignalFlow({
         </span>
       )}
     </div>
+  );
+}
+
+// ---------- switches (D231) ----------
+
+interface SwitchProps {
+  path: string;
+  /** Its MIDI-learn and automation target (none for a library sound). */
+  target?: string;
+  learnLabel: string;
+}
+
+/** A switch's value as it plays: while its lane plays, the lane's choice. */
+function useSwitchValue<T>(target: string | undefined, path: string, value: T): T {
+  const auto = useAutomated(target);
+  const [k, setK] = useState<number | null>(null);
+  useEffect(() => {
+    const live = auto.live;
+    if (!live) return;
+    // React skips the render while the value stays the same
+    return onFrame(() => setK(live()));
+  }, [auto.live]);
+  const sw = switchOf(path);
+  return k === null || !sw || !auto.live ? value : (switchValue(sw, k) as T);
+}
+
+const switchMenu = (e: React.MouseEvent, p: SwitchProps) =>
+  p.target && contextMenu(e, controlItems(p.target, p.learnLabel));
+
+function Choice<T extends string | number>({
+  value,
+  options,
+  onPick,
+  hint,
+  ...p
+}: SwitchProps & {
+  value: T;
+  options: [T, string][];
+  onPick: (v: T) => void;
+  hint: string;
+}) {
+  const shown = useSwitchValue(p.target, p.path, value);
+  return (
+    <span className="inline-flex items-center gap-0.5" onContextMenu={(e) => switchMenu(e, p)}>
+      <div className="segmented" data-hint={hint} data-switch={p.path}>
+        {options.map(([v, label]) => (
+          <button key={String(v)} data-active={shown === v} onClick={() => onPick(v)}>
+            {label}
+          </button>
+        ))}
+      </div>
+      <AutoMark target={p.target} />
+    </span>
+  );
+}
+
+function Toggle({
+  on,
+  label,
+  onFlip,
+  hint,
+  ...p
+}: SwitchProps & { on: boolean; label: string; onFlip: (v: boolean) => void; hint: string }) {
+  const shown = useSwitchValue(p.target, p.path, on);
+  return (
+    <span className="inline-flex items-center gap-0.5" onContextMenu={(e) => switchMenu(e, p)}>
+      <button
+        className="tool-btn !h-6 border border-line !text-[10.5px]"
+        data-active={shown}
+        aria-pressed={shown}
+        onClick={() => onFlip(!on)}
+        data-hint={hint}
+        data-switch={p.path}
+      >
+        {label}
+      </button>
+      <AutoMark target={p.target} />
+    </span>
+  );
+}
+
+/** A switch with many options (an LFO's shape, the matrix's routing), as a menu. */
+function SwitchSelect({
+  value,
+  onPick,
+  hint,
+  ...p
+}: SwitchProps & { value: SwitchValue; onPick: (v: SwitchValue) => void; hint: string }) {
+  const sw = switchOf(p.path)!;
+  const shown = useSwitchValue(p.target, p.path, value);
+  // the options' own values (none: ""), so a menu reads as it always did
+  const key = (v: SwitchValue) => (v === null ? "" : String(v));
+  return (
+    <span className="flex min-w-0 items-center gap-0.5" onContextMenu={(e) => switchMenu(e, p)}>
+      <select
+        className="input !h-6 min-w-0"
+        value={key(shown)}
+        onChange={(e) => {
+          const o = sw.options.find((x) => key(x.value) === e.target.value);
+          if (o) onPick(o.value);
+        }}
+        data-hint={hint}
+        data-switch={p.path}
+      >
+        {sw.options.map((o) => (
+          <option key={key(o.value)} value={key(o.value)}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+      <AutoMark target={p.target} />
+    </span>
+  );
+}
+
+/** A block's On (an oscillator's, a filter's), learnable and automatable when it's a switch. */
+function BoxToggle({
+  on,
+  onToggle,
+  hint,
+  sw,
+}: {
+  on: boolean;
+  onToggle: (v: boolean) => void;
+  hint?: string;
+  sw?: SwitchProps;
+}) {
+  const shown = useSwitchValue(sw?.target, sw?.path ?? "", on);
+  return (
+    <span
+      className="inline-flex items-center gap-0.5"
+      onContextMenu={(e) => sw && switchMenu(e, sw)}
+    >
+      <AutoMark target={sw?.target} />
+      <button
+        className="tool-btn !h-5 border border-line !px-1.5 !text-[10px]"
+        data-active={shown}
+        aria-pressed={shown}
+        onClick={() => onToggle(!on)}
+        data-hint={hint}
+        data-switch={sw?.path}
+      >
+        {shown ? "On" : "Off"}
+      </button>
+    </span>
   );
 }

@@ -18,6 +18,7 @@ import { detectRootNote } from "../library/pitch";
 import type { WorkletSynth } from "./synth/node";
 import { macroValues } from "../library/synthTrack";
 import { synthPath, synthValue } from "../model/synthAutomation";
+import { patchPath } from "../model/patchSwitches";
 import { hitNoteOf, hitNotes, player, sampleOf, soundChanged } from "../model/tracks";
 
 export interface TriggerOptions {
@@ -1092,7 +1093,7 @@ export function automateTarget(target: string, events: AutoEvent[]) {
     const synth = S.synths.get(id)?.synth;
     if (!synth) return;
     synth.automate(
-      path,
+      patchPath(path),
       events.map((e) => ({ t: e.t, v: synthValue(path, e.v), ramp: e.ramp })),
     );
     S.autoSynths.add(id);

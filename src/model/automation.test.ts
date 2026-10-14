@@ -4,6 +4,8 @@ import { makeEffect } from "./effects";
 import { EFFECT_PARAMS, EFFECT_TYPES } from "./params";
 import { KNOB_SECTIONS, paramOf, toKnob } from "./patchParams";
 import { applyMacros } from "./synth";
+import { SWITCHES, switchOf } from "./patchSwitches";
+import { synthValue } from "./synthAutomation";
 import { effectivePatch, trackPatch } from "../library/synthTrack";
 import {
   NOT_AUTOMATABLE,
@@ -12,6 +14,7 @@ import {
   isAutomatable,
   knobFor,
   knobValue,
+  laneSteps,
   pickerKnobs,
   thinPoints,
 } from "./automation";
@@ -84,6 +87,26 @@ describe("automatable knobs (D189)", () => {
     // knobs that a macro moves say so
     const moved = heard.macros[0].targets[0]?.path;
     if (moved && paramOf(moved)) expect(knobFor(p, t + moved)!.note).toMatch(/moves this too/);
+  });
+
+  it("every switch of a synth is a stepped knob (D231)", () => {
+    const p = demoProject();
+    const bass = p.tracks.find((t) => t.name === "Bass")!;
+    const patch = trackPatch(bass);
+    const t = `track:${bass.id}:synth:`;
+    for (const sw of SWITCHES) {
+      const k = knobFor(p, t + sw.path)!;
+      expect(k, sw.path).toBeTruthy();
+      expect(k.def.steps).toBe(sw.options.length);
+      expect(laneSteps(p, t + sw.path)).toBe(sw.options.length);
+    }
+    // its value is where the patch's option is in the list
+    const mode = switchOf("voice.mode")!;
+    const at = mode.options.findIndex((o) => o.value === patch.voice.mode);
+    expect(knobValue(p, `${t}voice.mode`)).toBeCloseTo(at / (mode.options.length - 1));
+    expect(synthValue("voice.mode", 1)).toBe("legato");
+    expect(synthValue("filters.0.type", 1 / 3)).toBe("hp");
+    expect(synthValue("matrix.2.source", 0)).toBeNull();
   });
 
   it("the lists are made once per project", () => {

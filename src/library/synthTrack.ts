@@ -101,6 +101,11 @@ export function setSynthParam(t: Track, path: string, v: unknown) {
 }
 
 function setValue(p: SynthPatch, path: string, v: unknown) {
+  // the matrix's slots are made as they're used (a switch on slot 6, D231)
+  const slot = /^matrix\.(\d)\./.exec(path);
+  if (slot)
+    while (p.matrix.length <= Number(slot[1]))
+      p.matrix.push({ source: null, dest: null, amount: 0, via: null });
   const keys = path.split(".");
   const last = keys.pop()!;
   const obj = keys.reduce<Record<string, unknown>>(
