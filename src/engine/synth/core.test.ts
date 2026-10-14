@@ -515,18 +515,20 @@ describe("synth core", () => {
     });
 
     it("a Doit flicks up at the release", () => {
-      const l = run({ shape: "doit", amount: 3, time: 0.1, delay: 0, unit: "s" }, 0.2, 0.4);
+      const l = run({ shape: "doit", amount: 3, time: 0.3, delay: 0, unit: "s" }, 0.2, 0.7);
       expect(semis(at(l, 0.1))).toBeCloseTo(0, 0);
-      expect(semis(at(l, 0.245, 0.01))).toBeCloseTo(1.5, 0);
+      // halfway up the flick
+      expect(semis(at(l, 0.33, 0.04))).toBeCloseTo(1.5, 0);
     });
 
     it("a Rise (and Next) climbs after its delay and stays; a Dip comes back", () => {
       const rise = run({ shape: "next", amount: 2, time: 0.1, delay: 0.1, unit: "s" }, null, 0.5);
       expect(semis(at(rise, 0.02, 0.06))).toBeCloseTo(0, 0);
       expect(semis(at(rise, 0.3))).toBeCloseTo(2, 0);
-      const dip = run({ shape: "dip", amount: -4, time: 0.2, delay: 0, unit: "s" }, null, 0.5);
-      expect(semis(at(dip, 0.095, 0.01))).toBeCloseTo(-4, 0);
-      expect(semis(at(dip, 0.3))).toBeCloseTo(0, 0);
+      const dip = run({ shape: "dip", amount: -4, time: 0.6, delay: 0, unit: "s" }, null, 0.9);
+      // the bottom halfway, then back
+      expect(semis(at(dip, 0.28, 0.04))).toBeCloseTo(-4, 0);
+      expect(semis(at(dip, 0.7))).toBeCloseTo(0, 0);
     });
 
     it("a Shake is a vibrato that builds up", () => {
