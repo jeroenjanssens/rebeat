@@ -5,9 +5,13 @@
 import { upgradePatch } from "../../model/synth";
 import { SynthCore, type AutoValue, type Controls } from "./core";
 import type { NoteBend } from "../../model/types";
+import type { MippedTable } from "../../model/wavetables";
+import { addTable } from "./wavetable";
 
 export type SynthMessage =
   | { type: "patch"; patch: unknown }
+  /** A wavetable with its mip levels (D243), kept for every synth of this context. */
+  | { type: "table"; table: MippedTable }
   | { type: "tempo"; bpm: number; at?: number }
   /** A patch path's automation (D228): points in seconds; numbers ramp where `ramp` says. */
   | { type: "automate"; path: string; points: { t: number; v: AutoValue; ramp: boolean }[] }
@@ -71,6 +75,8 @@ class SynthProcessor extends AudioWorkletProcessor {
     switch (m.type) {
       case "patch":
         return this.core.setPatch(upgradePatch(m.patch));
+      case "table":
+        return addTable(m.table);
       case "tempo":
         return this.core.setTempo(m.bpm, m.at === undefined ? undefined : frame(m.at));
       case "automate":

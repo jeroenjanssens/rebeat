@@ -10,11 +10,12 @@ import {
 } from "./synth";
 import { makePatch as makeV1 } from "./synthV1";
 
-describe("synth patches (version 2)", () => {
+describe("synth patches (version 3)", () => {
   it("fill in defaults; oscillators named in a spec are on", () => {
     const p = makePatch({ osc: [{ shape: 3 }, { level: 0.5 }], filters: [{ model: "ladder" }] });
-    expect(p.version).toBe(2);
-    expect(p.osc[0]).toMatchObject({ on: true, shape: 3, pw: 0.5, unison: 1 });
+    expect(p.version).toBe(3);
+    expect(p.source).toBe("oscillators");
+    expect(p.osc[0]).toMatchObject({ on: true, type: "analog", shape: 3, pw: 0.5, unison: 1 });
     expect(p.osc[1]).toMatchObject({ on: true, level: 0.5 });
     expect(p.osc[2].on).toBe(false);
     expect(p.filters[0].model).toBe("ladder");
@@ -80,11 +81,46 @@ describe("upgrading version 1 patches", () => {
     expect(p.lfos[0]).toMatchObject({ sync: "1/2", shape: "rampUp" });
   });
 
-  it("reads anything: version 2 as is, version 1 upgraded, nothing as the init patch", () => {
-    const v2 = makePatch({ osc: [{ shape: 1 }] });
-    expect(upgradePatch(v2)).toEqual(sanitizePatch(v2));
-    expect(upgradePatch(makeV1({})).version).toBe(2);
+  it("reads anything: version 3 as is, 2 and 1 upgraded, nothing as the init patch", () => {
+    const v3 = makePatch({ osc: [{ shape: 1 }] });
+    expect(upgradePatch(v3)).toEqual(sanitizePatch(v3));
+    expect(upgradePatch(makeV1({})).version).toBe(3);
     expect(upgradePatch(undefined)).toEqual(sanitizePatch(INIT_PATCH));
+  });
+
+  it("upgrades version 2 patches: analog oscillators, the Oscillators source (D257)", () => {
+    const v3 = makePatch({ osc: [{ shape: 1 }, { shape: 2, level: 0.4 }] });
+    // a version 2 patch as it was saved: no wavetable fields, no source, no physical model
+    const v2 = JSON.parse(JSON.stringify(v3));
+    v2.version = 2;
+    delete v2.source;
+    delete v2.physical;
+    for (const o of v2.osc)
+      for (const k of [
+        "type",
+        "table",
+        "tables",
+        "slot",
+        "position",
+        "warp",
+        "warpAmount",
+        "smooth",
+      ])
+        delete o[k];
+    const up = upgradePatch(v2);
+    expect(up.version).toBe(3);
+    expect(up).toEqual(sanitizePatch(v3));
+  });
+
+  it("keeps a physical model's values in range", () => {
+    const p = makePatch({
+      source: "physical",
+      physical: { exciter: { type: "bow", position: 2 }, resonator: { decay: 99, modes: 7 as 8 } },
+    });
+    const s = sanitizePatch(p);
+    expect(s.source).toBe("physical");
+    expect(s.physical.exciter).toMatchObject({ type: "bow", position: 0.98 });
+    expect(s.physical.resonator).toMatchObject({ decay: 30, modes: 16 });
   });
 
   it("applies moved SOUND knobs", () => {

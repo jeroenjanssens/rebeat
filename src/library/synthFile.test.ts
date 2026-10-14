@@ -26,7 +26,7 @@ describe(".rbsynth files", () => {
     const old = parseSynthFile(
       JSON.stringify({ format: "rebeat-synth", version: 1, name: "Old", patch: { osc1: {} } }),
     );
-    expect(old.patch.version).toBe(2);
+    expect(old.patch.version).toBe(3);
     expect(old.macros).toHaveLength(8);
   });
 });

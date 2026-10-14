@@ -1,8 +1,9 @@
 /**
- * Synth patches, version 2 (D83): the complete synth as data. Three oscillators (shape morph,
- * pulse width, unison, sync, ring, FM), sub and noise, two filters (ladder or state-variable),
- * three envelopes, three LFOs, an 8-slot mod matrix, 8 macros, voice and output settings.
- * engine/synth/core.ts plays it; version 1 patches (synthV1.ts) are upgraded when read.
+ * Synth patches, version 3 (D83, D257): the complete synth as data. Three oscillators (analog:
+ * shape morph and pulse width; or a wavetable, D241), unison, sync, ring, FM, sub and noise; or
+ * a physical model instead of them (D249); two filters (ladder or state-variable), three
+ * envelopes, three LFOs, an 8-slot mod matrix, 8 macros, voice and output settings.
+ * engine/synth/core.ts plays it; version 1 and 2 patches are upgraded when read.
  */
 import type { StepSize } from "./types";
 import { INIT_PATCH as V1_INIT, type SynthPatch as SynthPatchV1 } from "./synthV1";
@@ -10,8 +11,40 @@ import { INIT_PATCH as V1_INIT, type SynthPatch as SynthPatchV1 } from "./synthV
 /** Patches are plain JSON. (structuredClone doesn't exist in AudioWorklets, where this runs.) */
 const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x)) as T;
 
+/** How a wavetable oscillator reads its frame (D245). */
+export const WARPS = [
+  "none",
+  "bend",
+  "sync",
+  "formant",
+  "mirror",
+  "asym",
+  "squeeze",
+  "quantize",
+  "fm",
+] as const;
+export type Warp = (typeof WARPS)[number];
+
+/** How many tables a wavetable oscillator can switch between (its slots, D248). */
+export const TABLE_SLOTS = 8;
+
 export interface Osc {
   on: boolean;
+  /** Analog (the shape morph) or a wavetable (D241). */
+  type: "analog" | "wavetable";
+  /** The wavetable ("factory:vowels", "user:<sha>"): slot 1. */
+  table: string;
+  /** The tables in slots 2–8, to switch to (automation, D248). */
+  tables: string[];
+  /** Which slot plays (0 = `table`); a lane on it switches tables. */
+  slot: number;
+  /** Where in the table it reads, 0..1 (blending neighbouring frames). */
+  position: number;
+  warp: Warp;
+  /** 0..1 (Bend: −1..1) */
+  warpAmount: number;
+  /** Blend between frames (on), or jump from frame to frame. */
+  smooth: boolean;
   /** 0 sine → 1 triangle → 2 saw → 3 pulse, morphing in between. */
   shape: number;
   /** Pulse width (0.05..0.95) at shape 3; 0.5 is a square. */
@@ -166,6 +199,20 @@ export const MOD_DESTS = {
   "lfo1.rate": { label: "LFO 1 rate", range: 4, unit: "octaves" },
   "lfo2.rate": { label: "LFO 2 rate", range: 4, unit: "octaves" },
   "lfo3.rate": { label: "LFO 3 rate", range: 4, unit: "octaves" },
+  // wavetables (D244) and physical models (D249), after the others: reports are by index
+  "osc1.position": { label: "Osc 1 position", range: 1, unit: "" },
+  "osc2.position": { label: "Osc 2 position", range: 1, unit: "" },
+  "osc3.position": { label: "Osc 3 position", range: 1, unit: "" },
+  "osc1.warp": { label: "Osc 1 warp", range: 1, unit: "" },
+  "osc2.warp": { label: "Osc 2 warp", range: 1, unit: "" },
+  "osc3.warp": { label: "Osc 3 warp", range: 1, unit: "" },
+  "phys.hardness": { label: "Exciter hardness", range: 1, unit: "" },
+  "phys.position": { label: "Exciter position", range: 1, unit: "" },
+  "phys.pressure": { label: "Pressure", range: 1, unit: "" },
+  "phys.decay": { label: "Resonator decay", range: 4, unit: "octaves" },
+  "phys.damping": { label: "Damping", range: 1, unit: "" },
+  "phys.structure": { label: "Structure", range: 1, unit: "" },
+  "phys.pickup": { label: "Pickup", range: 1, unit: "" },
 } as const;
 export type ModDest = keyof typeof MOD_DESTS;
 
@@ -194,8 +241,61 @@ export interface Macro {
   targets: MacroTarget[];
 }
 
+/** What excites a physical model (D250). */
+export const EXCITERS = ["pluck", "strike", "bow", "blow", "noise", "oscillators"] as const;
+export type ExciterType = (typeof EXCITERS)[number];
+/** What rings (D251): waveguides (string, tube) and banks of modes. */
+export const RESONATORS = ["string", "tube", "bar", "bell", "membrane", "plate", "glass"] as const;
+export type ResonatorModel = (typeof RESONATORS)[number];
+/** What colours it (D252). */
+export const BODIES = ["none", "guitar", "violin", "cello", "piano", "box", "tube"] as const;
+export type BodyType = (typeof BODIES)[number];
+
+/** A physical model (D249): an exciter drives a resonator, a body colours it. */
+export interface Physical {
+  exciter: {
+    type: ExciterType;
+    /** How hard it drives the resonator (0..1). */
+    level: number;
+    /** Soft (a felt mallet, a slow bow) .. hard (a pick, a metal beater). */
+    hardness: number;
+    /** Where along the resonator it's excited (0..1; 0.5 the middle). */
+    position: number;
+    /** Noise in the excitation (0..1). */
+    noise: number;
+    /** Bow and breath pressure (0..1). */
+    pressure: number;
+    /** How much velocity makes it harder (0..1). */
+    velocity: number;
+  };
+  resonator: {
+    model: ResonatorModel;
+    /** seconds: how long it rings */
+    decay: number;
+    /** How much faster high partials die (0..1). */
+    damping: number;
+    /** Stiffness: the partials stretched apart (0..1). */
+    inharmonicity: number;
+    /** The partials' pattern, between two kinds of the model (0..1). */
+    structure: number;
+    /** Where it's heard (0..1). */
+    pickup: number;
+    /** Two pickups, left and right (0..1). */
+    width: number;
+    /** How much a note-off damps it (0..1). */
+    release: number;
+    /** How many partials a modal resonator has. */
+    modes: 8 | 16 | 32;
+    /** A tube's far end: closed (a reed, a clarinet) or open (a flute). */
+    end: "closed" | "open";
+  };
+  body: { type: BodyType; size: number; mix: number };
+}
+
 export interface SynthPatch {
-  version: 2;
+  version: 3;
+  /** Oscillators (with sub, noise, ring and FM), or a physical model (D249). */
+  source: "oscillators" | "physical";
   osc: [Osc, Osc, Osc];
   sub: { level: number; octave: -1 | -2; shape: "sine" | "square" };
   noise: { level: number; color: "white" | "pink" };
@@ -227,6 +327,7 @@ export interface SynthPatch {
     tune: number;
   };
   output: { drive: number; volume: number; pan: number; spread: number };
+  physical: Physical;
 }
 
 export const NOTE_LENGTHS = [
@@ -258,6 +359,14 @@ export function noteLengthQuarters(len: string): number {
 
 const osc = (o: Partial<Osc> = {}): Osc => ({
   on: true,
+  type: "analog",
+  table: "factory:basic",
+  tables: [],
+  slot: 0,
+  position: 0,
+  warp: "none",
+  warpAmount: 0,
+  smooth: true,
   shape: 2,
   pw: 0.5,
   level: 1,
@@ -313,6 +422,31 @@ const lfo = (l: Partial<Lfo> = {}): Lfo => ({
 });
 
 const emptySlot = (): ModSlot => ({ source: null, dest: null, amount: 0, via: null });
+
+const physical = (): Physical => ({
+  exciter: {
+    type: "pluck",
+    level: 0.8,
+    hardness: 0.5,
+    position: 0.2,
+    noise: 0.2,
+    pressure: 0.5,
+    velocity: 0.5,
+  },
+  resonator: {
+    model: "string",
+    decay: 2,
+    damping: 0.5,
+    inharmonicity: 0,
+    structure: 0.5,
+    pickup: 0.3,
+    width: 0.3,
+    release: 0.5,
+    modes: 16,
+    end: "closed",
+  },
+  body: { type: "none", size: 1, mix: 0.5 },
+});
 
 export const DEFAULT_MACROS: Macro[] = [
   "Brightness",
@@ -439,47 +573,93 @@ export function autoMacros(p: SynthPatch): { macros: Macro[]; movement: ModSlot 
   };
   const filters = p.filters.flatMap((f, i) => (f.on ? [i] : []));
   const oscs = p.osc.flatMap((o, i) => (o.on && o.level > 0 ? [i] : [])).slice(0, 2);
+  const brightness = filters.map((i): RangeSpec => [`filters.${i}.cutoff`, 20, 20000, 64]);
+  const bite: RangeSpec[] = p.filters[0].on
+    ? [
+        ["filters.0.reso", 0, 1, 0.9, 0.3],
+        ["filters.0.env", -6, 6, 6],
+      ]
+    : [];
+  const phys = p.source === "physical";
+  const ex = "physical.exciter";
+  const res = "physical.resonator";
+  // a wavetable oscillator's position is its character, and its warp its bite (D247)
+  const wt = oscs.find((i) => p.osc[i].type === "wavetable");
+  const warped = wt !== undefined && p.osc[wt].warp !== "none" && p.osc[wt].warp !== "bend";
   const macros = [
     macro(
       "Brightness",
-      filters.map((i): RangeSpec => [`filters.${i}.cutoff`, 20, 20000, 64]),
+      phys
+        ? [[`${res}.damping`, 0, 1, 0.8, 0.5], [`${ex}.hardness`, 0, 1, 0.8], ...brightness]
+        : brightness,
     ),
     macro(
       "Bite",
-      p.filters[0].on
+      phys
         ? [
-            ["filters.0.reso", 0, 1, 0.9, 0.3],
-            ["filters.0.env", -6, 6, 6],
+            [`${ex}.hardness`, 0, 1, 0.9, 0.5],
+            [`${ex}.noise`, 0, 1, 0.6],
           ]
-        : [],
+        : warped
+          ? [[`osc.${wt}.warpAmount`, 0, 1, 1, 0.3], ...bite]
+          : bite,
     ),
     macro(
       "Character",
-      // the oscillators' shapes, or (nothing but noise) how much noise
-      oscs.length
-        ? oscs.map((i): RangeSpec => [`osc.${i}.shape`, 0, 3, 3])
-        : [["noise.level", 0, 1, 1]],
+      // a physical model's pattern; the oscillators' shapes (or a wavetable's position); or
+      // (nothing but noise) how much noise
+      phys
+        ? p.physical.resonator.model === "string" || p.physical.resonator.model === "tube"
+          ? [[`${ex}.position`, 0.02, 0.98, 0.8]]
+          : [[`${res}.structure`, 0, 1, 1]]
+        : oscs.length
+          ? oscs.map((i): RangeSpec =>
+              p.osc[i].type === "wavetable"
+                ? [`osc.${i}.position`, 0, 1, 1]
+                : [`osc.${i}.shape`, 0, 3, 3],
+            )
+          : [["noise.level", 0, 1, 1]],
     ),
-    macro("Thickness", [
-      ["sub.level", 0, 1, 1, 0.3],
-      ...(p.osc[0].unison > 1 ? [["osc.0.detune", 0, 100, 80] as RangeSpec] : []),
-      ...(p.osc[1].on ? [["osc.1.fine", -100, 100, 30] as RangeSpec] : []),
-    ]),
+    macro(
+      "Thickness",
+      phys
+        ? [
+            ["physical.body.mix", 0, 1, 1, 0.3],
+            [`${res}.width`, 0, 1, 1],
+          ]
+        : [
+            ["sub.level", 0, 1, 1, 0.3],
+            ...(p.osc[0].unison > 1 ? [["osc.0.detune", 0, 100, 80] as RangeSpec] : []),
+            ...(p.osc[1].on ? [["osc.1.fine", -100, 100, 30] as RangeSpec] : []),
+          ],
+    ),
     macro("Attack", [
       ["envs.0.attack", 0.0005, 10, 1000, 0.3],
       ["envs.1.attack", 0.0005, 10, 1000],
     ]),
-    macro("Release", [
-      ["envs.0.release", 0.001, 15, 1000, 0.4],
-      ["envs.1.release", 0.001, 15, 1000],
-    ]),
+    macro(
+      "Release",
+      phys
+        ? [
+            [`${res}.decay`, 0.05, 30, 100, 0.4],
+            ["envs.0.release", 0.001, 15, 1000],
+          ]
+        : [
+            ["envs.0.release", 0.001, 15, 1000, 0.4],
+            ["envs.1.release", 0.001, 15, 1000],
+          ],
+    ),
     // the mod matrix does the moving: LFO 2, scaled by this macro
     macro("Movement", [], 0),
     macro("Drive", [["output.drive", 0, 1, 1, p.output.drive]]),
   ];
-  const movement: ModSlot = p.filters[0].on
-    ? { source: "lfo2", dest: "filter1.cutoff", amount: 0.2, via: "macro7" }
-    : { source: "lfo2", dest: "pitch", amount: 0.25 / 24, via: "macro7" };
+  const movement: ModSlot = phys
+    ? { source: "lfo2", dest: "phys.pickup", amount: 0.25, via: "macro7" }
+    : wt !== undefined
+      ? { source: "lfo2", dest: `osc${wt + 1}.position` as ModDest, amount: 0.25, via: "macro7" }
+      : p.filters[0].on
+        ? { source: "lfo2", dest: "filter1.cutoff", amount: 0.2, via: "macro7" }
+        : { source: "lfo2", dest: "pitch", amount: 0.25 / 24, via: "macro7" };
   return { macros, movement };
 }
 
@@ -493,7 +673,8 @@ function withAutoMacros(p: SynthPatch, keep: (Macro | undefined)[] = []): SynthP
 }
 
 const INIT_BASE: SynthPatch = {
-  version: 2,
+  version: 3,
+  source: "oscillators",
   osc: [osc(), osc({ on: false, level: 0 }), osc({ on: false, level: 0 })],
   sub: { level: 0, octave: -1, shape: "sine" },
   noise: { level: 0, color: "white" },
@@ -516,13 +697,15 @@ const INIT_BASE: SynthPatch = {
     tune: 0,
   },
   output: { drive: 0, volume: -12, pan: 0, spread: 0.3 },
+  physical: physical(),
 };
 
 export const INIT_PATCH: SynthPatch = withAutoMacros(clone(INIT_BASE));
 
 /** Deep partial, for writing patches compactly. */
 export type PatchSpec = {
-  version?: 2;
+  version?: 3;
+  source?: SynthPatch["source"];
   osc?: [Partial<Osc>?, Partial<Osc>?, Partial<Osc>?];
   sub?: Partial<SynthPatch["sub"]>;
   noise?: Partial<SynthPatch["noise"]>;
@@ -537,6 +720,11 @@ export type PatchSpec = {
   macros?: ((Partial<Macro> & { name: string }) | undefined)[];
   voice?: Partial<SynthPatch["voice"]>;
   output?: Partial<SynthPatch["output"]>;
+  physical?: {
+    exciter?: Partial<Physical["exciter"]>;
+    resonator?: Partial<Physical["resonator"]>;
+    body?: Partial<Physical["body"]>;
+  };
 };
 
 /**
@@ -554,6 +742,10 @@ export function makePatch(spec: PatchSpec = {}): SynthPatch {
     if (spec[k]) Object.assign(p[k], spec[k]);
   if (spec.ring !== undefined) p.ring = spec.ring;
   if (spec.routing) p.routing = spec.routing;
+  if (spec.source) p.source = spec.source;
+  if (spec.physical)
+    for (const k of ["exciter", "resonator", "body"] as const)
+      Object.assign(p.physical[k], spec.physical[k]);
   return withAutoMacros(
     p,
     (spec.macros ?? []).map((m) => m && { value: 0.5, targets: [], ...m }),
@@ -567,6 +759,16 @@ const clamp = (v: number, lo: number, hi: number) =>
 export function sanitizePatch(p: SynthPatch): SynthPatch {
   const o = (x: Osc): Osc => ({
     ...x,
+    type: x.type === "wavetable" ? "wavetable" : "analog",
+    table: typeof x.table === "string" && x.table ? x.table : "factory:basic",
+    tables: Array.isArray(x.tables)
+      ? x.tables.filter((t) => typeof t === "string").slice(0, TABLE_SLOTS - 1)
+      : [],
+    slot: Math.round(clamp(x.slot ?? 0, 0, TABLE_SLOTS - 1)),
+    position: clamp(x.position ?? 0, 0, 1),
+    warp: WARPS.includes(x.warp) ? x.warp : "none",
+    warpAmount: clamp(x.warpAmount ?? 0, x.warp === "bend" ? -1 : 0, 1),
+    smooth: x.smooth !== false,
     shape: clamp(x.shape, 0, 3),
     pw: clamp(x.pw, 0.05, 0.95),
     level: clamp(x.level, 0, 1),
@@ -635,6 +837,45 @@ export function sanitizePatch(p: SynthPatch): SynthPatch {
       volume: clamp(p.output.volume, -40, 6),
       pan: clamp(p.output.pan, -1, 1),
       spread: clamp(p.output.spread, 0, 1),
+    },
+    source: p.source === "physical" ? "physical" : "oscillators",
+    physical: sanitizePhysical(p.physical),
+  };
+}
+
+/** A physical model's values in their ranges; missing parts get the defaults. */
+function sanitizePhysical(x: Partial<Physical> | undefined): Physical {
+  const d = physical();
+  const e = { ...d.exciter, ...x?.exciter };
+  const r = { ...d.resonator, ...x?.resonator };
+  const b = { ...d.body, ...x?.body };
+  const unit = (v: number) => clamp(v, 0, 1);
+  return {
+    exciter: {
+      type: EXCITERS.includes(e.type) ? e.type : "pluck",
+      level: unit(e.level),
+      hardness: unit(e.hardness),
+      position: clamp(e.position, 0.02, 0.98),
+      noise: unit(e.noise),
+      pressure: unit(e.pressure),
+      velocity: unit(e.velocity),
+    },
+    resonator: {
+      model: RESONATORS.includes(r.model) ? r.model : "string",
+      decay: clamp(r.decay, 0.05, 30),
+      damping: unit(r.damping),
+      inharmonicity: unit(r.inharmonicity),
+      structure: unit(r.structure),
+      pickup: clamp(r.pickup, 0.02, 0.98),
+      width: unit(r.width),
+      release: unit(r.release),
+      modes: r.modes === 8 || r.modes === 32 ? r.modes : 16,
+      end: r.end === "open" ? "open" : "closed",
+    },
+    body: {
+      type: BODIES.includes(b.type) ? b.type : "none",
+      size: clamp(b.size, 0.5, 2),
+      mix: unit(b.mix),
     },
   };
 }
@@ -753,13 +994,15 @@ const stepQuarters = (s: StepSize) => STEP_QUARTERS[s];
 const lengthOf = (quarters: number) =>
   NOTE_LENGTHS.find((l) => Math.abs(noteLengthQuarters(l) - quarters) < 1e-6) ?? "1/4";
 
-/** Any stored patch (version 1 or 2) as a sanitized version 2 patch. */
+/** Any stored patch (version 1, 2 or 3) as a sanitized version 3 patch. */
 export function upgradePatch(p: unknown): SynthPatch {
   if (!p || typeof p !== "object") return sanitizePatch(clone(INIT_PATCH));
   const raw = p as { version?: number };
-  const v2 = raw.version === 2 ? (raw as SynthPatch) : upgradeV1(raw as SynthPatchV1);
-  // fill in fields added since the patch was saved
-  return sanitizePatch({ ...clone(INIT_PATCH), ...v2 });
+  const v2 =
+    raw.version === 2 || raw.version === 3 ? (raw as SynthPatch) : upgradeV1(raw as SynthPatchV1);
+  // fill in fields added since the patch was saved (version 2 → 3: analog oscillators, the
+  // Oscillators source; sanitizePatch fills each oscillator's own)
+  return sanitizePatch({ ...clone(INIT_PATCH), ...v2, version: 3 });
 }
 
 /** The instrument SOUND knobs at rest: a patch keeps its own values until you move them. */

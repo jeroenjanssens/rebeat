@@ -22,6 +22,9 @@ import {
 } from "../../model/synth";
 import { atRelease, bendAt, releaseTail } from "../../model/bend";
 import type { NoteBend } from "../../model/types";
+import type { MippedTable } from "../../model/wavetables";
+import { TABLES, formantGain, levelFor, readTable, warpPhase } from "./wavetable";
+import { PhysVoice, type PhysMods } from "./physical";
 
 export const CONTROL = 16;
 const MAX_UNISON = 8;
@@ -309,6 +312,26 @@ class Voice {
   filterKind: ("ladder" | "svf" | "")[] = ["", ""];
   /** The mod matrix's output per destination (natural units). */
   mod = new Float64Array(Object.keys(MOD_DESTS).length);
+  /** Wavetables (D244): the table each oscillator reads (null: analog), the mip levels for its
+   * pitch, and position and warp ramped across the block (from the last block's to this one's). */
+  wt: (MippedTable | null)[] = [null, null, null];
+  wtLevel = [
+    { a: 0, w: 0 },
+    { a: 0, w: 0 },
+    { a: 0, w: 0 },
+  ];
+  posFrom = new Float64Array(3);
+  posTo = new Float64Array(3);
+  warpFrom = new Float64Array(3);
+  warpTo = new Float64Array(3);
+  /** Whether the ramps start fresh (a new note: no ramp from the last one's values). */
+  fresh = true;
+  /** Each oscillator's last sample (the FM warp reads its neighbour's). */
+  lastMono = new Float64Array(3);
+  /** The physical model (D249), made the first time this voice plays one. */
+  phys: PhysVoice | null = null;
+  physL = 0.7;
+  physR = 0.7;
   /** Per control block: oscillator shapes, widths, levels, ring, FM, amp, pan. */
   shape = new Float64Array(3);
   pw = new Float64Array(3);
@@ -486,6 +509,7 @@ export class SynthCore {
     this.held = [];
     for (const v of this.voices) {
       v.active = false;
+      v.phys?.clear();
       for (const e of v.envs) {
         e.stage = Stage.Idle;
         e.value = 0;
@@ -692,6 +716,13 @@ export class SynthCore {
     p.envs.forEach((e, i) => v.envs[i].start(1 - e.velocity + e.velocity * velocity));
     p.lfos.forEach((l, i) => l.mode === "voice" && v.lfos[i].reset(l.phase));
     if (!wasActive) v.pitch = v.target = note;
+    v.fresh = true;
+    if (p.source === "physical") {
+      // a stolen or retriggered voice keeps ringing, like a string plucked again (D254)
+      if (!v.phys) v.phys = new PhysVoice();
+      if (!wasActive) v.phys.clear();
+      v.phys.start(p.physical, 440 * Math.pow(2, (note - 69) / 12), velocity, this.sr);
+    }
   }
 
   private release(v: Voice) {
@@ -761,6 +792,11 @@ export class SynthCore {
       this.render(v, left, right, pos, len, outGain);
       v.age += blockSec;
       if (v.envs[0].stage === Stage.Idle) v.active = false;
+      // a physical model that has died away frees its voice (D254)
+      if (p.source === "physical" && v.phys && v.age > 0.02) {
+        const ex = p.physical.exciter.type;
+        if (v.phys.settle(blockSec, ex === "pluck" || ex === "strike", v.gate)) v.active = false;
+      }
     }
   }
 
@@ -867,6 +903,44 @@ export class SynthCore {
         v.gainsR[i] = Math.sin(angle) * g;
       }
     }
+    // wavetables (D244): the table in the slot that plays, its mip levels, position and warp
+    for (let o = 0; o < 3; o++) {
+      const osc = p.osc[o];
+      const key = `osc${o + 1}` as "osc1";
+      const id = osc.slot > 0 ? (osc.tables[osc.slot - 1] ?? osc.table) : osc.table;
+      // a table that hasn't arrived yet plays as the analog morph at the same place (D243)
+      const m = osc.type === "wavetable" ? (TABLES.get(id) ?? null) : null;
+      v.wt[o] = m;
+      if (osc.type !== "wavetable") continue;
+      const position = Math.min(1, Math.max(0, osc.position + mod(`${key}.position` as ModDest)));
+      const warpLo = osc.warp === "bend" ? -1 : 0;
+      const warp = Math.min(1, Math.max(warpLo, osc.warpAmount + mod(`${key}.warp` as ModDest)));
+      v.posFrom[o] = v.fresh ? position : v.posTo[o];
+      v.warpFrom[o] = v.fresh ? warp : v.warpTo[o];
+      v.posTo[o] = position;
+      v.warpTo[o] = warp;
+      if (m) v.wtLevel[o] = levelFor(v.incs[o * MAX_UNISON], m.sizes.length);
+      else v.shape[o] = position * 3;
+    }
+    v.fresh = false;
+    if (p.source === "physical" && v.phys) {
+      const pm: PhysMods = {
+        hardness: mod("phys.hardness"),
+        position: mod("phys.position"),
+        pressure: mod("phys.pressure"),
+        decay: mod("phys.decay"),
+        damping: mod("phys.damping"),
+        structure: mod("phys.structure"),
+        pickup: mod("phys.pickup"),
+      };
+      v.phys.block(p.physical, 440 * Math.pow(2, (base - 69) / 12), sr, v.gate, pm);
+      // its stereo place: the patch's pan, the voice spread, modulation
+      const voicePan = ((v.order % 2) * 2 - 1) * p.output.spread * 0.4;
+      const pan = Math.max(-1, Math.min(1, p.output.pan + voicePan + mod("pan")));
+      const angle = ((pan + 1) * Math.PI) / 4;
+      v.physL = Math.cos(angle);
+      v.physR = Math.sin(angle);
+    }
     v.subLevel = Math.min(1, Math.max(0, p.sub.level + mod("sub.level")));
     v.noiseLevel = Math.min(1, Math.max(0, p.noise.level + mod("noise.level")));
     v.ring = Math.min(1, Math.max(0, p.ring + mod("ring")));
@@ -918,10 +992,18 @@ export class SynthCore {
     const modOsc = route === "2>1" ? 1 : route === "1>1" ? 0 : 2;
     const carrier = route === "3>2" ? 1 : 0;
     const syncing = (o2.on && o2.sync) || (o3.on && o3.sync);
+    const phys = p.source === "physical" ? v.phys : null;
+    // a physical model only hears the oscillators when they're its exciter
+    const oscillators = !phys || p.physical.exciter.type === "oscillators";
+    // an FM warp reads its neighbour (2 for 1, 3 for 2, 1 for 3)
+    const warpFm = (o: number) =>
+      p.osc[(o + 2) % 3].type === "wavetable" && p.osc[(o + 2) % 3].warp === "fm";
     const needed = [
-      o1.on && (v.level[0] > 0 || v.ring > 0 || syncing || (fmOn && modOsc === 0)),
-      o2.on && (v.level[1] > 0 || v.ring > 0 || (fmOn && modOsc === 1)),
-      o3.on && (v.level[2] > 0 || (fmOn && modOsc === 2)),
+      oscillators &&
+        o1.on &&
+        (v.level[0] > 0 || v.ring > 0 || syncing || (fmOn && modOsc === 0) || warpFm(0)),
+      oscillators && o2.on && (v.level[1] > 0 || v.ring > 0 || (fmOn && modOsc === 1) || warpFm(1)),
+      oscillators && o3.on && (v.level[2] > 0 || (fmOn && modOsc === 2) || warpFm(2)),
     ];
     // modulators are computed first
     const order =
@@ -944,6 +1026,12 @@ export class SynthCore {
         const osc = p.osc[o];
         const pm =
           fmOn && o === carrier ? (v.fm * (modOsc === 0 ? v.last1 : mono[modOsc])) / TWO_PI : 0;
+        // a wavetable: position and warp ramped across the block, so sweeps don't step
+        const table = v.wt[o];
+        const ramp = (n + 1) / len;
+        const position = v.posFrom[o] + (v.posTo[o] - v.posFrom[o]) * ramp;
+        const warpAmt = v.warpFrom[o] + (v.warpTo[o] - v.warpFrom[o]) * ramp;
+        const fmIn = v.lastMono[(o + 1) % 3];
         let sum = 0;
         for (let u = 0; u < osc.unison; u++) {
           const i = o * MAX_UNISON + u;
@@ -957,7 +1045,13 @@ export class SynthCore {
           // hard sync: restart with oscillator 1, at the same point within the sample
           if (o > 0 && osc.sync && sync1 >= 0) t = sync1 * dt;
           v.phases[i] = t;
-          const s = wave(v.shape[o], v.pw[o], frac(t + pm), dt);
+          let s: number;
+          if (table) {
+            const ph = frac(t + pm);
+            const w = osc.warp === "none" ? ph : warpPhase(osc.warp, warpAmt, ph, fmIn);
+            s = readTable(table, position, osc.smooth, w, v.wtLevel[o]);
+            if (osc.warp === "formant") s *= formantGain(ph);
+          } else s = wave(v.shape[o], v.pw[o], frac(t + pm), dt);
           sum += s;
           if (v.level[o] > 0) {
             l += s * v.gainsL[i] * v.level[o];
@@ -966,6 +1060,7 @@ export class SynthCore {
         }
         mono[o] = sum / osc.unison;
       }
+      for (let o = 0; o < 3; o++) v.lastMono[o] = mono[o];
       if (fmOn && modOsc === 0) v.last1 = mono[0];
       // sub, noise, ring: in the middle
       let c = 0;
@@ -993,6 +1088,12 @@ export class SynthCore {
       if (v.ring > 0) c += mono[0] * mono[1] * v.ring;
       l += c * 0.707;
       r += c * 0.707;
+      if (phys) {
+        // the oscillators (if they're its exciter) into the physical model (D249)
+        phys.tick(p.physical, (l + r) * 0.5);
+        l = phys.outLeft * v.physL;
+        r = phys.outRight * v.physR;
+      }
 
       l = this.filter(v, 0, l, preGain);
       r = this.filter(v, 1, r, preGain);

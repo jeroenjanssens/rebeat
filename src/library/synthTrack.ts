@@ -86,7 +86,7 @@ export function editPatch(t: Track, fn: (p: SynthPatch) => void, fork = true) {
   if (src.source !== "synth") return;
   if (!t.sound) t.sound = { ...src };
   const factory = !t.sound.patch && !t.sound.from;
-  if (t.sound.patch?.version !== 2) t.sound.patch = clone(patchOf(src));
+  if (t.sound.patch?.version !== 3) t.sound.patch = clone(patchOf(src));
   fn(t.sound.patch as SynthPatch);
   if (fork) patchHook?.(t, factory ? "fork" : "edit");
 }

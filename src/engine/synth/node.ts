@@ -7,6 +7,7 @@ import type { SynthPatch } from "../../model/synth";
 import type { Note, NoteBend } from "../../model/types";
 import type { AutoValue, Controls } from "./core";
 import type { SynthMessage, SynthReport } from "./worklet";
+import { loadTable, tablesOf } from "./tables";
 import workletUrl from "./worklet.ts?worker&url";
 
 const loaded = new WeakMap<BaseAudioContext, Promise<void>>();
@@ -68,6 +69,16 @@ export function workletSynth(dest: Tone.Gain | { input: AudioNode }): WorkletSyn
   let held: number[] = [];
   const controls: Controls = { modwheel: 0, aftertouch: 0, pitchbend: 0 };
   const send = (m: SynthMessage) => (node ? node.port.postMessage(m) : pending.push(m));
+  /** The wavetables this node has sent or is loading (D243); offline renders wait for them. */
+  const tables = new Map<string, Promise<unknown>>();
+  const needTables = (patch: SynthPatch) => {
+    for (const id of tablesOf(patch))
+      if (!tables.has(id))
+        tables.set(
+          id,
+          loadTable(id).then((table) => table && !disposed && send({ type: "table", table })),
+        );
+  };
   // offline (exports, previews): the node is made just before rendering, with every message so
   // far as its options, since port messages can arrive after rendering went past them
   const offline = "startRendering" in ctx;
@@ -124,6 +135,7 @@ export function workletSynth(dest: Tone.Gain | { input: AudioNode }): WorkletSyn
       send({ type: "panic" });
     },
     setPatch(patch, bpm) {
+      needTables(patch);
       send({ type: "patch", patch });
       send({ type: "tempo", bpm });
     },
@@ -146,6 +158,7 @@ export function workletSynth(dest: Tone.Gain | { input: AudioNode }): WorkletSyn
     modulation: () => mod,
     async settled() {
       await loadSynthWorklet(ctx);
+      await Promise.all(tables.values());
       create();
     },
     controls,
