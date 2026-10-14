@@ -288,6 +288,8 @@ class Voice {
   bendFrom = 0;
   bendRelease: number | null = null;
   holdUntil = -1;
+  /** The pitch strip on this note alone (D225), −1..1 of the bend range. */
+  wheel = 0;
   phases = new Float64Array(3 * MAX_UNISON);
   drift = new Float64Array(3 * MAX_UNISON);
   driftTarget = new Float64Array(3 * MAX_UNISON);
@@ -438,6 +440,11 @@ export class SynthCore {
       while (i > 0 && a.pending[i - 1].at > pt.at) i--;
       a.pending.splice(i, a.pending.length - i, pt);
     }
+  }
+
+  /** The pitch strip on one note (D225): `value` −1..1 of the bend range, now. */
+  noteBend(id: number, value: number) {
+    for (const v of this.voices) if (v.active && v.id === id) v.wheel = value;
   }
 
   /** Automation ends at `at` (samples): every path goes back to the patch. */
@@ -619,6 +626,7 @@ export class SynthCore {
 
   /** A voice's bend (D223) from now: its own, or none. */
   private setBend(v: Voice, bend: NoteBend | undefined) {
+    v.wheel = 0;
     v.bend = bend ?? null;
     v.bendFrom = v.age;
     v.bendRelease = null;
@@ -818,7 +826,11 @@ export class SynthCore {
         )
       : 0;
     const base =
-      v.pitch + own + mod("pitch") + this.controls.pitchbend * p.voice.bend + p.voice.tune / 100;
+      v.pitch +
+      own +
+      mod("pitch") +
+      (this.controls.pitchbend + v.wheel) * p.voice.bend +
+      p.voice.tune / 100;
 
     // oscillators: increments, stereo gains, shapes
     const spreadPan = (u: number, n: number) => (n > 1 ? (u / (n - 1)) * 2 - 1 : 0);

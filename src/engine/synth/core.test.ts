@@ -545,6 +545,33 @@ describe("synth core", () => {
       expect(swing(0.8)).toBeGreaterThan(1);
     });
 
+    it("the strip bends one note, the others stay (D225)", () => {
+      const p = makePatch({
+        osc: [sine],
+        filters: [{ on: false }],
+        envs: [{ sustain: 1 }],
+        voice: { bend: 12, glide: 0 },
+      });
+      const core = new SynthCore(SR, p);
+      core.noteOn(1, 57, 1, 0);
+      core.noteOn(2, 69, 1, 0);
+      const n = Math.round(0.3 * SR);
+      const play = () => {
+        const l = new Float32Array(n);
+        const r = new Float32Array(n);
+        for (let f = 0; f < n; f += 128)
+          core.process(l.subarray(f, f + 128), r.subarray(f, f + 128), f);
+        return l;
+      };
+      play();
+      core.noteBend(2, 1);
+      const l = play();
+      // 220 Hz stays, 440 Hz went up an octave: energy at 220 and 880, none left at 440
+      expect(mag(l, 220)).toBeGreaterThan(0.05);
+      expect(mag(l, 880)).toBeGreaterThan(0.05);
+      expect(mag(l, 440)).toBeLessThan(0.01);
+    });
+
     it("beat units follow the tempo", () => {
       // a quarter at 60 BPM is a second
       const l = run({ shape: "rise", amount: 12, time: 1, delay: 0, unit: "q" }, null, 1.2, {}, 60);

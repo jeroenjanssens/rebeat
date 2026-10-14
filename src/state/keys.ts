@@ -15,6 +15,7 @@ import {
   getKeysChannel,
   holdNote,
   editorSynth,
+  liveVoiceSynth,
   playKeysSample,
 } from "../engine/engine";
 import { noteName, type Key } from "../model/notes";
@@ -1463,6 +1464,17 @@ onPerformPanic(() => {
 export function keysControl(name: "modwheel" | "aftertouch" | "pitchbend", value: number) {
   const target = useKeys.getState().target;
   const ed = keysEditor();
+  // the Bend card's Strip on Newest note (D225): the strip bends the newest held note alone
+  if (name === "pitchbend" && playStyle().bend.strip === "newest" && !ed) {
+    const track = target.kind === "sound" ? getKeysChannel()?.track : keysTrack();
+    const synth =
+      target.kind === "sound"
+        ? getKeysChannel()?.voice.synth
+        : track
+          ? liveVoiceSynth(track)
+          : undefined;
+    if (synth) return synth.bendNewest(value);
+  }
   if (ed && !ed.trackId) return ed.control?.(name, value);
   if (!ed && target.kind === "sound") {
     getKeysChannel()?.voice.synth?.control(name, value);

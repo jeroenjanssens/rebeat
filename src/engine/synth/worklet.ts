@@ -25,6 +25,8 @@ export type SynthMessage =
   | { type: "releaseAll"; at: number }
   | { type: "panic" }
   | { type: "control"; name: keyof Controls; value: number }
+  /** The pitch strip on one held note (D225). */
+  | { type: "noteBend"; id: number; value: number }
   | { type: "monitor"; on: boolean }
   | { type: "macros"; id: number; values: number[] | null; at: number };
 
@@ -91,6 +93,8 @@ class SynthProcessor extends AudioWorkletProcessor {
       case "control":
         this.core.controls[m.name] = m.value;
         return;
+      case "noteBend":
+        return this.core.noteBend(m.id, m.value);
       case "macros":
         return this.core.lockMacros(m.id, m.values, frame(m.at));
       case "monitor":

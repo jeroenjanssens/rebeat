@@ -30,6 +30,8 @@ export interface WorkletSynth {
   panic(): void;
   setPatch(patch: SynthPatch, bpm: number): void;
   control(name: keyof Controls, value: number): void;
+  /** The pitch strip on the newest note still held (D225): −1..1 of the bend range. */
+  bendNewest(value: number): void;
   /** A step's macro lock: the macros at `values` from `time` until `end`. */
   lockMacros(values: number[], time: number, end: number): void;
   /** The tempo from `time` (tempo changes, D192). */
@@ -62,6 +64,8 @@ export function workletSynth(dest: Tone.Gain | { input: AudioNode }): WorkletSyn
   let next = 1;
   let mod: number[] | null = null;
   let last: { id: number; end: number } | null = null;
+  /** Held notes (the keys), oldest first: the strip can bend the newest (D225). */
+  let held: number[] = [];
   const controls: Controls = { modwheel: 0, aftertouch: 0, pitchbend: 0 };
   const send = (m: SynthMessage) => (node ? node.port.postMessage(m) : pending.push(m));
   // offline (exports, previews): the node is made just before rendering, with every message so
@@ -102,12 +106,21 @@ export function workletSynth(dest: Tone.Gain | { input: AudioNode }): WorkletSyn
     hold(pitch, velocity, time, bend) {
       const id = next++;
       send({ type: "on", id, note: pitch, velocity, at: time, bend });
-      return (end) => send({ type: "off", id, at: end });
+      held.push(id);
+      return (end) => {
+        held = held.filter((x) => x !== id);
+        send({ type: "off", id, at: end });
+      };
+    },
+    bendNewest(value) {
+      const id = held.at(-1);
+      if (id !== undefined) send({ type: "noteBend", id, value });
     },
     releaseAll: (at) => send({ type: "releaseAll", at }),
     panic() {
       // notes not sent yet never play
       pending = pending.filter((m) => m.type !== "on" && m.type !== "off" && m.type !== "macros");
+      held = [];
       send({ type: "panic" });
     },
     setPatch(patch, bpm) {
