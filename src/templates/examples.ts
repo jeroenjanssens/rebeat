@@ -6,6 +6,7 @@
 import { longWayHome } from "./arrangement";
 import { sweepsAndBends } from "./sweeps";
 import { woodWireAndGlass } from "./woodWireGlass";
+import { gravelRoad } from "./gravelRoad";
 import { makeEffect } from "../model/effects";
 import type { Project } from "../model/project";
 import {
@@ -423,6 +424,13 @@ export const EXAMPLES: Example[] = [
     artist: "Rebeat demo · wavetables and physical models",
     year: 2026,
     create: woodWireAndGlass,
+  },
+  {
+    id: "gravel-road",
+    name: "Gravel Road",
+    artist: "Rebeat demo · country",
+    year: 2026,
+    create: gravelRoad,
   },
   {
     id: "around-the-world",

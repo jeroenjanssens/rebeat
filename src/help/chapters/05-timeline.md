@@ -155,6 +155,10 @@ A sample on the timeline plays in song time, across sections: a vocal line over 
 
 The example song **Sweeps and Bends** (100 BPM, A minor) shows a synth's automation and [bends](#performance-bends). Every note of its lead bends (Scoops into the phrases, Falls at their ends, a Doit, Dips, a Rise into the drop, a Next and a Shake). Its lanes: the lead's Filter 1 cutoff opens over the build, the pad's LFO 1 rate speeds up into the drop and its LFO shape steps to Sample & hold in the break, the bass's oscillator 2 detunes through the drop and its voice mode goes legato, the lead's filter turns band-pass in the break, and its delay comes on in the break and the last bar. Open the synth editors while it plays: the automated knobs and switches follow their lanes.
 
+## Gravel Road {#timeline-gravel-road}
+
+The example song **Gravel Road** (112 BPM, G major) is a country song played almost entirely by [physical models](#instruments-physical): an acoustic guitar strumming boom-chick (each strum's strings start a little apart within the step, down strokes and up strokes), an upright bass, a banjo rolling sixteenths, a bowed fiddle that scoops into its notes, a harmonica whose blue notes bend, a pedal steel (a synth) that swells in and bends up a whole step like its pedals, and a brush train beat. On the timeline: the banjo is muted in the first verse (a section's mutes), the last choruses and the outro go up a whole step (their **Transpose**: G to A, the classic key change), and the tempo slows down into the last chord. Its lanes: the guitar's **Pickup** moves toward the bridge in every chorus, the fiddle bows harder through its solo in the bridge (**Pressure**), the steel's echo comes on in the choruses (a stepped lane) and its filter opens over the last ones.
+
 ## Long Way Home, a walk-through {#timeline-long-way-home}
 
 The example song **Long Way Home** (112 BPM, C minor) shows everything on this page. Open it, pick the **Arrange** layout and press Play.
