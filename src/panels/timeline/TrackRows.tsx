@@ -32,18 +32,15 @@ import {
   clearLane,
   deleteLane,
   deletePoints,
-  movePoint,
   retargetLane,
   insertOnCurve,
   setLaneFolded,
   setLaneOn,
   setOwnerFolded,
-  setPointEase,
-  setPointsOn,
   toggleMuteHere,
 } from "../../state/timelineActions";
 import { CurveLane, type LanePoint } from "./CurveLane";
-import { openInInspector, pointMenu } from "./pointMenu";
+import { openInInspector, selectionMenu } from "./pointMenu";
 import { HEADER, LANE_FOLDED_H, LANE_H, TRACK_H, snapQ } from "./geometry";
 import { RegionBoxes } from "./RegionBox";
 import { ViewCanvas, type View } from "./ViewCanvas";
@@ -149,21 +146,14 @@ function Lanes({
         const steps = def ? stepLabels(def) : [];
         // the menu acts on the selection (the point right-clicked is in it)
         const items = (i: number): MenuItem[] => {
-          const sel = useStore.getState().pointSelection;
-          const ids = sel.lane === lane.id && sel.indexes.includes(i) ? sel.indexes : [i];
           const pt = lane.points[i];
-          return pointMenu({
-            count: ids.length,
+          return selectionMenu(lane.id, i, {
             easeIn: pt?.in,
             easeOut: pt?.out,
             inTypes: IN_TYPES,
             outTypes: OUT_TYPES,
             on: pt?.on !== false,
-            setEase: (side, ease) => setPointEase(lane.id, ids, side, ease),
-            setOn: (on) => setPointsOn(lane.id, ids, on),
-            remove: () => deletePoints(lane.id, ids),
             inspect: { kind: "lane", id: lane.id },
-            stepped: steps.length > 0,
           });
         };
         const folded = !!lane.folded;
@@ -218,7 +208,6 @@ function Lanes({
                 format={(v) => (def ? def.format(v) : `${Math.round(v * 100)}%`)}
                 snap={(q) => q}
                 onAdd={() => -1}
-                onMove={() => {}}
                 onDelete={() => {}}
                 onMenu={() => {}}
                 steps={steps.length ? steps : undefined}
@@ -311,7 +300,6 @@ function Lanes({
               onAdd={(q, v, onCurve) =>
                 onCurve ? insertOnCurve(lane.id, q) : addPoint(lane.id, q, v)
               }
-              onMove={(i, q, v, key) => movePoint(lane.id, i, q, v, key)}
               onDelete={(ids) => deletePoints(lane.id, ids)}
               onMenu={(i, e) => contextMenu(e, items(i))}
               steps={steps.length ? steps : undefined}

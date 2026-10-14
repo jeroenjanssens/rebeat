@@ -23,17 +23,15 @@ import {
   deleteSections,
   deleteTempoChanges,
   insertTempoOnCurve,
-  setTempoEase,
-  setTempoOn,
   duplicateSections,
   foldAllLanes,
-  moveTempoChange,
   showOnlyLanesOf,
   setStartTempo,
   setTempoRamp,
 } from "../../state/timelineActions";
-import { CurveLane, type LanePoint } from "./CurveLane";
-import { openInInspector, pointMenu } from "./pointMenu";
+import { CurveLane, SelectionBox, type LanePoint } from "./CurveLane";
+import { openInInspector, selectionMenu } from "./pointMenu";
+import { selectedIn } from "../../state/pointSelection";
 import { onReveal } from "./reveal";
 import { TEMPO_TYPES } from "../../model/ease";
 import {
@@ -233,24 +231,19 @@ function TempoLane({ ppq, width }: { ppq: number; width: number }) {
           snap={(q, free) => snapQ(project, q, free ? "off" : snap === "bar" ? "beat" : snap)}
           round={(v, free) => (free ? Math.round(v * 10) / 10 : Math.round(v))}
           onAdd={(q, v, onCurve) => (onCurve ? insertTempoOnCurve(q) : addTempoChange(q, v))}
-          onMove={(i, q, v, key) => moveTempoChange(i, q, v, key)}
           onDelete={deleteTempoChanges}
           onMenu={(i, e) => {
             const sel = useStore.getState().pointSelection;
-            const ids = sel.lane === "tempo" && sel.indexes.includes(i) ? sel.indexes : [i];
+            const ids = selectedIn(sel, "tempo").includes(i) ? selectedIn(sel, "tempo") : [i];
             const t = changes[i];
             contextMenu(
               e,
-              pointMenu({
-                count: ids.length,
+              selectionMenu("tempo", i, {
                 easeIn: t?.in,
                 easeOut: t?.out,
                 inTypes: TEMPO_TYPES,
                 outTypes: TEMPO_TYPES,
                 on: t?.on !== false,
-                setEase: (side, ease) => setTempoEase(ids, side, ease),
-                setOn: (on) => setTempoOn(ids, on),
-                remove: () => deleteTempoChanges(ids),
                 inspect: { kind: "tempo" },
                 ramp: { on: !!t?.ramp, set: (r) => ids.forEach((x) => setTempoRamp(x, r)) },
               }),
@@ -590,7 +583,12 @@ export function Timeline() {
           Follow
         </button>
       </div>
-      <div ref={scroller} className="scroll-thin relative min-h-0 flex-1 overflow-auto">
+      <SelectionBox />
+      <div
+        ref={scroller}
+        className="scroll-thin relative min-h-0 flex-1 overflow-auto"
+        data-timeline-scroll
+      >
         <div className="relative" style={{ width: width + HEADER }}>
           <Row
             height={RULER_H}

@@ -20,6 +20,7 @@ import { getBuffer, sampleInfo } from "../engine/samples";
 import { loadSample, sampleName } from "../library/library";
 import type { AutomationLane, AutomationPoint, Section } from "../model/types";
 import { toast } from "../components/Toast";
+import type { PointSelection } from "./pointSelection";
 import { useStore } from "./store";
 
 const store = () => useStore.getState();
@@ -606,3 +607,160 @@ const ownerId = (target: string) => {
   const [kind, id] = target.split(":");
   return kind === "track" || kind === "bus" ? id : "master";
 };
+
+// ---------- the selection across lanes (D235–D238) ----------
+
+/** Where a selected point was when a move began: its lane ("tempo" or a lane's id), index, song
+ * position and value (0..1 on a lane, BPM on the tempo lane). */
+export interface PointStart {
+  key: string;
+  index: number;
+  q: number;
+  value: number;
+}
+
+/** The selection's points where they are now (hidden ones left out). */
+export function selectionStarts(sel: PointSelection): PointStart[] {
+  const { project: p } = store();
+  const out: PointStart[] = [];
+  for (const [key, ids] of Object.entries(sel.lanes)) {
+    const list: { value?: number; bpm?: number; slotId: string; at: number }[] | undefined =
+      key === "tempo" ? p.tempo : laneOf(p, key)?.points;
+    for (const index of ids) {
+      const pt = list?.[index];
+      const q = pt ? toSong(p, pt) : null;
+      if (pt && q !== null) out.push({ key, index, q, value: pt.value ?? pt.bpm ?? 0 });
+    }
+  }
+  return out;
+}
+
+/**
+ * How far a group may move in time (D237): no point before the song's start, and none past a
+ * point of its lane that isn't moving. Returns `dq` clamped.
+ */
+export function clampGroupDq(starts: PointStart[], dq: number): number {
+  const { project: p } = store();
+  let lo = -Infinity;
+  let hi = Infinity;
+  const byLane = new Map<string, PointStart[]>();
+  for (const s of starts) byLane.set(s.key, [...(byLane.get(s.key) ?? []), s]);
+  for (const [key, moving] of byLane) {
+    const list: { slotId: string; at: number }[] =
+      (key === "tempo" ? p.tempo : laneOf(p, key)?.points) ?? [];
+    const still = list
+      .map((pt, i) => ({ i, q: toSong(p, pt) }))
+      .filter((x): x is { i: number; q: number } => x.q !== null)
+      .filter((x) => !moving.some((m) => m.index === x.i));
+    for (const m of moving) {
+      lo = Math.max(lo, -m.q);
+      for (const x of still) {
+        if (x.q < m.q - 1e-9) lo = Math.max(lo, x.q - m.q + 1e-3);
+        else if (x.q > m.q + 1e-9) hi = Math.min(hi, x.q - m.q - 1e-3);
+      }
+    }
+  }
+  return lo > hi ? 0 : Math.min(hi, Math.max(lo, dq));
+}
+
+/**
+ * Move a group of points (D237) from where they started, in one commit: all by `dq` quarter
+ * notes, and each by `dv[key]` in its lane's units (clamped at the lane's ends; a stepped lane
+ * lands on its bands).
+ */
+export function movePoints(
+  starts: PointStart[],
+  dq: number,
+  dv: Record<string, number>,
+  key: string,
+) {
+  const { project } = store();
+  const steps = new Map<string, number>();
+  for (const s of starts)
+    if (s.key !== "tempo" && !steps.has(s.key)) {
+      const l = laneOf(project, s.key);
+      steps.set(s.key, l ? laneSteps(project, l.target) : 0);
+    }
+  store().commit((p) => {
+    for (const s of starts) {
+      const d = dv[s.key] ?? 0;
+      if (s.key === "tempo") {
+        const t = p.tempo?.[s.index];
+        if (!t) continue;
+        Object.assign(t, toAnchor(p, Math.max(0, s.q + dq)), {
+          bpm: Math.round(clampBpm(s.value + d) * 10) / 10,
+        });
+        continue;
+      }
+      const pt = laneOf(p, s.key)?.points[s.index];
+      if (!pt) continue;
+      const n = steps.get(s.key) ?? 0;
+      Object.assign(pt, toAnchor(p, Math.max(0, s.q + dq)), { value: valueFor(n, s.value + d) });
+      plain(pt, n);
+    }
+  }, key);
+}
+
+/** Eases on every selected point (the tempo lane's too; stepped lanes have none, D230). */
+export function easeSelection(sel: PointSelection, side: "in" | "out", ease: Ease) {
+  const { project } = store();
+  const smooth = (key: string) => {
+    const l = laneOf(project, key);
+    return !!l && !laneSteps(project, l.target);
+  };
+  store().commit((p) => {
+    for (const [key, ids] of Object.entries(sel.lanes)) {
+      const list = key === "tempo" ? p.tempo : smooth(key) ? laneOf(p, key)?.points : undefined;
+      for (const i of ids) {
+        const pt = list?.[i];
+        if (!pt) continue;
+        if (ease.type === "linear") delete pt[side];
+        else pt[side] = { ...ease };
+      }
+    }
+  }, `ease-selection-${side}`);
+}
+
+/** Every selected point on or off (D196). */
+export function setSelectionOn(sel: PointSelection, on: boolean) {
+  store().commit((p) => {
+    for (const [key, ids] of Object.entries(sel.lanes)) {
+      const list = key === "tempo" ? p.tempo : laneOf(p, key)?.points;
+      for (const i of ids) {
+        const pt = list?.[i];
+        if (!pt) continue;
+        if (on) delete pt.on;
+        else pt.on = false;
+      }
+    }
+  });
+}
+
+/** Delete every selected point, in every lane, in one step. */
+export function deleteSelection(sel: PointSelection) {
+  store().commit((p) => {
+    for (const [key, ids] of Object.entries(sel.lanes)) {
+      if (key === "tempo") {
+        p.tempo = p.tempo?.filter((_, i) => !ids.includes(i));
+        if (p.tempo && !p.tempo.length) delete p.tempo;
+        continue;
+      }
+      const l = laneOf(p, key);
+      if (l) l.points = l.points.filter((_, i) => !ids.includes(i));
+    }
+  });
+}
+
+/** How many of the selected points can be eased (the rest are on stepped lanes). */
+export function easeableCount(sel: PointSelection): number {
+  const { project } = store();
+  let n = 0;
+  for (const [key, ids] of Object.entries(sel.lanes)) {
+    if (key === "tempo") n += ids.length;
+    else {
+      const l = laneOf(project, key);
+      if (l && !laneSteps(project, l.target)) n += ids.length;
+    }
+  }
+  return n;
+}

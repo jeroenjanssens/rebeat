@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { produce, type Draft } from "immer";
+import type { PointSelection } from "./pointSelection";
 import { demoProject } from "../templates/nightDrive";
 import { slotPattern, type PlayMode, type Project } from "../model/project";
 import type { SongAnchor, Step } from "../model/types";
@@ -81,7 +82,7 @@ export interface UiState {
   inspect: { kind: "lane"; id: string } | { kind: "tempo" } | null;
   /** Selected points (D200), shared by a lane on the timeline and its table: a lane id or
    * "tempo", and the points' indexes in the saved list. */
-  pointSelection: { lane: string; indexes: number[] };
+  pointSelection: PointSelection;
   jogOpen: Record<string, boolean>;
   clipboard: Step[] | null;
   euclidOpen: boolean;
@@ -148,7 +149,7 @@ export const useStore = create<State>()((set, get) => ({
       queuedSlotId: null,
       startAt: null,
       inspect: null,
-      pointSelection: { lane: "", indexes: [] },
+      pointSelection: { lanes: {} },
       selectedSteps: {},
       cursor: null,
       fxIndex: 0,
@@ -194,7 +195,7 @@ export const useStore = create<State>()((set, get) => ({
   startAt: null,
   recordAutomation: false,
   inspect: null,
-  pointSelection: { lane: "", indexes: [] },
+  pointSelection: { lanes: {} },
   jogOpen: {},
   clipboard: null,
   euclidOpen: false,

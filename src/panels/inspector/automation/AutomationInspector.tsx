@@ -3,6 +3,7 @@
  * per point in time order, On, Position, Value, Ease in and Ease out, drag, scroll or type
  * everywhere. It edits the same data as the lane on the timeline, and shares its selection.
  */
+import { onlyIn, selectedIn, setPointSelection } from "../../../state/pointSelection";
 import { ArrowLeft, ChevronDown, Plus, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { contextMenu, dropdown } from "../../../components/Menu";
@@ -138,8 +139,7 @@ function PointRow({
     prev && prev.q !== null && row.q !== null && row.q - prev.q > 1e-3
       ? () => {
           const index = source.insert((prev.q! + row.q!) / 2);
-          if (index >= 0)
-            useStore.getState().setUi({ pointSelection: { lane: source.key, indexes: [index] } });
+          if (index >= 0) setPointSelection(onlyIn(source.key, [index]));
         }
       : null;
   return (
@@ -314,11 +314,10 @@ function PointTable({ source, project }: { source: PointSource; project: Project
   const list = useRef<HTMLDivElement>(null);
   const [view, setView] = useState({ top: 0, height: 400 });
   const selection = useStore((s) => s.pointSelection);
-  const selected = selection.lane === source.key ? selection.indexes : [];
+  const selected = selectedIn(selection, source.key);
   const anchor = useRef<number | null>(null);
   const rows = source.rows;
-  const setSelected = (indexes: number[]) =>
-    useStore.getState().setUi({ pointSelection: { lane: source.key, indexes } });
+  const setSelected = (indexes: number[]) => setPointSelection(onlyIn(source.key, indexes));
 
   useEffect(() => {
     const el = list.current!;
@@ -443,7 +442,7 @@ export function AutomationInspector() {
   const last = [...source.rows].reverse().find((r) => r.q !== null);
   const addAt = (q: number) => {
     const index = source.insert(Math.min(q, Math.max(0, songLength(project) - 1e-3)));
-    if (index >= 0) setUi({ pointSelection: { lane: source.key, indexes: [index] } });
+    if (index >= 0) setPointSelection(onlyIn(source.key, [index]));
   };
   return (
     <div className="flex h-full min-h-0 flex-col bg-panel" data-testid="automation-inspector">
@@ -517,7 +516,30 @@ export function AutomationInspector() {
           </button>
         </div>
       </div>
+      <AlsoSelected source={source} />
       <PointTable source={source} project={project} />
     </div>
+  );
+}
+
+/** With points selected in other lanes too (D238): how many, and a click to keep only these. */
+function AlsoSelected({ source }: { source: PointSource }) {
+  const selection = useStore((s) => s.pointSelection);
+  const others = Object.entries(selection.lanes).filter(
+    ([key, ids]) => key !== source.key && ids.length,
+  );
+  if (!others.length) return null;
+  const points = others.reduce((n, [, ids]) => n + ids.length, 0);
+  return (
+    <button
+      className="mx-3 my-1 rounded border border-line px-2 py-1 text-left text-[10.5px] text-dim hover:text-ink"
+      title="Keep only this lane's points selected"
+      data-testid="also-selected"
+      data-hint="automation.also-selected"
+      onClick={() => setPointSelection(onlyIn(source.key, selectedIn(selection, source.key)))}
+    >
+      Also selected: {points} {points === 1 ? "point" : "points"} in {others.length}{" "}
+      {others.length === 1 ? "other lane" : "other lanes"}
+    </button>
   );
 }

@@ -102,6 +102,18 @@ Each point has an **ease in** (how the curve arrives at it) and an **ease out** 
 
 The **strength** (0–100%) sets how much: 0% is a straight line. Tempo changes ease their ramps the same way (Linear, Smooth or Exponential). On the timeline, a ring around a point means it has an ease; a click right on the line adds a point on the curve, a click elsewhere at that height.
 
+## Selecting and moving points
+
+Points can be selected in several lanes at once, and moved together:
+
+- **Drag a rectangle** from empty space in a lane: every point inside it is selected, in every lane it covers (the Tempo lane and folded lanes too). The timeline scrolls when you reach its edge. **Shift** + rectangle adds to the selection, **Alt** (Option) + rectangle takes points out of it. A plain click still adds a point.
+- **Shift+click** a point to add it to the selection, or take it out, in any lane. **⌘A** selects the focused lane's points, **⇧⌘A** every visible lane's, **Esc** clears the selection.
+- **Drag** any selected point and they all move by the same amount: the same distance in time (snapped by the point you hold, so the group keeps its spacing), and the same share of each lane's range in value (a stepped lane moves by whole values). Points don't pass a point of their lane that isn't moving. **Shift** turns snapping off; hold **Alt** (Option) to move in one direction only, whichever you moved first.
+- **The arrow keys** nudge the selection: ← → by the Snap grid (Shift: finer), ↑ ↓ by 1% of each lane (Shift: 10%), or one value on a stepped lane. **Delete** deletes every selected point.
+- The **point menu** acts on the whole selection ("7 points in 3 lanes"): eases (not on stepped lanes), on and off, delete. One ⌘Z undoes a whole move.
+
+The Inspector's table shows one lane; when points of other lanes are selected too, a line above it says how many, and a click keeps only the table's lane's points.
+
 ## Folding lanes
 
 Lanes take room. Fold the ones you aren't working on:

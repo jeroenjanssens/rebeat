@@ -36,6 +36,11 @@ const hints: Hints = {
     keys: "Drag up or down or scroll (Shift: finer) · Click: type a value or a percentage · Double-click: the default",
     guide,
   },
+  "automation.also-selected": {
+    title: "Also selected",
+    text: "Points in other lanes are selected too: a drag on the timeline, Delete or the point menu act on all of them. Click to keep only this lane's points.",
+    guide: "timeline-selecting-and-moving-points",
+  },
   "automation.ease-in": {
     title: "Ease in",
     text: "How the curve arrives at this point: Linear, Smooth (settles slowly), Exponential or Bounce (lands and bounces back).",
