@@ -47,7 +47,7 @@ test("shape a synth, save it to the library and use it on another track", async 
   await editor.locator('[data-hint="synth.osc.retrigger"]').first().click();
   let bass = await track(page, "Bass");
   expect(bass.sound?.preset).toBe("acid");
-  expect(bass.sound?.patch?.version).toBe(2);
+  expect(bass.sound?.patch?.version).toBe(3);
   expect(bass.sound?.patch?.osc[0].retrigger).toBe(true);
   // the factory synth didn't change
   const factory = await page.evaluate(
