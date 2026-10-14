@@ -5,7 +5,7 @@
 import type * as Tone from "tone";
 import type { SynthPatch } from "../../model/synth";
 import type { Note } from "../../model/types";
-import type { Controls } from "./core";
+import type { AutoValue, Controls } from "./core";
 import type { SynthMessage, SynthReport } from "./worklet";
 import workletUrl from "./worklet.ts?worker&url";
 
@@ -33,8 +33,10 @@ export interface WorkletSynth {
   lockMacros(values: number[], time: number, end: number): void;
   /** The tempo from `time` (tempo changes, D192). */
   tempo(bpm: number, time: number): void;
-  /** Automated macro values from `time` (D186); null: not automated. */
-  automate(values: (number | null)[], time: number): void;
+  /** A patch path's automation (D228): points in seconds, in the path's own units. */
+  automate(path: string, points: { t: number; v: AutoValue; ramp: boolean }[]): void;
+  /** Automation ends at `time`: the patch's own values again. */
+  automateEnd(time: number): void;
   /** Ask for (or stop) modulation reports, and read the latest. */
   monitor(on: boolean): void;
   modulation(): number[] | null;
@@ -116,7 +118,8 @@ export function workletSynth(dest: Tone.Gain | { input: AudioNode }): WorkletSyn
       send({ type: "control", name, value });
     },
     tempo: (bpm, at) => send({ type: "tempo", bpm, at }),
-    automate: (values, at) => send({ type: "automate", values, at }),
+    automate: (path, points) => points.length && send({ type: "automate", path, points }),
+    automateEnd: (at) => send({ type: "automateEnd", at }),
     lockMacros(values, time, end) {
       const id = next++;
       send({ type: "macros", id, values, at: time });

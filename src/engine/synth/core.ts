@@ -12,6 +12,7 @@ import {
   MOD_SOURCES,
   applyMacros,
   envCurve,
+  macroAt,
   withMacroValues,
   noteLengthQuarters,
   type Env,
@@ -317,8 +318,26 @@ type Event =
   | { at: number; kind: "macros"; id: number; values: number[] | null }
   /** The tempo from here (D192: tempo changes), for synced LFOs. */
   | { at: number; kind: "tempo"; bpm: number }
-  /** Automated macro values from here (D186); null: that macro isn't automated. */
-  | { at: number; kind: "automate"; values: (number | null)[] };
+  /** Automation ends here (D228): every path goes back to the patch. */
+  | { at: number; kind: "automateEnd" };
+
+/** An automated value: a number (ramps between numbers), or a switch's option. */
+export type AutoValue = number | string | boolean | null;
+/** One point of a path's automation (D228), in samples; `ramp`: a straight line from the one before. */
+export interface AutoPoint {
+  at: number;
+  v: AutoValue;
+  ramp: boolean;
+}
+/** A path's automation: the point in force and the ones still to come. */
+interface AutoPath {
+  keys: string[];
+  macro: number;
+  cur: AutoPoint | null;
+  pending: AutoPoint[];
+}
+
+const clonePatch = (p: SynthPatch): SynthPatch => JSON.parse(JSON.stringify(p)) as SynthPatch;
 
 /** Values that MIDI and the UI send: mod wheel, aftertouch, pitch bend, macros. */
 export interface Controls {
@@ -335,8 +354,15 @@ export class SynthCore {
   /** The patch as sent, before macros; and a step's macro lock on top. */
   private base!: SynthPatch;
   private lock: { id: number; values: number[] } | null = null;
-  /** Automated macro values (D186), under a lock. */
-  private auto: (number | undefined)[] = [];
+  /** The patch with its macros applied, before automation. */
+  private rest!: SynthPatch;
+  /**
+   * Automation (D228): each automated path ("filters.0.cutoff", "macros.2.value"), and the
+   * working copy of the patch its values are written into, in place, once per control block.
+   */
+  private auto = new Map<string, AutoPath>();
+  private work: SynthPatch | null = null;
+  private macroValues: number[] = [];
   private voices: Voice[] = Array.from({ length: 16 }, () => new Voice());
   private globalLfos = [new LfoState(), new LfoState(), new LfoState()];
   private events: Event[] = [];
@@ -357,8 +383,10 @@ export class SynthCore {
   /** A new patch (or macro values). Macros move their targets before anything else. */
   setPatch(patch: SynthPatch) {
     this.base = patch;
-    const automated = this.auto.length ? withMacroValues(patch, this.auto) : patch;
-    this.patch = applyMacros(this.lock ? withMacroValues(automated, this.lock.values) : automated);
+    this.rest = applyMacros(this.lock ? withMacroValues(patch, this.lock.values) : patch);
+    this.patch = this.rest;
+    // automation is written into a fresh copy at the next block
+    this.work = null;
   }
 
   /** Lock the macros at `values` from `at` (samples); `values` null ends lock `id`. */
@@ -372,9 +400,36 @@ export class SynthCore {
     else this.queue({ at, kind: "tempo", bpm });
   }
 
-  /** Automated macro values from `at` (samples); null leaves a macro to its knob. */
-  automateMacros(values: (number | null)[], at: number) {
-    this.queue({ at, kind: "automate", values });
+  /**
+   * Automation of one patch path (D228): its points in samples, in order. Numbers ramp where
+   * `ramp` says so; switches (strings, booleans) change at their point. A macro is
+   * "macros.<i>.value" (0..1); a step's lock still wins over it.
+   */
+  automate(path: string, points: AutoPoint[]) {
+    if (!points.length) return;
+    let a = this.auto.get(path);
+    if (!a) {
+      const keys = path.split(".");
+      const macro = keys[0] === "macros" && keys[2] === "value" ? Number(keys[1]) : -1;
+      a = { keys, macro, cur: null, pending: [] };
+      this.auto.set(path, a);
+    }
+    for (const pt of points) {
+      // points arrive in order; a point before the last one replaces what came after it
+      let i = a.pending.length;
+      while (i > 0 && a.pending[i - 1].at > pt.at) i--;
+      a.pending.splice(i, a.pending.length - i, pt);
+    }
+  }
+
+  /** Automation ends at `at` (samples): every path goes back to the patch. */
+  automateEnd(at: number) {
+    this.queue({ at, kind: "automateEnd" });
+  }
+
+  /** Whether any path is automated (tests). */
+  get automated() {
+    return this.auto.size > 0;
   }
 
   /** Schedule a note; `at` and `end` are in samples. */
@@ -411,9 +466,9 @@ export class SynthCore {
         e.value = 0;
       }
     }
-    if (this.lock || this.auto.length) {
+    if (this.lock || this.auto.size) {
       this.lock = null;
-      this.auto = [];
+      this.auto.clear();
       this.setPatch(this.base);
     }
   }
@@ -451,6 +506,7 @@ export class SynthCore {
         this.handle(this.events.shift()!);
       const nextEvent = this.events.length ? this.events[0].at - frame : n;
       const len = Math.max(1, Math.min(CONTROL, n - pos, Math.ceil(nextEvent - pos)));
+      this.resolve(frame + pos);
       this.block(left, right, pos, len);
       pos += len;
     }
@@ -463,8 +519,8 @@ export class SynthCore {
       this.bpm = e.bpm;
       return;
     }
-    if (e.kind === "automate") {
-      this.auto = e.values.some((v) => v !== null) ? e.values.map((v) => v ?? undefined) : [];
+    if (e.kind === "automateEnd") {
+      this.auto.clear();
       return this.setPatch(this.base);
     }
     if (e.kind === "macros") {
@@ -601,6 +657,40 @@ export class SynthCore {
     const l = this.patch.lfos[i];
     const hz = l.sync ? 1 / (noteLengthQuarters(l.sync) * (60 / this.bpm)) : l.rate;
     return hz * Math.pow(2, mod);
+  }
+
+  /**
+   * The automated values at `frame`, written into the working copy of the patch (D228): macros
+   * first (their targets follow them), then the knobs and switches, so a lane wins over a macro
+   * on the same knob (D227). Nothing is cloned once the copy exists.
+   */
+  private resolve(frame: number) {
+    if (!this.auto.size) return;
+    let w = this.work;
+    let macrosMoved = false;
+    if (!w) {
+      w = this.work = clonePatch(this.rest);
+      this.macroValues = w.macros.map((m) => m.value);
+      macrosMoved = true;
+    }
+    for (const a of this.auto.values()) {
+      while (a.pending.length && a.pending[0].at <= frame) a.cur = a.pending.shift()!;
+      if (!a.cur || a.macro < 0 || this.lock) continue;
+      const v = valueAt(a, frame);
+      if (typeof v === "number" && this.macroValues[a.macro] !== v) {
+        this.macroValues[a.macro] = v;
+        macrosMoved = true;
+      }
+    }
+    if (macrosMoved) {
+      w.macros.forEach((m, i) => (m.value = this.macroValues[i] ?? m.value));
+      for (const m of w.macros) for (const t of m.targets) setAt(w, t.path, macroAt(t, m.value));
+    }
+    for (const a of this.auto.values()) {
+      if (!a.cur || a.macro >= 0) continue;
+      setKeys(w, a.keys, valueAt(a, frame));
+    }
+    this.patch = w;
   }
 
   /** Render `len` (≤ CONTROL) samples at offset `pos`. */
@@ -867,6 +957,42 @@ export class SynthCore {
       ? u.ladder.process(d)
       : u.svf.process(d, fp.type);
   }
+}
+
+/** A path's value at `frame`: its point in force, or on the way to the next (a ramp). */
+function valueAt(a: AutoPath, frame: number): AutoValue {
+  const cur = a.cur!;
+  const next = a.pending[0];
+  if (
+    next?.ramp &&
+    typeof cur.v === "number" &&
+    typeof next.v === "number" &&
+    next.at > cur.at &&
+    frame > cur.at
+  )
+    return cur.v + (next.v - cur.v) * Math.min(1, (frame - cur.at) / (next.at - cur.at));
+  return cur.v;
+}
+
+/** Write a value at a path that's already split ("filters", "0", "cutoff"). */
+function setKeys(p: SynthPatch, keys: string[], v: AutoValue) {
+  let obj = p as unknown as Record<string, unknown>;
+  for (let i = 0; i < keys.length - 1; i++) {
+    obj = obj[keys[i]] as Record<string, unknown>;
+    if (!obj) return;
+  }
+  const last = keys[keys.length - 1];
+  if (last in obj) obj[last] = v;
+}
+
+/** Paths split once (macro targets are written on every block while a macro moves). */
+const split = new Map<string, string[]>();
+
+/** A macro target's value (a number path). */
+function setAt(p: SynthPatch, path: string, v: number) {
+  let keys = split.get(path);
+  if (!keys) split.set(path, (keys = path.split(".")));
+  setKeys(p, keys, v);
 }
 
 export { applyMacros };

@@ -17,6 +17,7 @@ import { createInstrument, instrumentKey, type InstrumentVoice } from "./instrum
 import { detectRootNote } from "../library/pitch";
 import type { WorkletSynth } from "./synth/node";
 import { macroValues } from "../library/synthTrack";
+import { synthPath, synthValue } from "../model/synthAutomation";
 import { hitNoteOf, hitNotes, player, sampleOf, soundChanged } from "../model/tracks";
 
 export interface TriggerOptions {
@@ -102,9 +103,9 @@ export interface EngineScope {
   /** The tempo the graph was last reconciled at. */
   builtBpm: number;
   /** Automation (D186): where each lane's last step ended (a jump sets its value first), and
-   * the synths' automated macros. */
+   * the tracks whose synths are automated (D228). */
   autoLast: Map<string, number>;
-  autoMacros: Map<string, (number | null)[]>;
+  autoSynths: Set<string>;
 }
 
 export function newScope(live = false): EngineScope {
@@ -124,7 +125,7 @@ export function newScope(live = false): EngineScope {
     tempo: null,
     builtBpm: 120,
     autoLast: new Map(),
-    autoMacros: new Map(),
+    autoSynths: new Set(),
   };
 }
 
@@ -1085,17 +1086,16 @@ export function automateTarget(target: string, events: AutoEvent[]) {
   }
   if (kind === "bus") return S.buses.get(id)?.automate(key || "volume", events);
   if (kind !== "track") return;
-  const macro = /^sound\.macro(\d)$/.exec(key);
-  if (macro) {
-    // a synth's macros: one message per point, all eight values (null: its knob)
+  const path = synthPath(key);
+  if (path) {
+    // a synth's macro, knob or switch (D228): the worklet ramps and writes it in place
     const synth = S.synths.get(id)?.synth;
     if (!synth) return;
-    const values = S.autoMacros.get(id) ?? Array<number | null>(8).fill(null);
-    for (const e of events) {
-      values[Number(macro[1]) - 1] = e.v;
-      synth.automate([...values], e.t);
-    }
-    S.autoMacros.set(id, values);
+    synth.automate(
+      path,
+      events.map((e) => ({ t: e.t, v: synthValue(path, e.v), ramp: e.ramp })),
+    );
+    S.autoSynths.add(id);
     return;
   }
   S.channels.get(id)?.automate(key, events);
@@ -1107,8 +1107,8 @@ export function releaseAutomation() {
   for (const p of automatedParams) p.cancelScheduledValues(now);
   automatedParams.clear();
   S.autoLast.clear();
-  for (const [id] of S.autoMacros) S.synths.get(id)?.synth?.automate([], now);
-  S.autoMacros.clear();
+  for (const id of S.autoSynths) S.synths.get(id)?.synth?.automateEnd(now);
+  S.autoSynths.clear();
   const project = useStore.getState().project;
   for (const ch of S.channels.values()) ch.release();
   for (const b of project.buses) S.buses.get(b.id)?.release(b, project.bpm);

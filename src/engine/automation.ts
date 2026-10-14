@@ -22,7 +22,7 @@ const JUMP = 0.003;
  * seconds): its points inside the step, a jump where an ease out of None ends, the value at the
  * step's end, and with `jumped` (a start, a jump in the song) the value at its start first.
  * Eased stretches (D197) are sampled `samples` times over the step; `linearSamples` adds points
- * on straight stretches too, for targets that can't ramp (a synth's macros).
+ * on straight stretches too (every target ramps today, D228: none asks for them).
  */
 export function curveEvents(
   points: ResolvedPoint[],
@@ -90,11 +90,7 @@ export function automationStep(
     const prev = last.get(lane.id);
     const jumped = prev === undefined || Math.abs(prev - q0) > EPS;
     last.set(lane.id, q1);
-    const macro = /:sound\.macro\d$/.test(lane.target);
-    automateTarget(
-      lane.target,
-      curveEvents(points, q0, q1, time, dur, jumped, macro ? 4 : 8, macro ? 1 : 0),
-    );
+    automateTarget(lane.target, curveEvents(points, q0, q1, time, dur, jumped));
   }
 }
 

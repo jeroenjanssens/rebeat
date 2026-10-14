@@ -3,12 +3,14 @@
  * contexts. The main thread sends the patch, the tempo, notes and controls as messages.
  */
 import { upgradePatch } from "../../model/synth";
-import { SynthCore, type Controls } from "./core";
+import { SynthCore, type AutoValue, type Controls } from "./core";
 
 export type SynthMessage =
   | { type: "patch"; patch: unknown }
   | { type: "tempo"; bpm: number; at?: number }
-  | { type: "automate"; values: (number | null)[]; at: number }
+  /** A patch path's automation (D228): points in seconds; numbers ramp where `ramp` says. */
+  | { type: "automate"; path: string; points: { t: number; v: AutoValue; ramp: boolean }[] }
+  | { type: "automateEnd"; at: number }
   | { type: "on"; id: number; note: number; velocity: number; at: number; from?: number }
   | { type: "off"; id: number; at: number }
   | { type: "releaseAll"; at: number }
@@ -61,7 +63,12 @@ class SynthProcessor extends AudioWorkletProcessor {
       case "tempo":
         return this.core.setTempo(m.bpm, m.at === undefined ? undefined : frame(m.at));
       case "automate":
-        return this.core.automateMacros(m.values, frame(m.at));
+        return this.core.automate(
+          m.path,
+          m.points.map((p) => ({ at: frame(p.t), v: p.v, ramp: p.ramp })),
+        );
+      case "automateEnd":
+        return this.core.automateEnd(frame(m.at));
       case "on":
         return m.from !== undefined
           ? this.core.slideTo(m.from, m.id, m.note, m.velocity, frame(m.at))

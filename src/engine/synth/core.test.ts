@@ -359,7 +359,7 @@ describe("synth core", () => {
     });
     const core = new SynthCore(SR, p);
     core.noteOn(1, 69, 1, 0);
-    core.automateMacros([0], SR * 0.2);
+    core.automate("macros.0.value", [{ at: SR * 0.2, v: 0, ramp: false }]);
     // a step's lock still wins over the automation
     core.lockMacros(1, [1], SR * 0.5);
     core.lockMacros(1, null, SR * 0.6);
@@ -370,6 +370,79 @@ describe("synth core", () => {
     expect(level(0.3)).toBeLessThan(level(0.1) / 10);
     expect(level(0.52) / level(0.1)).toBeCloseTo(1, 1);
     expect(level(0.7)).toBeLessThan(level(0.1) / 10);
+  });
+
+  it("automates a knob (D228): ramps at the control rate, ends at its point, then lets go", () => {
+    const p = makePatch({ osc: [{ shape: 0 }], filters: [{ on: false }], envs: [{ sustain: 1 }] });
+    const core = new SynthCore(SR, p);
+    core.noteOn(1, 69, 1, 0);
+    // the volume at −40 dB from 0.2 s, held until 0.4 s, ramping to 0 dB at 0.6 s
+    core.automate("output.volume", [
+      { at: SR * 0.2, v: -40, ramp: false },
+      { at: SR * 0.4, v: -40, ramp: true },
+      { at: SR * 0.6, v: 0, ramp: true },
+    ]);
+    core.automateEnd(SR * 0.8);
+    const l = new Float32Array(SR);
+    const r = new Float32Array(SR);
+    for (let f = 0; f < SR; f += 128)
+      core.process(l.subarray(f, f + 128), r.subarray(f, f + 128), f);
+    const level = (t: number) => rms(l.subarray(Math.round(t * SR), Math.round((t + 0.02) * SR)));
+    const db = (t: number) => 20 * Math.log10(level(t) / level(0.05));
+    const rest = p.output.volume;
+    expect(db(0.21)).toBeCloseTo(-40 - rest, 0);
+    // halfway up the ramp: −20 dB
+    expect(db(0.49)).toBeCloseTo(-20 - rest, 0);
+    expect(db(0.65)).toBeCloseTo(0 - rest, 0);
+    // automation over: the patch's own volume
+    expect(db(0.85)).toBeCloseTo(0, 1);
+    expect(core.automated).toBe(false);
+  });
+
+  it("a lane wins over a macro on the same knob; the macro still moves its other targets", () => {
+    const p = makePatch({
+      osc: [{ shape: 0 }],
+      filters: [{ on: false }],
+      envs: [{ sustain: 1 }],
+      macros: [
+        {
+          name: "Both",
+          value: 1,
+          targets: [
+            { path: "output.volume", min: -40, max: -12 },
+            { path: "osc.0.semi", min: 0, max: 12 },
+          ],
+        },
+      ],
+    });
+    const core = new SynthCore(SR, p);
+    core.noteOn(1, 57, 1, 0);
+    core.automate("output.volume", [{ at: 0, v: -12, ramp: false }]);
+    core.automate("macros.0.value", [{ at: SR * 0.2, v: 0, ramp: false }]);
+    const l = new Float32Array(Math.round(SR * 0.4));
+    const r = new Float32Array(l.length);
+    for (let f = 0; f < l.length; f += 128)
+      core.process(l.subarray(f, f + 128), r.subarray(f, f + 128), f);
+    const a = l.subarray(Math.round(0.05 * SR), Math.round(0.15 * SR));
+    const b = l.subarray(Math.round(0.25 * SR), Math.round(0.35 * SR));
+    // the macro at 0 would make it −40 dB: the lane keeps it at −12
+    expect(rms(b) / rms(a)).toBeCloseTo(1, 1);
+    // but the macro's other target moved: an octave (220 → 220 · 2^0) … 440 Hz before, 220 after
+    expect(freq(a)).toBeCloseTo(440, -0.5);
+    expect(freq(b)).toBeCloseTo(220, -0.5);
+  });
+
+  it("switches change at their point (D228)", () => {
+    const p = makePatch({ osc: [{ shape: 0 }], filters: [{ on: false }], envs: [{ sustain: 1 }] });
+    const core = new SynthCore(SR, p);
+    core.noteOn(1, 69, 1, 0);
+    core.automate("osc.0.on", [{ at: SR * 0.2, v: false, ramp: false }]);
+    const l = new Float32Array(Math.round(SR * 0.4));
+    const r = new Float32Array(l.length);
+    for (let f = 0; f < l.length; f += 128)
+      core.process(l.subarray(f, f + 128), r.subarray(f, f + 128), f);
+    expect(rms(l.subarray(Math.round(0.1 * SR), Math.round(0.19 * SR)))).toBeGreaterThan(0.05);
+    expect(rms(l.subarray(Math.round(0.21 * SR), Math.round(0.3 * SR)))).toBeLessThan(1e-4);
   });
 
   it("renders well faster than real time", () => {
