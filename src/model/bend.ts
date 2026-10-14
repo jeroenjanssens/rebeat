@@ -77,3 +77,27 @@ export function sanitizeBend(v: unknown): NoteBend | undefined {
   if (b.shape === "shake") out.rate = Math.max(0.1, Math.min(20, num(b.rate) || 5.5));
   return out;
 }
+
+const SHAPE_NAME: Record<BendShape, string> = {
+  scoop: "Scoop",
+  fall: "Fall",
+  doit: "Doit",
+  dip: "Dip",
+  rise: "Rise",
+  next: "Next",
+  shake: "Shake",
+};
+
+/** "Scoop −2 st, 120 ms", "Rise +12 st, 1/1 bar" (D224: the Inspector, the piano roll). */
+export function describeBend(b: NoteBend): string {
+  const sign = b.amount > 0 ? "+" : b.amount < 0 ? "−" : "";
+  const amount = `${sign}${Math.abs(Math.round(b.amount * 10) / 10)} st`;
+  const t = (v: number) =>
+    b.unit === "q"
+      ? `${Math.round(v * 100) / 100} beat${v === 1 ? "" : "s"}`
+      : v < 1
+        ? `${Math.round(v * 1000)} ms`
+        : `${Math.round(v * 10) / 10} s`;
+  const delay = b.delay > 0 ? ` after ${t(b.delay)}` : "";
+  return `${SHAPE_NAME[b.shape]} ${amount}, ${t(b.time)}${delay}`;
+}

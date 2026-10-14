@@ -63,7 +63,7 @@ const hints: Hints = {
   },
   "roll.note": {
     title: "Note",
-    text: "Drag to move the note in time and pitch; hold Shift to move it an octave. Drag the right edge to resize. Right-click for slide and length options.",
+    text: "Drag to move the note in time and pitch; hold Shift to move it an octave. Drag the right edge to resize. Right-click for its bend (a shape with the Bend card's values, its amount and times), slide and length. A bent note draws its bend over it.",
     keys: "Drag: move · Drag right edge: resize · Alt+click / double-click: delete · Right-click: menu",
     guide: "instruments-the-piano-roll",
   },

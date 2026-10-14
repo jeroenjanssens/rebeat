@@ -19,7 +19,18 @@ import {
 } from "../../model/noteOps";
 import { inKey, keyName, keyUsesFlats, noteName, snapToKey } from "../../model/notes";
 import { pageKey, slotPattern, type Project } from "../../model/project";
-import { STEP_SIZE_QUARTERS, type Note, type Lane, type Track } from "../../model/types";
+import {
+  BEND_SHAPES,
+  STEP_SIZE_QUARTERS,
+  type Note,
+  type NoteBend,
+  type Lane,
+  type Track,
+} from "../../model/types";
+import { atRelease, bendAt, describeBend, releaseTail } from "../../model/bend";
+import { bendOfShape, sanitizePlayStyle } from "../../model/perform";
+import { chips } from "../drum-machine/sectionMenu";
+import { SHAPE_NAMES } from "../controller/BendCard";
 import { token } from "../../render/theme";
 import { useCanvas } from "../../render/useCanvas";
 import { useEditPattern, useSelectedTrack, useStore } from "../../state/store";
@@ -131,6 +142,9 @@ function PianoRoll({ track }: { track: Track }) {
   const clipboard = useRef<{ dStep: number; pitch: number; note: Note }[]>([]);
 
   const rowH = size.h > 420 ? 16 : 13;
+  // seconds per quarter and per step, for drawing bends (D224)
+  const secPerQ = 60 / project.bpm;
+  const stepSec = STEP_SIZE_QUARTERS[lane.stepSizeOverride ?? pattern.stepSize] * secPerQ;
   const rows = HIGH - LOW + 1;
   const colW = Math.max(14, Math.min(64, ((size.w - KEYS_W - 16) / length) * zoom));
   const gridW = length * colW;
@@ -441,10 +455,47 @@ function PianoRoll({ track }: { track: Track }) {
           if (n) fn(n);
         }
       });
+    // bends (D224): a shape with the Bend card's values for it, its time, or none
+    const style = sanitizePlayStyle(useSettings.getState().playStyle);
+    const bent = notes.filter((n) => n.bend);
+    const one = notes.length === 1 ? notes[0].bend : undefined;
+    const bendItems = [
+      chips(
+        one ? `Bend: ${describeBend(one)}` : bent.length ? `Bend (${bent.length} bent)` : "Bend",
+        BEND_SHAPES.map((s) => ({
+          label: SHAPE_NAMES[s],
+          active: notes.every((n) => n.bend?.shape === s),
+          onClick: () =>
+            each((n) => {
+              const b = bendOfShape(style, s, n.pitch, key);
+              if (b) n.bend = b;
+            }),
+        })),
+      ),
+      ...(bent.length
+        ? [
+            {
+              render: (close: () => void) => (
+                <BendTimes
+                  notes={bent}
+                  close={close}
+                  onChange={(fn) => each((n) => n.bend && fn(n.bend))}
+                />
+              ),
+            },
+            {
+              label: many ? "Remove their bends" : "Remove the bend",
+              onSelect: () => each((n) => void delete n.bend),
+            },
+          ]
+        : []),
+      { separator: true },
+    ];
     contextMenu(e, [
       ...(many
         ? [{ render: () => <div className="label px-2 pt-1">{refs.length} selected notes</div> }]
         : []),
+      ...bendItems,
       {
         label: allSlide ? "Remove slide" : many ? "Slide into these notes" : "Slide into this note",
         onSelect: () => each((n) => void (n.slide = !allSlide)),
@@ -695,6 +746,15 @@ function PianoRoll({ track }: { track: Track }) {
                     {n.note.slide && (
                       <span className="absolute left-0.5 top-0 text-[8px] text-black/70">╱</span>
                     )}
+                    {n.note.bend && (
+                      <BendLine
+                        bend={n.note.bend}
+                        width={Math.max(4, n.note.length * colW - 2)}
+                        rowH={rowH}
+                        noteSec={n.note.length * stepSec}
+                        secPerQ={secPerQ}
+                      />
+                    )}
                     <span
                       data-edge=""
                       className="absolute inset-y-0 right-0 w-1.5 cursor-ew-resize"
@@ -788,6 +848,116 @@ function VelocityBars({
           }}
         />
       ))}
+    </div>
+  );
+}
+
+/**
+ * A note's bend over the note (D224): its pitch line, a semitone a row; a Fall or a Doit as a
+ * tail after it.
+ */
+function BendLine({
+  bend,
+  width,
+  rowH,
+  noteSec,
+  secPerQ,
+}: {
+  bend: NoteBend;
+  width: number;
+  rowH: number;
+  noteSec: number;
+  secPerQ: number;
+}) {
+  const tail = releaseTail(bend, secPerQ);
+  const total = Math.max(0.001, noteSec + tail);
+  const pxPerSec = width / Math.max(0.001, noteSec);
+  const n = 48;
+  const pts: string[] = [];
+  for (let i = 0; i <= n; i++) {
+    const t = (i / n) * total;
+    const released = atRelease(bend) ? noteSec : null;
+    const off = bendAt(bend, t, released, secPerQ);
+    pts.push(`${(t * pxPerSec).toFixed(1)},${(rowH / 2 - 1 - off * rowH).toFixed(1)}`);
+  }
+  return (
+    <svg
+      className="pointer-events-none absolute left-0 top-0 overflow-visible"
+      width={width + tail * pxPerSec}
+      height={rowH}
+      data-testid="note-bend"
+      data-shape={bend.shape}
+    >
+      <polyline points={pts.join(" ")} fill="none" stroke="rgba(0,0,0,0.7)" strokeWidth={1.25} />
+    </svg>
+  );
+}
+
+/** A bent note's times in its menu: how long the bend takes and waits (D224). */
+function BendTimes({
+  notes,
+  onChange,
+}: {
+  notes: Note[];
+  close: () => void;
+  onChange: (fn: (b: NoteBend) => void) => void;
+}) {
+  const b = notes[0].bend!;
+  const q = b.unit === "q";
+  const stepT = (v: number, d: number) =>
+    Math.max(
+      q ? 0.125 : 0.01,
+      Math.round((q ? v * Math.pow(2, d) : v * Math.pow(1.5, d)) * 1000) / 1000,
+    );
+  const label = (v: number) =>
+    q ? `${Math.round(v * 100) / 100} beat${v === 1 ? "" : "s"}` : `${Math.round(v * 1000)} ms`;
+  const row = (name: string, value: string, step: (d: -1 | 1) => void, testId: string) => (
+    <div className="flex items-center gap-1.5">
+      <span className="label w-12">{name}</span>
+      <button className="tool-btn !h-5" aria-label="Less" onClick={() => step(-1)}>
+        −
+      </button>
+      <span className="num w-16 text-center text-[11px] text-ink" data-testid={testId}>
+        {value}
+      </span>
+      <button className="tool-btn !h-5" aria-label="More" onClick={() => step(1)}>
+        +
+      </button>
+    </div>
+  );
+  return (
+    <div className="flex flex-col gap-1 px-2 py-1.5" data-testid="bend-times">
+      {row(
+        "Amount",
+        `${b.amount > 0 ? "+" : ""}${Math.round(b.amount * 10) / 10} st`,
+        (d) =>
+          onChange(
+            (x) =>
+              void (x.amount = Math.max(
+                -24,
+                Math.min(24, Math.round((x.amount + d * 0.5) * 10) / 10),
+              )),
+          ),
+        "bend-times-amount",
+      )}
+      {row(
+        "Time",
+        label(b.time),
+        (d) => onChange((x) => void (x.time = stepT(x.time, d))),
+        "bend-times-time",
+      )}
+      {row(
+        "Delay",
+        b.delay > 0 ? label(b.delay) : "none",
+        (d) =>
+          onChange((x) => {
+            if (x.delay <= 0 && d > 0) x.delay = q ? 0.25 : 0.05;
+            else
+              x.delay =
+                x.delay * (d > 0 ? 1.5 : 1 / 1.5) < (q ? 0.125 : 0.01) ? 0 : stepT(x.delay, d);
+          }),
+        "bend-times-delay",
+      )}
     </div>
   );
 }

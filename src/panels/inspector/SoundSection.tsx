@@ -22,7 +22,8 @@ import { isBuiltIn, loadSample, sampleName, useLibrary } from "../../library/lib
 import { defaultSynth } from "../../library/synthTrack";
 import { saveInstrument } from "../../library/userInstruments";
 import { noteName } from "../../model/notes";
-import { setMode } from "../../model/project";
+import { setMode, slotPattern } from "../../model/project";
+import { describeBend } from "../../model/bend";
 import { canClip, hitNoteOf, player, sampleOf } from "../../model/tracks";
 import {
   soundFamily,
@@ -33,7 +34,7 @@ import {
   type Track,
   type TrackMode,
 } from "../../model/types";
-import { useStore } from "../../state/store";
+import { useEditPattern, useStore } from "../../state/store";
 import { replaceSound, setSound, soundLabel } from "../../state/trackActions";
 import { Section } from "./InspectorPanel";
 
@@ -415,6 +416,7 @@ export function NotesSection({ track }: { track: Track }) {
             />
           </span>
         </div>
+        <BendList track={track} />
         <div className="rounded-md border border-line p-2">
           <div className="mb-1.5 flex items-center gap-2">
             <span className="label">Arpeggiator</span>
@@ -481,5 +483,74 @@ export function NotesSection({ track }: { track: Track }) {
         </div>
       </div>
     </Section>
+  );
+}
+
+/**
+ * The bends of the selected steps' notes (D224), each with a clear button; without a selection,
+ * how many notes of this pattern bend.
+ */
+function BendList({ track }: { track: Track }) {
+  const pattern = useEditPattern();
+  const commit = useStore((s) => s.commit);
+  const selected = useStore((s) => s.selectedSteps);
+  const cursor = useStore((s) => s.cursor);
+  const lane = pattern.lanes[track.id];
+  if (!lane) return null;
+  const picked = Object.keys(selected)
+    .filter((k) => k.startsWith(`${track.id}:`))
+    .map((k) => Number(k.split(":")[1]));
+  if (!picked.length && cursor?.trackId === track.id) picked.push(cursor.index);
+  const rows = (picked.length ? picked : lane.steps.map((_, i) => i))
+    .flatMap((i) => (lane.steps[i]?.notes ?? []).map((n) => ({ i, n })))
+    .filter((x) => x.n.bend);
+  if (!rows.length) return null;
+  const clear = (list: { i: number; pitch: number }[]) =>
+    commit((p) => {
+      const l = slotPattern(p, useStore.getState().editSlotId).lanes[track.id];
+      for (const { i, pitch } of list) {
+        const note = l?.steps[i]?.notes?.find((x) => x.pitch === pitch);
+        if (note) delete note.bend;
+      }
+    });
+  return (
+    <div
+      className="rounded-md border border-line p-2"
+      data-testid="inspector-bends"
+      data-hint="inspector.bends"
+    >
+      <div className="mb-1 flex items-center gap-2">
+        <span className="label">Bends</span>
+        <button
+          className="tool-btn !h-5 ml-auto !text-[10px]"
+          onClick={() => clear(rows.map((r) => ({ i: r.i, pitch: r.n.pitch })))}
+        >
+          Clear {picked.length ? "" : "all "}
+          {rows.length}
+        </button>
+      </div>
+      {picked.length ? (
+        <div className="flex flex-col gap-0.5">
+          {rows.map(({ i, n }) => (
+            <div key={`${i}-${n.pitch}`} className="flex items-center gap-1.5 text-[11px]">
+              <span className="num w-9 text-dim">{noteName(n.pitch)}</span>
+              <span className="flex-1 truncate text-ink">{describeBend(n.bend!)}</span>
+              <button
+                className="tool-btn !h-5 !min-w-0 !px-1"
+                title="Clear this note's bend"
+                onClick={() => clear([{ i, pitch: n.pitch }])}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-[11px] text-dim">
+          {rows.length} {rows.length === 1 ? "note bends" : "notes bend"} in this pattern. Select
+          steps to see theirs.
+        </div>
+      )}
+    </div>
   );
 }

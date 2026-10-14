@@ -88,6 +88,11 @@ const hints: Hints = {
 
   // ─── Arpeggiator ─────────────────────────────────────────────────────────
 
+  "inspector.bends": {
+    title: "Bends",
+    text: "The bends of the selected steps' notes (from the Bend card, or the piano roll's Bend menu), each with a clear button. Without a selection: how many notes of this pattern bend, and Clear all.",
+    guide: "performance-bends",
+  },
   "inspector.arp.toggle": {
     title: "Arpeggiator on/off",
     text: "Turns the arpeggiator on or off. When on, chords are broken into individual notes played in sequence.",

@@ -101,18 +101,20 @@ With **Rec** on and the transport playing, notes you play are written into the p
 
 The [Piano roll](panel:piano-roll) edits the notes of the selected Notes track in the pattern you're editing. Pitches run from top (high) to bottom (low), steps from left to right; out-of-key rows are darker and the root row is highlighted.
 
-| Do this                                              | To                                                                                        |
-| ---------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| Click an empty spot (pencil tool)                    | Add a note; drag right while adding to make it longer.                                    |
-| Drag a note                                          | Move it in time and pitch (selected notes move together).                                 |
-| Drag a note's right edge                             | Change its length.                                                                        |
-| Click a note / Shift+click                           | Select it / add it to the selection.                                                      |
-| Drag on an empty spot with Shift (or the arrow tool) | Select notes in a box.                                                                    |
-| Double-click or Alt+click a note                     | Delete it.                                                                                |
-| Right-click a note                                   | Slide into this note, set the length, delete. On a selected note, for all selected notes. |
-| Click a key on the left                              | Hear that pitch.                                                                          |
-| Drag in the **Vel** strip at the bottom              | Set velocities (of the selected notes, or of the notes under the pointer).                |
+| Do this                                              | To                                                                                   |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Click an empty spot (pencil tool)                    | Add a note; drag right while adding to make it longer.                               |
+| Drag a note                                          | Move it in time and pitch (selected notes move together).                            |
+| Drag a note's right edge                             | Change its length.                                                                   |
+| Click a note / Shift+click                           | Select it / add it to the selection.                                                 |
+| Drag on an empty spot with Shift (or the arrow tool) | Select notes in a box.                                                               |
+| Double-click or Alt+click a note                     | Delete it.                                                                           |
+| Right-click a note                                   | Its bend, slide into this note, set the length, delete. On a selected note, for all. |
+| Click a key on the left                              | Hear that pitch.                                                                     |
+| Drag in the **Vel** strip at the bottom              | Set velocities (of the selected notes, or of the notes under the pointer).           |
 
 Keyboard (click in the piano roll first): Delete removes the selected notes, ↑ ↓ move them by a semitone (with Shift by an octave), ← → by a step, Ctrl/Cmd+A selects all, Ctrl/Cmd+C / V copy and paste (after the selection), Esc deselects.
+
+**Bends** ([the Bend card](#performance-bends)): a bent note draws its bend over it, a line a semitone per row (a Fall and a Doit as a tail after the note). Right-click a note for **Bend**: a shape with the Bend card's values for it, its amount, time and delay, or **Remove the bend**; on a selection, for every selected note. The Inspector's **Bends** lists the selected steps' bends.
 
 The toolbar sets the length of new notes, **Scale lock** (notes snap to the key while you draw or move them), and the zoom.

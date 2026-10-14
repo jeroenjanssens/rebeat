@@ -362,3 +362,18 @@ export function smoothVoicing(
   }
   return best;
 }
+
+/** A note's bend of one shape with the card's values for it (the piano roll's Bend menu): no
+ * chance, no velocity; a Next in the key. */
+export function bendOfShape(
+  style: PlayStyle,
+  shape: BendShape,
+  pitch: number,
+  key: Key | null,
+): NoteBend | undefined {
+  const s = {
+    ...style,
+    bend: { ...style.bend, on: true, shape, notes: "all" as const, chance: 1, velocity: 0 },
+  };
+  return bendFor(s, { top: true, bass: true, last: true }, 0.5, pitch, key, 0);
+}
