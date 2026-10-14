@@ -1,8 +1,8 @@
 # Plan: bends per note, every synth knob and switch automatable, stepped lanes, folding lanes, selecting and moving many points
 
-Status: agreed 2026-10-14 (Jeroen: the default answers, plus stepped lanes for every discrete
-setting, a rectangle across lanes, two more bend shapes, a demo song), not built. Decisions
-D220–D240.
+Status: agreed and built 2026-10-14 (decisions D220–D240; Jeroen: the default answers, plus
+stepped lanes for every discrete setting, a rectangle across lanes, two more bend shapes, a demo
+song). Where the build differs from this plan: §11.
 How we work: on `main`, commit early and often, e2e once at the end of the batch.
 
 Six parts:
@@ -547,3 +547,22 @@ a minute long, to show the batch off and to be its golden-levels test:
 6. Fold all / Unfold all: no default keys.
 7. A demo song: yes (§6).
 8. Selecting by rectangle: across lanes, Shift adds (§5.2).
+
+## 11. Where the build differs
+
+- **The Bend card shows every control**, not only while it's on (the Play card's lines show their
+  details only while on): a bend's settings are many, and you set them up before you play.
+- **The piano roll's Bend menu** is a row of the seven shapes (each with the card's values for it),
+  the bent notes' amount, time and delay, and Remove the bend; there's no separate popover, and no
+  curve or rate there (the card sets those).
+- **The Inspector** lists the selected steps' bends (or, without a selection, how many notes of
+  the pattern bend, with Clear all) in the Notes section.
+- **Osc Shape** gets **Automate as steps** in its picture's menu (the shape knob is the picture),
+  a lane on `osc.<n>.shape~steps`.
+- **The matrix's amounts** are knobs for automation and MIDI learn (`matrix.<n>.amount`) but stay
+  sliders in the editor, with the menu and an A.
+- **The export test** moves a synth's output volume rather than its cutoff: a filter envelope
+  reopens the cutoff on every note of the demo's bass, so a level test of a cutoff lane says
+  little. The unit tests cover the cutoff (any path ramps the same way).
+- **MIDI file export**: the export dialog says when bends are left out (as §1.4 planned).
+

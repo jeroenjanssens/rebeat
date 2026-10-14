@@ -28,6 +28,10 @@ export function ExportDialog() {
   const open = useShell((s) => s.exportOpen);
   const set = useShell((s) => s.set);
   const project = useStore((s) => s.project);
+  // MIDI files can't carry a note's own bend (D224)
+  const hasBends = Object.values(project.patterns).some((pt) =>
+    Object.values(pt.lanes).some((l) => l.steps.some((st) => st.notes?.some((n) => n.bend))),
+  );
   const editSlotId = useStore((s) => s.editSlotId);
   const [range, setRange] = useState<Range>("song");
   const [format, setFormat] = useState<AudioFormat>(DEFAULT_FORMAT);
@@ -197,6 +201,11 @@ export function ExportDialog() {
             Resample to track
           </button>
         </div>
+        {hasBends && (
+          <div className="text-[11px] text-faint" data-testid="export-midi-bends">
+            Some notes bend: a MIDI file can't say so, so Export MIDI leaves the bends out.
+          </div>
+        )}
         {busy && <div className="text-accent">{busy}</div>}
         <p className="text-[10.5px] leading-snug text-faint">
           Rendering runs offline, faster than real time. Sampled instruments that haven't been

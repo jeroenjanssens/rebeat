@@ -3,10 +3,10 @@
 This file is the fast way in. It explains what Rebeat is, how the code is organized, how the
 pieces talk to each other, how to verify a change, and the gotchas that cost time before.
 `PLAN.md` is the long-form record: the product spec (§1–§3), the original architecture (§4),
-and every design decision (§6, D1–D205). When this file and the code disagree, the code wins.
+and every design decision (§6, D1–D240). When this file and the code disagree, the code wins.
 Please fix this file in the same change.
 
-Status (2026-10-13): every phase of the original roadmap is built, plus several feature batches
+Status (2026-10-14): every phase of the original roadmap is built, plus several feature batches
 (PLAN.md §0.6b–§0.6g). The biggest recent batch is **step tracks** (§0.6f, D93–D98, built on
 the `step-tracks` branch and merged): the drum / instrument / audio track kinds became one kind
 of track with a **sound** (sample, synth, sampled instrument) and a **mode** (Hits, Notes,
@@ -30,7 +30,11 @@ D196–D205, `PLAN-automation-editor.md`): a lane's points in the Inspector, eas
 point and on tempo ramps, schema 11; and **a tidier interface** (§0.6q, D206–D219,
 `PLAN-ui-cleanup.md`): the Controller panel's cards, a smaller top bar with ▾ menus, every effect
 knob automatable with a grouped knob picker, a full Keys strip, copying effects, eight new
-effects, Auto at beat speeds. Left: tests
+effects, Auto at beat speeds; and **bends, the synth on the timeline** (§0.6r, D220–D240,
+`PLAN-bend-and-lanes.md`): a Bend card (seven shapes per note, recorded with the notes, schema
+12), every knob and switch of a synth automatable through a new worklet path, stepped lanes for
+every discrete setting, folding lanes, a rectangle and group drags across lanes, the demo song
+Sweeps and Bends. Left: tests
 with real hardware (mic, MIDI, Launchpad/Push), signing the desktop release, the license (D6),
 and the "later" items in PLAN.md §0.7. The repository is public and `main` deploys to GitHub
 Pages.
@@ -108,7 +112,7 @@ pnpm prettier --write src e2e && pnpm tsc --noEmit && pnpm eslint . && pnpm vite
   && pnpm playwright test --workers=4
 ```
 
-Expect about 590 unit tests and about 255 e2e tests (around 7 minutes, most of it the golden
+Expect about 615 unit tests and about 265 e2e tests (around 7 minutes, most of it the golden
 levels renders). Visual changes are
 also checked in a real browser: a throwaway Playwright spec that takes a screenshot works well
 (delete it afterwards).
@@ -141,7 +145,7 @@ src/
   model/               pure data and operations (no React, no audio):
                        - types.ts (Track, Lane, Step, Note, Sound…), project.ts (setMode…)
                        - tracks.ts (modes and sounds: player, sampleOf, hitNoteOf, canClip…)
-                       - schema.ts (versions + migrations, now v10), params.ts (knob definitions, toUnit)
+                       - schema.ts (versions + migrations, now v12), params.ts (knob definitions, toUnit)
                        - arrangement.ts (D181: sections laid out in quarter notes, bars, anchors,
                          curve values, keeping anchors on delete/copy/unroll), tempoMap.ts (D192:
                          jumps and ramps, exact seconds), automation.ts (D189: what can be
@@ -149,7 +153,12 @@ src/
                          `in(out(t))`)
                        - fixtures/v6/ (every example and template as schema 6 saved it, gzipped)
                        - synth.ts (patch v2, macros), synthV1.ts (old patches, read only)
-                       - patchParams.ts (the synth editor's knob table), randomize.ts
+                       - patchParams.ts (the synth editor's knob table, the matrix's amounts),
+                         patchSwitches.ts (D231: every switch and menu of a patch, as stepped
+                         knobs), synthAutomation.ts (D228: a lane's target → patch path and value),
+                         randomize.ts
+                       - bend.ts (D220–D223: a note's bend over time, pure; the worklet, the
+                         piano roll), steppedLanes.ts (D230: a sloped lane as a stepped one)
                        - notes, chords (names of held notes), padChords (the chord pads, D137), keyMode
                          (Key mode's chords, D138), perform (play styles: strum, slop, balance,
                          the arp's order, chord patterns, smooth voicing, D149–D154), suggest
@@ -172,8 +181,11 @@ src/
                          clock) and rhythm engine (arp, patterns); keys.ts plays through it
                        - trackActions, effectActions, clipActions
                        - timelineActions (sections, tempo changes, automation, regions: one commit
-                         each), automationOverride (Ableton-style overrides, the typed tempo,
-                         D191, D193), recordAutomation, automationKnob (Automate in knob menus)
+                         each; folding lanes; moving a selection across lanes), pointSelection
+                         (D235: the points selected in every lane, the rectangle), bendControls
+                         (the Bend card's values and MIDI-learn targets), automationOverride
+                         (Ableton-style overrides, the typed tempo, D191, D193), recordAutomation,
+                         automationKnob (Automate in knob menus, controlItems for switches)
   engine/              audio (no React):
                        - context.ts (native AudioContext + Tone)
                        - engine.ts (scoped graph: channels, voices, clips, metering, scratch)
@@ -219,7 +231,7 @@ src/
                        master-scope, piano-roll, sample-editor, performance, synth-editor, guide,
                        beatbox (recordings list, HitWaveform, RecordDialog, ConvertView, ModelView),
                        controller (the MiniLab 3 drawn live, other maps as lists; the settings as
-                       Cards: Chords, Bass, Suggest, Play, D213),
+                       Cards: Chords, Bass, Suggest, Play, D213; Bend, D222),
                        timeline (D184: ruler, Tempo lane, sections, track rows, curve lanes, regions;
                        canvases cover only the visible part, ViewCanvas); inspector/automation/
                        (D199–D204: the point table, its sources, ScrubField, parsing)
@@ -330,10 +342,16 @@ fill?: "last" | "all", steps? }`. The settings are the section's own (D183): its
   `Project.regions?: AudioRegion[]` (`{ id, trackId, sampleId, start, length (quarters), offset
 (seconds), gain?, fadeIn?, fadeOut? }`). Ask `model/arrangement.ts` where anything is.
   Points and tempo changes have `on?` (false: skipped) and `in?`/`out?` eases (`model/ease.ts`;
-  none saved = Linear; an ease out of None holds until the next point).
-- **Schema**: `model/schema.ts`, currently `SCHEMA_VERSION = 11` (8: MIDI mappings' `mode`; 9: `Note.offset`, a
+  none saved = Linear; an ease out of None holds until the next point). A lane on a knob with
+  `steps` is stepped (D229): it holds each point, no eases; ask `lanePointsOf(project, lane)`,
+  not `lanePoints(project, lane.points)`, for a lane's curve. `AutomationLane.folded?` and
+  `Project.timelineFolded?` are the timeline's folds (D233).
+- `Note.bend?` (D220, schema 12): a note's own bend (`NoteBend`: shape, amount, time, delay, unit
+  "s" | "q", ease, rate); `model/bend.ts` says where it is at a moment.
+- **Schema**: `model/schema.ts`, currently `SCHEMA_VERSION = 12` (8: MIDI mappings' `mode`; 9: `Note.offset`, a
   note's own start within its step, −0.5..0.5; 10: sections' settings, tempo changes, automation,
-  regions, all optional; 11: eases per point, `hold` became an ease out of None).
+  regions, all optional; 11: eases per point, `hold` became an ease out of None; 12: `Note.bend`,
+  folded lanes, and lanes on stepped effect knobs turned into points on their bands).
   - Every change to the saved shape bumps the version and adds a migration plus a test.
   - `migrate` + `normalizeProject` run on every load.
   - Migration 5 → 6 converted the old SOUND knobs on synth tracks into patch edits (it changes
@@ -417,6 +435,18 @@ Helpers:
     `monitor`/`modulation` (live knob rings), `settled()`
 - `renderPatch` renders a patch offline (used by tests).
 - The worklet is loaded per context with `import url from "./worklet.ts?worker&url"`.
+
+**Automation** (D226–D231): a lane on `track:<id>:synth:<path>` (any knob in `patchParams`,
+any switch in `patchSwitches`, `osc.<n>.shape~steps`) or `sound.macroN` goes to the worklet as one
+`automate` message per path and step (`engine.automateTarget` → `WorkletSynth.automate`, values in
+the path's units, `synthValue`). `SynthCore.resolve` ramps between points on every control block
+and writes into a working copy of the patch in place: macros first, then knobs and switches (a
+lane wins over a macro, D227); `automateEnd` and `panic` hand back. A filter that switches model
+starts from silence.
+
+**Bends** (D220–D225): `on` messages carry a `NoteBend`; each `Voice` adds `bendAt(…)` to its
+pitch; a Fall or Doit defers the release (`holdUntil`). `noteBend(id, value)` is the pitch strip
+on one voice (`WorkletSynth.bendNewest`). Sampled instruments ignore bends.
 
 **Macros** (D85):
 
@@ -592,7 +622,7 @@ onPatchEdit` hook, debounced `saveSoundSoon`).
   (read by the arp, the play styles, Auto, recording). `engine.tempoStep(bpm, time)` moves synced
   delays (`FxNode.tempo`), the synths' synced LFOs (a timed `tempo` message) and warped clips.
 - **Automation** (D186, D189, D191): `engine.automateTarget(target, events)` schedules the curve on
-  AudioParams (`effects.ts: schedule`), the synth's macros (`automate` message) or Pump's depth;
+  AudioParams (`effects.ts: schedule`), the synth's knobs, switches and macros (D228) or Pump's depth;
   `releaseAutomation()` at stop hands everything back to the knobs. Automation never writes to
   the project, so a change to an automated knob's value in the store is a hand on the knob:
   `state/automationOverride.ts: watchOverrides` overrides the lane (Back to automation).
@@ -605,8 +635,14 @@ onPatchEdit` hook, debounced `saveSoundSoon`).
   tempo changes (`panels/inspector/automation/`); `ui.pointSelection` is shared with the lane's
   `CurveLane`. Every edit goes through `state/timelineActions.ts`, so both views follow.
 - **The panel** (`panels/timeline/`): `SectionsRow` (blocks, drags), `TrackRows` (miniatures,
-  mutes by cell, lanes), `CurveLane` (automation and tempo), `RegionBox`, `ViewCanvas` (a canvas
-  for the visible part only).
+  mutes by cell, lanes, folds), `CurveLane` (automation and tempo; stepped lanes; group drags, the
+  rectangle via `SelectionBox`), `RegionBox`, `ViewCanvas` (a canvas for the visible part only).
+- **Selecting across lanes** (D235–D238): `ui.pointSelection = { lanes: { [laneId | "tempo"]:
+  indexes } }` (`state/pointSelection.ts`). Moves go through `timelineActions.movePoints(starts,
+  dq, dv, key)` from the positions at the start (`selectionStarts`, `clampGroupDq`), one commit.
+  The rectangle finds points by their DOM handles (`data-point-key`), so folded lanes draw marks.
+- **Folds** (D233) are a view: `store.editView(recipe)` saves them without an undo step, applying
+  the same change to the history.
 
 ## 7. Testing
 
@@ -755,6 +791,13 @@ onPatchEdit` hook, debounced `saveSoundSoon`).
 - **Agent worktrees start from the pushed `origin/main`,** not from local commits: merge `main`
   into them first. ESLint ignores `.claude/` (worktrees live there); vitest only looks in
   `src/`.
+- **A synth's knob or switch moves through the worklet** (D228), never with patch messages: don't
+  automate a synth by sending `setPatch`. A new knob in `patchParams` or switch in `patchSwitches`
+  is automatable by itself; one the core reads only at a note's start goes in `NEXT_NOTE`
+  (`model/automation.ts`) so the picker says so.
+- **Stepped is a knob's `steps`** (D229): a new knob with steps gets a stepped lane, no eases, and
+  points snapped by `timelineActions` (they read `laneSteps` from the project outside the recipe:
+  the knob lists aren't cached for drafts and hold ~1,500 entries with ten synths).
 - **The factory synth levels test** used to fail sometimes because of random oscillator phases;
   it now seeds `Math.random`. New level-sensitive tests should do the same.
 
@@ -804,6 +847,9 @@ likely to need:
 | Automation as a table, eases                       | D196–D205                 |
 | Effects automatable, knob picker, effect clipboard | D206–D211, D216–D217      |
 | Keys strip, Controller cards, top bar, Auto, Edit  | D212–D215, D218–D219      |
+| Bends per note, the Bend card, the strip           | D220–D225                 |
+| Synth automation, stepped lanes, switches          | D226–D232                 |
+| Folding lanes, selecting and moving many points    | D233–D238                 |
 
 Feature batches and their acceptance criteria are in PLAN.md §0.6b–§0.6h. Known limitations are
 in §0.7.

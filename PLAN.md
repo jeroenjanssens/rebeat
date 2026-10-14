@@ -12,7 +12,7 @@
 
 ### 0.1 Where we are
 
-- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D219), and the build order is in §7.
+- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D240), and the build order is in §7.
 - Every phase in §7 is built, tested (unit + Playwright e2e) and pushed. The mockup (Phase M) became the app: its components, model and store were kept and extended; `src/mock/` was replaced by the real engine.
 - The desktop app (Phase 10) runs and packages locally (unsigned); signing/notarization need certificates (see `.github/workflows/desktop.yml`).
 
@@ -103,6 +103,7 @@ Key implementation patterns:
 0. Beatbox to step tracks (§0.6h, D105–D118) ✅ merged into `main` (2026-10-10). Decide whether the shipped model may train on beatboxset1 (CC BY-SA, D108). Record and
    label your own sounds (and friends'), export them, and train model 2 with them (`ml/README.md`).
 0b. MIDI controllers (§0.6i, D119–D125) ✅ merged into `main` (2026-10-10). With a device: check what it sends (the Monitor in Settings → MIDI) and fix its map.
+0k. Bends per note, every synth knob and switch automatable, stepped lanes, folding lanes, moving many points, Sweeps and Bends (§0.6r, D220–D240) ✅ on `main` (2026-10-14). With the MiniLab 3: the Bend card's Strip on Newest note. Later: bends on sampled instruments, recording the strip on one note, MPE.
 0j. A tidier interface, effects everywhere (§0.6q, D206–D219) ✅ on `main` (2026-10-13): the Controller panel's cards, a smaller top bar, every effect knob automatable with a grouped knob picker, a full Keys strip, copying effects, eight new effects, Auto at beat speeds, Edit sound following the editor.
 0i. Editing automation as a table in the Inspector, eases between points and on tempo ramps (§0.6p, D196–D205) ✅ on `main` (2026-10-13).
 0h. The timeline: patterns and sections, section settings, tempo changes, automation, audio on the timeline, Long Way Home (§0.6o, D180–D195) ✅ on `main` (2026-10-13). Try it in the Arrange layout; later: a loop range on the ruler, automation of more knobs (tune and decay per hit are per step: p-locks), tempo changes in the MIDI clock (when there is one).
@@ -770,6 +771,23 @@ strip** is laid out like a track's, with effects, pan and mute. Effects can be *
 pasted** (one or a chain, Paste settings, Copy to…). **Eight new effects**: Parametric EQ, Gate,
 Flanger, Saturator, Vibrato, Auto-Wah, Freq Shifter, Utility. **Auto** changes every 2, 1 or ½
 beat too, and **Edit sound** (in the Keys menu) makes the keys follow the synth editor it opens.
+
+### 0.6r Bends, the synth on the timeline, stepped lanes, folding, many points (agreed and done 2026-10-14) ✅
+
+The plan is `PLAN-bend-and-lanes.md`. A **Bend** card in the Controller panel gives the notes the
+keys play a bend of their own (synths): Scoop, Fall, Doit, Dip, Rise, Next (to the next note in
+the key) or Shake, each shape with its own amount, time, delay (seconds or beats), curve; which
+notes bend, chance, velocity; the MiniLab's strip on the newest note only. Bends are recorded with
+the notes (schema 12: `Note.bend`), drawn and edited in the piano roll, listed in the Inspector,
+played by the worklet per voice (a Fall and a Doit keep the note sounding). **Every knob and
+switch of a synth** can be automated (the picker's Synth group, Automate in the editor's menus,
+an A mark, the switch following its lane), through a new automation path in the worklet that
+writes values into the patch in place. **Stepped lanes**: a knob with a fixed set of values
+(on/off, a choice, a whole number) holds each point until the next, drawn as bands with names,
+without eases; old lanes on such knobs keep what they played. **Folding lanes** (a lane, a
+track's lanes, all; Follow the selected track), saved without undo steps. **Many points**: a
+rectangle across lanes (Shift adds, Alt takes out), group drags (Alt: one direction), the arrows,
+Delete and the menu across lanes. A new example song, **Sweeps and Bends**.
 
 ### 0.7 Known limitations and later work
 
@@ -1594,6 +1612,60 @@ Format: **Dn — Question.** Default ✅, alternatives.
 - **D219 — Edit sound follows the editor.** Opening a synth editor from Edit sound (now in the
   Keys menu) turns on Follow the synth editor in focus, and says so; it stays on until unticked.
   Alt: only while that editor is open (a hidden mode).
+- **D220 — Bends per note.** A note's own pitch movement, saved on the note (`Note.bend`: shape,
+  amount in semitones, time, delay, seconds or quarter notes, ease, a Shake's rate). Seven shapes:
+  Scoop, Fall, Doit, Dip, Rise, Next, Shake. Alt: a curve of points per note (later, for the strip).
+- **D221 — Fall and Doit extend the note.** They start at the release and keep the gate until
+  they're done, then release, so a short release doesn't swallow them. Alt: within the release.
+- **D222 — The Bend card.** Settings (`playStyle.bend`), the same in every project: each shape
+  keeps its own values; Notes (all, top, bass, newest), Chance, Velocity; every control
+  MIDI-learnable (`bend:…`, global). Next counts in the key and is saved in semitones. Alt: per
+  project.
+- **D223 — Bends in the worklet.** One pure curve (`model/bend.ts`) added to each voice's pitch on
+  every control block; legato and slides take the new note's bend; beat units follow the tempo.
+  Alt: a stream of per-note bend messages (more traffic, not sample-accurate offline).
+- **D224 — Recording bends.** A note records the bend it played with (step entry too); schema 12;
+  the piano roll draws and edits it, the Inspector lists it; MIDI files leave bends out. Alt:
+  live only.
+- **D225 — Synths only; the strip on one note.** Sampled instruments don't bend yet. With Strip on
+  Newest note, pitch bend moves only the newest held note (a per-voice bend), live only. Alt: the
+  whole synth always.
+- **D226 — Every synth knob automatable.** The picker's Synth group (by part), the matrix's amounts
+  as knobs; notes for knobs read at a note's start; a global LFO's phase can't be. Alt: macros
+  only.
+- **D227 — A lane wins over a macro** on the same knob while it plays; the macro still moves its
+  other targets; the matrix stays on top. Alt: automation through the macro's range.
+- **D228 — The synth's automation path.** One `automate` message per path and step (real units,
+  points with ramps); the worklet ramps per control block and writes into a working copy of the
+  patch in place, macros first; `automateEnd` hands back. Macros use it too. Alt: a patch per
+  event (clones, too slow for many lanes).
+- **D229 — Stepped lanes.** A knob with `steps` (on/off, choices, whole numbers) gets a stepped
+  lane: held values, a staircase, bands with names, points on bands, on/off as bars. Alt: curves
+  rounded by the engine (what you saw wasn't what you heard).
+- **D230 — No eases on stepped lanes**; saved ones are ignored and dropped on edit; old lanes on
+  stepped knobs get points where their curve crossed a band (schema 12), so they sound the same.
+- **D231 — The synth's switches.** A table (`patchSwitches.ts`) of every switch and menu, each a
+  stepped knob: MIDI learn, Automate, an A, the lane's choice shown while playing; Osc Shape can
+  also be automated as steps; a filter that switches model starts from silence.
+- **D232 — Stepped effect knobs** (every On, Bits, Delay time, Pump rate, Utility phase) get
+  stepped lanes by the same rule.
+- **D233 — Folding lanes.** A lane folds to a slim row (it still plays), an owner's lanes behind
+  its row with their count; saved (`lane.folded`, `timelineFolded`) without undo steps
+  (`editView`). Alt: not saved.
+- **D234 — Lanes ▾.** Fold all, Unfold all, Follow the selected track (folding by hand turns it
+  off); Automate opens its lane; commands without default keys.
+- **D235 — The selection spans lanes** (`pointSelection.lanes`, the Tempo lane too).
+- **D236 — The rectangle** is drawn over the whole lane area: it selects in every lane it covers
+  (folded ones too), Shift adds, Alt takes out, a count by the cursor, the timeline scrolls.
+- **D237 — Group drags.** The same time (snapped by the grabbed point, never past a point that
+  isn't moving) and the same share of each lane's range (whole values on stepped lanes); Alt locks
+  the direction; one undo step.
+- **D238 — Across lanes**: ⌘A / ⇧⌘A, Esc, Delete, the arrows (grid, 1%, a band), the point menu;
+  the Inspector says what else is selected.
+- **D239 — Sweeps and Bends**, an example song for bends, synth lanes and stepped lanes, with its
+  golden levels.
+- **D240 — The answers.** Jeroen (2026-10-14): the defaults, switches as stepped lanes now, Next
+  and Doit, a demo song, the rectangle across lanes.
 - **D35 — Build order.** ✅ The phases in §7, starting with the mockup (Phase M), each ending with something you can play with.
 
 ---
