@@ -53,7 +53,7 @@ Play it on the **keyboard** at the bottom (the keys show their notes, with the o
 
 Knobs that the mod matrix moves show an inner **ring**: how far the modulation can take them. While a note plays, a **dot** on the ring shows where the modulation has them right now.
 
-Right-click any knob → **MIDI learn** to turn it from a controller.
+Right-click any knob → **MIDI learn** to turn it from a controller, or **Automate** to move it over the song on the [timeline](#timeline-synth-automation). The switches and menus (an oscillator's On, a filter's type, an LFO's shape, the voice mode, the mod matrix's routing and amounts) have the same menu: a pad can switch a filter's type, and a lane can step it through the song. An automated control shows an **A**, and follows its lane while the song plays.
 
 To try things out:
 

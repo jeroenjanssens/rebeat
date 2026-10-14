@@ -71,7 +71,23 @@ An automation lane moves a knob over the song: a filter that opens over the buil
 
 With **Auto** on (Record automation, next to Rec), knob turns while recording in Song mode become points. They're thinned so the lane stays easy to edit.
 
-Knobs that can be automated: track levels, pan, width, sends and EQ, a sample's filter, a synth's macros, the master's and the buses' levels, and **every effect knob**, on tracks, buses and the master, and every effect's **On**. Knobs with steps (a Delay's time, the Bitcrusher's bits, Pump's rate) jump from step to step. A few knobs build their effect again when they change, so they can't move over time: the Reverb's size, decay and pre-delay, the Delay's ping-pong and the Filter's type (the picker greys them). If you remove an effect, its lanes stay, named **Effect removed**: undo, or pick another knob for them.
+Knobs that can be automated: track levels, pan, width, sends and EQ, a sample's filter, the master's and the buses' levels, **every effect knob** (on tracks, buses and the master) and every effect's **On**, and on a synth track its macros and **every knob and switch of its synth** (see below). A few knobs build their effect again when they change, so they can't move over time: the Reverb's size, decay and pre-delay, the Delay's ping-pong and the Filter's type (the picker greys them). If you remove an effect, its lanes stay, named **Effect removed**: undo, or pick another knob for them.
+
+### A synth's knobs and switches {#timeline-synth-automation}
+
+On a synth track the picker has a **Synth** group with every part of the synth (Osc 1 to Output, and the mod matrix), each folding open to its knobs and switches; right-click a knob or a switch in the [synth editor](#instruments-the-synth-editor) and choose **Automate** to get its lane straight away. A lane moves the synth smoothly, at audio time, live and in exports. What to know:
+
+- **Smooth**: almost every knob: shapes, levels, tuning, filters, envelopes, LFO rates, sub, noise, ring, FM, glide, the output, and the matrix's amounts. An oscillator's Shape morphs; its menu also has **Automate as steps**, for a lane that jumps between the four pure shapes.
+- **From the next note**: an oscillator's Phase, the envelopes' Vel, a per-note LFO's Phase, Vel curve, Voices, Retrigger, and the voice mode, glide mode and steal. The notes that already sound go on as they started; the picker says "From the next note".
+- **Not automatable**: a global LFO's Phase (it's set once, when the synth starts).
+- **A macro and a lane on the same knob**: the lane decides while it plays; the macro still moves its other knobs. The mod matrix moves an automated knob as it would any other (an LFO still wobbles an automated cutoff).
+- **Switching the filter model** starts the new filter from silence, so it doesn't click.
+
+Automating never changes the synth itself: a factory synth isn't copied, and stopping puts every knob back where it was.
+
+### Stepped lanes {#timeline-stepped-lanes}
+
+A lane on a knob with a fixed set of values is **stepped**: an on/off (an effect's On, an oscillator's On), a choice (a filter's type, an LFO's shape, the voice mode, the mod matrix's sources and destinations) or a whole number (an octave, the Bitcrusher's bits, a Delay's time). It holds each point's value until the next point, then changes at once: drawn as a staircase, with its values' names on bands at the left (an on/off lane draws its On stretches as bars). Points land on a band when you add or drag them, the Inspector's table takes a value by name (`HP`, `on`), and the scroll wheel moves a point one value. Stepped lanes have **no eases**: the menu and the table don't offer them. A lane from before this (an effect's On that sloped from Off to On) keeps what it played: it switches where its old line crossed the middle.
 
 ## Editing points in the Inspector
 
@@ -134,6 +150,10 @@ A sample on the timeline plays in song time, across sections: a vocal line over 
 - It plays through its track: the track's effects, fader, mute and warp apply.
 
 **One sound per track**: while timeline audio plays, the track's own clip is silent there, and the drum machine says so. A section's mutes don't silence timeline audio (it belongs to song time); the track's own mute does. In **Loop** mode, audio that starts inside the looped section plays each time round.
+
+## Sweeps and Bends {#timeline-sweeps-and-bends}
+
+The example song **Sweeps and Bends** (100 BPM, A minor) shows a synth's automation and [bends](#performance-bends). Every note of its lead bends (Scoops into the phrases, Falls at their ends, a Doit, Dips, a Rise into the drop, a Next and a Shake). Its lanes: the lead's Filter 1 cutoff opens over the build, the pad's LFO 1 rate speeds up into the drop and its LFO shape steps to Sample & hold in the break, the bass's oscillator 2 detunes through the drop and its voice mode goes legato, the lead's filter turns band-pass in the break, and its delay comes on in the break and the last bar. Open the synth editors while it plays: the automated knobs and switches follow their lanes.
 
 ## Long Way Home, a walk-through {#timeline-long-way-home}
 
