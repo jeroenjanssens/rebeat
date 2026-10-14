@@ -303,6 +303,22 @@ export function MidiSettings() {
               />
               Pick up absolute knobs and faders
             </label>
+            <label className="flex items-center gap-2" data-hint="app.midi.synthKeyboard">
+              <span className="label">Synth editor keyboard</span>
+              <select
+                className="input !h-6 !text-[11px]"
+                value={settings.synthKeyboard}
+                data-testid="synth-keyboard-setting"
+                onChange={(e) =>
+                  useSettings
+                    .getState()
+                    .set({ synthKeyboard: e.target.value as "always" | "noMidi" })
+                }
+              >
+                <option value="always">Always</option>
+                <option value="noMidi">Only without a MIDI keyboard</option>
+              </select>
+            </label>
           </section>
 
           <section>

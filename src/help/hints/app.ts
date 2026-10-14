@@ -491,6 +491,11 @@ const hints: Hints = {
     text: "How far one step of an endless encoder turns a knob. Higher: fewer turns from one end to the other.",
     guide: "performance-your-controller",
   },
+  "app.midi.synthKeyboard": {
+    title: "Synth editor keyboard",
+    text: "The piano and wheels at the bottom of the synth editor. Its piano always lights what your MIDI keyboard plays into the synth, and its wheels follow the device's; Only without a MIDI keyboard hides them while one is connected, for more room (the computer keys A–L play the editor only while they show).",
+    guide: "instruments-the-synth-editor",
+  },
   "app.midi.pickup": {
     title: "Pick up",
     text: "An absolute knob or fader takes over only when it reaches the value on screen, so nothing jumps when you select another track. Off: it jumps to where the control is.",

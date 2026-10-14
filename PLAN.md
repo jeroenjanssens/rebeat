@@ -12,7 +12,7 @@
 
 ### 0.1 Where we are
 
-- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D261), and the build order is in §7.
+- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D262), and the build order is in §7.
 - Every phase in §7 is built, tested (unit + Playwright e2e) and pushed. The mockup (Phase M) became the app: its components, model and store were kept and extended; `src/mock/` was replaced by the real engine.
 - The desktop app (Phase 10) runs and packages locally (unsigned); signing/notarization need certificates (see `.github/workflows/desktop.yml`).
 
@@ -804,7 +804,9 @@ bell, membrane, plate, glass) and a body, tuned within 3 cents, voices that end 
 away; a picture with draggable Position and Pickup markers. Everything after the source (filters,
 envelopes, LFOs, matrix, macros, bends, automation) works for both. 27 new factory synths (10
 wavetable, 12 physical, 5 physical drums in a new Percussion group), the wizard's Plucked or
-struck and Evolving, a demo song, **Wood, Wire and Glass**.
+struck and Evolving, a demo song, **Wood, Wire and Glass**. Then (D262): the synth editor's piano
+lights what a MIDI keyboard plays into it and follows its octave, its wheels follow the device's,
+and it can hide while a MIDI keyboard is connected.
 
 ### 0.7 Known limitations and later work
 
@@ -1740,6 +1742,13 @@ Wavetables and physical models (§0.6s, `PLAN-wavetable-physical.md`):
 - **D260 — The wizard**: How should it be made? (a classic synth, plucked or struck, evolving)
   and What is it made of? (a string, wood, metal, a drum skin).
 - **D261 — The answers.** Jeroen (2026-10-14): the defaults to every open question.
+- **D262 — The synth editor follows the device.** Its piano lights every note the keys play into
+  its synth (a MIDI keyboard such as the MiniLab 3, the computer keys, Hold, strums, arpeggios,
+  chord pads) as it sounds (`onKeysLight`, `keysPlayInto`), softer notes lighter, and moves to the
+  octave you play in; its wheels follow the device's (`onKeysControl`). Settings → MIDI → Synth
+  editor keyboard: Always (default) or Only without a MIDI keyboard. Alt: no piano in the editor
+  (the Controller panel's instead), which left people without a device, library synths and hidden
+  Controller panels without keys.
 - **D35 — Build order.** ✅ The phases in §7, starting with the mockup (Phase M), each ending with something you can play with.
 
 ---

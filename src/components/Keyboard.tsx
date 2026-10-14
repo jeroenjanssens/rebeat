@@ -37,6 +37,7 @@ export function Keyboard({
   onOctave,
   play,
   scope,
+  lit,
 }: {
   /** The lowest note (a C). */
   low: number;
@@ -46,6 +47,8 @@ export function Keyboard({
   play: (pitch: number, velocity: number) => () => void;
   /** Where typing plays the keyboard (default: the keyboard itself). */
   scope?: React.RefObject<HTMLElement | null>;
+  /** Notes sounding from elsewhere (a MIDI keyboard, the play styles), lit with their velocity. */
+  lit?: Map<number, number>;
 }) {
   const [down, setDown] = useState<Set<number>>(new Set());
   const releases = useRef(new Map<string, () => void>());
@@ -121,10 +124,16 @@ export function Keyboard({
         key={n}
         data-key={n}
         className={`absolute touch-none select-none rounded-b-[3px] border border-black/40 ${black ? "z-[1] h-[60%] bg-[#1c1c1f]" : "h-full bg-[#f4f4f5]"}`}
+        data-lit={down.has(n) || lit?.has(n) || undefined}
         style={{
           left: black ? `calc(${x}% - ${w * 0.32}%)` : `${x}%`,
           width: black ? `${w * 0.64}%` : `${w}%`,
-          background: down.has(n) ? "var(--accent)" : undefined,
+          background: down.has(n)
+            ? "var(--accent)"
+            : lit?.has(n)
+              ? // softer notes light up less
+                `color-mix(in oklab, var(--accent) ${Math.round(45 + 55 * (lit.get(n) ?? 1))}%, ${black ? "#1c1c1f" : "#f4f4f5"})`
+              : undefined,
         }}
         onPointerDown={(e) => {
           e.currentTarget.releasePointerCapture(e.pointerId);

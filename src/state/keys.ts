@@ -1461,7 +1461,31 @@ onPerformPanic(() => {
 });
 
 /** Pitch bend (−1..1), mod wheel and aftertouch (0..1) for the keys' voice. */
+/** Pitch bend, the mod wheel or aftertouch went to the keys' sound (the synth editor's wheels
+ * follow them). */
+export type KeysControlListener = (
+  name: "modwheel" | "aftertouch" | "pitchbend",
+  value: number,
+) => void;
+const controlListeners = new Set<KeysControlListener>();
+export function onKeysControl(fn: KeysControlListener): () => void {
+  controlListeners.add(fn);
+  return () => void controlListeners.delete(fn);
+}
+
+/**
+ * Whether the keys play into this synth editor now: its track (followed, selected or locked), or
+ * its library sound (an editor the keys follow). Its piano lights what they play then.
+ */
+export function keysPlayInto(editor: { trackId?: string; panelId?: string }): boolean {
+  const ed = keysEditor();
+  if (ed && !ed.trackId) return ed.panelId === editor.panelId;
+  if (!ed && useKeys.getState().target.kind === "sound") return false;
+  return !!editor.trackId && keysTrack()?.id === editor.trackId;
+}
+
 export function keysControl(name: "modwheel" | "aftertouch" | "pitchbend", value: number) {
+  for (const fn of controlListeners) fn(name, value);
   const target = useKeys.getState().target;
   const ed = keysEditor();
   // the Bend card's Strip on Newest note (D225): the strip bends the newest held note alone

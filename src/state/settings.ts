@@ -193,6 +193,9 @@ export interface Settings {
   instrumentFavorites: string[];
   /** The synth editor's view: Basic (the macros) first, then the one you used last. */
   synthView: "basic" | "advanced";
+  /** The synth editor's keyboard and wheels: always, or only while no MIDI keyboard is
+   * connected (its piano follows the device's notes either way). */
+  synthKeyboard: "always" | "noMidi";
   /** The synth editor's folded sections (Advanced). */
   synthFolded: string[];
   /** Randomize: how far, and the sections it leaves alone. */
@@ -277,6 +280,7 @@ export const DEFAULT_SETTINGS: Settings = {
   sampleSources: [],
   instrumentFavorites: [],
   synthView: "basic",
+  synthKeyboard: "always",
   synthFolded: [],
   synthRandom: { amount: 0.3, locked: [] },
   recordMode: "overdub",

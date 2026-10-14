@@ -49,6 +49,8 @@ import { dock } from "../../app/shell";
 import { synthEditorTitle } from "../../app/openers";
 import { EnvelopeView, H, LfoView, W } from "./pictures";
 import { HoldButton, ResonatorPicture, TablePicture } from "./wavetable";
+import { useDeviceWheels, useHeard, type KeysOwner } from "./heard";
+import { useMidi } from "../../audio-io/midi";
 import { FACTORY_TABLES, tableName } from "../../model/wavetables";
 import { useWavetables } from "../../library/wavetables";
 import { useLibrary } from "../../library/library";
@@ -110,6 +112,8 @@ interface EditTarget {
   once(): number;
   /** Its own undo (library sounds aren't in the project's history). */
   undo?(redo: boolean): void;
+  /** What the keys play into when they play this synth (its piano lights their notes). */
+  owner: KeysOwner;
 }
 
 const trackTarget = (
@@ -126,10 +130,12 @@ const trackTarget = (
   // route through keys.ts so the live voice is used and notes are recorded (D126)
   hold: (pitch, velocity) => keysNoteOn(pitch, velocity, "screen"),
   once: () => engine.playOnce(track),
+  owner: { trackId: track.id },
 });
 
 const libraryTarget = (key: string, track: Track): EditTarget => ({
   library: true,
+  owner: { panelId: `synth-editor:lib:${key}` },
   update: (fn, undoKey) => updateLibrarySound(key, fn, undoKey),
   undo: (redo) => undoLibrarySound(key, redo),
   synth: () => librarySoundVoice(key)?.synth,
@@ -280,6 +286,23 @@ function EditorView({ track, target }: { track: Track; target: EditTarget }) {
     setHeld(true);
   };
   useEffect(() => () => holding.current?.(), []);
+  // what the keys play into this synth (the MiniLab 3, any MIDI keyboard, the play styles):
+  // lit on the piano, which follows the octave you play in
+  const heard = useHeard(target.owner);
+  const [seen, setSeen] = useState(heard);
+  if (seen !== heard) {
+    setSeen(heard);
+    // a note below or above the two octaves moves them there (the C below it, or so it's in
+    // the upper octave)
+    const out = [...heard.keys()].filter((n) => n < low || n > low + 24);
+    const n = out[out.length - 1];
+    if (n !== undefined)
+      setLow(Math.max(12, Math.min(84, n < low ? n - (n % 12) : n - (n % 12) - 12)));
+  }
+  // the keyboard and wheels: always, or only while no MIDI keyboard is connected
+  const keysSetting = useSettings((s) => s.synthKeyboard);
+  const midiIn = useMidi((s) => s.inputs.length > 0);
+  const showKeys = keysSetting === "always" || !midiIn;
   // Stop lets it go too (a stop silences everything, D99)
   useEffect(
     () =>
@@ -1280,22 +1303,25 @@ function EditorView({ track, target }: { track: Track; target: EditTarget }) {
           </div>
         </>
       )}
-      <div className="flex h-[74px] shrink-0 gap-2 border-t border-line px-2 py-1.5">
-        <Wheels synth={target.synth} />
-        <div className="min-w-0 flex-1">
-          <Keyboard
-            low={low}
-            scope={root}
-            onOctave={(d) => setLow((l) => Math.max(12, Math.min(84, l + 12 * d)))}
-            play={(pitch, velocity) => {
-              // a key you play takes over from Hold
-              lastKey.current = pitch;
-              if (holding.current) letGo();
-              return target.hold(pitch, velocity);
-            }}
-          />
+      {showKeys && (
+        <div className="flex h-[74px] shrink-0 gap-2 border-t border-line px-2 py-1.5">
+          <Wheels synth={target.synth} owner={target.owner} />
+          <div className="min-w-0 flex-1">
+            <Keyboard
+              low={low}
+              scope={root}
+              lit={heard}
+              onOctave={(d) => setLow((l) => Math.max(12, Math.min(84, l + 12 * d)))}
+              play={(pitch, velocity) => {
+                // a key you play takes over from Hold
+                lastKey.current = pitch;
+                if (holding.current) letGo();
+                return target.hold(pitch, velocity);
+              }}
+            />
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -1304,9 +1330,11 @@ function EditorView({ track, target }: { track: Track; target: EditTarget }) {
  * Pitch bend and mod wheel, like the ones beside a keyboard: bend springs back to the middle
  * when you let go; the mod wheel stays where you leave it.
  */
-function Wheels({ synth }: { synth: EditTarget["synth"] }) {
+function Wheels({ synth, owner }: { synth: EditTarget["synth"]; owner: KeysOwner }) {
   const [bend, setBend] = useState(0);
   const [mod, setMod] = useState(0);
+  // the device's wheels (the MiniLab's touch strips) move these too
+  useDeviceWheels(owner, (name, value) => (name === "pitchbend" ? setBend(value) : setMod(value)));
   const send = (name: "pitchbend" | "modwheel", v: number) => synth()?.control(name, v);
   const wheel = (
     label: string,

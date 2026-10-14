@@ -777,7 +777,10 @@ dq, dv, key)` from the positions at the start (`selectionStarts`, `clampGroupDq`
   length on the release). The sequencer's voice (`S.synths`) and the keys' (`S.liveVoices`) are
   separate on purpose (D126), and so are their channels: the keys play into `S.liveChannels`
   (unmuted, 0 dB unless recording, D134); samples from the keys go through `playKeysSample`.
-  A key can play several notes (in-key chord mode, chord pads): `noteOn` starts each through
+  What the keys play is announced as it sounds (`onKeysLight`, at audio times) and pitch bend and
+  the mod wheel as they arrive (`onKeysControl`); `keysPlayInto` says whether that's a given synth
+  editor's sound: the Controller panel's picture and the synth editor's piano and wheels (D262)
+  follow them. A key can play several notes (in-key chord mode, chord pads): `noteOn` starts each through
   `startNote` and keeps them per key, so pads can change a held chord (`revoice`, D137).
   The play styles (D149–D154) sit in that path: a note with a delay (strum, slop) or a rhythm
   (arp, pattern) is started by `state/perform.ts` at its audio time; a note without one still
@@ -886,6 +889,7 @@ likely to need:
 | Wavetables: oscillators, tables, warps, slots      | D241–D248                 |
 | Physical models: exciters, resonators, bodies, CPU | D249–D256                 |
 | Patch v3, new factory synths, demo song, wizard    | D257–D261                 |
+| The synth editor's piano follows the device        | D262                      |
 
 Feature batches and their acceptance criteria are in PLAN.md §0.6b–§0.6h. Known limitations are
 in §0.7.
