@@ -280,6 +280,18 @@ function EditorView({ track, target }: { track: Track; target: EditTarget }) {
     setHeld(true);
   };
   useEffect(() => () => holding.current?.(), []);
+  // Stop lets it go too (a stop silences everything, D99)
+  useEffect(
+    () =>
+      useStore.subscribe((st, prev) => {
+        if (prev.playing && !st.playing && holding.current) {
+          holding.current();
+          holding.current = null;
+          setHeld(false);
+        }
+      }),
+    [],
+  );
 
   /** Change the patch: the first edit of a factory synth makes your copy (editPatch). */
   const onTrack = target.update;
