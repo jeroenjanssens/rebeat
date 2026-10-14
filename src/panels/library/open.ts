@@ -74,7 +74,8 @@ function openLibrarySynth(c: CatalogInstrument) {
     id,
     component: "synth-editor",
     title: `${c.name} · synth`,
-    params: { library: key },
+    // the sound too: a tab restored after a reload opens it again
+    params: { library: key, sound: c.id },
     minimumHeight: 200,
     position: anchor
       ? { referencePanel: anchor.id, direction: "within" as const }

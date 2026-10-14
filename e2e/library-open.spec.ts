@@ -86,6 +86,27 @@ test("double-clicking a synth edits the library sound itself, without adding a t
   ).toHaveAttribute("aria-checked", "false");
 });
 
+test("a library synth's editor tab opens its synth again after a reload", async ({ page }) => {
+  await goTo(page, "Synths");
+  await library(page).locator("[data-instrument]", { hasText: "Reese Bass" }).dblclick();
+  const editor = page.locator('[data-testid="synth-editor"][data-library]');
+  await expect(editor).toBeVisible();
+  // the first change makes your copy: the tab follows it
+  await editor.getByTestId("synth-view").getByRole("button", { name: "Advanced" }).click();
+  await editor.locator('[data-section="Oscillator 1"] [aria-label="Pulse"]').click();
+  await expect(page.locator(".dv-tab", { hasText: "Reese Bass copy · synth" })).toHaveCount(1);
+  await page.waitForTimeout(1200);
+  await page.reload();
+  await page.getByTestId("audio-overlay").click();
+  const again = page.locator('[data-testid="synth-editor"][data-library]');
+  await expect(again).toBeVisible();
+  await expect(again.getByTestId("synth-library-note")).toContainText("saved as you go");
+  await expect(again.locator('[data-section="Oscillator 1"] [aria-label="Pulse"]')).toHaveAttribute(
+    "aria-checked",
+    "true",
+  );
+});
+
 test("a sampled instrument has no editor of its own", async ({ page }) => {
   await goTo(page, "Pianos & keys");
   const before = (await state(page)).tracks.length;

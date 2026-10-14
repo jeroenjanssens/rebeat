@@ -26,7 +26,7 @@ Open it with the wand in the Library's toolbar, from the synth editor's **⋯** 
 
 ## The synth editor
 
-The **synth editor** shapes the synth of a step track. Open it with **Edit synth…** in the Inspector, or right-click the track's name → **Edit sound…**. Each track that plays a synth gets its own editor tab (named after the track), so you can have several open side by side or as tabs. Double-clicking a synth in the library opens the library sound itself, without a track: you play it through the preview, a synth of yours is saved as you go, and a factory synth becomes your own copy on the first change. (There, undo is the editor's own, and MIDI learn and the scopes need a track.)
+The **synth editor** shapes the synth of a step track. Open it with **Edit synth…** in the Inspector, or right-click the track's name → **Edit sound…**. Each track that plays a synth gets its own editor tab (named after the track), so you can have several open side by side or as tabs. Double-clicking a synth in the library opens the library sound itself, without a track: you play it through the preview, a synth of yours is saved as you go, and a factory synth becomes your own copy on the first change. (There, undo is the editor's own, and MIDI learn and the scopes need a track.) Its tab comes back with the synth after a reload, your copy if you changed it.
 
 It has two views (switch at the top right; it remembers the one you used last):
 

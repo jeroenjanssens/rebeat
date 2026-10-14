@@ -46,13 +46,16 @@ import * as Tone from "tone";
 import type { WorkletSynth } from "../../engine/synth/node";
 import {
   endLibraryEdit,
+  libraryEditSound,
   librarySoundVoice,
+  resumeLibraryEdit,
   undoLibrarySound,
   updateLibrarySound,
   useLibraryEdits,
 } from "../../library/libraryEdit";
 import { dock } from "../../app/shell";
 import { synthEditorTitle } from "../../app/openers";
+import { saveLayout } from "../../app/layouts";
 import { EnvelopeView, H, LfoView, W } from "./pictures";
 import { HoldButton, ResonatorPicture, TablePicture } from "./wavetable";
 import { useDeviceWheels, useHeard, type KeysOwner } from "./heard";
@@ -62,7 +65,8 @@ import { useWavetables } from "../../library/wavetables";
 import { useLibrary } from "../../library/library";
 import { wavetableFromFile, wavetableFromSample } from "../../app/WavetableDialog";
 import { factorySynth } from "../../library/synths";
-import { saveInstrument, useUserInstruments } from "../../library/userInstruments";
+import { saveInstrument, userEntry, useUserInstruments } from "../../library/userInstruments";
+import { CATALOG } from "../../library/instruments";
 import {
   INIT_PATCH,
   TABLE_SLOTS,
@@ -160,9 +164,28 @@ const libraryTarget = (key: string, track: Track): EditTarget => ({
 });
 
 /** A library sound in the synth editor (no track, D91): saved to Your sounds as you go. */
-function LibrarySoundEditor({ libraryKey }: { libraryKey: string }) {
+function LibrarySoundEditor({ libraryKey, sound }: { libraryKey: string; sound?: string }) {
   const track = useLibraryEdits((s) => s.entries[libraryKey]?.track);
   const name = track?.sound?.name ?? track?.name;
+  const panelId = `synth-editor:lib:${libraryKey}`;
+  // a tab restored after a reload: open its sound again (yours once they're loaded)
+  const yours = useUserInstruments((s) => s.list);
+  const saved = sound?.startsWith("user:")
+    ? yours.find((r) => `user:${r.id}` === sound)
+    : undefined;
+  const entry = saved ? userEntry(saved) : CATALOG.find((c) => c.id === sound);
+  useEffect(() => {
+    if (!track && entry) resumeLibraryEdit(libraryKey, entry);
+  }, [track, entry, libraryKey]);
+  // the tab remembers what it edits now (a factory synth's first change makes it your copy)
+  const now = track ? libraryEditSound(track) : undefined;
+  useEffect(() => {
+    const api = dock.api;
+    if (!api || !now || now === sound) return;
+    api.getPanel(panelId)?.api.updateParameters({ library: libraryKey, sound: now });
+    // parameters alone don't change the layout: save it, so a reload opens the copy
+    saveLayout(api);
+  }, [now, sound, panelId, libraryKey]);
   useEffect(() => {
     if (name) dock.api?.getPanel(`synth-editor:lib:${libraryKey}`)?.api.setTitle(`${name} · synth`);
   }, [libraryKey, name]);
@@ -183,7 +206,11 @@ function LibrarySoundEditor({ libraryKey }: { libraryKey: string }) {
   if (!track)
     return (
       <div className="flex h-full items-center justify-center p-6 text-center text-[12px] text-faint">
-        Double-click a synth in the library to edit it here.
+        {sound?.startsWith("user:") && !saved
+          ? "Opening your synth…"
+          : sound && !entry
+            ? "This synth isn't in the library any more."
+            : "Double-click a synth in the library to edit it here."}
       </div>
     );
   return <Editor track={track} target={libraryTarget(libraryKey, track)} />;
@@ -192,7 +219,8 @@ function LibrarySoundEditor({ libraryKey }: { libraryKey: string }) {
 /** Shape a track's synth (D81, D83), or a library synth's (D91); built-ins never change. */
 export function SynthEditorPanel({ params }: { params?: Record<string, unknown> }) {
   const library = params?.library as string | undefined;
-  if (library) return <LibrarySoundEditor libraryKey={library} />;
+  if (library)
+    return <LibrarySoundEditor libraryKey={library} sound={params?.sound as string | undefined} />;
   return <TrackSynthEditor own={params?.trackId as string | undefined} />;
 }
 

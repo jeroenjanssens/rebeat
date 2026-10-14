@@ -58,6 +58,26 @@ export function startLibraryEdit(c: CatalogInstrument): string {
   return key;
 }
 
+/**
+ * Carry on editing a library synth under a key a tab saved (after a reload): its sound as the
+ * library has it now (yours with your edits; a factory synth as it is).
+ */
+export function resumeLibraryEdit(key: string, c: CatalogInstrument) {
+  if (useLibraryEdits.getState().entries[key]) return;
+  const track = trackOf(c);
+  detachedTracks.set(track.id, track);
+  useLibraryEdits.setState((s) => ({
+    entries: { ...s.entries, [key]: { track, past: [], future: [], lastAt: 0 } },
+  }));
+}
+
+/** The library sound (catalog id) an edit works on now: yours, or the factory synth. */
+export function libraryEditSound(t: Track): string | undefined {
+  const s = t.sound;
+  if (!s) return undefined;
+  return s.from ?? (s.source === "synth" && s.preset ? `synth:${s.preset}` : undefined);
+}
+
 function set(key: string, entry: Entry) {
   detachedTracks.set(entry.track.id, entry.track);
   useLibraryEdits.setState((s) => ({ entries: { ...s.entries, [key]: entry } }));
