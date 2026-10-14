@@ -51,3 +51,19 @@ export function automateItems(target: string | undefined): MenuItem[] {
     },
   ];
 }
+
+/**
+ * The menu of a control that isn't an Encoder (a matrix amount, a switch, D226, D231): MIDI
+ * learn and Automate, for its target.
+ */
+export function controlItems(target: string | undefined, label: string): MenuItem[] {
+  if (!target) return [];
+  return [
+    {
+      label: "MIDI learn",
+      onSelect: () =>
+        void import("../midi/learn").then((m) => m.startMidiLearn(target, label, "project")),
+    },
+    ...automateItems(target),
+  ];
+}

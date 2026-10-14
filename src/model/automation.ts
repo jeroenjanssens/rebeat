@@ -2,9 +2,12 @@
  * What can be automated (D189): the knobs the engine can move at an audio time. A target is a
  * MIDI-learn target string (D186), so a lane names a knob the same way a mapping does.
  */
-import { isSynthTrack, soundDefs } from "../library/synthTrack";
+import { isDraft } from "immer";
+import { effectivePatch, isSynthTrack, soundDefs, trackPatch } from "../library/synthTrack";
 import { EFFECT_PARAMS, MIX_PARAMS, SOUND_PARAMS, type ParamDef } from "./params";
+import { KNOB_SECTIONS, getPath, knobDef, paramName, paramOf, toKnob } from "./patchParams";
 import type { Project } from "./project";
+import { applyMacros, type SynthPatch } from "./synth";
 import type { Effect, Track } from "./types";
 
 /**
@@ -39,10 +42,15 @@ export interface AutomatableKnob {
   label: string;
   /** The group in the picker: a track's name, "Master" or a bus. */
   group: string;
-  /** Where it is within its group (D208): its sound, its mix, or one of its effects. */
-  section: "Sound" | "Mix" | "Effects";
+  /** Where it is within its group (D208): its sound, its synth's own knobs (D226), its mix, or
+   * one of its effects. */
+  section: "Sound" | "Synth" | "Mix" | "Effects";
   /** The effect it belongs to: its id and its name in the list ("Tremolo 2"). */
   effect?: { id: string; name: string };
+  /** The part of the synth it belongs to ("Filter 1"), folding in the picker like an effect. */
+  part?: { id: string; name: string };
+  /** Something to know about automating it ("From the next note"), shown in the picker. */
+  note?: string;
   /** The knob's own name ("Rate"). */
   name: string;
   def: ParamDef;
@@ -86,6 +94,61 @@ function fxKnobs(fx: Effect[], prefix: string, group: string, owner: string): Au
   return out;
 }
 
+/** What a synth track sounds like at rest: its patch with the macros at its knobs, applied
+ * (the values its editor's knobs show). Cached per track: tracks are immutable outside drafts. */
+const heard = new WeakMap<Track, SynthPatch>();
+function heardPatch(track: Track): SynthPatch {
+  if (isDraft(track)) return applyMacros(effectivePatch(track));
+  let p = heard.get(track);
+  if (!p) heard.set(track, (p = applyMacros(effectivePatch(track))));
+  return p;
+}
+
+/** Synth knobs that only change the next notes (D226). */
+const NEXT_NOTE =
+  /^(osc\.\d\.phase|envs\.\d\.velocity|lfos\.\d\.phase|voice\.velocityCurve|voice\.voices)$/;
+
+/** Every knob of a synth track's patch (D226), by part, with what to know about each. */
+function synthKnobs(track: Track): AutomatableKnob[] {
+  const t = `track:${track.id}`;
+  const base = trackPatch(track);
+  // which macros move each knob
+  const movedBy = new Map<string, string[]>();
+  base.macros.forEach((m, i) => {
+    for (const target of m.targets) {
+      const list = movedBy.get(target.path) ?? [];
+      list.push(`${m.name || `Macro ${i + 1}`} (macro ${i + 1})`);
+      movedBy.set(target.path, list);
+    }
+  });
+  const out: AutomatableKnob[] = [];
+  for (const section of KNOB_SECTIONS)
+    for (const d of section.params) {
+      const lfo = /^lfos\.(\d)\.phase$/.exec(d.path);
+      const notes: string[] = [];
+      if (NEXT_NOTE.test(d.path)) notes.push("From the next note");
+      if (/^osc\.\d\.unison$/.test(d.path)) notes.push("A change during a note can click");
+      const macros = movedBy.get(d.path);
+      if (macros)
+        notes.push(`${macros.join(", ")} moves this too; its lane decides while it plays`);
+      out.push({
+        target: `${t}:synth:${d.path}`,
+        label: `${track.name} · ${paramName(d.path)}`,
+        group: track.name,
+        section: "Synth",
+        part: { id: `synth:${section.id}`, name: section.title },
+        name: d.label,
+        def: knobDef(d, getPath(base, d.path) ?? d.min),
+        note: notes.join(". ") || undefined,
+        why:
+          lfo && base.lfos[Number(lfo[1])].mode === "global"
+            ? "A global LFO's phase is only set when the synth starts"
+            : undefined,
+      });
+    }
+  return out;
+}
+
 /** A track's automatable knobs: level, mix, its sound's filter (samples) or macros (synths). */
 export function trackKnobs(track: Track): AutomatableKnob[] {
   const t = `track:${track.id}`;
@@ -124,6 +187,7 @@ export function trackKnobs(track: Track): AutomatableKnob[] {
           def,
         });
     }
+  if (isSynthTrack(track)) out.push(...synthKnobs(track));
   for (const id of TRACK_MIX)
     out.push({
       target: `${t}:mix.${id}`,
@@ -138,9 +202,28 @@ export function trackKnobs(track: Track): AutomatableKnob[] {
   return out;
 }
 
+/** The lists per project (D226: a synth track adds about a hundred knobs; the lanes, the knob
+ * menus and the override watcher ask on every render and commit). Drafts aren't cached. */
+const lists = new WeakMap<
+  Project,
+  { all: AutomatableKnob[]; ok: AutomatableKnob[]; by: Map<string, AutomatableKnob> }
+>();
+function knobLists(project: Project) {
+  let l = lists.get(project);
+  if (l) return l;
+  const all = buildPickerKnobs(project);
+  l = { all, ok: all.filter((k) => !k.why), by: new Map(all.map((k) => [k.target, k])) };
+  if (!isDraft(project) && !isDraft(project.tracks)) lists.set(project, l);
+  return l;
+}
+
 /** Every knob for the picker (D208), grouped by track, then the buses and the master; the ones
  * that can't be automated have `why`. */
 export function pickerKnobs(project: Project): AutomatableKnob[] {
+  return knobLists(project).all;
+}
+
+function buildPickerKnobs(project: Project): AutomatableKnob[] {
   const out = project.tracks.flatMap(trackKnobs);
   const level = (target: string, group: string): AutomatableKnob => ({
     target,
@@ -162,7 +245,7 @@ export function pickerKnobs(project: Project): AutomatableKnob[] {
 
 /** Every automatable knob in a project, grouped by track, then the buses and the master. */
 export function automatableKnobs(project: Project): AutomatableKnob[] {
-  return pickerKnobs(project).filter((k) => !k.why);
+  return knobLists(project).ok;
 }
 
 /**
@@ -170,14 +253,15 @@ export function automatableKnobs(project: Project): AutomatableKnob[] {
  * became of it: an effect that was removed (D209), or a knob that's gone.
  */
 export function laneTitle(project: Project, target: string, short = false): string {
-  const knob = knobFor(project, target);
+  const knob = knobLists(project).by.get(target);
   if (knob) return short ? knob.label.split(" · ").slice(1).join(" · ") : knob.label;
   return target.includes(":fx:") ? "Effect removed" : "Knob gone";
 }
 
 /** The knob a target names, if it can be automated. */
 export function knobFor(project: Project, target: string): AutomatableKnob | undefined {
-  return automatableKnobs(project).find((k) => k.target === target);
+  const k = knobLists(project).by.get(target);
+  return k && !k.why ? k : undefined;
 }
 
 export const isAutomatable = (project: Project, target: string) => !!knobFor(project, target);
@@ -217,6 +301,13 @@ export function knobValue(project: Project, target: string): number {
   if (!t) return 0;
   if (key === "volume") return t.volume;
   if (key.startsWith("fx:")) return fxValue(t.effects, key);
+  if (key.startsWith("synth:")) {
+    // the knob as its editor shows it (macros applied): a hand on it moves this
+    const path = key.slice(6);
+    const d = paramOf(path);
+    const v = isSynthTrack(t) ? getPath(heardPatch(t), path) : undefined;
+    return d && typeof v === "number" ? Math.min(1, Math.max(0, toKnob(d, v))) : 0;
+  }
   return t.params[key] ?? 0.5;
 }
 

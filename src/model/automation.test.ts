@@ -2,11 +2,15 @@ import { describe, expect, it } from "vitest";
 import { demoProject } from "../templates/nightDrive";
 import { makeEffect } from "./effects";
 import { EFFECT_PARAMS, EFFECT_TYPES } from "./params";
+import { KNOB_SECTIONS, paramOf, toKnob } from "./patchParams";
+import { applyMacros } from "./synth";
+import { effectivePatch, trackPatch } from "../library/synthTrack";
 import {
   NOT_AUTOMATABLE,
   automatableKnobs,
   effectNames,
   isAutomatable,
+  knobFor,
   knobValue,
   pickerKnobs,
   thinPoints,
@@ -55,6 +59,37 @@ describe("automatable knobs (D189)", () => {
     const tremolo = knobs.find((k) => k.effect?.name === "Tremolo" && k.name === "Spread")!;
     expect(tremolo.section).toBe("Effects");
     expect(tremolo.label).toBe("Kick · Tremolo Spread");
+  });
+
+  it("every knob of a synth is automatable, but a global LFO's phase (D226)", () => {
+    const p = demoProject();
+    const bass = p.tracks.find((t) => t.name === "Bass")!;
+    const patch = trackPatch(bass);
+    const t = `track:${bass.id}:synth:`;
+    for (const d of KNOB_SECTIONS.flatMap((s) => s.params)) {
+      const lfo = /^lfos\.(\d)\.phase$/.exec(d.path);
+      const global = lfo && patch.lfos[Number(lfo[1])].mode === "global";
+      expect(isAutomatable(p, t + d.path), d.path).toBe(!global);
+      expect(pickerKnobs(p).some((k) => k.target === t + d.path)).toBe(true);
+    }
+    const cutoff = knobFor(p, `${t}filters.0.cutoff`)!;
+    expect(cutoff.section).toBe("Synth");
+    expect(cutoff.part?.name).toBe("Filter 1");
+    expect(cutoff.label).toBe("Bass · Filter 1 · Cutoff");
+    expect(knobFor(p, `${t}osc.0.phase`)!.note).toMatch(/next note/);
+    // the knob's value is where its editor shows it (macros applied)
+    const heard = applyMacros(effectivePatch(bass));
+    const d = paramOf("filters.0.cutoff")!;
+    expect(knobValue(p, `${t}filters.0.cutoff`)).toBeCloseTo(toKnob(d, heard.filters[0].cutoff), 6);
+    // knobs that a macro moves say so
+    const moved = heard.macros[0].targets[0]?.path;
+    if (moved && paramOf(moved)) expect(knobFor(p, t + moved)!.note).toMatch(/moves this too/);
+  });
+
+  it("the lists are made once per project", () => {
+    const p = demoProject();
+    expect(pickerKnobs(p)).toBe(pickerKnobs(p));
+    expect(automatableKnobs(p)).toBe(automatableKnobs(p));
   });
 
   it("names a second effect of a kind with a number", () => {

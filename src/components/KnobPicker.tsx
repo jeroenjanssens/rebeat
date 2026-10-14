@@ -1,6 +1,7 @@
 /**
  * The knob picker (D208): every knob that can be automated, as a tree with a search box. Owner
- * (a track, a bus, the master) → its Sound, Mix and Effects → one item per effect → its knobs.
+ * (a track, a bus, the master) → its Sound, Synth, Mix and Effects → one item per effect or part
+ * of the synth (D226) → its knobs.
  * Typing shows the matching knobs as one list. Used to add a lane (the Timeline, a track's +),
  * to move a lane to another knob, and in the Inspector's table.
  */
@@ -43,7 +44,10 @@ export function openKnobPicker(
     .show(x, y, [{ render: (close) => <KnobPicker {...options} close={close} /> }], 280);
 }
 
-const SECTIONS = ["Sound", "Mix", "Effects"] as const;
+const SECTIONS = ["Sound", "Synth", "Mix", "Effects"] as const;
+
+/** Where a knob folds within its section: its effect, or its part of the synth. */
+const subOf = (k: AutomatableKnob) => k.effect ?? k.part;
 
 function KnobPicker({
   only,
@@ -70,7 +74,7 @@ function KnobPicker({
         [
           open,
           currentKnob?.group,
-          currentKnob?.effect && `fx:${currentKnob.effect.id}`,
+          currentKnob && subOf(currentKnob) && `fx:${subOf(currentKnob)!.id}`,
           groups.length === 1 ? groups[0] : undefined,
         ].filter((x): x is string => !!x),
       ),
@@ -107,15 +111,15 @@ function KnobPicker({
         const inSection = own.filter((k) => k.section === section);
         if (!inSection.length) continue;
         rows.push({ kind: "section", section, group });
-        if (section !== "Effects") {
+        if (section !== "Effects" && section !== "Synth") {
           for (const knob of inSection) rows.push({ kind: "knob", knob, depth: 1 });
           continue;
         }
-        const effects = [...new Map(inSection.map((k) => [k.effect!.id, k.effect!])).values()];
-        for (const fx of effects) {
-          rows.push({ kind: "effect", id: fx.id, name: fx.name });
-          if (!opened.has(`fx:${fx.id}`)) continue;
-          for (const knob of inSection.filter((k) => k.effect!.id === fx.id))
+        const subs = [...new Map(inSection.map((k) => [subOf(k)!.id, subOf(k)!])).values()];
+        for (const sub of subs) {
+          rows.push({ kind: "effect", id: sub.id, name: sub.name });
+          if (!opened.has(`fx:${sub.id}`)) continue;
+          for (const knob of inSection.filter((k) => subOf(k)!.id === sub.id))
             rows.push({ kind: "knob", knob, depth: 2 });
         }
       }
@@ -224,7 +228,14 @@ function KnobPicker({
               className={`menu-item${lit}`}
               style={{ paddingLeft: indent }}
               disabled={blocked(k)}
-              title={k.why ?? (blocked(k) ? "This knob has a lane already" : k.label)}
+              title={
+                k.why ??
+                (blocked(k)
+                  ? "This knob has a lane already"
+                  : k.note
+                    ? `${k.label}: ${k.note}`
+                    : k.label)
+              }
               onClick={() => choose(r)}
             >
               <span className="w-3.5 shrink-0">
@@ -235,6 +246,11 @@ function KnobPicker({
               <span className="flex-1 truncate">
                 {r.full ? k.label : k.name}
                 {k.why && <span className="ml-1.5 text-[10px] text-faint">can't be automated</span>}
+                {!k.why && k.note && (
+                  <span className="ml-1.5 text-[10px] text-faint" data-testid="knob-note">
+                    {k.note.split(". ")[0]}
+                  </span>
+                )}
               </span>
             </button>
           );

@@ -11,7 +11,9 @@ import {
   Save,
 } from "lucide-react";
 import { create } from "zustand";
-import { dropdown } from "../../components/Menu";
+import { contextMenu, dropdown } from "../../components/Menu";
+import { AutoMark } from "../../components/AutoMark";
+import { controlItems } from "../../state/automationKnob";
 import { RANDOM_GROUPS, randomizePatch } from "../../model/randomize";
 import { SYNTH_EXT, exportSynth, importSynth } from "../../library/rbsynth";
 import { platform } from "../../platform";
@@ -850,7 +852,13 @@ function EditorView({ track, target }: { track: Track; target: EditTarget }) {
             </Group>
             <Group id="matrix" title="Matrix · macros">
               <Box title="Mod matrix" wide>
-                <Matrix patch={patch} onChange={(fn) => edit(fn)} color={track.color} />
+                <Matrix
+                  patch={patch}
+                  onChange={(fn) => edit(fn)}
+                  color={track.color}
+                  target={target.library ? undefined : `track:${track.id}:synth:`}
+                  name={track.name}
+                />
               </Box>
               <Box title="Macros" wide>
                 <Macros
@@ -1372,11 +1380,18 @@ function Matrix({
   patch,
   onChange,
   color,
+  target,
+  name,
 }: {
   patch: SynthPatch;
   onChange: (fn: (p: SynthPatch) => void) => void;
   color: string;
+  /** The track's synth target prefix ("track:<id>:synth:"), for MIDI learn and automation. */
+  target?: string;
+  name: string;
 }) {
+  const menu = (e: React.MouseEvent, path: string, label: string) =>
+    target && contextMenu(e, controlItems(`${target}${path}`, `${name} · ${label}`));
   const slots = Array.from({ length: 8 }, (_, i) => patch.matrix[i] ?? emptySlot());
   const setSlot = (i: number, change: Partial<SynthPatch["matrix"][number]>) =>
     onChange((p) => {
@@ -1430,7 +1445,12 @@ function Matrix({
             </option>
           ))}
         </select>,
-        <span key={`a${i}`} className="flex items-center gap-1" data-hint="synth.matrix.amount">
+        <span
+          key={`a${i}`}
+          className="flex items-center gap-1"
+          data-hint="synth.matrix.amount"
+          onContextMenu={(e) => menu(e, `matrix.${i}.amount`, `Matrix slot ${i + 1} amount`)}
+        >
           <input
             type="range"
             min={-1}
@@ -1446,6 +1466,7 @@ function Matrix({
           <span className="num w-8 text-right text-[10px] text-dim">
             {Math.round(s.amount * 100)}
           </span>
+          <AutoMark target={target && `${target}matrix.${i}.amount`} />
         </span>,
         <span key={`v${i}`} className="contents">
           {sourceSelect(s.via, (v) => setSlot(i, { via: v }), "synth.matrix.via", "always")}

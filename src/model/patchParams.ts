@@ -457,13 +457,35 @@ export const SECTIONS: { id: string; title: string; short: string; params: Patch
 
 export const ALL_PARAMS = SECTIONS.flatMap((s) => s.params);
 
-const BY_PATH = new Map(ALL_PARAMS.map((d) => [d.path, d]));
+/**
+ * The mod matrix's amounts as knobs (D226), for automation and MIDI learn. Not in SECTIONS: the
+ * editor draws the matrix as a table, and randomizing leaves the routing alone.
+ */
+export const MATRIX_SECTION: (typeof SECTIONS)[number] = {
+  id: "matrix",
+  title: "Mod matrix",
+  short: "Matrix",
+  params: Array.from({ length: 8 }, (_, i) => ({
+    path: `matrix.${i}.amount`,
+    label: `Slot ${i + 1} amount`,
+    min: -1,
+    max: 1,
+    bipolar: true,
+    format: (v: number) => `${Math.round(v * 100)}`,
+    help: "How far this slot's source moves its destination: negative turns it around.",
+  })),
+};
+
+/** Every knob of a patch, the matrix's amounts too. */
+export const KNOB_SECTIONS = [...SECTIONS, MATRIX_SECTION];
+
+const BY_PATH = new Map(KNOB_SECTIONS.flatMap((s) => s.params).map((d) => [d.path, d]));
 /** The knob of a patch path ("filters.0.cutoff"). */
 export const paramOf = (path: string) => BY_PATH.get(path);
 
 /** "Filter 1 · Cutoff": a knob's name with its section (short), for pickers and MIDI learn. */
 export const paramName = (path: string) => {
-  const s = SECTIONS.find((x) => x.params.some((d) => d.path === path));
+  const s = KNOB_SECTIONS.find((x) => x.params.some((d) => d.path === path));
   if (!s) return path;
   return s.short ? `${s.short} · ${paramOf(path)!.label}` : paramOf(path)!.label;
 };
