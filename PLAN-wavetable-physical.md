@@ -1,7 +1,7 @@
 # Plan: wavetable oscillators and physical models in the synth
 
-Status: proposed 2026-10-14, waiting for answers to the open questions (§12). Decisions D241–D261
-(numbers provisional until agreed).
+Status: agreed 2026-10-14 (Jeroen: the default answers to every open question, §12), being
+built; decisions D241–D261. Where the build differs from this plan: §14.
 How we work: on `main`, commit early and often, e2e once at the end of the batch.
 
 Two parts, one synth:
@@ -695,3 +695,21 @@ movement). Question 11 in §12.
 
 Rough size: steps 1–8 are a batch like §0.6e (the complete synth); 9–14 another of about the same
 size; 13 is the riskiest (sounding good, not just working).
+
+## 14. Where the build differs
+
+- **Automating the table** (D248): instead of a lane keeping its own list of tables, each
+  wavetable oscillator has **8 table slots** (slot 1 is its table, slots 2–8 `osc.N.tables`), and
+  the automated switch is the slot (`osc.N.slot`). The options never change, so a lane's saved
+  values never point at another table when you import one, and the worklet resolves the slot to a
+  table itself; the lane's bands show the slots' table names.
+- **Mip levels are built on the main thread** (a task after the current one), not in a worker: a
+  64-frame table takes a few milliseconds, and the code stays testable in Node.
+- **A table that hasn't arrived plays the analog morph** at the same position (that's what Basic
+  shapes sounds like), so the worklet needs no fallback table.
+- **Level crossfades** happen in the upper half of each octave only (the lower half reads one
+  level): half the work, and still no jump in brightness on a glide.
+- **A stolen or retriggered physical voice keeps ringing** (a string plucked again), rather than
+  fading out over 5 ms first: the resonator's state is continuous, so there's no click.
+- **The CPU budget** in the unit test is 6× real time for 8 voices (modal with 32 partials and a
+  body is the slowest, about 7×); 8× was the plan.
