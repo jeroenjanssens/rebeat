@@ -1,7 +1,7 @@
 # Plan: wavetable oscillators and physical models in the synth
 
-Status: agreed 2026-10-14 (Jeroen: the default answers to every open question, §12), being
-built; decisions D241–D261. Where the build differs from this plan: §14.
+Status: agreed and built 2026-10-14 (Jeroen: the default answers to every open question, §12);
+decisions D241–D261 (PLAN.md §6, §0.6s). Where the build differs from this plan: §14.
 How we work: on `main`, commit early and often, e2e once at the end of the batch.
 
 Two parts, one synth:
@@ -713,3 +713,20 @@ size; 13 is the riskiest (sounding good, not just working).
   fading out over 5 ms first: the resonator's state is continuous, so there's no click.
 - **The CPU budget** in the unit test is 6× real time for 8 voices (modal with 32 partials and a
   body is the slowest, about 7×); 8× was the plan.
+- **Bend's amount** is 0..1 like every warp's, straight at 50% (not −1..1), so one knob fits all
+  warps; choosing Bend sets it to 50%.
+- **A bow on a bar, a bell or a glass is its rosin's noise**: a friction model through high-Q
+  partials barely built up. Strings keep the stick-slip bow. A true friction model is later (§0.7).
+- **The resonator's picture doesn't move** with the partials yet (later); its markers and their
+  dots do.
+- **The import dialog shows the frames** (a picture you can scrub) but doesn't play them before
+  you save the table.
+- **No WT/PM badges**: the factory synths' names say it (“Wavetable · …”, “Physical · …”), which
+  also makes them searchable; the physical drums have their own group, Percussion.
+- **Hold** starts on C4 (or the track's bass range), the editor keyboard's middle; Stop lets it go.
+- **The demo song** is about a minute and a half (renders for the golden test stay quick), with
+  fourteen tracks.
+- **The wizard's question** is "How should it be made?", asked right after "What is it for?"
+  (sound effects skip it).
+- **`.rebeat` files list the tables** in `wavetables.json` next to `wavetables/<sha>`; `.rbsynth`
+  files embed them as base64.

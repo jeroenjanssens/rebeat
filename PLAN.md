@@ -1,6 +1,6 @@
 # Rebeat — Product & Technical Plan
 
-> **Status (2026-10-09):** All phases of §7 are implemented (M, G, 0–10), plus the batches in §0.6b–§0.6g (step tracks were built on the `step-tracks` branch and are merged). §0.6h (beatbox to step tracks) and §0.6i (MIDI controllers) are done and merged (2026-10-10), and so is §0.6j (the keys, recording notes, the MiniLab 3 panel and display, browsing, CPU meter, zoom; 2026-10-10). Repo: `github.com/jeroenjanssens/rebeat` (public; `main` deploys to GitHub Pages). §0 describes the current code; §0.7 lists known limitations and what is left for later.
+> **Status (2026-10-14):** All phases of §7 are implemented (M, G, 0–10), plus the batches in §0.6b–§0.6s, the latest being wavetables and physical models in the synth (§0.6s, `PLAN-wavetable-physical.md`). Repo: `github.com/jeroenjanssens/rebeat` (public; `main` deploys to GitHub Pages). §0 describes the current code; §0.7 lists known limitations and what is left for later.
 > Every open question in §6 has a **default**. All defaults were accepted when Phase M was started, except where §6 records a different choice. To change one, refer to it by number (e.g. "D7: B").
 
 ---
@@ -12,7 +12,7 @@
 
 ### 0.1 Where we are
 
-- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D240), and the build order is in §7.
+- §1–§8 below are the agreed product and technical plan. The decisions are in §6 (D1–D261), and the build order is in §7.
 - Every phase in §7 is built, tested (unit + Playwright e2e) and pushed. The mockup (Phase M) became the app: its components, model and store were kept and extended; `src/mock/` was replaced by the real engine.
 - The desktop app (Phase 10) runs and packages locally (unsigned); signing/notarization need certificates (see `.github/workflows/desktop.yml`).
 
@@ -789,6 +789,23 @@ track's lanes, all; Follow the selected track), saved without undo steps. **Many
 rectangle across lanes (Shift adds, Alt takes out), group drags (Alt: one direction), the arrows,
 Delete and the menu across lanes. A new example song, **Sweeps and Bends**.
 
+### 0.6s Wavetables and physical models in the synth (agreed and done 2026-10-14) ✅
+
+The plan is `PLAN-wavetable-physical.md` (D241–D261; where the build differs: its §14). **Each
+oscillator** can be Analog or **Wavetable** (patch version 3, schema 13): 16 factory tables
+generated from spectra and shapes, band-limited per octave and sent once per audio context;
+Position (ramped per sample), nine warps, Smooth, 8 table slots that a stepped lane switches
+between; a picture of the frames stacked in depth that you scrub, with a strip and the position
+after modulation, and Hold (a note while you scrub). **Your tables** from samples and WAV files
+(Cycles at the detected pitch, Even slices, Whole file), in IndexedDB, carried by `.rebeat` and
+`.rbsynth` files. **The synth's Source** can be a **physical model**: an exciter (pluck, strike,
+bow, blow, noise, the oscillators) drives a string or tube waveguide or a bank of partials (bar,
+bell, membrane, plate, glass) and a body, tuned within 3 cents, voices that end when they die
+away; a picture with draggable Position and Pickup markers. Everything after the source (filters,
+envelopes, LFOs, matrix, macros, bends, automation) works for both. 27 new factory synths (10
+wavetable, 12 physical, 5 physical drums in a new Percussion group), the wizard's Plucked or
+struck and Evolving, a demo song, **Wood, Wire and Glass**.
+
 ### 0.7 Known limitations and later work
 
 - Offline renders (export, resampling) repitch instead of time-stretching warped clips (and timeline audio): during a tempo change an exported clip bends in pitch (the timeline marks it ⚠). Sampled instruments are included (rendering waits for their samples), but the first render of one that was never downloaded needs the network.
@@ -806,6 +823,10 @@ Delete and the menu across lanes. A new example song, **Sweeps and Bends**.
   requested); live triggering (your voice plays kit sounds while you
   beatbox); sharing voices' datasets with others.
 - Headless Chromium on macOS can't open capture devices, so e2e tests use a synthetic microphone; the real mic path is covered manually.
+- Wavetables and physical models, later (§0.6s): drawing frames by hand, resynthesis and exporting
+  tables; hearing a table in the import dialog before saving it; a Resonator effect (any track
+  through a tuned string or bell); coupled resonators and sympathetic strings; a moving picture of
+  the resonator's partials; a true friction model for bowed bars and bowls.
 
 ---
 
@@ -1666,6 +1687,59 @@ Format: **Dn — Question.** Default ✅, alternatives.
   golden levels.
 - **D240 — The answers.** Jeroen (2026-10-14): the defaults, switches as stepped lanes now, Next
   and Doit, a demo song, the rectangle across lanes.
+
+Wavetables and physical models (§0.6s, `PLAN-wavetable-physical.md`):
+
+- **D241 — Wavetables are an oscillator type**, not a new synth: each oscillator Analog (today's
+  code path, unchanged sounds) or Wavetable; everything else about an oscillator applies. Alt: a
+  separate wavetable synth.
+- **D242 — Tables**: frames of 2048 samples, up to 256; 16 factory tables generated in code with
+  stable ids (`factory:<name>`); a missing table plays the analog morph at the same position.
+- **D243 — Band-limiting**: a mip level per octave (four samples per period of its top
+  harmonic), built on the main thread after the current task, sent once per audio context (all
+  processors share a global scope), in `processorOptions` offline; `settled()` waits for them.
+- **D244 — Reading**: two frames blended by Position (Smooth), two levels crossfaded in the upper
+  half of each octave, linear inside a frame; Position and the warp ramp per sample; mod
+  destinations for both.
+- **D245 — Warps**: one per oscillator (Bend, Sync, Formant, Mirror, Asym, Squeeze, Quantize,
+  FM), with an amount 0..1 (Bend straight at 0.5). Alt: two in series.
+- **D246 — Your tables**: from a sample or a WAV file (read without resampling), cut into
+  Cycles, Even slices or the Whole file; content-addressed in IndexedDB (DB version 5,
+  `wavetables`, frames in `blobs` as `wt:<sha>`); in `.rebeat` (`wavetables/`) and `.rbsynth`
+  (base64) files. Drawing and resynthesis later.
+- **D247 — The picture**: frames stacked in depth and a strip; drag to scrub (it's the Position
+  knob: one undo step, Shift fine, double-click back, the wheel), the position after modulation
+  or a lane drawn; Hold holds the last key played (off when you play a key, at Stop, when the
+  editor closes); in Basic, Character moves the position.
+- **D248 — Switching tables**: 8 slots per oscillator (slot 1 its table), a stepped switch
+  `osc.N.slot` whose lane names the slots' tables; every slot's table is preloaded. Alt: a lane's
+  own list of tables (indexes would shift on imports).
+- **D249 — Physical models are a second Source** of the same synth (`source: "oscillators" |
+  "physical"`): filters, envelopes, LFOs, matrix, macros, glide, bends and automation stay; the
+  amp envelope only shapes the ends. Alt: a separate sound kind, or only a Resonator effect.
+- **D250 — Exciters**: pluck, strike (impulses), bow (stick-slip on strings; rosin noise on modal
+  resonators), blow (a reed or a jet on tubes; breath noise elsewhere), noise, the oscillators;
+  velocity makes them harder and louder.
+- **D251 — Resonators**: String (two waveguide parts split at the exciter, loss and dispersion in
+  the loop, a pickup comb), Tube (closed: reed; open: jet), and modal Bar, Bell, Membrane, Plate,
+  Glass (8/16/32 partials, two kinds each that Structure morphs between).
+- **D252 — Bodies**: a few fixed resonances (guitar, violin, cello, piano, box) or a tube that
+  follows the note; Size and Mix.
+- **D253 — Tuning**: Lagrange fractional delays (smooth under glide and bends), the loop filters'
+  delay compensated; strings and tubes within 3 cents from C1 to C7.
+- **D254 — Voices end when they die away** (quiet for 50 ms; a held pluck too); Release damps on
+  note-off; panic clears; a retriggered or stolen voice keeps ringing (a string plucked again).
+- **D255 — Safety and CPU**: clamped loop gains, bounded friction and reed curves, a DC blocker,
+  partials below Nyquist, a fuzz test; at least 6× real time for 8 voices in Node.
+- **D256 — Offline** renders are seeded like the rest (D98) and wait for their tables.
+- **D257 — Patch version 3, schema 13**: version 2 patches read as analog oscillators and the
+  Oscillators source; default macros refit when the source or an oscillator's type changes.
+- **D258 — 27 factory synths**: 10 wavetable, 12 physical, 5 physical drums (Percussion), named
+  “Wavetable · …” and “Physical · …”, balanced like the others. Alt: badges in the library.
+- **D259 — Wood, Wire and Glass**, an example song for both, with its golden levels.
+- **D260 — The wizard**: How should it be made? (a classic synth, plucked or struck, evolving)
+  and What is it made of? (a string, wood, metal, a drum skin).
+- **D261 — The answers.** Jeroen (2026-10-14): the defaults to every open question.
 - **D35 — Build order.** ✅ The phases in §7, starting with the mockup (Phase M), each ending with something you can play with.
 
 ---

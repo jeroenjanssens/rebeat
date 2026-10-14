@@ -34,7 +34,11 @@ effects, Auto at beat speeds; and **bends, the synth on the timeline** (§0.6r, 
 `PLAN-bend-and-lanes.md`): a Bend card (seven shapes per note, recorded with the notes, schema
 12), every knob and switch of a synth automatable through a new worklet path, stepped lanes for
 every discrete setting, folding lanes, a rectangle and group drags across lanes, the demo song
-Sweeps and Bends. Left: tests
+Sweeps and Bends; and **wavetables and physical models** (§0.6s, D241–D261,
+`PLAN-wavetable-physical.md`): each oscillator Analog or Wavetable (tables band-limited per octave,
+scrubbed in a picture, 8 slots a lane switches between, your own from samples), the synth's Source
+a physical model (an exciter into a string, a tube or a bank of partials, and a body), patch
+version 3 and schema 13, 27 new factory synths, the demo song Wood, Wire and Glass. Left: tests
 with real hardware (mic, MIDI, Launchpad/Push), signing the desktop release, the license (D6),
 and the "later" items in PLAN.md §0.7. The repository is public and `main` deploys to GitHub
 Pages.
@@ -52,7 +56,8 @@ sequencer**, with:
 - **A library** of samples, synths and sampled instruments: import, kits, online kits, analysis,
   favorites, tags, Your sounds.
 - **A non-destructive sample editor.**
-- **A full subtractive/FM synth with an editor.**
+- **A full subtractive/FM synth with an editor**, with wavetable oscillators and physical models
+  (an exciter and a resonator) as a second source.
 - **A mixer** with insert effects (Pump among them: a beat-synced duck), send buses and a master
   chain.
 - **Performance tools**: DJ filter, tape stop, beat repeat, crossfader, mute groups, section queueing.
@@ -112,7 +117,7 @@ pnpm prettier --write src e2e && pnpm tsc --noEmit && pnpm eslint . && pnpm vite
   && pnpm playwright test --workers=4
 ```
 
-Expect about 615 unit tests and about 265 e2e tests (around 7 minutes, most of it the golden
+Expect about 660 unit tests and about 270 e2e tests (around 7 minutes, most of it the golden
 levels renders). Visual changes are
 also checked in a real browser: a throwaway Playwright spec that takes a screenshot works well
 (delete it afterwards).
@@ -137,7 +142,7 @@ src/
                        - TransportBar (Play, Rec ▾, BPM ▾, the metronome ▾: D214, D215), commands
                          (registry, shortcuts), defaultCommands, CommandPalette
                        - dialogs: Settings (+ MidiSettings, Calibration), ProjectBrowser, Export,
-                         SampleExport, Welcome
+                         SampleExport, Welcome, WavetableDialog (Make a wavetable)
                        - openers.ts: open a sample/synth editor tab, the guide, focus a panel
                        - shell.ts (dock API handle), hintLayer.ts (explain mode)
   platform/            the Platform interface; web.ts and electron.ts (files, storage, full screen);
@@ -145,14 +150,17 @@ src/
   model/               pure data and operations (no React, no audio):
                        - types.ts (Track, Lane, Step, Note, Sound…), project.ts (setMode…)
                        - tracks.ts (modes and sounds: player, sampleOf, hitNoteOf, canClip…)
-                       - schema.ts (versions + migrations, now v12), params.ts (knob definitions, toUnit)
+                       - schema.ts (versions + migrations, now v13), params.ts (knob definitions, toUnit)
                        - arrangement.ts (D181: sections laid out in quarter notes, bars, anchors,
                          curve values, keeping anchors on delete/copy/unroll), tempoMap.ts (D192:
                          jumps and ramps, exact seconds), automation.ts (D189: what can be
                          automated, knob values, thinning), ease.ts (D196: eases in and out, composed
                          `in(out(t))`)
                        - fixtures/v6/ (every example and template as schema 6 saved it, gzipped)
-                       - synth.ts (patch v2, macros), synthV1.ts (old patches, read only)
+                       - synth.ts (patch v3: wavetable oscillators, the physical model; macros,
+                         refreshMacros), synthV1.ts (old patches, read only)
+                       - wavetables.ts (D242–D246: the 16 factory tables, mip levels, cutting a
+                         sample into frames, table names)
                        - patchParams.ts (the synth editor's knob table, the matrix's amounts),
                          patchSwitches.ts (D231: every switch and menu of a patch, as stepped
                          knobs), synthAutomation.ts (D228: a lane's target → patch path and value),
@@ -195,7 +203,10 @@ src/
                          play from the start marker), ticker.ts (timing worker)
                        - automation.ts (D186, D188: curve events per step, regions in song time)
                        - instruments.ts (voices: synth, sample/multi-sample, smplr, sf2), synth/ (the
-                         AudioWorklet synth: core.ts DSP, worklet.ts, node.ts)
+                         AudioWorklet synth: core.ts DSP, worklet.ts, node.ts; wavetable.ts (reading
+                         tables, warps, the per-context table registry), tables.ts (main thread:
+                         building and loading tables), physical.ts + modal.ts (exciters,
+                         waveguides, partials, bodies))
                        - kits.ts (808/909 kits synthesized offline), samples.ts (buffers, peaks)
                        - looper, recorder, liveInput, metronome, stretch (Signalsmith), perf
                        - render.ts + offline.ts (offline export)
@@ -217,11 +228,12 @@ src/
                        - library.ts (import, dedupe, decode, versions), analysis (BPM/onsets/key/LUFS)
                        - processing (sample settings), editorOps, renderFx, encode, wav, fft
                        - audition.ts (previews), online kits (onlineKits, onlineImport, sources)
-                       - synths.ts (37 factory synths), instruments.ts (catalog), userInstruments.ts
+                       - synths.ts (91 factory synths), instruments.ts (catalog), userInstruments.ts
                          (Your sounds, SoundFonts, multi-samples, preset copies)
                        - synthTrack.ts (a track's synth: patch, macros, editPatch, soundDefs), libraryEdit.ts
                          (editing a library synth without a track), synthFile.ts + rbsynth.ts
                          (.rbsynth files), downloads, drop, sort
+                       - wavetables.ts (Your tables: IndexedDB, the synth's loader, files)
                        - soundTrack.ts (a library sound as a track outside the project),
                          playable.ts (the Playable list and browsing it), pitch.ts (a sample's
                          base key: YIN)
@@ -348,10 +360,11 @@ fill?: "last" | "all", steps? }`. The settings are the section's own (D183): its
   `Project.timelineFolded?` are the timeline's folds (D233).
 - `Note.bend?` (D220, schema 12): a note's own bend (`NoteBend`: shape, amount, time, delay, unit
   "s" | "q", ease, rate); `model/bend.ts` says where it is at a moment.
-- **Schema**: `model/schema.ts`, currently `SCHEMA_VERSION = 12` (8: MIDI mappings' `mode`; 9: `Note.offset`, a
+- **Schema**: `model/schema.ts`, currently `SCHEMA_VERSION = 13` (8: MIDI mappings' `mode`; 9: `Note.offset`, a
   note's own start within its step, −0.5..0.5; 10: sections' settings, tempo changes, automation,
   regions, all optional; 11: eases per point, `hold` became an ease out of None; 12: `Note.bend`,
-  folded lanes, and lanes on stepped effect knobs turned into points on their bands).
+  folded lanes, and lanes on stepped effect knobs turned into points on their bands; 13: synth
+  patches version 3, upgraded when read).
   - Every change to the saved shape bumps the version and adds a migration plus a test.
   - `migrate` + `normalizeProject` run on every load.
   - Migration 5 → 6 converted the old SOUND knobs on synth tracks into patch edits (it changes
@@ -392,7 +405,8 @@ end)`) and released at the note's end, unless a newer lock started.
 
 ### 6.2 The synth (D79–D92; the biggest recent area)
 
-**Patch v2** (`model/synth.ts`):
+**Patch v3** (`model/synth.ts`; version 2 patches read as analog oscillators and the
+Oscillators source):
 
 - Three oscillators, each with:
   - shape morph 0..3 (sine → triangle → saw → pulse), pulse width
@@ -408,6 +422,16 @@ end)`) and released at the note's end, unless a newer lock started.
   per voice or global; unipolar.
 - An 8-slot mod matrix: source → destination × amount, with an optional "via" source that scales
   it.
+- **Wavetables** (D241–D248): an oscillator's `type: "wavetable"` reads `table` (or one of its 8
+  slots, `slot`/`tables`) at `position`, with a `warp` and `warpAmount` and `smooth`. Tables are
+  built on the main thread (`engine/synth/tables.ts`: factory tables from `model/wavetables.ts`,
+  yours through `library/wavetables.ts`), band-limited per octave, and sent once per context in a
+  `table` message (offline: in `processorOptions`); the worklet's `TABLES` (wavetable.ts) holds them
+  for every synth of the context. A table that hasn't arrived plays the analog morph.
+- **Physical models** (D249–D255): `source: "physical"` replaces the oscillator section with
+  `physical` (exciter → resonator → body), `engine/synth/physical.ts` (a `PhysVoice` per voice)
+  and `modal.ts` (partial ratios, bodies). The exciter `oscillators` feeds the oscillator section
+  into it. A physical voice ends when it has been quiet for 50 ms.
 - 8 macros.
 - Voice: poly, mono or legato; glide; voice stealing; velocity curve; bend range; tune.
 - Output: drive, volume, pan, spread.
@@ -493,8 +517,9 @@ onPatchEdit` hook, debounced `saveSoundSoon`).
 
 **Factory synths** (`library/synths.ts`):
 
-- 37 synths written as version 2 specs through `voiced()`, with a house style: no drift, global
-  LFOs, glide always, no note spread.
+- 91 synths written as specs through `voiced()`, with a house style: no drift, global LFOs, glide
+  always, no note spread. The wavetable ones are "Wavetable · …", the physical ones "Physical · …"
+  (written with `phys()`), five of them drums in the Percussion group.
 - Ids are stable because projects store them.
 - Loudness is balanced to about −21 dB RMS (`synthLevels.test.ts`, seeded random;
   `SYNTH_LEVELS=1` prints the levels).
@@ -638,8 +663,8 @@ onPatchEdit` hook, debounced `saveSoundSoon`).
   mutes by cell, lanes, folds), `CurveLane` (automation and tempo; stepped lanes; group drags, the
   rectangle via `SelectionBox`), `RegionBox`, `ViewCanvas` (a canvas for the visible part only).
 - **Selecting across lanes** (D235–D238): `ui.pointSelection = { lanes: { [laneId | "tempo"]:
-  indexes } }` (`state/pointSelection.ts`). Moves go through `timelineActions.movePoints(starts,
-  dq, dv, key)` from the positions at the start (`selectionStarts`, `clampGroupDq`), one commit.
+indexes } }` (`state/pointSelection.ts`). Moves go through `timelineActions.movePoints(starts,
+dq, dv, key)` from the positions at the start (`selectionStarts`, `clampGroupDq`), one commit.
   The rectangle finds points by their DOM handles (`data-point-key`), so folded lanes draw marks.
 - **Folds** (D233) are a view: `store.editView(recipe)` saves them without an undo step, applying
   the same change to the history.
@@ -798,6 +823,14 @@ onPatchEdit` hook, debounced `saveSoundSoon`).
 - **Stepped is a knob's `steps`** (D229): a new knob with steps gets a stepped lane, no eases, and
   points snapped by `timelineActions` (they read `laneSteps` from the project outside the recipe:
   the knob lists aren't cached for drafts and hold ~1,500 entries with ten synths).
+- **Wavetables reach the worklet as messages**, once per context (all processors of a context
+  share one global scope). A new path that plays a patch must call `setPatch` (it sends the tables
+  the patch needs) and, offline, `settled()` before rendering, or the oscillator plays the analog
+  stand-in. Tables are built on the main thread, never in the worklet.
+- **A physical voice decays by itself.** Its voice ends on silence, not on the amp envelope
+  (`PhysVoice.settle`), so a held pluck frees its voice. A modal model's impulses are normalized by
+  their area and continuous exciters by √(2(1 − R)); a new exciter needs the same care, or its
+  level follows its length or the decay. `sanitizePatch` caps a patch's volume at +6 dB.
 - **The factory synth levels test** used to fail sometimes because of random oscillator phases;
   it now seeds `Math.random`. New level-sensitive tests should do the same.
 
@@ -850,6 +883,9 @@ likely to need:
 | Bends per note, the Bend card, the strip           | D220–D225                 |
 | Synth automation, stepped lanes, switches          | D226–D232                 |
 | Folding lanes, selecting and moving many points    | D233–D238                 |
+| Wavetables: oscillators, tables, warps, slots      | D241–D248                 |
+| Physical models: exciters, resonators, bodies, CPU | D249–D256                 |
+| Patch v3, new factory synths, demo song, wizard    | D257–D261                 |
 
 Feature batches and their acceptance criteria are in PLAN.md §0.6b–§0.6h. Known limitations are
 in §0.7.
