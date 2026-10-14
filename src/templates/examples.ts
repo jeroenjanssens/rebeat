@@ -5,6 +5,7 @@
  */
 import { longWayHome } from "./arrangement";
 import { sweepsAndBends } from "./sweeps";
+import { woodWireAndGlass } from "./woodWireGlass";
 import { makeEffect } from "../model/effects";
 import type { Project } from "../model/project";
 import {
@@ -415,6 +416,13 @@ export const EXAMPLES: Example[] = [
     artist: "Rebeat demo · bends and synth automation",
     year: 2026,
     create: sweepsAndBends,
+  },
+  {
+    id: "wood-wire-and-glass",
+    name: "Wood, Wire and Glass",
+    artist: "Rebeat demo · wavetables and physical models",
+    year: 2026,
+    create: woodWireAndGlass,
   },
   {
     id: "around-the-world",
