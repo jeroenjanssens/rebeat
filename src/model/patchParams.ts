@@ -48,6 +48,22 @@ const osc = (i: number): PatchParam[] => {
       help: "The waveform: click a picture. Sine is pure, triangle soft, saw bright and buzzy, pulse hollow (set its width); the pictures in between mix the two beside them. Macros and the mod matrix can morph smoothly anywhere along the row.",
     },
     {
+      path: `${p}.position`,
+      label: "Position",
+      min: 0,
+      max: 1,
+      format: pct,
+      help: "Where in the wavetable it reads: drag the picture to scrub through it. Between frames it blends them (with Smooth on). Sweep it with the mod envelope, an LFO or a lane: that's the wavetable sound.",
+    },
+    {
+      path: `${p}.warpAmount`,
+      label: "Warp",
+      min: 0,
+      max: 1,
+      format: pct,
+      help: "How much the warp (the menu beside it) bends how the frame is read: Bend squeezes it, Sync and Formant speed it up, Mirror and Asym fold it, Quantize crushes it, FM wobbles it with the next oscillator.",
+    },
+    {
       path: `${p}.pw`,
       label: "Width",
       min: 0.05,
@@ -309,7 +325,140 @@ const lfo = (i: number): PatchParam[] => {
   ];
 };
 
+/** A physical model's knobs (D250–D252). */
+const PH = "physical";
+const exciter: PatchParam[] = [
+  {
+    path: `${PH}.exciter.level`,
+    label: "Level",
+    min: 0,
+    max: 1,
+    format: pct,
+    help: "How hard the exciter drives the resonator.",
+  },
+  {
+    path: `${PH}.exciter.hardness`,
+    label: "Hardness",
+    min: 0,
+    max: 1,
+    format: pct,
+    help: "Soft (a felt mallet, a thumb, a slow bow) to hard (a pick, a metal beater): harder is brighter and clickier. Velocity adds to it.",
+  },
+  {
+    path: `${PH}.exciter.position`,
+    label: "Position",
+    min: 0.02,
+    max: 0.98,
+    format: pct,
+    help: "Where the resonator is excited: near the end is thin and bright, the middle round and hollow (it leaves out the even partials). Drag the marker on the picture.",
+  },
+  {
+    path: `${PH}.exciter.noise`,
+    label: "Noise",
+    min: 0,
+    max: 1,
+    format: pct,
+    help: "Noise in the excitation: the scrape of a pick, the breath in a flute, rosin on a bow.",
+  },
+  {
+    path: `${PH}.exciter.pressure`,
+    label: "Pressure",
+    min: 0,
+    max: 1,
+    format: pct,
+    help: "For bowing and blowing: how hard the bow presses or how hard you blow. Low is airy, high is strained and buzzy.",
+  },
+  {
+    path: `${PH}.exciter.velocity`,
+    label: "Vel",
+    min: 0,
+    max: 1,
+    format: pct,
+    help: "How much velocity changes the excitation: harder notes louder and brighter, like a real instrument.",
+  },
+];
+const resonator: PatchParam[] = [
+  {
+    path: `${PH}.resonator.decay`,
+    label: "Decay",
+    min: 0.05,
+    max: 30,
+    curve: "exp",
+    format: sec,
+    help: "How long it rings: short for wood and skins, long for bells, glass and steel strings.",
+  },
+  {
+    path: `${PH}.resonator.damping`,
+    label: "Damping",
+    min: 0,
+    max: 1,
+    format: pct,
+    help: "How much faster the high partials die than the low ones: the material. Wood and nylon damp a lot, metal and glass little.",
+  },
+  {
+    path: `${PH}.resonator.inharmonicity`,
+    label: "Stiffness",
+    min: 0,
+    max: 1,
+    format: pct,
+    help: "Stretches the partials apart: a stiff piano string, a bar that sounds more like metal.",
+  },
+  {
+    path: `${PH}.resonator.structure`,
+    label: "Structure",
+    min: 0,
+    max: 1,
+    format: pct,
+    help: "The pattern of the partials, between two kinds of the model: a tuned marimba bar and a free bar, a church bell and a handbell, a drum head and a timpani, a square plate and a long one, a glass and a bowl.",
+  },
+  {
+    path: `${PH}.resonator.pickup`,
+    label: "Pickup",
+    min: 0.02,
+    max: 0.98,
+    format: pct,
+    help: "Where it's heard (a guitar's pickup, a microphone): moving it changes which partials you hear. Drag the marker on the picture.",
+  },
+  {
+    path: `${PH}.resonator.width`,
+    label: "Width",
+    min: 0,
+    max: 1,
+    format: pct,
+    help: "Two pickups, left and right, apart: wider is a bigger stereo image.",
+  },
+  {
+    path: `${PH}.resonator.release`,
+    label: "Release",
+    min: 0,
+    max: 1,
+    format: pct,
+    help: "How much letting go of a note damps it: 0 rings on (a piano with the pedal down), 100% stops it (a palm mute).",
+  },
+];
+const body: PatchParam[] = [
+  {
+    path: `${PH}.body.size`,
+    label: "Size",
+    min: 0.5,
+    max: 2,
+    curve: "exp",
+    format: (v) => `${v.toFixed(2)}×`,
+    help: "How big the body is: bigger sounds deeper and boomier.",
+  },
+  {
+    path: `${PH}.body.mix`,
+    label: "Mix",
+    min: 0,
+    max: 1,
+    format: pct,
+    help: "How much of the body's resonance you hear.",
+  },
+];
+
 export const SECTIONS: { id: string; title: string; short: string; params: PatchParam[] }[] = [
+  // the Source switch (D249) lives here: its knobs are the oscillators' or the model's
+  { id: "source", title: "Source", short: "", params: [] },
   { id: "osc0", title: "Oscillator 1", short: "Osc 1", params: osc(0) },
   { id: "osc1", title: "Oscillator 2", short: "Osc 2", params: osc(1) },
   { id: "osc2", title: "Oscillator 3", short: "Osc 3", params: osc(2) },
@@ -353,6 +502,9 @@ export const SECTIONS: { id: string; title: string; short: string; params: Patch
       },
     ],
   },
+  { id: "exciter", title: "Exciter", short: "Exciter", params: exciter },
+  { id: "resonator", title: "Resonator", short: "Resonator", params: resonator },
+  { id: "body", title: "Body", short: "Body", params: body },
   { id: "filter0", title: "Filter 1", short: "Filter 1", params: filter(0) },
   { id: "filter1", title: "Filter 2", short: "Filter 2", params: filter(1) },
   { id: "env0", title: "Amp envelope", short: "Amp env", params: env(0) },
@@ -563,6 +715,19 @@ export const KNOB_OF_DEST: Partial<Record<ModDest, { path: string; octaves?: boo
   "lfo1.rate": { path: "lfos.0.rate", octaves: true },
   "lfo2.rate": { path: "lfos.1.rate", octaves: true },
   "lfo3.rate": { path: "lfos.2.rate", octaves: true },
+  "osc1.position": { path: "osc.0.position" },
+  "osc2.position": { path: "osc.1.position" },
+  "osc3.position": { path: "osc.2.position" },
+  "osc1.warp": { path: "osc.0.warpAmount" },
+  "osc2.warp": { path: "osc.1.warpAmount" },
+  "osc3.warp": { path: "osc.2.warpAmount" },
+  "phys.hardness": { path: "physical.exciter.hardness" },
+  "phys.position": { path: "physical.exciter.position" },
+  "phys.pressure": { path: "physical.exciter.pressure" },
+  "phys.decay": { path: "physical.resonator.decay", octaves: true },
+  "phys.damping": { path: "physical.resonator.damping" },
+  "phys.structure": { path: "physical.resonator.structure" },
+  "phys.pickup": { path: "physical.resonator.pickup" },
 };
 
 /** Sources that only go up from 0 (the rest swing both ways). */

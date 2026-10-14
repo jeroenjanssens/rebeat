@@ -143,10 +143,11 @@ describe("wavetable oscillators (D241, D244)", () => {
     for (const w of WARPS) {
       for (let i = 0; i < 100; i++) {
         const t = i / 100;
-        const x = warpPhase(w, w === "bend" ? -1 + (i % 3) : 0.7, t, 0.3);
+        const x = warpPhase(w, w === "bend" ? (i % 3) / 2 : 0.7, t, 0.3);
         expect(x).toBeGreaterThanOrEqual(0);
         expect(x).toBeLessThan(1);
-        if (w !== "fm" && w !== "quantize") expect(warpPhase(w, 0, t, 0)).toBeCloseTo(t, 6);
+        const none = w === "bend" ? 0.5 : 0;
+        if (w !== "fm" && w !== "quantize") expect(warpPhase(w, none, t, 0)).toBeCloseTo(t, 6);
       }
     }
     expect(TABLES.size).toBeGreaterThan(0);

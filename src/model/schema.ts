@@ -22,7 +22,7 @@ import {
 } from "./types";
 import { convertSynthKnobs, defaultSynth } from "../library/synthTrack";
 
-export const SCHEMA_VERSION = 12;
+export const SCHEMA_VERSION = 13;
 
 export interface SerializedProject {
   format: "rebeat-project";
@@ -161,6 +161,9 @@ const migrations: Record<number, Migration> = {
     }
     return p;
   },
+  // 12 → 13: synth patches version 3 (D257: wavetable oscillators, physical models); a track's
+  // patch is upgraded when it's read (upgradePatch), so nothing moves here
+  12: (p) => p,
 };
 
 /** The number of values of an effect knob a target names (0: smooth, or not an effect's). */

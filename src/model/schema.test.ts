@@ -11,6 +11,9 @@ import {
 import { MAX_STEPS } from "./types";
 import { curveAt, lanePoints, snapStep } from "./arrangement";
 import { makeEffect } from "./effects";
+import { makePatch } from "./synth";
+import { patchOf } from "../library/synthTrack";
+import type { Track } from "./types";
 
 describe("project schema", () => {
   it("round-trips through JSON", () => {
@@ -367,6 +370,23 @@ describe("bends per note (D224)", () => {
     const p = demoProject();
     const v11 = { ...JSON.parse(JSON.stringify(serializeProject(p))), schemaVersion: 11 };
     expect(deserializeProject(v11)).toEqual(p);
+  });
+});
+
+describe("migration 12 → 13 (D257)", () => {
+  it("loads a version 12 project unchanged; its synths' version 2 patches play as version 3", () => {
+    const p = demoProject();
+    const v12 = { ...JSON.parse(JSON.stringify(serializeProject(p))), schemaVersion: 12 };
+    const synth = v12.project.tracks.find((t: Track) => t.sound?.source === "synth");
+    synth.sound.patch = { ...makePatch({ osc: [{ shape: 1 }] }), version: 2 };
+    delete synth.sound.patch.source;
+    delete synth.sound.patch.physical;
+    const d = deserializeProject(v12);
+    expect(d.tracks.length).toBe(p.tracks.length);
+    const patch = patchOf(d.tracks.find((t) => t.id === synth.id)!.sound!);
+    expect(patch.version).toBe(3);
+    expect(patch.source).toBe("oscillators");
+    expect(patch.osc[0]).toMatchObject({ type: "analog", shape: 1 });
   });
 });
 

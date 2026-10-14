@@ -41,7 +41,7 @@ export interface Osc {
   /** Where in the table it reads, 0..1 (blending neighbouring frames). */
   position: number;
   warp: Warp;
-  /** 0..1 (Bend: −1..1) */
+  /** 0..1 (Bend: 0.5 is straight, below toward the cycle's start, above its end) */
   warpAmount: number;
   /** Blend between frames (on), or jump from frame to frame. */
   smooth: boolean;
@@ -767,7 +767,7 @@ export function sanitizePatch(p: SynthPatch): SynthPatch {
     slot: Math.round(clamp(x.slot ?? 0, 0, TABLE_SLOTS - 1)),
     position: clamp(x.position ?? 0, 0, 1),
     warp: WARPS.includes(x.warp) ? x.warp : "none",
-    warpAmount: clamp(x.warpAmount ?? 0, x.warp === "bend" ? -1 : 0, 1),
+    warpAmount: clamp(x.warpAmount ?? 0, 0, 1),
     smooth: x.smooth !== false,
     shape: clamp(x.shape, 0, 3),
     pw: clamp(x.pw, 0.05, 0.95),

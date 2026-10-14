@@ -913,8 +913,7 @@ export class SynthCore {
       v.wt[o] = m;
       if (osc.type !== "wavetable") continue;
       const position = Math.min(1, Math.max(0, osc.position + mod(`${key}.position` as ModDest)));
-      const warpLo = osc.warp === "bend" ? -1 : 0;
-      const warp = Math.min(1, Math.max(warpLo, osc.warpAmount + mod(`${key}.warp` as ModDest)));
+      const warp = Math.min(1, Math.max(0, osc.warpAmount + mod(`${key}.warp` as ModDest)));
       v.posFrom[o] = v.fresh ? position : v.posTo[o];
       v.warpFrom[o] = v.fresh ? warp : v.warpTo[o];
       v.posTo[o] = position;

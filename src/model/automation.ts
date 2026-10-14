@@ -10,6 +10,7 @@ import { KNOB_SECTIONS, getPath, knobDef, paramName, paramOf, toKnob } from "./p
 import { SWITCHES, switchAt, switchDef, switchIndex, switchOf } from "./patchSwitches";
 import type { Project } from "./project";
 import { applyMacros, type SynthPatch } from "./synth";
+import { tableName } from "./wavetables";
 import type { AutomationLane, Effect, Track } from "./types";
 
 /**
@@ -108,7 +109,31 @@ function heardPatch(track: Track): SynthPatch {
 
 /** Synth knobs that only change the next notes (D226). */
 const NEXT_NOTE =
-  /^(osc\.\d\.phase|envs\.\d\.velocity|lfos\.\d\.phase|voice\.velocityCurve|voice\.voices)$/;
+  /^(osc\.\d\.phase|envs\.\d\.velocity|lfos\.\d\.phase|voice\.velocityCurve|voice\.voices|physical\.exciter\.(level|velocity))$/;
+
+/** The parts of a patch it uses (D241, D249): a physical model's only with that source, a
+ * wavetable's knobs and switches only on wavetable oscillators. Lanes on the others stay. */
+function inUse(base: SynthPatch, section: string, path: string) {
+  if (section === "exciter" || section === "resonator" || section === "body")
+    return base.source === "physical";
+  const wt = /^osc\.(\d)\.(position|warpAmount|slot|warp|smooth)$/.exec(path);
+  return !wt || base.osc[Number(wt[1])].type === "wavetable";
+}
+
+/** A slot switch's lane names the tables in its slots (D248). */
+function slotDef(base: SynthPatch, path: string, def: ParamDef): ParamDef {
+  const m = /^osc\.(\d)\.slot$/.exec(path);
+  if (!m) return def;
+  const o = base.osc[Number(m[1])];
+  const names = [o.table, ...o.tables].map(tableName);
+  return {
+    ...def,
+    format: (k) => {
+      const i = Math.round(Math.min(1, Math.max(0, k)) * ((def.steps ?? 2) - 1));
+      return names[i] ? `${i + 1}: ${names[i]}` : `${i + 1}: (slot 1's)`;
+    },
+  };
+}
 
 /** Every knob of a synth track's patch (D226), by part, with what to know about each. */
 function synthKnobs(track: Track): AutomatableKnob[] {
@@ -127,7 +152,9 @@ function synthKnobs(track: Track): AutomatableKnob[] {
   for (const section of KNOB_SECTIONS) {
     const part = { id: `synth:${section.id}`, name: section.title };
     // its switches first (D231), as the editor shows them above the knobs
-    for (const sw of SWITCHES.filter((x) => x.section === section.id))
+    for (const sw of SWITCHES.filter(
+      (x) => x.section === section.id && inUse(base, x.section, x.path),
+    ))
       out.push({
         target: `${t}:synth:${sw.path}`,
         label: `${track.name} · ${section.short ? `${section.short} · ` : ""}${sw.label}`,
@@ -135,10 +162,11 @@ function synthKnobs(track: Track): AutomatableKnob[] {
         section: "Synth",
         part,
         name: sw.label,
-        def: switchDef(sw, switchAt(base, sw.path)),
+        def: slotDef(base, sw.path, switchDef(sw, switchAt(base, sw.path))),
         note: sw.nextNote ? "From the next note" : undefined,
       });
     for (const d of section.params) {
+      if (!inUse(base, section.id, d.path)) continue;
       const lfo = /^lfos\.(\d)\.phase$/.exec(d.path);
       const notes: string[] = [];
       if (NEXT_NOTE.test(d.path)) notes.push("From the next note");

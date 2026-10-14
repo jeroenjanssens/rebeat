@@ -15,6 +15,7 @@ import {
 /** The groups you can lock, in the editor's order (the Advanced sections). */
 export const RANDOM_GROUPS = [
   { id: "osc", label: "Oscillators", sections: ["osc0", "osc1", "osc2", "extra"] },
+  { id: "physical", label: "Physical model", sections: ["exciter", "resonator", "body"] },
   { id: "filters", label: "Filters", sections: ["filter0", "filter1"] },
   { id: "envs", label: "Envelopes", sections: ["env0", "env1", "env2"] },
   { id: "lfos", label: "LFOs", sections: ["lfo0", "lfo1", "lfo2"] },
@@ -36,10 +37,19 @@ export function randomizePatch(
   const open = RANDOM_GROUPS.filter((g) => !locked.includes(g.id));
   const sections = new Set<string>(open.flatMap((g) => g.sections));
   const step = () => (rand() * 2 - 1) * amount;
+  // only the parts it plays: a physical model's with that source (D249), the oscillators'
+  // otherwise or when they excite it, a wavetable's position and warp on wavetables
+  const physical = patch.source === "physical";
+  const oscillators = !physical || patch.physical.exciter.type === "oscillators";
   for (const s of SECTIONS) {
     if (!sections.has(s.id)) continue;
+    if (s.id.startsWith("osc") && !oscillators) continue;
+    if (["exciter", "resonator", "body"].includes(s.id) && !physical) continue;
     for (const d of s.params) {
       if (KEEP.has(d.path)) continue;
+      const o = /^osc\.(\d)\.(position|warpAmount|shape|pw)$/.exec(d.path);
+      if (o && (patch.osc[Number(o[1])].type === "wavetable") !== /position|warp/.test(o[2]))
+        continue;
       const k = Math.min(1, Math.max(0, toKnob(d, getPath(heard, d.path)) + step()));
       setThroughMacros(p, d.path, fromKnob(d, k), d.min, d.max, values);
     }

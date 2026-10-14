@@ -81,8 +81,8 @@ const frac = (x: number) => x - Math.floor(x);
 export function warpPhase(warp: Warp, amount: number, t: number, fm: number): number {
   switch (warp) {
     case "bend": {
-      // toward the start (−) or the end (+) of the cycle
-      const e = Math.pow(2, -amount * 2.5);
+      // toward the start (below 0.5) or the end (above) of the cycle
+      const e = Math.pow(2, -(amount * 2 - 1) * 2.5);
       return Math.pow(t, e);
     }
     case "sync":

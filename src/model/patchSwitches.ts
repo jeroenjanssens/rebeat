@@ -7,8 +7,14 @@
 import type { ParamDef } from "./params";
 import { KNOB_SECTIONS } from "./patchParams";
 import {
+  BODIES,
+  EXCITERS,
   LFO_SHAPES,
   MOD_DESTS,
+  RESONATORS,
+  TABLE_SLOTS,
+  WARPS,
+  type Warp,
   MOD_SOURCES,
   NOTE_LENGTHS,
   type LfoShape,
@@ -77,8 +83,58 @@ const sources = (none: string) => [
   ...MOD_SOURCES.map((s) => ({ value: s, label: SOURCE_LABEL[s] })),
 ];
 
+/** The warps, as the editor names them (D245). */
+export const WARP_LABEL: Record<Warp, string> = {
+  none: "No warp",
+  bend: "Bend",
+  sync: "Sync",
+  formant: "Formant",
+  mirror: "Mirror",
+  asym: "Asym",
+  squeeze: "Squeeze",
+  quantize: "Quantize",
+  fm: "FM",
+};
+
+export const EXCITER_LABEL = {
+  pluck: "Pluck",
+  strike: "Strike",
+  bow: "Bow",
+  blow: "Blow",
+  noise: "Noise",
+  oscillators: "Oscillators",
+} as const;
+export const RESONATOR_LABEL = {
+  string: "String",
+  tube: "Tube",
+  bar: "Bar",
+  bell: "Bell",
+  membrane: "Membrane",
+  plate: "Plate",
+  glass: "Glass",
+} as const;
+export const BODY_LABEL = {
+  none: "No body",
+  guitar: "Guitar",
+  violin: "Violin",
+  cello: "Cello",
+  piano: "Piano",
+  box: "Box",
+  tube: "Marimba tube",
+} as const;
+
 function build(): PatchSwitch[] {
   const out: PatchSwitch[] = [];
+  out.push({
+    path: "source",
+    label: "Source",
+    section: "source",
+    options: opts([
+      ["oscillators", "Oscillators"],
+      ["physical", "Physical model"],
+    ]),
+    help: "What makes the sound: the oscillators (analog or wavetable), or a physical model (an exciter and a resonator). Everything after them is the same.",
+  });
   for (let i = 0; i < 3; i++) {
     const section = `osc${i}`;
     out.push({
@@ -88,6 +144,42 @@ function build(): PatchSwitch[] {
       options: onOff,
       help: "Whether this oscillator sounds.",
     });
+    out.push(
+      {
+        path: `osc.${i}.type`,
+        label: "Type",
+        section,
+        options: opts([
+          ["analog", "Analog"],
+          ["wavetable", "Wavetable"],
+        ]),
+        help: "Analog: the four shapes and the morph between them. Wavetable: a table of waveforms to move through.",
+      },
+      {
+        path: `osc.${i}.slot`,
+        label: "Table",
+        section,
+        options: Array.from({ length: TABLE_SLOTS }, (_, k) => ({
+          value: k,
+          label: `Slot ${k + 1}`,
+        })),
+        help: "Which of the oscillator's table slots plays: slot 1 is its table, slots 2–8 the tables you added for switching.",
+      },
+      {
+        path: `osc.${i}.warp`,
+        label: "Warp mode",
+        section,
+        options: WARPS.map((w) => ({ value: w, label: WARP_LABEL[w] })),
+        help: "How the wavetable's frame is read; the Warp knob says how much.",
+      },
+      {
+        path: `osc.${i}.smooth`,
+        label: "Smooth",
+        section,
+        options: onOff,
+        help: "Blend between neighbouring frames (on), or jump from frame to frame (off: a stepped, digital sound).",
+      },
+    );
     if (i > 0)
       out.push({
         path: `osc.${i}.sync`,
@@ -196,6 +288,52 @@ function build(): PatchSwitch[] {
       },
     );
   }
+  out.push(
+    {
+      path: "physical.exciter.type",
+      label: "Exciter",
+      section: "exciter",
+      options: EXCITERS.map((e) => ({ value: e, label: EXCITER_LABEL[e] })),
+      help: "What sets it ringing: a pluck, a strike, a bow, breath, noise, or the oscillators.",
+      nextNote: true,
+    },
+    {
+      path: "physical.resonator.model",
+      label: "Model",
+      section: "resonator",
+      options: RESONATORS.map((r) => ({ value: r, label: RESONATOR_LABEL[r] })),
+      help: "What rings: a string, a tube, or the partials of a bar, a bell, a drum head, a plate or a glass.",
+      nextNote: true,
+    },
+    {
+      path: "physical.resonator.modes",
+      label: "Partials",
+      section: "resonator",
+      options: opts([
+        [8, "8"],
+        [16, "16"],
+        [32, "32"],
+      ]),
+      help: "How many partials a bar, bell, membrane, plate or glass has: more is richer and costs more.",
+    },
+    {
+      path: "physical.resonator.end",
+      label: "Tube end",
+      section: "resonator",
+      options: opts([
+        ["closed", "Closed"],
+        ["open", "Open"],
+      ]),
+      help: "A tube's far end: closed (with a reed, like a clarinet: hollow, odd harmonics) or open (with a jet, like a flute).",
+    },
+    {
+      path: "physical.body.type",
+      label: "Body",
+      section: "body",
+      options: BODIES.map((b) => ({ value: b, label: BODY_LABEL[b] })),
+      help: "What colours it: the box of a guitar, a violin, a cello, a piano's soundboard, a wooden box, or a tube under a bar.",
+    },
+  );
   out.push({
     path: "routing",
     label: "Routing",

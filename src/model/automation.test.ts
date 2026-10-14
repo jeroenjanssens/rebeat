@@ -3,7 +3,11 @@ import { demoProject } from "../templates/nightDrive";
 import { makeEffect } from "./effects";
 import { EFFECT_PARAMS, EFFECT_TYPES } from "./params";
 import { KNOB_SECTIONS, paramOf, toKnob } from "./patchParams";
-import { applyMacros } from "./synth";
+import { applyMacros, makePatch } from "./synth";
+
+/** The parts of a patch an analog synth doesn't use. */
+const unused = (path: string) =>
+  /^physical\./.test(path) || /^osc\.\d\.(position|warpAmount|slot|warp|smooth)$/.test(path);
 import { SWITCHES, switchOf } from "./patchSwitches";
 import { synthValue } from "./synthAutomation";
 import { effectivePatch, trackPatch } from "../library/synthTrack";
@@ -70,6 +74,8 @@ describe("automatable knobs (D189)", () => {
     const patch = trackPatch(bass);
     const t = `track:${bass.id}:synth:`;
     for (const d of KNOB_SECTIONS.flatMap((s) => s.params)) {
+      // an analog synth: no physical model, no wavetable knobs (D241, D249)
+      if (unused(d.path)) continue;
       const lfo = /^lfos\.(\d)\.phase$/.exec(d.path);
       const global = lfo && patch.lfos[Number(lfo[1])].mode === "global";
       expect(isAutomatable(p, t + d.path), d.path).toBe(!global);
@@ -95,6 +101,10 @@ describe("automatable knobs (D189)", () => {
     const patch = trackPatch(bass);
     const t = `track:${bass.id}:synth:`;
     for (const sw of SWITCHES) {
+      if (unused(sw.path)) {
+        expect(knobFor(p, t + sw.path), sw.path).toBeUndefined();
+        continue;
+      }
       const k = knobFor(p, t + sw.path)!;
       expect(k, sw.path).toBeTruthy();
       expect(k.def.steps).toBe(sw.options.length);
@@ -107,6 +117,34 @@ describe("automatable knobs (D189)", () => {
     expect(synthValue("voice.mode", 1)).toBe("legato");
     expect(synthValue("filters.0.type", 1 / 3)).toBe("hp");
     expect(synthValue("matrix.2.source", 0)).toBeNull();
+  });
+
+  it("a wavetable oscillator's and a physical model's knobs and switches, when they're used", () => {
+    const p = demoProject();
+    const bass = p.tracks.find((t) => t.name === "Bass")!;
+    bass.sound = {
+      source: "synth",
+      patch: makePatch({
+        source: "physical",
+        osc: [{ type: "wavetable", table: "factory:vowels", tables: ["factory:pwm"] }],
+      }),
+    };
+    const t = `track:${bass.id}:synth:`;
+    for (const path of [
+      "osc.0.position",
+      "osc.0.warpAmount",
+      "osc.0.slot",
+      "physical.exciter.hardness",
+      "physical.resonator.model",
+      "source",
+    ])
+      expect(knobFor(p, t + path), path).toBeTruthy();
+    expect(knobFor(p, `${t}osc.1.position`)).toBeUndefined();
+    // a slot lane names its tables (D248)
+    const slot = knobFor(p, `${t}osc.0.slot`)!.def;
+    expect(slot.format(0)).toBe("1: Vowels");
+    expect(slot.format(1 / 7)).toBe("2: PWM");
+    expect(knobFor(p, `${t}physical.exciter.level`)!.note).toMatch(/next note/);
   });
 
   it("the lists are made once per project", () => {
