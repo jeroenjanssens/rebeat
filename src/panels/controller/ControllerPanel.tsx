@@ -37,6 +37,7 @@ import * as engine from "../../engine/engine";
 import { MiniLab3Svg } from "./MiniLab3Svg";
 import { ROLE_COLORS, ROLE_NAMES } from "../../model/suggest";
 import { PlayStylesCard } from "./PlayStyles";
+import { BendCard } from "./BendCard";
 import { Card, Line, revealCard } from "./Card";
 import { CONTROLLER_MAPS } from "../../midi/controllers";
 import { chooseControllerMap } from "../../app/MidiSettings";
@@ -776,6 +777,7 @@ export function ControllerPanel() {
             {chordModes && <BassCard />}
             {chordModes && <SuggestCard />}
             <PlayStylesCard />
+            <BendCard minilab={isMiniLab} />
           </aside>
         </div>
       </div>

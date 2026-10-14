@@ -4,6 +4,8 @@ import {
   arpNote,
   arpSequence,
   balanceFactors,
+  bendFor,
+  keySteps,
   patternById,
   patternHits,
   sanitizePlayStyle,
@@ -142,5 +144,49 @@ describe("stored play styles", () => {
     expect(s.arp.octaves).toBe(4);
     expect(s.pattern.id).toBe("bossa");
     expect(s.balance).toBe(1);
+  });
+});
+
+describe("bends from the Bend card (D222)", () => {
+  const on = (bend: Partial<typeof DEFAULT_PLAY_STYLE.bend>) =>
+    sanitizePlayStyle({ bend: { ...DEFAULT_PLAY_STYLE.bend, on: true, ...bend } });
+  const all = { top: true, bass: true, last: true };
+  const inner = { top: false, bass: false, last: false };
+
+  it("gives the shape's own values, only to the notes it's for", () => {
+    const s = on({ shape: "fall" });
+    expect(bendFor(s, all, 0.5, 60, null, 0)).toMatchObject({ shape: "fall", amount: -5 });
+    expect(bendFor(on({ notes: "top" }), inner, 0.5, 60, null, 0)).toBeUndefined();
+    expect(bendFor(on({ notes: "bass" }), { ...inner, bass: true }, 0.5, 60, null, 0)).toBeTruthy();
+    expect(bendFor(on({ notes: "newest" }), inner, 0.5, 60, null, 0)).toBeUndefined();
+    expect(bendFor(sanitizePlayStyle({}), all, 0.5, 60, null, 0)).toBeUndefined();
+  });
+
+  it("chance and velocity", () => {
+    const s = on({ chance: 0.3, velocity: 1 });
+    expect(bendFor(s, all, 0.5, 60, null, 0.5)).toBeUndefined();
+    expect(bendFor(s, all, 0.5, 60, null, 0.1)!.amount).toBe(-2);
+    // harder: more; softer: less
+    expect(bendFor(s, all, 1, 60, null, 0.1)!.amount).toBe(-4);
+    expect(bendFor(s, all, 0.25, 60, null, 0.1)!.amount).toBe(-1);
+  });
+
+  it("Next goes to the next note in the key, in semitones", () => {
+    const s = on({ shape: "next" });
+    const cMajor = { root: 0, scale: "major" };
+    // E → F is a half step, F → G a whole one
+    expect(bendFor(s, all, 0.5, 64, cMajor, 0)!.amount).toBe(1);
+    expect(bendFor(s, all, 0.5, 65, cMajor, 0)!.amount).toBe(2);
+    expect(keySteps(60, -1, cMajor)).toBe(59);
+    expect(keySteps(60, 2, { root: 9, scale: "minor" })).toBe(64);
+    // without a key: semitones
+    expect(bendFor(s, all, 0.5, 64, null, 0)!.amount).toBe(1);
+  });
+
+  it("keeps each shape's values and reads old settings", () => {
+    const s = sanitizePlayStyle({ bend: { on: true, shapes: { scoop: { amount: -7 } } } });
+    expect(s.bend.shapes.scoop.amount).toBe(-7);
+    expect(s.bend.shapes.fall.amount).toBe(-5);
+    expect(sanitizePlayStyle({}).bend.on).toBe(false);
   });
 });

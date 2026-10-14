@@ -4,9 +4,16 @@
  * Balance shapes their velocities, the arpeggiator and the patterns give them a rhythm, Smooth
  * voicing picks each chord's inversion. They stack. Pure: the timing runs in `state/perform.ts`.
  */
-import { arpOrder } from "./notes";
+import type { EaseType } from "./ease";
+import { arpOrder, inKey, type Key } from "./notes";
 import { voiceChord, VOICING_RANGE } from "./padChords";
-import type { Arpeggiator, StepSize } from "./types";
+import {
+  BEND_SHAPES,
+  type Arpeggiator,
+  type BendShape,
+  type NoteBend,
+  type StepSize,
+} from "./types";
 
 export type StrumDirection = "up" | "down" | "alternate";
 export type ArpMode = Arpeggiator["mode"];
@@ -24,7 +31,59 @@ export interface PlayStyle {
   latch: boolean;
   /** The inner notes of a hit softer than its bass and top, 0..1. */
   balance: number;
+  /** Bends per note (D222): a shape with its own values, which notes, how many, how hard. */
+  bend: BendStyle;
 }
+
+/** One bend shape's values on the Bend card: semitones (Next: notes of the key), times in
+ * seconds or quarter notes, its ease, a Shake's rate. */
+export interface BendValues {
+  amount: number;
+  time: number;
+  delay: number;
+  unit: "s" | "q";
+  ease: EaseType;
+  rate: number;
+}
+
+export type BendNotes = "all" | "top" | "bass" | "newest";
+
+export interface BendStyle {
+  on: boolean;
+  shape: BendShape;
+  /** Each shape keeps its own values: trying another doesn't lose the one you set up. */
+  shapes: Record<BendShape, BendValues>;
+  notes: BendNotes;
+  /** How many notes bend, 0..1. */
+  chance: number;
+  /** −1..1: harder notes bend more (positive) or less (negative). */
+  velocity: number;
+  /** What the MiniLab's pitch strip bends: the whole synth, or the newest held note (D225). */
+  strip: "synth" | "newest";
+}
+
+const bv = (amount: number, time: number, extra: Partial<BendValues> = {}): BendValues => ({
+  amount,
+  time,
+  delay: 0,
+  unit: "s",
+  ease: "smooth",
+  rate: 5.5,
+  ...extra,
+});
+
+/** Each shape's values before you change them (the plan's table, D220). */
+export const DEFAULT_BEND_SHAPES: Record<BendShape, BendValues> = {
+  scoop: bv(-2, 0.12),
+  fall: bv(-5, 0.3, { ease: "exponential" }),
+  doit: bv(3, 0.08, { ease: "exponential" }),
+  dip: bv(-1, 0.2),
+  rise: bv(12, 4, { unit: "q", ease: "exponential" }),
+  next: bv(1, 0.15),
+  shake: bv(0.3, 0.6, { ease: "linear" }),
+};
+
+export const BEND_EASES: readonly EaseType[] = ["linear", "smooth", "exponential", "bounce"];
 
 export const DEFAULT_PLAY_STYLE: PlayStyle = {
   strum: { on: false, time: 0.04, direction: "up" },
@@ -33,6 +92,15 @@ export const DEFAULT_PLAY_STYLE: PlayStyle = {
   pattern: { on: false, id: "eighths" },
   latch: false,
   balance: 0,
+  bend: {
+    on: false,
+    shape: "scoop",
+    shapes: DEFAULT_BEND_SHAPES,
+    notes: "all",
+    chance: 1,
+    velocity: 0,
+    strip: "synth",
+  },
 };
 
 /** A stored play style, with anything missing or out of range set to its default. */
@@ -64,6 +132,98 @@ export function sanitizePlayStyle(v: unknown): PlayStyle {
     },
     latch: bool((o as { latch?: unknown }).latch, d.latch),
     balance: num((o as { balance?: unknown }).balance, d.balance, 0, 1),
+    bend: sanitizeBendStyle((o as { bend?: unknown }).bend),
+  };
+}
+
+function sanitizeBendStyle(v: unknown): BendStyle {
+  const o = (v ?? {}) as Partial<Record<keyof BendStyle, unknown>>;
+  const d = DEFAULT_PLAY_STYLE.bend;
+  const num = (x: unknown, def: number, lo: number, hi: number) =>
+    typeof x === "number" && Number.isFinite(x) ? Math.max(lo, Math.min(hi, x)) : def;
+  const one = <T extends string>(x: unknown, all: readonly T[], def: T) =>
+    all.includes(x as T) ? (x as T) : def;
+  const saved = (o.shapes ?? {}) as Partial<Record<BendShape, Partial<BendValues>>>;
+  const shapes = {} as Record<BendShape, BendValues>;
+  for (const s of BEND_SHAPES) {
+    const x = saved[s] ?? {};
+    const def = DEFAULT_BEND_SHAPES[s];
+    shapes[s] = {
+      amount: num(x.amount, def.amount, -24, 24),
+      time: num(x.time, def.time, 0.005, 16),
+      delay: num(x.delay, def.delay, 0, 16),
+      unit: x.unit === "q" || x.unit === "s" ? x.unit : def.unit,
+      ease: one(x.ease, BEND_EASES, def.ease),
+      rate: num(x.rate, def.rate, 0.5, 16),
+    };
+  }
+  return {
+    on: typeof o.on === "boolean" ? o.on : d.on,
+    shape: one(o.shape, BEND_SHAPES, d.shape),
+    shapes,
+    notes: one(o.notes, ["all", "top", "bass", "newest"] as const, d.notes),
+    chance: num(o.chance, d.chance, 0, 1),
+    velocity: num(o.velocity, d.velocity, -1, 1),
+    strip: one(o.strip, ["synth", "newest"] as const, d.strip),
+  };
+}
+
+// ---------- bends (D222) ----------
+
+/** Where a note is in what's played: the top of its chord, its bass, the last of its hit. */
+export interface NoteRole {
+  top: boolean;
+  bass: boolean;
+  last: boolean;
+}
+
+/** The note `steps` notes of the key away from `pitch` (up or down); without a key, semitones. */
+export function keySteps(pitch: number, steps: number, key: Key | null): number {
+  if (!key || steps === 0) return pitch + steps;
+  const dir = Math.sign(steps);
+  let p = pitch;
+  for (let k = 0; k < Math.abs(steps); k++) {
+    p += dir;
+    for (let guard = 0; guard < 12 && !inKey(p, key); guard++) p += dir;
+  }
+  return p;
+}
+
+/**
+ * A note's bend from the Bend card (D222), or none: its shape's values, if the card is on, the
+ * note is one that bends (all, the top, the bass, the newest) and the chance says so (`random`,
+ * 0..1); harder notes bend more or less by `velocity`. A Next is worked out in semitones here,
+ * in the key, so a recorded note keeps it.
+ */
+export function bendFor(
+  style: PlayStyle,
+  role: NoteRole,
+  velocity: number,
+  pitch: number,
+  key: Key | null,
+  random: number,
+): NoteBend | undefined {
+  const b = style.bend;
+  if (!b.on) return undefined;
+  if (b.notes === "top" && !role.top) return undefined;
+  if (b.notes === "bass" && !role.bass) return undefined;
+  if (b.notes === "newest" && !role.last) return undefined;
+  if (random >= b.chance) return undefined;
+  const v = b.shapes[b.shape];
+  const scale = Math.max(0, 1 + b.velocity * (velocity - 0.5) * 2);
+  const amount =
+    b.shape === "next"
+      ? keySteps(pitch, Math.round(v.amount * scale) || Math.sign(v.amount), key) - pitch
+      : Math.round(v.amount * scale * 100) / 100;
+  if (amount === 0) return undefined;
+  return {
+    shape: b.shape,
+    amount,
+    time: v.time,
+    delay: v.delay,
+    unit: v.unit,
+    ...(v.ease === "linear" ? {} : { ease: { type: v.ease } }),
+    ...(b.shape === "shake" ? { rate: v.rate } : {}),
   };
 }
 

@@ -12,6 +12,7 @@ import {
   STEP_SIZE_QUARTERS,
   setStepVelocity,
   type Note,
+  type NoteBend,
   type Step,
   type StepSize,
   type Track,
@@ -264,6 +265,8 @@ export interface RecordTiming {
   /** On its musical grid (a pattern's or the arp's note, D175): recorded where it is, never
    * snapped (a triplet stays a triplet). */
   onGrid?: boolean;
+  /** The note's bend from the Bend card (D224): recorded with it. */
+  bend?: NoteBend;
 }
 
 export function recordNoteOn(
@@ -286,7 +289,16 @@ export function recordNoteOn(
     // without the step cursor, playing while stopped writes nothing (as padInput)
     if (!sameChord && !cursor) return null;
     const index = sameChord ? chordWindow.index : cursor!.index;
-    writeStep(trackId, index, (st) => apply(st, velocity, [pitch], 0, !!sameChord), `entry-${now}`);
+    writeStep(
+      trackId,
+      index,
+      (st) => {
+        apply(st, velocity, [pitch], 0, !!sameChord);
+        const n = timing.bend && st.notes?.find((x) => x.pitch === pitch);
+        if (n) n.bend = timing.bend;
+      },
+      `entry-${now}`,
+    );
     chordWindow = { at: now, index, trackId };
     if (!sameChord) {
       const len = laneLen(trackId);
@@ -358,6 +370,7 @@ export function recordNoteOn(
     length: provisionalLen,
     velocity: noteVel,
     ...(noteOffset !== undefined ? { offset: noteOffset } : {}),
+    ...(timing.bend ? { bend: timing.bend } : {}),
   };
 
   writeStep(

@@ -157,6 +157,32 @@ The **keys in the picture light up as their notes sound**: a strum's notes one a
 
 **Recording** records what you hear: each strummed note at its own time, each arpeggio note and each pattern hit, the bass on its own track when it has one. With **Snap** on, the hits snap to the grid and a strum keeps its spread. While stopped (step entry), a key writes its chord as it is.
 
+### Bends {#performance-bends}
+
+The **Bend** card gives the notes the keys play a bend of their own: a sax's scoop into a note, a brass fall at its end, a guitarist's bend up to the next note. It works with any keyboard (the MiniLab's strip can only bend everything at once), on **synths**; a sampled instrument doesn't bend yet, and the card says so.
+
+| Shape     | What you hear                                                                     |
+| --------- | --------------------------------------------------------------------------------- |
+| **Scoop** | The note starts below (or above) and slides into its pitch.                       |
+| **Fall**  | When you let go, the note drops away while it fades.                              |
+| **Doit**  | When you let go, a quick flick up.                                                |
+| **Dip**   | After the delay, down and back.                                                   |
+| **Rise**  | After the delay, it climbs and stays there: risers, builds.                       |
+| **Next**  | After the delay, it bends to the next note **in the key** (up or down) and stays. |
+| **Shake** | After the delay, a vibrato that grows to its depth: the build-up of a held note.  |
+
+- **Amount**: how far, in semitones (Next: in notes of the key, so +1 from E in C major is F, from F it's G). Minus bends down. Click the value for the shape's default.
+- **Time**: how long the movement takes; **Delay**: how long the note waits before it starts. The **♩** button syncs both to the tempo (1/32 to 4 bars).
+- **Curve**: Linear, Smooth (an S-curve), Exp (slow, then fast) or Bounce.
+- **Rate** (Shake only): how fast the vibrato is, in Hz, or per beat when synced.
+- **Notes**: which notes bend. **All**, the **Top** note of a chord, the **Bass**, or only the **Newest** (the last note of a strum, the top of a chord, every note of an arpeggio).
+- **Chance**: how many notes bend, at random. **Velocity**: harder notes bend more (+) or less (−).
+- **Strip** (with a MiniLab 3): the pitch strip bends the whole synth, or only the newest note you hold, so you can bend one note of a chord like a guitar string. The strip's movement isn't recorded.
+
+Each shape keeps its own values: switching from Scoop to Fall and back keeps your Scoop. A **Fall** and a **Doit** keep the note sounding until they're done, so you hear all of them, even on a sound with a short release. The card is remembered, like the Play card. Right-click its controls to MIDI-learn them (On, the shape, Amount, Time, Delay, Chance and Velocity), in every project.
+
+**Recording** keeps each note's bend with the note: a recorded Scoop scoops every time it plays, and a Next keeps the interval it bent by even if you change the key later. In the piano roll a bent note shows its bend, and its menu changes it (**Bend ▸**). MIDI files can't say a note bends, so exports leave bends out.
+
 ### Suggestions: the next chord {#performance-suggestions}
 
 **Suggest** (the Controller panel's Suggest card, in Chord, Key and Next mode) suggests what could come next after each chord you play, and marks **the key to press** for the three best on the picture's keys: the bigger the dot, the better, the chord's name next to it. Each key is the one closest to the last key you played, so your hand moves least (every note name is on the MiniLab's 25 keys at least twice). In Chord mode a dot on a pad says which chord type to hold with it. Hover a dot for the chord, its roman numeral, what it does and why it fits ("V: home, the strongest resolution", "IV: continues the four-chord pop progression"); press the dot to play it.

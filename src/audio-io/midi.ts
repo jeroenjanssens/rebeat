@@ -4,6 +4,7 @@
  * transport (D123). Controller drivers (Launchpad, Push) hook in with `onMidiMessage`. The logic
  * without the browser is in `midi/mapping.ts`.
  */
+import { bendControl, setBendControl } from "../state/bendControls";
 import { create } from "zustand";
 import { releaseCommand, runCommand } from "../app/commands";
 import { toast } from "../components/Toast";
@@ -792,6 +793,7 @@ function applyMapping(map: MidiMapping, m: MidiMessage, scope: "project" | "glob
     pending.get(target) ??
     readTarget(target, useStore.getState().project) ??
     keysValue(target) ??
+    (target.startsWith("bend:") ? bendControl(target.slice(5)) : null) ??
     lastSet.get(target);
   const settings = useSettings.getState();
   let v: number;
@@ -1106,6 +1108,8 @@ export function applyTarget(target: string, v: number, continuous: boolean) {
   if (kind === "command") return void (v > 0 && runCommand(id + (key ? `:${key}` : "")));
   if (kind === "perf") return setPerfControl(id, v, continuous);
   if (kind === "keys") return setKeysTarget(id, key, v);
+  // the Bend card's controls (D222)
+  if (kind === "bend") return setBendControl(id, v);
   commit((p) => {
     const setFx = (list: { id?: string; params: Record<string, number> }[], k: string) => {
       const [, fxId, param] = k.split(":");

@@ -33,12 +33,14 @@ import { keyModeChord, sameKey, stepKeyRoot, stepKeyScale } from "../model/keyMo
 import { BASS_OCTAVES, padChord, voiceChord, VOICING_RANGE } from "../model/padChords";
 import {
   balanceFactors,
+  bendFor,
   patternBeats,
   patternById,
   sanitizePlayStyle,
   slopFor,
   smoothVoicing,
   strumOffsets,
+  type NoteRole,
   type PlayStyle,
 } from "../model/perform";
 import {
@@ -53,7 +55,8 @@ import {
   strumDown,
   type Pool,
 } from "./perform";
-import type { Track } from "../model/types";
+import type { NoteBend, Track } from "../model/types";
+import { isSynthTrack } from "../library/synthTrack";
 import { player } from "../model/tracks";
 import { recordNoteOff, recordNoteOn, playedNotes, padInput, keyRoot } from "./input";
 import { useSettings } from "./settings";
@@ -278,6 +281,20 @@ export function keysTrack(): Track | undefined {
   return s.project.tracks.find((x) => x.id === id);
 }
 
+/** Whether what the keys play can bend per note (a synth, D225): the Bend card says so. */
+export function keysPlaySynth(): boolean {
+  if (keysEditor()) {
+    const track = keysTrack();
+    return !!track && isSynthTrack(track);
+  }
+  if (useKeys.getState().target.kind === "sound") {
+    const track = getKeysChannel()?.track;
+    return !!track && isSynthTrack(track);
+  }
+  const track = keysTrack();
+  return !!track && isSynthTrack(track);
+}
+
 /**
  * What the keys play, for the chip, its menu and the device display: the exact sound, and where
  * it comes from ("Synth editor · BASS", "Track BASS", "Library").
@@ -392,6 +409,23 @@ interface NoteTiming {
   record?: boolean;
   /** On its musical grid (the rhythm's notes): recorded where it is, not snapped (D175). */
   onGrid?: boolean;
+  /** Where it is in what's played, for the Bend card's Notes (D222); alone: everything. */
+  role?: NoteRole;
+}
+
+const ALONE: NoteRole = { top: true, bass: true, last: true };
+
+/** The key a Next bend counts in (D222): the edited section's pattern's, or the song's. */
+function bendKey(): Key | null {
+  const st = useStore.getState();
+  const slot = st.project.slots?.find((x) => x.id === st.editSlotId) ?? st.project.slots?.[0];
+  return (slot && st.project.patterns?.[slot.patternId]?.keyOverride) || st.project.key || null;
+}
+
+/** A note's bend from the Bend card (D222), for a sound that can bend (a synth, D225). */
+function bendOf(track: Track | undefined, pitch: number, velocity: number, t: NoteTiming) {
+  if (!track || !isSynthTrack(track)) return undefined;
+  return bendFor(playStyle(), t.role ?? ALONE, velocity, pitch, bendKey(), Math.random());
 }
 
 function startNote(out: Output, pitch: number, velocity: number, t: NoteTiming = {}): Voice {
@@ -404,14 +438,19 @@ function voiceFor(out: Output, pitch: number, velocity: number, t: NoteTiming): 
   switch (out.kind) {
     case "editor":
       return { release: out.hold(pitch, velocity), recordId: null };
-    case "keys":
-      return { release: keysChannelNote(pitch, velocity, t.at), recordId: null };
+    case "keys": {
+      const bend = bendOf(getKeysChannel()?.track, pitch, velocity, t);
+      return { release: keysChannelNote(pitch, velocity, t.at, bend), recordId: null };
+    }
     case "sample":
       return { release: playKeysSample(out.track, pitch, velocity, "track", t.at), recordId: null };
     case "voice": {
-      const release = holdNote(out.track, pitch, velocity, t.at);
+      const bend = bendOf(out.track, pitch, velocity, t);
+      const release = bend
+        ? holdNote(out.track, pitch, velocity, t.at, bend)
+        : holdNote(out.track, pitch, velocity, t.at);
       const notes = out.track.mode === "notes" && (t.record ?? true);
-      const timing = { at: t.hitAt ?? t.at, spread: t.spread, onGrid: t.onGrid };
+      const timing = { at: t.hitAt ?? t.at, spread: t.spread, onGrid: t.onGrid, bend };
       return { release, recordId: notes ? recordNoteOn(out.track, pitch, velocity, timing) : null };
     }
   }
@@ -424,11 +463,12 @@ function startNoteLater(
   velocity: number,
   delay: number,
   hitAt = audioNow(),
+  role?: NoteRole,
 ): Voice {
   const v: Voice = { release: () => {}, recordId: null, pending: true };
   v.cancel = schedule(hitAt + delay, (at) => {
     const record = useStore.getState().playing;
-    Object.assign(v, startNote(out, pitch, velocity, { at, hitAt, spread: delay, record }), {
+    Object.assign(v, startNote(out, pitch, velocity, { at, hitAt, spread: delay, record, role }), {
       pending: false,
     });
   });
@@ -448,13 +488,18 @@ function stopNote(v: Voice, at?: number) {
 }
 
 /** Play a note through the Keys channel (library sound target). */
-function keysChannelNote(pitch: number, velocity: number, at = audioNow()): (end?: number) => void {
+function keysChannelNote(
+  pitch: number,
+  velocity: number,
+  at = audioNow(),
+  bend?: NoteBend,
+): (end?: number) => void {
   const kc = getKeysChannel();
   if (!kc) return () => {};
   // a library sample plays like a pad, to its end, at the key's pitch (D134)
   if (useKeys.getState().target.kind === "sound" && kc.track.sound?.source === "sample")
     return playKeysSample(kc.track, pitch, velocity, "keys", at);
-  const release = kc.voice.hold?.(pitch, velocity, at) ?? (() => {});
+  const release = kc.voice.hold?.(pitch, velocity, at, bend) ?? (() => {});
   return (end = audioNow()) => release(Math.max(end, at));
 }
 
@@ -811,6 +856,16 @@ function startVoices(p: Pressed, kc: KeyChord, style: PlayStyle, which: number[]
   const all = [...kc.notes].sort((a, b) => a - b);
   const bal = balanceFactors(all.length, style.balance);
   const bassOut = bassOutput();
+  // the Bend card's Notes (D222): the top and the bass of the chord, and the note heard last
+  const order = notes.map((n, i) => ({ n, at: offs[i] ?? 0 }));
+  const lastNote = offs.length
+    ? order.reduce((a, b) => (b.at >= a.at ? b : a)).n
+    : notes[notes.length - 1];
+  const roleOf = (n: number): NoteRole => ({
+    top: n === all[all.length - 1],
+    bass: kc.bass.includes(n) || n === all[0],
+    last: n === lastNote,
+  });
   notes.forEach((n, i) => {
     const slop = style.slop.on
       ? slopFor(style.slop.amount, Math.random(), Math.random())
@@ -822,7 +877,9 @@ function startVoices(p: Pressed, kc: KeyChord, style: PlayStyle, which: number[]
     // its time is the hit's (now, or Auto's change) plus its own spread (strum, slop)
     p.voices.set(
       n,
-      delay > 0.0005 ? startNoteLater(out, n, vel, spread, hitAt) : startNote(out, n, vel),
+      delay > 0.0005
+        ? startNoteLater(out, n, vel, spread, hitAt, roleOf(n))
+        : startNote(out, n, vel, { role: roleOf(n) }),
     );
   });
 }
@@ -1359,6 +1416,8 @@ setRhythmPlayer({
         spread: n.spread,
         record,
         onGrid: n.onGrid,
+        // a rhythm's note: the bass's, or the chord's (each is the newest as it starts)
+        role: { top: !n.bass, bass: !!n.bass, last: true },
       });
     });
     const cancelEnd = schedule(n.end, (at) => {

@@ -26,6 +26,71 @@ const hints: Hints = {
     text: "How the keys play, in every pad mode: Strum, Slop, the arpeggiator, a chord pattern, Latch and Balance. A style's settings show on its line while it's on. Click the title to fold it.",
     guide: "performance-your-controller",
   },
+  "controller.card.bend": {
+    title: "Bend",
+    text: "A bend for every note the keys play (synths): Scoop, Fall, Doit, Dip, Rise, Next or Shake, with its amount, time, delay and curve; which notes bend, how many, and how much harder ones bend. Recorded with the notes. Click the title to fold it.",
+    guide: "performance-bends",
+  },
+  "controller.bend.on": {
+    title: "Bend",
+    text: "Turn bends on or off for what the keys play. Right-click to MIDI-learn it.",
+    guide: "performance-bends",
+  },
+  "controller.bend.shape": {
+    title: "Shape",
+    text: "Scoop slides into the note, Fall drops away and Doit flicks up when you let go, Dip goes down and back, Rise climbs and stays, Next bends to the next note in the key, Shake is a vibrato that builds up. Each shape keeps its own values.",
+    guide: "performance-bends",
+  },
+  "controller.bend.amount": {
+    title: "Amount",
+    text: "How far the note bends, in semitones (Next: notes of the key). Minus bends down. Click the value for the shape's default.",
+    guide: "performance-bends",
+  },
+  "controller.bend.time": {
+    title: "Time",
+    text: "How long the bend takes, in milliseconds, or in beats when ♩ is on.",
+    guide: "performance-bends",
+  },
+  "controller.bend.sync": {
+    title: "Sync",
+    text: "Time and Delay in beats, following the tempo (1/32 to 4 bars), or in seconds.",
+    guide: "performance-bends",
+  },
+  "controller.bend.delay": {
+    title: "Delay",
+    text: "How long the note waits before it bends (a Fall or a Doit: after you let go). A delay makes a held note settle before it rises or shakes.",
+    guide: "performance-bends",
+  },
+  "controller.bend.curve": {
+    title: "Curve",
+    text: "How the bend moves: Linear, Smooth (slow at both ends), Exp (slow, then fast) or Bounce.",
+    guide: "performance-bends",
+  },
+  "controller.bend.rate": {
+    title: "Rate",
+    text: "How fast a Shake's vibrato is: in Hz, or per beat when synced.",
+    guide: "performance-bends",
+  },
+  "controller.bend.notes": {
+    title: "Notes",
+    text: "Which notes bend: all of them, the top note of a chord, the bass, or only the newest (the last of a strum, every note of an arpeggio).",
+    guide: "performance-bends",
+  },
+  "controller.bend.chance": {
+    title: "Chance",
+    text: "How many notes bend, at random: 100% is every one.",
+    guide: "performance-bends",
+  },
+  "controller.bend.velocity": {
+    title: "Velocity",
+    text: "Harder notes bend more (+) or less (−); at 0% every note bends by the amount.",
+    guide: "performance-bends",
+  },
+  "controller.bend.strip": {
+    title: "Strip",
+    text: "What the MiniLab's pitch strip bends: the whole synth, or only the newest note you hold (the other notes of a chord stay put). Not recorded.",
+    guide: "performance-bends",
+  },
   "controller.none": {
     title: "No controller",
     text: "Plug in a MIDI controller, then go to Settings → MIDI → Controller to pick its map. Rebeat will recognize a MiniLab 3, MPK Mini MK3 or Launchkey Mini automatically.",
