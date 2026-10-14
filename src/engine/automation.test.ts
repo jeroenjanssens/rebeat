@@ -52,4 +52,23 @@ describe("curve events (D186)", () => {
     expect(e[0].v).toBeLessThan(1 / 9 / 4);
     expect(curveEvents(pts([0, 0], [4, 1]), 0, 1, 0, 1, false, 8)).toHaveLength(1);
   });
+
+  it("a stepped lane jumps at every point and ignores eases (D230)", async () => {
+    const { lanePoints } = await import("../model/arrangement");
+    const { emptyProject, page } = await import("../templates/builder");
+    const p = emptyProject("P", 120);
+    page(p, "A", 16, 1);
+    const slotId = p.slots[0].id;
+    const saved = [
+      { slotId, at: 0, value: 0.1, out: { type: "smooth" as const } },
+      { slotId, at: 1.5, value: 0.8, in: { type: "smooth" as const } },
+    ];
+    const e = curveEvents(lanePoints(p, saved, 2), 1, 2, 10, 1, false);
+    // off until 1.5, then on: one jump, no samples in between
+    expect(e).toEqual([
+      { t: 10.497, v: 0, ramp: true },
+      { t: 10.5, v: 1, ramp: true },
+      { t: 11, v: 1, ramp: true },
+    ]);
+  });
 });

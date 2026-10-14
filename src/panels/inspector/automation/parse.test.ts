@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { MIX_PARAMS, SOUND_PARAMS } from "../../../model/params";
+import { EFFECT_PARAMS, MIX_PARAMS, SOUND_PARAMS } from "../../../model/params";
+import { FX_ON } from "../../../model/automation";
 import { emptyProject, page } from "../../../templates/builder";
 import { formatInSection, formatPosition, numberIn, parsePosition, parseValue } from "./parse";
 
@@ -50,5 +51,16 @@ describe("values (D204)", () => {
     expect(parseValue(def("cutoff"), "50%")).toBe(0.5);
     expect(parseValue(def("pan"), "R100")).toBe(1);
     expect(parseValue(def("pan"), "huh")).toBeNull();
+  });
+});
+
+describe("stepped values (D229)", () => {
+  it("picks a value by its name, or a number on its band", () => {
+    const on = FX_ON;
+    expect(parseValue(on, "on")).toBe(1);
+    expect(parseValue(on, "Off")).toBe(0);
+    const type = EFFECT_PARAMS.Filter.find((d) => d.id === "type")!;
+    const names = Array.from({ length: type.steps! }, (_, i) => type.format(i / (type.steps! - 1)));
+    expect(parseValue(type, names[1])).toBeCloseTo(1 / (type.steps! - 1));
   });
 });

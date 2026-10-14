@@ -5,8 +5,7 @@
 import { useMemo } from "react";
 import type { MenuItem } from "../components/Menu";
 import { songPosition, startPosition } from "../engine/transport";
-import { valueAt } from "../model/arrangement";
-import { isAutomatable, knobValue } from "../model/automation";
+import { isAutomatable, knobValue, laneValueAt } from "../model/automation";
 import { isOverridden, useOverrides } from "./automationOverride";
 import { useSettings } from "./settings";
 import { useStore } from "./store";
@@ -24,7 +23,7 @@ export function useAutomated(target: string | undefined) {
         ? () => {
             const q = songPosition();
             if (q === null || isOverridden(target)) return null;
-            return valueAt(useStore.getState().project, lane, q);
+            return laneValueAt(useStore.getState().project, lane, q);
           }
         : undefined,
     [lane, target],

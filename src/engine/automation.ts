@@ -2,7 +2,8 @@
  * Automation (D186) and audio on the timeline (D188), step by step: the transport and the
  * offline render call these for every step, so a song sounds the same live and exported.
  */
-import { curveAt, lanePoints, toSong, type ResolvedPoint } from "../model/arrangement";
+import { curveAt, toSong, type ResolvedPoint } from "../model/arrangement";
+import { lanePointsOf } from "../model/automation";
 import { isLinear } from "../model/ease";
 import type { Project } from "../model/project";
 import { secondsBetween } from "../model/tempoMap";
@@ -85,7 +86,7 @@ export function automationStep(
       last.delete(lane.id);
       continue;
     }
-    const points = lanePoints(project, lane.points);
+    const points = lanePointsOf(project, lane);
     if (!points.length) continue;
     const prev = last.get(lane.id);
     const jumped = prev === undefined || Math.abs(prev - q0) > EPS;

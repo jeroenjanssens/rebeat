@@ -6,9 +6,16 @@
 import { Plus } from "lucide-react";
 import { Fragment, type ReactNode } from "react";
 import { contextMenu, type MenuItem } from "../../components/Menu";
-import { curveAt, lanePoints, layout, toSong } from "../../model/arrangement";
+import { curveAt, layout, toSong } from "../../model/arrangement";
 import { IN_TYPES, OUT_TYPES } from "../../model/ease";
-import { knobFor, knobValue, laneTitle, targetOwner } from "../../model/automation";
+import {
+  knobFor,
+  knobValue,
+  lanePointsOf,
+  laneTitle,
+  stepLabels,
+  targetOwner,
+} from "../../model/automation";
 import { openKnobPicker } from "../../components/KnobPicker";
 import type { Project } from "../../model/project";
 import { clipOf, type AutomationLane, type Track } from "../../model/types";
@@ -135,7 +142,9 @@ function Lanes({
             on: x.p.on !== false,
             eased: !!(x.p.in || x.p.out),
           }));
-        const resolved = lanePoints(project, lane.points);
+        const resolved = lanePointsOf(project, lane);
+        // a stepped knob (D229): its values' names; no eases on its points (D230)
+        const steps = def ? stepLabels(def) : [];
         // the menu acts on the selection (the point right-clicked is in it)
         const items = (i: number): MenuItem[] => {
           const sel = useStore.getState().pointSelection;
@@ -152,6 +161,7 @@ function Lanes({
             setOn: (on) => setPointsOn(lane.id, ids, on),
             remove: () => deletePoints(lane.id, ids),
             inspect: { kind: "lane", id: lane.id },
+            stepped: steps.length > 0,
           });
         };
         return (
@@ -238,6 +248,7 @@ function Lanes({
               onMove={(i, q, v, key) => movePoint(lane.id, i, q, v, key)}
               onDelete={(ids) => deletePoints(lane.id, ids)}
               onMenu={(i, e) => contextMenu(e, items(i))}
+              steps={steps.length ? steps : undefined}
               testId="automation-lane"
               hint="timeline.lane"
             />

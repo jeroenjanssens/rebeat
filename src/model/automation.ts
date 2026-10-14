@@ -3,12 +3,13 @@
  * MIDI-learn target string (D186), so a lane names a knob the same way a mapping does.
  */
 import { isDraft } from "immer";
+import { curveAt, lanePoints, type ResolvedPoint } from "./arrangement";
 import { effectivePatch, isSynthTrack, soundDefs, trackPatch } from "../library/synthTrack";
 import { EFFECT_PARAMS, MIX_PARAMS, SOUND_PARAMS, type ParamDef } from "./params";
 import { KNOB_SECTIONS, getPath, knobDef, paramName, paramOf, toKnob } from "./patchParams";
 import type { Project } from "./project";
 import { applyMacros, type SynthPatch } from "./synth";
-import type { Effect, Track } from "./types";
+import type { AutomationLane, Effect, Track } from "./types";
 
 /**
  * Effect knobs that can't move at an audio time (D206): changing them builds the effect again.
@@ -338,4 +339,26 @@ export function thinPoints<T extends { q: number; value: number }>(
     ...thinPoints(points.slice(0, at + 1), tolerance).slice(0, -1),
     ...thinPoints(points.slice(at), tolerance),
   ];
+}
+
+/** How many values a lane's knob has (D229): 0 for a smooth knob, 2 for an on/off… */
+export function laneSteps(project: Project, target: string): number {
+  const n = knobLists(project).by.get(target)?.def.steps ?? 0;
+  return n >= 2 ? n : 0;
+}
+
+/** A lane's points as they play: eased, or held from band to band on a stepped lane. */
+export function lanePointsOf(project: Project, lane: AutomationLane): ResolvedPoint[] {
+  return lanePoints(project, lane.points, laneSteps(project, lane.target));
+}
+
+/** A lane's value at song position q, as it plays. */
+export function laneValueAt(project: Project, lane: AutomationLane, q: number): number | null {
+  return curveAt(lanePointsOf(project, lane), q);
+}
+
+/** The names of a stepped knob's values ("Off", "On"), lowest first. */
+export function stepLabels(def: ParamDef): string[] {
+  const n = def.steps ?? 0;
+  return n >= 2 ? Array.from({ length: n }, (_, i) => def.format(i / (n - 1))) : [];
 }

@@ -224,7 +224,11 @@ function PointRow({
               targets,
               roundV(
                 clampV(
-                  row.value + (dir * range) / (tempo ? (fine ? 2800 : 280) : fine ? 1000 : 100),
+                  // a stepped lane: one value per notch
+                  row.value +
+                    (source.steps
+                      ? (dir * range) / (source.steps - 1)
+                      : (dir * range) / (tempo ? (fine ? 2800 : 280) : fine ? 1000 : 100)),
                 ),
               ),
               `wheel-value-${source.key}`,
@@ -271,7 +275,8 @@ function PointRow({
           <X size={10} />
         </button>
       </div>
-      <div className="flex items-center gap-1.5 pl-[18px]">
+      {/* a stepped lane's points have no eases (D230) */}
+      <div className={`${source.steps ? "hidden" : "flex"} items-center gap-1.5 pl-[18px]`}>
         {tempo && (
           <button
             className="field !h-[22px] !px-1 text-[10px]"

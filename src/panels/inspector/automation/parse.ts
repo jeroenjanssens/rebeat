@@ -84,6 +84,15 @@ export function numberIn(text: string): number {
  */
 export function parseValue(def: ParamDef, text: string): number | null {
   const t = text.trim();
+  // a stepped knob (D229): a value by its name ("HP", "on"), else a number lands on a band
+  const n = def.steps ?? 0;
+  if (n >= 2) {
+    const names = Array.from({ length: n }, (_, i) => def.format(i / (n - 1)).toLowerCase());
+    const w = t.toLowerCase();
+    const i = names.findIndex((x) => x === w);
+    const j = i >= 0 ? i : names.findIndex((x) => w && x.startsWith(w));
+    if (j >= 0) return j / (n - 1);
+  }
   const shown = def.format(0.5);
   if (t.endsWith("%") && !shown.endsWith("%")) {
     const n = Number(t.slice(0, -1));

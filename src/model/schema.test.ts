@@ -9,6 +9,8 @@ import {
   serializeProject,
 } from "./schema";
 import { MAX_STEPS } from "./types";
+import { curveAt, lanePoints, snapStep } from "./arrangement";
+import { makeEffect } from "./effects";
 
 describe("project schema", () => {
   it("round-trips through JSON", () => {
@@ -298,6 +300,42 @@ describe("migration 10 → 11 (D196)", () => {
       { slotId: p.slots[0].id, at: 0, value: 0.5, out: { type: "none" } },
       { slotId: p.slots[0].id, at: 1, value: 0.7 },
     ]);
+  });
+});
+
+describe("migration 11 → 12 (D229, D230)", () => {
+  it("keeps what an old lane on an effect's On played, as points on its bands", () => {
+    const p = demoProject();
+    const kick = p.tracks.find((t) => t.name === "Kick")!;
+    const fx = makeEffect("Tremolo");
+    kick.effects.push(fx);
+    const slotId = p.slots[0].id;
+    const old = [
+      { slotId, at: 0, value: 0 },
+      { slotId, at: 4, value: 1, in: { type: "smooth" as const } },
+      { slotId, at: 6, value: 0.2, out: { type: "none" as const } },
+      { slotId, at: 7, value: 0.9 },
+    ];
+    const json = JSON.parse(JSON.stringify(serializeProject(p)));
+    json.schemaVersion = 11;
+    json.project.automation = [
+      { id: "a", target: `track:${kick.id}:fx:${fx.id}:on`, on: true, points: old },
+      { id: "b", target: `track:${kick.id}:mix.pan`, on: true, points: old },
+    ];
+    const d = deserializeProject(json);
+    const stepped = d.automation![0];
+    // every point on a band, no eases
+    for (const pt of stepped.points) {
+      expect([0, 1]).toContain(pt.value);
+      expect(pt.in ?? pt.out).toBeUndefined();
+    }
+    // and it plays what the old lane did (rounded), away from the crossings
+    const before = lanePoints(p, old);
+    const after = lanePoints(d, stepped.points, 2);
+    for (let q = 0.01; q < 8; q += 0.05)
+      expect(curveAt(after, q), `at ${q}`).toBe(snapStep(curveAt(before, q)!, 2));
+    // a smooth knob's lane stays as it was
+    expect(d.automation![1].points).toEqual(old);
   });
 });
 

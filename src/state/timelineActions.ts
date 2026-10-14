@@ -2,7 +2,9 @@
  * Timeline edits (D184): sections (order, copies, clones, repeats, settings), tempo changes,
  * automation and regions. Each is one commit; drags pass a merge key.
  */
-import { anchoredTo, toAnchor, toSong, valueAt } from "../model/arrangement";
+import { anchoredTo, snapStep, toAnchor, toSong } from "../model/arrangement";
+import { laneSteps, laneValueAt } from "../model/automation";
+import { steppedPoints } from "../model/steppedLanes";
 import type { Ease } from "../model/ease";
 import { uid } from "../model/id";
 import {
@@ -16,7 +18,7 @@ import {
 import { clampBpm, tempoAt, tempoMap } from "../model/tempoMap";
 import { getBuffer, sampleInfo } from "../engine/samples";
 import { loadSample, sampleName } from "../library/library";
-import type { AutomationLane, Section } from "../model/types";
+import type { AutomationLane, AutomationPoint, Section } from "../model/types";
 import { toast } from "../components/Toast";
 import { useStore } from "./store";
 
@@ -269,6 +271,8 @@ export function automate(target: string, q: number, value: number): string {
   const existing = store().project.automation?.find((l) => l.target === target);
   if (existing) return existing.id;
   const lane: AutomationLane = { id: uid("auto"), target, on: true, points: [] };
+  const steps = laneSteps(store().project, target);
+  if (steps) value = snapStep(value, steps);
   store().commit((p) => {
     p.automation ??= [];
     p.automation.push({ ...lane, points: [{ ...toAnchor(p, q), value }] });
@@ -278,24 +282,47 @@ export function automate(target: string, q: number, value: number): string {
 
 const laneOf = (p: Project, id: string) => p.automation?.find((l) => l.id === id);
 
+/** A lane's number of values (D229), from the project outside a recipe (0: smooth). */
+function stepsOf(laneId: string): number {
+  const { project } = store();
+  const l = laneOf(project, laneId);
+  return l ? laneSteps(project, l.target) : 0;
+}
+
+/** A value for a lane: on its band when the lane is stepped. */
+const valueFor = (steps: number, v: number) => (steps ? snapStep(v, steps) : clamp01(v));
+
+/** A stepped lane's point has no eases (D230): they're dropped when it's edited. */
+function plain(pt: AutomationPoint, steps: number) {
+  if (!steps) return;
+  delete pt.in;
+  delete pt.out;
+}
+
 export function addPoint(laneId: string, q: number, value: number): number {
   let index = -1;
+  const steps = stepsOf(laneId);
   store().commit((p) => {
     const l = laneOf(p, laneId);
-    if (l) index = l.points.push({ ...toAnchor(p, q), value: clamp01(value) }) - 1;
+    if (l) index = l.points.push({ ...toAnchor(p, q), value: valueFor(steps, value) }) - 1;
   });
   return index;
 }
 
 export function movePoint(laneId: string, index: number, q: number, value: number, key: string) {
+  const steps = stepsOf(laneId);
   store().commit((p) => {
     const pt = laneOf(p, laneId)?.points[index];
-    if (pt) Object.assign(pt, toAnchor(p, q), { value: clamp01(value) });
+    if (!pt) return;
+    Object.assign(pt, toAnchor(p, q), { value: valueFor(steps, value) });
+    plain(pt, steps);
   }, key);
 }
 
 /** Eases on one side of points (D196); Linear clears it (the default). */
 export function setPointEase(laneId: string, indexes: number[], side: "in" | "out", ease: Ease) {
+  // a stepped lane has no eases (D230)
+  if (stepsOf(laneId)) return;
   store().commit((p) => {
     const l = laneOf(p, laneId);
     if (!l) return;
@@ -324,10 +351,15 @@ export function setPointsOn(laneId: string, indexes: number[], on: boolean) {
 
 /** The same value on several points (the table's multi-select). */
 export function setPointsValue(laneId: string, indexes: number[], value: number, key: string) {
+  const steps = stepsOf(laneId);
   store().commit((p) => {
     const l = laneOf(p, laneId);
     if (!l) return;
-    for (const i of indexes) if (l.points[i]) l.points[i].value = clamp01(value);
+    for (const i of indexes)
+      if (l.points[i]) {
+        l.points[i].value = valueFor(steps, value);
+        plain(l.points[i], steps);
+      }
   }, key);
 }
 
@@ -349,7 +381,7 @@ export function insertOnCurve(laneId: string, q: number): number {
   const { project } = store();
   const l = laneOf(project, laneId);
   if (!l) return -1;
-  const value = valueAt(project, l, q) ?? 0.5;
+  const value = laneValueAt(project, l, q) ?? 0.5;
   return addPoint(laneId, q, value);
 }
 export function deletePoints(laneId: string, indexes: number[]) {
@@ -368,10 +400,17 @@ export function setLaneOn(laneId: string, on: boolean) {
 
 /** Move a lane to another knob (its points stay; values are knob positions, 0..1). */
 export function retargetLane(laneId: string, target: string) {
+  const { project } = store();
+  const before = laneOf(project, laneId);
+  const steps = laneSteps(project, target);
+  // onto a stepped knob: the points on its bands, where the old curve crossed them (D230)
+  const points = before && steps ? steppedPoints(project, before.points, steps) : null;
   store().commit((p) => {
     if (p.automation?.some((l) => l.target === target && l.id !== laneId)) return;
     const l = laneOf(p, laneId);
-    if (l) l.target = target;
+    if (!l) return;
+    l.target = target;
+    if (points) l.points = points;
   });
 }
 

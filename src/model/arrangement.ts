@@ -168,10 +168,37 @@ export interface ResolvedPoint {
 }
 
 const resolved = new WeakMap<AutomationPoint[], { slots: Section[]; points: ResolvedPoint[] }>();
+const resolvedStepped = new WeakMap<
+  AutomationPoint[],
+  { slots: Section[]; steps: number; points: ResolvedPoint[] }
+>();
 
-/** A lane's points in song order, without hidden ones and ones that are off (D196). */
-export function lanePoints(project: Project, points: AutomationPoint[]): ResolvedPoint[] {
+/** A value on one of `steps` bands (D229): 0, 1/(steps − 1) … 1. */
+export const snapStep = (v: number, steps: number) =>
+  Math.round(Math.min(1, Math.max(0, v)) * (steps - 1)) / (steps - 1);
+
+/**
+ * A lane's points in song order, without hidden ones and ones that are off (D196). A stepped
+ * lane (`steps`, D229, D230) holds each point's band until the next point: no eases.
+ */
+export function lanePoints(
+  project: Project,
+  points: AutomationPoint[],
+  steps = 0,
+): ResolvedPoint[] {
   const draft = isDraft(points) || isDraft(project.slots) || isDraft(project.patterns);
+  if (steps >= 2) {
+    const hit = draft ? undefined : resolvedStepped.get(points);
+    if (hit && hit.slots === project.slots && hit.steps === steps) return hit.points;
+    const out = lanePoints(project, points).map((p) => ({
+      q: p.q,
+      value: snapStep(p.value, steps),
+      out: HOLD,
+      index: p.index,
+    }));
+    if (!draft) resolvedStepped.set(points, { slots: project.slots, steps, points: out });
+    return out;
+  }
   const cached = draft ? undefined : resolved.get(points);
   if (cached && cached.slots === project.slots) return cached.points;
   const out: ResolvedPoint[] = [];
@@ -184,6 +211,8 @@ export function lanePoints(project: Project, points: AutomationPoint[]): Resolve
   if (!draft) resolved.set(points, { slots: project.slots, points: out });
   return out;
 }
+
+const HOLD: Ease = { type: "none" };
 
 /** The value of a curve at q: eased between points (D196; an ease out of None holds), the first
  * value before the first point and the last after the last. */

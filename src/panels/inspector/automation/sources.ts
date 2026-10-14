@@ -2,8 +2,8 @@
  * What the Inspector's point table edits (D199, D201): an automation lane or the tempo changes,
  * behind one interface, so the table is the same for both.
  */
-import { curveAt, lanePoints, toSong } from "../../../model/arrangement";
-import { knobFor, laneTitle } from "../../../model/automation";
+import { curveAt, toSong } from "../../../model/arrangement";
+import { knobFor, lanePointsOf, laneTitle } from "../../../model/automation";
 import { IN_TYPES, OUT_TYPES, TEMPO_TYPES, type Ease, type EaseType } from "../../../model/ease";
 import type { Project } from "../../../model/project";
 import { tempoAt } from "../../../model/tempoMap";
@@ -63,6 +63,8 @@ export interface PointSource {
   /** A point at q with this value. */
   add: (q: number, value: number) => number;
   setRamp?: (indexes: number[], ramp: boolean) => void;
+  /** A stepped lane (D229, D230): how many values (values on bands, no eases); 0 is smooth. */
+  steps?: number;
 }
 
 /** Rows in time order (hidden ones last). */
@@ -74,7 +76,7 @@ export function laneSource(project: Project, laneId: string): PointSource | null
   if (!lane) return null;
   const knob = knobFor(project, lane.target);
   const def = knob?.def;
-  const resolved = lanePoints(project, lane.points);
+  const resolved = lanePointsOf(project, lane);
   return {
     key: lane.id,
     title: laneTitle(project, lane.target),
@@ -101,6 +103,7 @@ export function laneSource(project: Project, laneId: string): PointSource | null
     inTypes: IN_TYPES,
     outTypes: OUT_TYPES,
     curve: (q) => curveAt(resolved, q),
+    steps: def?.steps && def.steps >= 2 ? def.steps : 0,
     setValue: (ids, v, key) => setPointsValue(lane.id, ids, v, key),
     moveBy: (ids, dq, key) => movePointsBy(lane.id, ids, dq, key),
     setOn: (ids, on) => setPointsOn(lane.id, ids, on),

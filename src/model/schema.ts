@@ -6,11 +6,13 @@ import { defaultBuses, defaultMaster, defaultPerf } from "./effects";
 import { uid } from "./id";
 import { EFFECT_PARAMS, MIX_PARAMS, SOUND_PARAMS, defaultParams } from "./params";
 import { emptyLane, type Project } from "./project";
+import { steppedPoints } from "./steppedLanes";
 import { clampBpm } from "./tempoMap";
 import { player } from "./tracks";
 import {
   MAX_STEPS,
   emptyStep,
+  type AutomationLane,
   type Effect,
   type Lane,
   type Sound,
@@ -19,7 +21,7 @@ import {
 } from "./types";
 import { convertSynthKnobs, defaultSynth } from "../library/synthTrack";
 
-export const SCHEMA_VERSION = 11;
+export const SCHEMA_VERSION = 12;
 
 export interface SerializedProject {
   format: "rebeat-project";
@@ -147,7 +149,34 @@ const migrations: Record<number, Migration> = {
         }
     return p;
   },
+  // 11 → 12: stepped lanes (D229, D230), bends per note (D224), folded lanes (D233); the bends
+  // and folds are optional. Lanes on stepped knobs (an effect's On, Bits…) used to slope and
+  // flip where they crossed a band: they keep that, as points on the bands.
+  11: (p) => {
+    const lanes = (p.automation as AutomationLane[] | undefined) ?? [];
+    for (const lane of lanes) {
+      const steps = fxSteps(p, lane.target);
+      if (steps) lane.points = steppedPoints(p as unknown as Project, lane.points, steps);
+    }
+    return p;
+  },
 };
+
+/** The number of values of an effect knob a target names (0: smooth, or not an effect's). */
+function fxSteps(p: Json, target: string): number {
+  const m = /:fx:([^:]+):([^:]+)$/.exec(target);
+  if (!m) return 0;
+  const [, fxId, param] = m;
+  if (param === "on") return 2;
+  const chains = [
+    ...((p.tracks as Track[] | undefined) ?? []).map((t) => t.effects),
+    ...((p.buses as { effects: Effect[] }[] | undefined) ?? []).map((b) => b.effects),
+    (p.master as { effects?: Effect[] } | undefined)?.effects,
+  ];
+  const fx = chains.flatMap((c) => c ?? []).find((e) => e.id === fxId);
+  const steps = fx ? EFFECT_PARAMS[fx.name]?.find((d) => d.id === param)?.steps : 0;
+  return steps && steps >= 2 ? steps : 0;
+}
 
 /** The ADSR decay of a voice's SOUND knobs, renamed in version 7. */
 function renameDecay(values: Record<string, number>) {

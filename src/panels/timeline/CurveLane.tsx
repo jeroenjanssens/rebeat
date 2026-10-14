@@ -3,7 +3,8 @@
  * points, D196) or tempo (jumps, or eased ramps from the change before, D198). Click on the line
  * to add a point on the curve, elsewhere to add one at that height (D203); drag to move (Shift:
  * free), double-click or Delete to remove, a box drag selects, right-click for a point's menu.
- * The selection is the table's too (D200).
+ * The selection is the table's too (D200). A stepped lane (D229) draws its values as bands with
+ * their names, an on/off lane as bars, and every point lands on a band.
  */
 import { useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { useStore } from "../../state/store";
@@ -44,6 +45,8 @@ interface Props {
   onMenu: (index: number, e: ReactMouseEvent) => void;
   testId?: string;
   hint?: string;
+  /** A stepped lane (D229): its values' names, lowest first (2 or more). */
+  steps?: string[];
 }
 
 /** Each drag is one undo step: its own merge key. */
@@ -70,8 +73,15 @@ export function CurveLane(p: Props) {
     const r = svg.current!.getBoundingClientRect();
     return { px: e.clientX - r.left, py: e.clientY - r.top };
   };
-  const round = (v: number, free: boolean) =>
-    Math.min(p.max, Math.max(p.min, p.round ? p.round(v, free) : v));
+  const n = p.steps && p.steps.length >= 2 ? p.steps.length : 0;
+  const round = (v: number, free: boolean) => {
+    const r = Math.min(p.max, Math.max(p.min, p.round ? p.round(v, free) : v));
+    // a stepped lane: always on a band, Shift or not
+    return n
+      ? p.min + (Math.round(((r - p.min) / (p.max - p.min)) * (n - 1)) / (n - 1)) * (p.max - p.min)
+      : r;
+  };
+  const [hover, setHover] = useState<{ x: number; y: number; text: string } | null>(null);
 
   // the curve, sampled every few pixels and just before and at every point (so jumps are sharp)
   const path: [number, number][] = [];
@@ -161,6 +171,26 @@ export function CurveLane(p: Props) {
     el.addEventListener("pointerup", up as EventListener);
   };
 
+  // a stepped lane: its values' heights, the names shown (at most about six), and for an on/off
+  // lane the stretches where it's on, as bars
+  const levels = n
+    ? Array.from({ length: n }, (_, i) => p.min + (i / (n - 1)) * (p.max - p.min))
+    : [];
+  const every = Math.max(1, Math.ceil(n / 6));
+  const bars: [number, number][] = [];
+  if (n === 2 && path.length > 1) {
+    const mid = y((p.min + p.max) / 2);
+    let from: number | null = null;
+    for (const [px, py] of path) {
+      if (py < mid && from === null) from = px;
+      else if (py >= mid && from !== null) {
+        bars.push([from, px]);
+        from = null;
+      }
+    }
+    if (from !== null) bars.push([from, path[path.length - 1][0]]);
+  }
+
   return (
     <svg
       ref={svg}
@@ -172,6 +202,15 @@ export function CurveLane(p: Props) {
       data-testid={p.testId}
       data-hint={p.hint}
       data-lane={p.laneKey}
+      data-steps={n || undefined}
+      onPointerMove={(e) => {
+        if (!n || e.buttons) return;
+        const { px, py } = local(e);
+        const v = round(vAt(py), false);
+        const i = Math.round(((v - p.min) / (p.max - p.min)) * (n - 1));
+        setHover({ x: px, y: y(v), text: p.steps![i] });
+      }}
+      onPointerLeave={() => setHover(null)}
       onPointerDown={onBackgroundDown}
       onKeyDown={(e) => {
         if ((e.key === "Delete" || e.key === "Backspace") && selected.length) {
@@ -182,6 +221,42 @@ export function CurveLane(p: Props) {
         }
       }}
     >
+      {levels.map((v, i) => (
+        <g key={`lvl${i}`} pointerEvents="none">
+          <line
+            x1={0}
+            x2={p.width}
+            y1={y(v)}
+            y2={y(v)}
+            stroke="var(--border)"
+            strokeWidth={1}
+            strokeDasharray="2 4"
+          />
+          {i % every === 0 && (
+            <text
+              x={3}
+              y={Math.min(p.height - 2, Math.max(8, y(v) + 3))}
+              fontSize={8}
+              fill="var(--text-faint)"
+              data-testid="step-label"
+            >
+              {p.steps![i]}
+            </text>
+          )}
+        </g>
+      ))}
+      {bars.map(([a, b], i) => (
+        <rect
+          key={`bar${i}`}
+          x={a}
+          y={y(p.max)}
+          width={Math.max(1, b - a)}
+          height={Math.max(2, y(p.min) - y(p.max))}
+          fill={`color-mix(in oklab, ${p.color} 22%, transparent)`}
+          pointerEvents="none"
+          data-testid="on-bar"
+        />
+      ))}
       {path.length > 1 && (
         <polyline
           points={path.map(([a, b]) => `${a},${b}`).join(" ")}
@@ -248,6 +323,17 @@ export function CurveLane(p: Props) {
           stroke="var(--accent)"
           strokeWidth={1}
         />
+      )}
+      {hover && !readout && (
+        <text
+          x={Math.min(p.width - 60, hover.x + 10)}
+          y={Math.max(11, hover.y - 4)}
+          fontSize={10}
+          fill="var(--text-dim)"
+          pointerEvents="none"
+        >
+          {hover.text}
+        </text>
       )}
       {readout && (
         <text

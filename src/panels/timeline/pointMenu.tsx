@@ -19,6 +19,8 @@ export interface PointMenuOptions {
   inspect: { kind: "lane"; id: string } | { kind: "tempo" };
   /** Tempo changes: jump or ramp. */
   ramp?: { on: boolean; set: (ramp: boolean) => void };
+  /** A stepped lane (D230): no eases. */
+  stepped?: boolean;
 }
 
 export function pointMenu(o: PointMenuOptions): MenuItem[] {
@@ -48,9 +50,10 @@ export function pointMenu(o: PointMenuOptions): MenuItem[] {
           { separator: true },
         ]
       : []),
-    easeChips("in", o.inTypes, o.easeIn),
-    easeChips("out", o.outTypes, o.easeOut),
-    { separator: true },
+    ...(o.stepped
+      ? []
+      : [easeChips("in", o.inTypes, o.easeIn), easeChips("out", o.outTypes, o.easeOut)]),
+    ...(o.stepped ? [] : [{ separator: true }]),
     {
       label: o.on ? `Turn off${many}` : `Turn on${many}`,
       onSelect: () => o.setOn(!o.on),
