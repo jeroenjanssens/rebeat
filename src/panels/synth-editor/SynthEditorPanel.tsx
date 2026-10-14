@@ -13,7 +13,13 @@ import {
 import { create } from "zustand";
 import { contextMenu, dropdown } from "../../components/Menu";
 import { AutoMark } from "../../components/AutoMark";
-import { switchName, switchOf, switchValue, type SwitchValue } from "../../model/patchSwitches";
+import {
+  optionLabels,
+  switchName,
+  switchOf,
+  switchValue,
+  type SwitchValue,
+} from "../../model/patchSwitches";
 import { onFrame } from "../../render/raf";
 import { useAutomated } from "../../state/automationKnob";
 import { automateItems, controlItems } from "../../state/automationKnob";
@@ -1833,6 +1839,7 @@ function Matrix({
             value={s.source}
             onPick={(v) => setSlot(i, { source: v as ModSource | null })}
             hint="synth.matrix.source"
+            patch={patch}
             {...slotSwitch(i, "source")}
           />
         </span>,
@@ -1872,6 +1879,7 @@ function Matrix({
             value={s.via}
             onPick={(v) => setSlot(i, { via: v as ModSource | null })}
             hint="synth.matrix.via"
+            patch={patch}
             {...slotSwitch(i, "via")}
           />
         </span>,
@@ -2179,17 +2187,33 @@ function Toggle({
   );
 }
 
-/** A switch with many options (an LFO's shape, the matrix's routing), as a menu. */
+/** A switch with many options (an LFO's shape, the matrix's routing), as a menu. The matrix's
+ * sources name the macros as the patch does, in a group of their own. */
 function SwitchSelect({
   value,
   onPick,
   hint,
+  patch,
   ...p
-}: SwitchProps & { value: SwitchValue; onPick: (v: SwitchValue) => void; hint: string }) {
+}: SwitchProps & {
+  value: SwitchValue;
+  onPick: (v: SwitchValue) => void;
+  hint: string;
+  /** The patch whose macro names a matrix source shows. */
+  patch?: SynthPatch;
+}) {
   const sw = switchOf(p.path)!;
   const shown = useSwitchValue(p.target, p.path, value);
   // the options' own values (none: ""), so a menu reads as it always did
   const key = (v: SwitchValue) => (v === null ? "" : String(v));
+  const name = optionLabels(p.path, patch);
+  const option = (o: (typeof sw.options)[number]) => (
+    <option key={key(o.value)} value={key(o.value)}>
+      {name ? name(o.value, o.label) : o.label}
+    </option>
+  );
+  const isMacro = (o: (typeof sw.options)[number]) =>
+    !!name && typeof o.value === "string" && o.value.startsWith("macro");
   return (
     <span className="flex min-w-0 items-center gap-0.5" onContextMenu={(e) => switchMenu(e, p)}>
       <select
@@ -2202,11 +2226,8 @@ function SwitchSelect({
         data-hint={hint}
         data-switch={p.path}
       >
-        {sw.options.map((o) => (
-          <option key={key(o.value)} value={key(o.value)}>
-            {o.label}
-          </option>
-        ))}
+        {sw.options.filter((o) => !isMacro(o)).map(option)}
+        {name && <optgroup label="Macros">{sw.options.filter(isMacro).map(option)}</optgroup>}
       </select>
       <AutoMark target={p.target} />
     </span>

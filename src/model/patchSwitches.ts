@@ -61,6 +61,29 @@ export const SOURCE_LABEL: Record<ModSource, string> = {
   macro8: "Macro 8",
 };
 
+/**
+ * A matrix source as this patch names it: a macro by its own name ("Brightness"), or "Macro 3"
+ * when it has none; the others as SOURCE_LABEL says.
+ */
+export function sourceName(s: ModSource | null, patch: SynthPatch | undefined, none = "—"): string {
+  if (!s) return none;
+  const m = /^macro(\d)$/.exec(s);
+  if (!m || !patch) return SOURCE_LABEL[s];
+  return patch.macros[Number(m[1]) - 1]?.name.trim() || SOURCE_LABEL[s];
+}
+
+/** A matrix source or via switch's option labels with this patch's macro names, if it is one. */
+export function optionLabels(
+  path: string,
+  patch: SynthPatch | undefined,
+): ((value: SwitchValue, label: string) => string) | undefined {
+  if (!/^matrix\.\d\.(source|via)$/.test(path)) return undefined;
+  return (value, label) =>
+    typeof value === "string" && value.startsWith("macro")
+      ? sourceName(value as ModSource, patch)
+      : label;
+}
+
 /** The LFO shapes, as the editor names them. */
 export const LFO_SHAPE_LABEL: Record<LfoShape, string> = {
   sine: "Sine",
@@ -481,14 +504,19 @@ export function switchValue(sw: PatchSwitch, k: number): SwitchValue {
 }
 
 /** The switch as a knob definition with steps (a stepped lane, D229). */
-export function switchDef(sw: PatchSwitch, current: unknown): ParamDef {
+export function switchDef(sw: PatchSwitch, current: unknown, patch?: SynthPatch): ParamDef {
   const n = sw.options.length;
+  // a matrix source names macros as the patch does
+  const name = optionLabels(sw.path, patch) ?? ((_: SwitchValue, label: string) => label);
   return {
     id: sw.path,
     label: sw.label,
     steps: n,
     default: switchIndex(sw, current) / (n - 1),
-    format: (k) => sw.options[Math.round(Math.min(1, Math.max(0, k)) * (n - 1))].label,
+    format: (k) => {
+      const o = sw.options[Math.round(Math.min(1, Math.max(0, k)) * (n - 1))];
+      return name(o.value, o.label);
+    },
   };
 }
 

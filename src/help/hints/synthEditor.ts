@@ -200,7 +200,7 @@ const hints: Hints = {
   ),
   "synth.matrix.source": hint(
     "Mod source",
-    "What moves the destination: an LFO, an envelope, velocity, the note, the mod wheel, aftertouch, pitch bend, a random value per note, or a macro.",
+    "What moves the destination: an LFO, an envelope, velocity, the note, the mod wheel, aftertouch, pitch bend, a random value per note, or one of the macros (under Macros, by their names: Brightness, Bite… as in Basic).",
   ),
   "synth.matrix.dest": hint(
     "Mod destination",

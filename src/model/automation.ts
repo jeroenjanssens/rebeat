@@ -162,7 +162,7 @@ function synthKnobs(track: Track): AutomatableKnob[] {
         section: "Synth",
         part,
         name: sw.label,
-        def: slotDef(base, sw.path, switchDef(sw, switchAt(base, sw.path))),
+        def: slotDef(base, sw.path, switchDef(sw, switchAt(base, sw.path), base)),
         note: sw.nextNote ? "From the next note" : undefined,
       });
     for (const d of section.params) {
