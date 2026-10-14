@@ -4,6 +4,7 @@
  * note-for-note copies). Examples are read-only: the first change makes a copy (storage/projects).
  */
 import { longWayHome } from "./arrangement";
+import { sweepsAndBends } from "./sweeps";
 import { makeEffect } from "../model/effects";
 import type { Project } from "../model/project";
 import {
@@ -407,6 +408,13 @@ export const EXAMPLES: Example[] = [
     artist: "Rebeat demo · the timeline",
     year: 2026,
     create: longWayHome,
+  },
+  {
+    id: "sweeps-and-bends",
+    name: "Sweeps and Bends",
+    artist: "Rebeat demo · bends and synth automation",
+    year: 2026,
+    create: sweepsAndBends,
   },
   {
     id: "around-the-world",
