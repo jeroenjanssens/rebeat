@@ -15,7 +15,18 @@ import {
 
 /** IDs of the wizard's questions, in the order they appear. */
 export type QuestionId =
-  "role" | "start" | "then" | "tone" | "grit" | "move" | "width" | "sub" | "voice" | "extra";
+  | "role"
+  | "kind"
+  | "material"
+  | "start"
+  | "then"
+  | "tone"
+  | "grit"
+  | "move"
+  | "width"
+  | "sub"
+  | "voice"
+  | "extra";
 
 /** A partial set of the user's answers, keyed by QuestionId. */
 export type WizardAnswers = Partial<Record<QuestionId, string>>;
@@ -61,6 +72,42 @@ export const QUESTIONS: Question[] = [
     ],
     applies: () => true,
     defaultAnswer: () => "lead",
+  },
+  {
+    // D260: a physical model or a wavetable instead of the classic oscillators
+    id: "kind",
+    title: "How should it be made?",
+    answers: () => [
+      {
+        id: "synth",
+        label: "Like a classic synth",
+        help: "Oscillators and a filter: the sound of analog synths.",
+      },
+      {
+        id: "struck",
+        label: "Plucked or struck",
+        help: "Like a real string, bar, bell or drum: it rings and fades by itself.",
+      },
+      {
+        id: "evolving",
+        label: "Evolving",
+        help: "A wavetable whose tone keeps changing as the note goes on.",
+      },
+    ],
+    applies: (a) => a.role !== "fx",
+    defaultAnswer: () => "synth",
+  },
+  {
+    id: "material",
+    title: "What is it made of?",
+    answers: () => [
+      { id: "string", label: "A string", help: "Like a guitar or a harp." },
+      { id: "wood", label: "Wood", help: "Like a marimba or a woodblock: short and warm." },
+      { id: "metal", label: "Metal", help: "Like a vibraphone or a bell: long and shimmering." },
+      { id: "skin", label: "A drum skin", help: "Like a tom or a conga." },
+    ],
+    applies: (a) => a.kind === "struck",
+    defaultAnswer: (a) => (a.role === "keys" || a.role === "pad" ? "metal" : "string"),
   },
   {
     id: "start",
@@ -343,6 +390,12 @@ export function wizardName(answers: WizardAnswers): string {
     vibrato: "Vibrato",
     wah: "Wah",
   };
+  const kindWord: Record<string, string> = {
+    string: "String",
+    wood: "Wooden",
+    metal: "Metal",
+    skin: "Drum",
+  };
   const roleWord: Record<string, string> = {
     bass: "Bass",
     lead: "Lead",
@@ -355,9 +408,94 @@ export function wizardName(answers: WizardAnswers): string {
     toneWord[a.tone] ?? "",
     gritWord[a.grit] ?? "",
     moveWord[a.move] ?? "",
+    a.kind === "evolving" ? "Evolving" : "",
+    a.kind === "struck" ? (kindWord[a.material] ?? "") : "",
     roleWord[a.role] ?? "Synth",
   ].filter(Boolean);
   return parts.join(" ");
+}
+
+/** A physical model from the answers (D260): the material picks the exciter and resonator. */
+function physicalSpec(
+  a: Record<QuestionId, string>,
+  voice: NonNullable<PatchSpec["voice"]>,
+  attack: number,
+): PatchSpec {
+  const bright = a.tone === "bright" || a.tone === "glassy";
+  const warm = a.tone === "warm";
+  const hardness = bright ? 0.8 : warm ? 0.3 : 0.55;
+  const damping = bright ? -0.15 : warm ? 0.15 : 0;
+  // a note that holds is bowed (strings, metal) or rubbed; one that fades rings longer
+  const holds = a.role === "pad" || (a.role !== "pluck" && a.then === "holds");
+  const short = a.role === "pluck" || a.then === "short";
+  const ring = short ? 0.5 : 1;
+  const M: Record<string, { physical: PatchSpec["physical"]; volume: number }> = {
+    string: {
+      physical: {
+        exciter: holds
+          ? { type: "bow", pressure: 0.55, hardness, position: 0.12, noise: 0.2 }
+          : { type: "pluck", hardness, position: 0.2, noise: 0.15 },
+        resonator: { model: "string", decay: 3 * ring, damping: 0.5 + damping, pickup: 0.2 },
+        body: { type: a.role === "bass" ? "cello" : "guitar", mix: 0.5 },
+      },
+      volume: holds ? -8 : -5,
+    },
+    wood: {
+      physical: {
+        exciter: { type: "strike", hardness, position: 0.25, noise: 0.05 },
+        resonator: {
+          model: "bar",
+          structure: 0,
+          decay: 1.2 * ring,
+          damping: 0.55 + damping,
+          modes: 8,
+        },
+        body: { type: "tube", mix: 0.6 },
+      },
+      volume: -12,
+    },
+    metal: {
+      physical: {
+        exciter: holds
+          ? { type: "bow", pressure: 0.5, hardness, position: 0.3 }
+          : { type: "strike", hardness, position: 0.2, noise: 0.05 },
+        resonator: holds
+          ? { model: "glass", structure: 1, decay: 6, damping: 0.2, modes: 8, width: 0.6 }
+          : { model: "bar", structure: 0, decay: 4 * ring, damping: 0.15 + damping, modes: 8 },
+        body: { type: holds ? "none" : "tube", mix: 0.4 },
+      },
+      volume: holds ? -15 : -18,
+    },
+    skin: {
+      physical: {
+        exciter: { type: "strike", hardness, position: 0.35, noise: 0.15 },
+        resonator: {
+          model: "membrane",
+          structure: 0.4,
+          decay: 0.6 * ring,
+          damping: 0.5,
+          modes: 16,
+        },
+      },
+      volume: -12,
+    },
+  };
+  const m = M[a.material] ?? M.string;
+  // a slow start fades in a bow or a breath; a strike or a pluck needs its transient
+  const impulsive = m.physical?.exciter?.type === "pluck" || m.physical?.exciter?.type === "strike";
+  return {
+    source: "physical",
+    filters: [{ on: false }],
+    envs: [
+      { attack: impulsive ? 0.001 : attack, sustain: 1, release: short ? 0.4 : 1.5, velocity: 0 },
+    ],
+    physical: m.physical,
+    voice,
+    output: {
+      volume: m.volume,
+      drive: a.grit === "distorted" ? 0.4 : a.grit === "grit" ? 0.15 : 0,
+    },
+  };
 }
 
 // ---- Volume calibration ----
@@ -602,6 +740,26 @@ export function wizardPatch(answers: WizardAnswers): SynthPatch {
     voiceSpec.voices = 16;
   }
 
+  // ---- Plucked or struck (D260): a physical model with the answers' envelope and voice ----
+  if (a.kind === "struck") return sanitizePatch(makePatch(physicalSpec(a, voiceSpec, attack)));
+
+  // ---- Evolving (D260): oscillator 1 a wavetable whose position moves ----
+  if (a.kind === "evolving") {
+    const table: Record<string, string> = {
+      warm: "factory:tilt",
+      bright: "factory:filtered-saw",
+      hollow: "factory:odd-even",
+      glassy: "factory:metal",
+      nasal: "factory:formant",
+    };
+    Object.assign(osc1, { type: "wavetable", table: table[a.tone] ?? "factory:vowels" });
+    if (osc2) Object.assign(osc2, { type: "wavetable", table: table[a.tone] ?? "factory:vowels" });
+    // the mod envelope sweeps it as each note goes on, and an LFO keeps it moving
+    matrixSlots.push({ source: "env3", dest: "osc1.position", amount: 0.6, via: null });
+    if (a.move === "still")
+      matrixSlots.push({ source: "lfo3", dest: "osc1.position", amount: 0.15, via: null });
+  }
+
   // ---- Assemble the PatchSpec ----
   const oscArray: PatchSpec["osc"] = [osc1];
   if (osc2) oscArray[1] = osc2;
@@ -610,9 +768,18 @@ export function wizardPatch(answers: WizardAnswers): SynthPatch {
   // Filter env amount on the filter spec
   const filterSpecFull: Partial<Filter> = { ...filterModel, env: filterEnvAmount };
 
-  const envs: PatchSpec["envs"] = [ampEnv, { ...filterEnv }, {}];
+  const evolving = a.kind === "evolving";
+  const envs: PatchSpec["envs"] = [
+    ampEnv,
+    { ...filterEnv },
+    evolving ? { attack: 1.5, decay: 1.5, sustain: 0.6, release: 1 } : {},
+  ];
 
-  const lfos: PatchSpec["lfos"] = [lfo1, { mode: "global" as const }, { mode: "global" as const }];
+  const lfos: PatchSpec["lfos"] = [
+    lfo1,
+    { mode: "global" as const },
+    evolving ? { mode: "global" as const, rate: 0.2 } : { mode: "global" as const },
+  ];
 
   const spec: PatchSpec = {
     osc: oscArray,

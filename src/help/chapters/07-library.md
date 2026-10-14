@@ -61,7 +61,7 @@ Check the sounds' licensing before you publish music made with them.
 
 Under **Instruments** in the list on the left are the synths and sampled instruments, and under **Your sounds** what you made:
 
-- **Synths**: 64 built-in synths in the style of well-known songs and synths, grouped Bass, Leads, Pads, Keys, Plucks & stabs and FX. Hover over one to see what it's in the style of. The wand in the toolbar opens the [synth wizard](#instruments-synth-wizard).
+- **Synths**: 91 built-in synths, most in the style of well-known songs and synths, grouped Bass, Leads, Pads, Keys, Plucks & stabs, Percussion and FX; the wavetable ones are called “Wavetable · …” and the physical models “Physical · …” (type either word in the search). Hover over one to see what it's in the style of. The wand in the toolbar opens the [synth wizard](#instruments-synth-wizard).
 - **Pianos & keys**, **General MIDI** (all 128 GM sounds), **Mallets**, **Orchestral** (the Versilian Community Sample Library) and **Double bass**: sampled instruments. They download the first time you play one (a small cloud shows the ones that haven't been yet) and are kept after that. Right-click → **Make available offline** downloads one right away. The line at the top shows where the samples come from and their license.
 - **Your sounds**: synths you shaped, sounds you saved from a track (**Save to Your sounds**: a sample, a synth or a sampled instrument, with its SOUND knobs and effects), and instruments you bring:
   - **SoundFonts**: import a `.sf2` file like a sample (the import button, or drop it on the library). Each instrument inside it becomes one of Your sounds.

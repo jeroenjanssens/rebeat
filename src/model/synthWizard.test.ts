@@ -54,10 +54,12 @@ function wizardLevel(answers: WizardAnswers): { rms: number; peak: number; finit
 // ---- question tree ----
 
 describe("QUESTIONS", () => {
-  it("has 10 questions in order", () => {
+  it("has 12 questions in order", () => {
     const ids = QUESTIONS.map((q) => q.id);
     expect(ids).toEqual([
       "role",
+      "kind",
+      "material",
       "start",
       "then",
       "tone",
@@ -266,6 +268,26 @@ describe("wizardPatch validity", () => {
 // ---- wizardPatch: specific mappings ----
 
 describe("wizardPatch mappings", () => {
+  it("plucked or struck makes a physical model by its material (D260)", () => {
+    const p = wizardPatch({ role: "keys", kind: "struck", material: "wood" });
+    expect(p.source).toBe("physical");
+    expect(p.physical.resonator.model).toBe("bar");
+    expect(
+      wizardPatch({ role: "pad", kind: "struck", material: "string" }).physical.exciter.type,
+    ).toBe("bow");
+    expect(wizardSteps({ kind: "struck" }).map((q) => q.id)).toContain("material");
+    expect(wizardSteps({ kind: "synth" }).map((q) => q.id)).not.toContain("material");
+    expect(wizardName({ role: "keys", kind: "struck", material: "wood", tone: "warm" })).toBe(
+      "Warm Wooden Keys",
+    );
+  });
+
+  it("evolving makes oscillator 1 a wavetable that the mod envelope sweeps (D260)", () => {
+    const p = wizardPatch({ role: "pad", kind: "evolving", tone: "glassy" });
+    expect(p.osc[0]).toMatchObject({ type: "wavetable", table: "factory:metal" });
+    expect(p.matrix.some((m) => m.source === "env3" && m.dest === "osc1.position")).toBe(true);
+  });
+
   it("bass → mono mode + low octave (osc1 octave -1)", () => {
     const patch = wizardPatch({ role: "bass" });
     expect(patch.voice.mode).toBe("mono");
@@ -440,6 +462,14 @@ describe("wizardPatch loudness", () => {
     { role: "lead", tone: "glassy", grit: "clean", width: "focused", voice: "mono" },
     { role: "keys", tone: "warm", grit: "clean", width: "chorus", voice: "chords" },
     { role: "pluck", tone: "bright", grit: "clean", width: "focused", voice: "mono" },
+    // D260: plucked or struck (physical models), evolving (wavetables)
+    { role: "keys", kind: "struck", material: "string" },
+    { role: "keys", kind: "struck", material: "wood" },
+    { role: "keys", kind: "struck", material: "metal" },
+    { role: "pad", kind: "struck", material: "metal" },
+    { role: "lead", kind: "struck", material: "string", then: "holds" },
+    { role: "pad", kind: "evolving", tone: "warm" },
+    { role: "bass", kind: "evolving", tone: "bright" },
   ];
 
   for (const answers of loudnessCases) {
