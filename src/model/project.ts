@@ -51,6 +51,8 @@ export interface Project {
   automation?: AutomationLane[];
   /** Audio on the timeline (D188). */
   regions?: AudioRegion[];
+  /** The owners (track ids, bus ids, "master") whose lanes are hidden on the timeline (D233). */
+  timelineFolded?: string[];
 }
 
 export type PlayMode = "loop" | "song";

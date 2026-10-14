@@ -47,6 +47,8 @@ interface Props {
   hint?: string;
   /** A stepped lane (D229): its values' names, lowest first (2 or more). */
   steps?: string[];
+  /** Folded (D233): the curve drawn small, no handles, nothing to click. */
+  compact?: boolean;
 }
 
 /** Each drag is one undo step: its own merge key. */
@@ -63,7 +65,7 @@ export function CurveLane(p: Props) {
     useStore.getState().setUi({ pointSelection: { lane: p.laneKey, indexes } });
   const [box, setBox] = useState<{ x0: number; x1: number; y0: number; y1: number } | null>(null);
   const [readout, setReadout] = useState<{ x: number; y: number; text: string } | null>(null);
-  const pad = 4;
+  const pad = p.compact ? 2 : 4;
   const h = p.height - pad * 2;
   const y = (v: number) =>
     pad + h - ((Math.min(p.max, Math.max(p.min, v)) - p.min) / (p.max - p.min)) * h;
@@ -203,6 +205,8 @@ export function CurveLane(p: Props) {
       data-hint={p.hint}
       data-lane={p.laneKey}
       data-steps={n || undefined}
+      data-compact={p.compact || undefined}
+      pointerEvents={p.compact ? "none" : undefined}
       onPointerMove={(e) => {
         if (!n || e.buttons) return;
         const { px, py } = local(e);
@@ -221,30 +225,31 @@ export function CurveLane(p: Props) {
         }
       }}
     >
-      {levels.map((v, i) => (
-        <g key={`lvl${i}`} pointerEvents="none">
-          <line
-            x1={0}
-            x2={p.width}
-            y1={y(v)}
-            y2={y(v)}
-            stroke="var(--border)"
-            strokeWidth={1}
-            strokeDasharray="2 4"
-          />
-          {i % every === 0 && (
-            <text
-              x={3}
-              y={Math.min(p.height - 2, Math.max(8, y(v) + 3))}
-              fontSize={8}
-              fill="var(--text-faint)"
-              data-testid="step-label"
-            >
-              {p.steps![i]}
-            </text>
-          )}
-        </g>
-      ))}
+      {!p.compact &&
+        levels.map((v, i) => (
+          <g key={`lvl${i}`} pointerEvents="none">
+            <line
+              x1={0}
+              x2={p.width}
+              y1={y(v)}
+              y2={y(v)}
+              stroke="var(--border)"
+              strokeWidth={1}
+              strokeDasharray="2 4"
+            />
+            {i % every === 0 && (
+              <text
+                x={3}
+                y={Math.min(p.height - 2, Math.max(8, y(v) + 3))}
+                fontSize={8}
+                fill="var(--text-faint)"
+                data-testid="step-label"
+              >
+                {p.steps![i]}
+              </text>
+            )}
+          </g>
+        ))}
       {bars.map(([a, b], i) => (
         <rect
           key={`bar${i}`}
@@ -267,52 +272,53 @@ export function CurveLane(p: Props) {
           data-testid="lane-path"
         />
       )}
-      {p.points.map((pt) => {
-        const sel = selected.includes(pt.index);
-        return (
-          <g key={pt.index} opacity={pt.on ? 1 : 0.45}>
-            {pt.eased && pt.on && (
+      {!p.compact &&
+        p.points.map((pt) => {
+          const sel = selected.includes(pt.index);
+          return (
+            <g key={pt.index} opacity={pt.on ? 1 : 0.45}>
+              {pt.eased && pt.on && (
+                <circle
+                  cx={x(pt.q)}
+                  cy={y(pt.value)}
+                  r={7}
+                  fill="none"
+                  stroke={p.color}
+                  strokeWidth={1}
+                  opacity={0.5}
+                  pointerEvents="none"
+                />
+              )}
               <circle
                 cx={x(pt.q)}
                 cy={y(pt.value)}
-                r={7}
-                fill="none"
-                stroke={p.color}
-                strokeWidth={1}
-                opacity={0.5}
-                pointerEvents="none"
-              />
-            )}
-            <circle
-              cx={x(pt.q)}
-              cy={y(pt.value)}
-              r={sel ? 5 : 4}
-              fill={!pt.on ? "transparent" : sel ? "var(--select)" : "var(--panel)"}
-              stroke={sel ? "var(--select)" : p.color}
-              strokeWidth={1.5}
-              strokeDasharray={pt.on ? undefined : "2 2"}
-              className="cursor-grab"
-              data-testid="lane-point"
-              data-index={pt.index}
-              data-on={pt.on}
-              data-selected={sel}
-              onPointerDown={(e) => startDrag(e, pt)}
-              onDoubleClick={(e) => {
-                e.stopPropagation();
-                p.onDelete([pt.index]);
-                setSelected([]);
-              }}
-              onContextMenu={(e) => {
-                e.stopPropagation();
-                if (!sel) setSelected([pt.index]);
-                p.onMenu(pt.index, e);
-              }}
-            >
-              <title>{`${p.format(pt.value)}${pt.on ? "" : " (off)"}`}</title>
-            </circle>
-          </g>
-        );
-      })}
+                r={sel ? 5 : 4}
+                fill={!pt.on ? "transparent" : sel ? "var(--select)" : "var(--panel)"}
+                stroke={sel ? "var(--select)" : p.color}
+                strokeWidth={1.5}
+                strokeDasharray={pt.on ? undefined : "2 2"}
+                className="cursor-grab"
+                data-testid="lane-point"
+                data-index={pt.index}
+                data-on={pt.on}
+                data-selected={sel}
+                onPointerDown={(e) => startDrag(e, pt)}
+                onDoubleClick={(e) => {
+                  e.stopPropagation();
+                  p.onDelete([pt.index]);
+                  setSelected([]);
+                }}
+                onContextMenu={(e) => {
+                  e.stopPropagation();
+                  if (!sel) setSelected([pt.index]);
+                  p.onMenu(pt.index, e);
+                }}
+              >
+                <title>{`${p.format(pt.value)}${pt.on ? "" : " (off)"}`}</title>
+              </circle>
+            </g>
+          );
+        })}
       {box && (
         <rect
           x={Math.min(box.x0, box.x1)}

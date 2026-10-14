@@ -3,7 +3,7 @@
  * through the tempo map), the Tempo lane (D193), the tracks in miniature (mutes per section),
  * automation lanes (D186) and audio on the timeline (D188).
  */
-import { Circle, Minus, Plus, Repeat, Rows3, ScanLine } from "lucide-react";
+import { ChevronsDownUp, Circle, Minus, Plus, Repeat, Rows3, ScanLine } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { DragValue } from "../../components/DragValue";
 import { contextMenu, dropdown } from "../../components/Menu";
@@ -26,7 +26,9 @@ import {
   setTempoEase,
   setTempoOn,
   duplicateSections,
+  foldAllLanes,
   moveTempoChange,
+  showOnlyLanesOf,
   setStartTempo,
   setTempoRamp,
 } from "../../state/timelineActions";
@@ -317,6 +319,13 @@ export function Timeline() {
     };
   }, []);
 
+  // Follow selection (D234): only the selected track's lanes open
+  const followLanes = useSettings((s) => s.timelineFollowLanes);
+  const selectedTrack = useStore((s) => s.selectedTrackId);
+  useEffect(() => {
+    if (followLanes) showOnlyLanesOf([selectedTrack]);
+  }, [followLanes, selectedTrack]);
+
   // the playhead, and following it
   useEffect(
     () =>
@@ -473,6 +482,40 @@ export function Timeline() {
         >
           <Rows3 size={12} />
           <span className="text-ink">Tracks</span>
+        </button>
+        <button
+          className="field"
+          title="Fold and unfold the automation lanes"
+          data-hint="timeline.lanes"
+          data-testid="timeline-lanes"
+          onClick={(e) =>
+            dropdown(e.currentTarget, [
+              {
+                label: "Fold all lanes",
+                onSelect: () => {
+                  settings.set({ timelineFollowLanes: false });
+                  foldAllLanes(true);
+                },
+              },
+              {
+                label: "Unfold all lanes",
+                onSelect: () => {
+                  settings.set({ timelineFollowLanes: false });
+                  foldAllLanes(false);
+                },
+              },
+              { separator: true },
+              {
+                label: "Follow the selected track",
+                checked: settings.timelineFollowLanes,
+                onSelect: () =>
+                  settings.set({ timelineFollowLanes: !settings.timelineFollowLanes }),
+              },
+            ])
+          }
+        >
+          <ChevronsDownUp size={12} />
+          <span className="text-ink">Lanes</span>
         </button>
         <button
           className="tool-btn"

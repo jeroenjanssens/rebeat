@@ -269,7 +269,12 @@ export function deleteTempoChange(index: number) {
 /** The lane for a target (made if needed, with a point at q at `value`); returns its id. */
 export function automate(target: string, q: number, value: number): string {
   const existing = store().project.automation?.find((l) => l.target === target);
-  if (existing) return existing.id;
+  // the lane shows: unfolded, and its owner's lanes too (D234)
+  setOwnerFolded(ownerId(target), false);
+  if (existing) {
+    setLaneFolded(existing.id, false);
+    return existing.id;
+  }
   const lane: AutomationLane = { id: uid("auto"), target, on: true, points: [] };
   const steps = laneSteps(store().project, target);
   if (steps) value = snapStep(value, steps);
@@ -546,3 +551,58 @@ export function deleteRegion(id: string) {
     if (p.regions && !p.regions.length) delete p.regions;
   });
 }
+
+// ---------- folding lanes (D233, D234) ----------
+
+/** Fold a lane to a slim row, or open it (a view: no undo step). */
+export function setLaneFolded(laneId: string, folded: boolean) {
+  store().editView((p) => {
+    const l = laneOf(p, laneId);
+    if (!l) return;
+    if (folded) l.folded = true;
+    else delete l.folded;
+  });
+}
+
+/** Hide an owner's lanes behind its row (a track id, a bus id, "master"), or show them. */
+export function setOwnerFolded(owner: string, folded: boolean) {
+  if (!!store().project.timelineFolded?.includes(owner) === folded) return;
+  store().editView((p) => {
+    const list = (p.timelineFolded ?? []).filter((o) => o !== owner);
+    if (folded) list.push(owner);
+    if (list.length) p.timelineFolded = list;
+    else delete p.timelineFolded;
+  });
+}
+
+/** Fold every lane and owner, or open them all. */
+export function foldAllLanes(folded: boolean) {
+  store().editView((p) => {
+    for (const l of p.automation ?? []) {
+      if (folded) l.folded = true;
+      else delete l.folded;
+    }
+    if (!folded) delete p.timelineFolded;
+    else {
+      const owners = new Set((p.automation ?? []).map((l) => ownerId(l.target)));
+      if (owners.size) p.timelineFolded = [...owners];
+    }
+  });
+}
+
+/** Open only these owners' lanes (Follow selection, D234): the others' fold behind their rows. */
+export function showOnlyLanesOf(owners: string[]) {
+  store().editView((p) => {
+    const all = new Set((p.automation ?? []).map((l) => ownerId(l.target)));
+    const folded = [...all].filter((o) => !owners.includes(o));
+    for (const l of p.automation ?? []) if (owners.includes(ownerId(l.target))) delete l.folded;
+    if (folded.length) p.timelineFolded = folded;
+    else delete p.timelineFolded;
+  });
+}
+
+/** Who a lane belongs to, as the fold list names it. */
+const ownerId = (target: string) => {
+  const [kind, id] = target.split(":");
+  return kind === "track" || kind === "bus" ? id : "master";
+};

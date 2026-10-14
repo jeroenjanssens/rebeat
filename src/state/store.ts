@@ -107,6 +107,11 @@ interface State extends UiState {
   setUi: (partial: Partial<UiState>) => void;
   /** Switch loop/song: saved with the project, but not an undo step (it's transport state). */
   setPlayMode: (mode: PlayMode) => void;
+  /**
+   * Change how the project is shown (folded lanes, D233): saved with it, but not an undo step,
+   * and undo doesn't bring the old view back (the history gets the same change).
+   */
+  editView: (recipe: (p: Draft<Project>) => void) => void;
 }
 
 const project = demoProject();
@@ -243,6 +248,13 @@ export const useStore = create<State>()((set, get) => ({
     // the undo history keeps the play mode the user chose
     const keep = (p: Project) => ({ ...p, playMode });
     set({ project: keep(project), past: past.map(keep), future: future.map(keep) });
+  },
+  editView: (recipe) => {
+    const { project, past, future } = get();
+    const next = produce(project, recipe);
+    if (next === project) return;
+    const keep = (p: Project) => produce(p, recipe);
+    set({ project: next, past: past.map(keep), future: future.map(keep) });
   },
 }));
 

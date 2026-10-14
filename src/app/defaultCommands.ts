@@ -531,6 +531,31 @@ export function defaultCommands(): Command[] {
       keys: ["Shift+/"],
       run: () => shell().set({ shortcutsOpen: true }),
     },
+    // ---- the timeline's lanes (D234) ----
+    {
+      id: "timeline.foldLanes",
+      title: "Fold all automation lanes",
+      category: "View",
+      run: () => {
+        settings().set({ timelineFollowLanes: false });
+        void import("../state/timelineActions").then((m) => m.foldAllLanes(true));
+      },
+    },
+    {
+      id: "timeline.unfoldLanes",
+      title: "Unfold all automation lanes",
+      category: "View",
+      run: () => {
+        settings().set({ timelineFollowLanes: false });
+        void import("../state/timelineActions").then((m) => m.foldAllLanes(false));
+      },
+    },
+    {
+      id: "timeline.followLanes",
+      title: "Automation lanes follow the selected track",
+      category: "View",
+      run: () => settings().set({ timelineFollowLanes: !settings().timelineFollowLanes }),
+    },
     ...LAYOUT_PRESETS.map((l, i) => ({
       id: `layout.${l.id}`,
       title: `Layout: ${l.label}`,

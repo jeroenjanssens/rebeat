@@ -340,8 +340,16 @@ function normalizeArrangement(p: Project) {
       l.on ??= true;
       l.points = (l.points ?? []).filter(anchored);
       for (const pt of l.points) pt.value = Math.max(0, Math.min(1, pt.value));
+      if (l.folded !== true) delete l.folded;
     }
     if (!p.automation.length) delete p.automation;
+  }
+  if (p.timelineFolded !== undefined) {
+    const list = Array.isArray(p.timelineFolded)
+      ? p.timelineFolded.filter((o) => typeof o === "string")
+      : [];
+    if (list.length) p.timelineFolded = list;
+    else delete p.timelineFolded;
   }
   if (p.regions) {
     p.regions = p.regions.filter(

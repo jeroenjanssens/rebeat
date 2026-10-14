@@ -3,7 +3,7 @@
  * the track in that section only (D183). Clip tracks show their audio regions (D188), and every
  * automation lane (D186) sits under its track, the buses or the master.
  */
-import { Plus } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus } from "lucide-react";
 import { Fragment, type ReactNode } from "react";
 import { contextMenu, type MenuItem } from "../../components/Menu";
 import { curveAt, layout, toSong } from "../../model/arrangement";
@@ -35,14 +35,16 @@ import {
   movePoint,
   retargetLane,
   insertOnCurve,
+  setLaneFolded,
   setLaneOn,
+  setOwnerFolded,
   setPointEase,
   setPointsOn,
   toggleMuteHere,
 } from "../../state/timelineActions";
 import { CurveLane, type LanePoint } from "./CurveLane";
 import { openInInspector, pointMenu } from "./pointMenu";
-import { HEADER, LANE_H, TRACK_H, snapQ } from "./geometry";
+import { HEADER, LANE_FOLDED_H, LANE_H, TRACK_H, snapQ } from "./geometry";
 import { RegionBoxes } from "./RegionBox";
 import { ViewCanvas, type View } from "./ViewCanvas";
 
@@ -164,23 +166,87 @@ function Lanes({
             stepped: steps.length > 0,
           });
         };
+        const folded = !!lane.folded;
+        const fold = (
+          <button
+            className="shrink-0 text-faint hover:text-ink"
+            title={folded ? "Unfold this lane" : "Fold this lane to a slim row"}
+            data-hint="timeline.lane.fold"
+            data-testid="lane-fold"
+            onClick={() => {
+              // folding by hand: the lanes no longer follow the selection (D234)
+              useSettings.getState().set({ timelineFollowLanes: false });
+              setLaneFolded(lane.id, !folded);
+            }}
+          >
+            {folded ? <ChevronRight size={11} /> : <ChevronDown size={11} />}
+          </button>
+        );
+        if (folded)
+          return (
+            <Row
+              key={lane.id}
+              height={LANE_FOLDED_H}
+              header={
+                <div
+                  className="flex h-full items-center gap-1 pl-2.5 pr-1"
+                  data-testid="lane-folded"
+                  onDoubleClick={() => openInInspector({ kind: "lane", id: lane.id })}
+                >
+                  {fold}
+                  <span
+                    className={`min-w-0 flex-1 truncate text-[9.5px] ${knob ? "text-dim" : "text-faint"}`}
+                    title={knob?.label}
+                  >
+                    {laneTitle(project, lane.target, true)}
+                  </span>
+                  {!lane.on && <span className="text-[8.5px] text-faint">off</span>}
+                </div>
+              }
+            >
+              <CurveLane
+                laneKey={lane.id}
+                points={points}
+                curve={(q) => curveAt(resolved, q)}
+                ppq={ppq}
+                width={width}
+                height={LANE_FOLDED_H}
+                min={0}
+                max={1}
+                color={token("accent") || "#7dd3fc"}
+                dimmed={!lane.on || !!overridden[lane.target]}
+                format={(v) => (def ? def.format(v) : `${Math.round(v * 100)}%`)}
+                snap={(q) => q}
+                onAdd={() => -1}
+                onMove={() => {}}
+                onDelete={() => {}}
+                onMenu={() => {}}
+                steps={steps.length ? steps : undefined}
+                compact
+                testId="automation-lane"
+              />
+            </Row>
+          );
         return (
           <Row
             key={lane.id}
             height={LANE_H}
             header={
               <div
-                className="flex h-full flex-col justify-center gap-0.5 pl-4 pr-1"
+                className="flex h-full flex-col justify-center gap-0.5 pl-1.5 pr-1"
                 onDoubleClick={() => openInInspector({ kind: "lane", id: lane.id })}
                 title="Double-click: edit its points in the Inspector"
               >
-                <span
-                  className={`truncate text-[10px] ${knob ? "text-ink" : "text-faint"}`}
-                  title={knob?.label ?? "Pick another knob in the lane's menu, or undo"}
-                >
-                  {laneTitle(project, lane.target, true)}
+                <span className="flex min-w-0 items-center gap-1">
+                  {fold}
+                  <span
+                    className={`truncate text-[10px] ${knob ? "text-ink" : "text-faint"}`}
+                    title={knob?.label ?? "Pick another knob in the lane's menu, or undo"}
+                  >
+                    {laneTitle(project, lane.target, true)}
+                  </span>
                 </span>
-                <span className="flex items-center gap-1">
+                <span className="flex items-center gap-1 pl-3.5">
                   <button
                     className="tool-btn !h-4 !min-w-0 !px-1 text-[9px]"
                     data-active={lane.on}
@@ -256,6 +322,26 @@ function Lanes({
         );
       })}
     </>
+  );
+}
+
+/** An owner's lanes behind its row (D233): ▾ shows them, ▸ with their count hides them. */
+function OwnerFold({ owner, count, folded }: { owner: string; count: number; folded: boolean }) {
+  if (!count) return <span className="w-[11px] shrink-0" />;
+  return (
+    <button
+      className="flex shrink-0 items-center text-faint hover:text-ink"
+      title={folded ? `Show its ${count} automation lanes` : "Hide its automation lanes"}
+      data-hint="timeline.owner.fold"
+      data-testid="owner-fold"
+      onClick={() => {
+        useSettings.getState().set({ timelineFollowLanes: false });
+        setOwnerFolded(owner, !folded);
+      }}
+    >
+      {folded ? <ChevronRight size={11} /> : <ChevronDown size={11} />}
+      {folded && <span className="num text-[8.5px]">{count}</span>}
+    </button>
   );
 }
 
@@ -365,6 +451,7 @@ export function TrackRows({
         const own = lanesOf(
           (target) => targetOwner(target).kind === "track" && targetOwner(target).id === t.id,
         );
+        const hidden = !!project.timelineFolded?.includes(t.id);
         return (
           <Fragment key={t.id}>
             <Row
@@ -374,6 +461,7 @@ export function TrackRows({
                   className="flex h-full items-center gap-1 px-1.5"
                   data-track-row-timeline={t.name}
                 >
+                  <OwnerFold owner={t.id} count={own.length} folded={hidden} />
                   <span className="h-2.5 w-1 shrink-0 rounded-sm" style={{ background: t.color }} />
                   <span className="min-w-0 flex-1 truncate text-[10px] font-semibold uppercase tracking-wider text-ink">
                     {t.name}
@@ -453,7 +541,15 @@ export function TrackRows({
                 {t.mode === "clip" && <RegionBoxes project={project} track={t} ppq={ppq} />}
               </div>
             </Row>
-            <Lanes project={project} lanes={own} ppq={ppq} width={width} overridden={overridden} />
+            {!hidden && (
+              <Lanes
+                project={project}
+                lanes={own}
+                ppq={ppq}
+                width={width}
+                overridden={overridden}
+              />
+            )}
           </Fragment>
         );
       })}
@@ -463,12 +559,14 @@ export function TrackRows({
       ].map((o) => {
         const own = lanesOf((target) => target === o.prefix || target.startsWith(`${o.prefix}:`));
         if (!own.length) return null;
+        const hidden = !!project.timelineFolded?.includes(o.id);
         return (
           <Fragment key={o.id}>
             <Row
               height={TRACK_H}
               header={
                 <div className="flex h-full items-center gap-1 px-1.5">
+                  <OwnerFold owner={o.id} count={own.length} folded={hidden} />
                   <span className="min-w-0 flex-1 truncate text-[10px] font-semibold uppercase tracking-wider text-dim">
                     {o.name}
                   </span>
@@ -490,7 +588,15 @@ export function TrackRows({
             >
               <div style={{ width, height: TRACK_H }} />
             </Row>
-            <Lanes project={project} lanes={own} ppq={ppq} width={width} overridden={overridden} />
+            {!hidden && (
+              <Lanes
+                project={project}
+                lanes={own}
+                ppq={ppq}
+                width={width}
+                overridden={overridden}
+              />
+            )}
           </Fragment>
         );
       })}

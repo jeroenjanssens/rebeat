@@ -9,6 +9,8 @@ export const RULER_H = 34;
 export const SECTIONS_H = 58;
 export const TRACK_H = 22;
 export const LANE_H = 44;
+/** A folded automation lane (D233). */
+export const LANE_FOLDED_H = 16;
 export const TEMPO_OPEN_H = 64;
 export const TEMPO_FOLDED_H = 14;
 

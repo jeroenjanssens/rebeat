@@ -84,6 +84,21 @@ const hints: Hints = {
     text: "Show every track, only the tracks with automation or audio on the timeline, or none.",
     guide: "timeline",
   },
+  "timeline.lanes": {
+    title: "Lanes",
+    text: "Fold every automation lane to a slim row, or open them all. Follow the selected track keeps only the selected track's lanes open: choose another track and its lanes open instead.",
+    guide: "timeline-folding-lanes",
+  },
+  "timeline.lane.fold": {
+    title: "Fold the lane",
+    text: "Fold this lane to a slim row with its curve drawn small, or open it again. A folded lane still plays.",
+    guide: "timeline-folding-lanes",
+  },
+  "timeline.owner.fold": {
+    title: "Its lanes",
+    text: "Hide this row's automation lanes (the number says how many), or show them again, each folded or open as you left it.",
+    guide: "timeline-folding-lanes",
+  },
   "timeline.automate": {
     title: "Add automation",
     text: "Pick a knob to automate: tracks, buses and the master. The lane starts with a point at the start marker, at the knob's value.",

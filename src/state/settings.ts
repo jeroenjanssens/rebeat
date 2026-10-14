@@ -93,6 +93,8 @@ export interface Settings {
   timelineZoom: number;
   timelineSnap: TimelineSnap;
   timelineTracks: "all" | "used" | "none";
+  /** Only the selected track's lanes open on the timeline (D234). */
+  timelineFollowLanes: boolean;
   /** The Tempo lane open (else a thin line). */
   timelineTempoOpen: boolean;
   /** A Clip take recorded in Song mode goes on the timeline where it was recorded (D188). */
@@ -231,6 +233,7 @@ export const DEFAULT_SETTINGS: Settings = {
   timelineZoom: 10,
   timelineSnap: "bar",
   timelineTracks: "all",
+  timelineFollowLanes: false,
   timelineTempoOpen: false,
   recordToTimeline: false,
   countInBars: 1,

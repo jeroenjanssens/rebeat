@@ -208,6 +208,8 @@ export interface AutomationPoint extends SongAnchor {
 export interface AutomationLane {
   id: string;
   target: string;
+  /** Folded on the timeline to a slim row (D233, schema 12); it still plays. */
+  folded?: boolean;
   /** Off: the knob's own value plays. */
   on: boolean;
   points: AutomationPoint[];

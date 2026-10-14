@@ -102,6 +102,16 @@ Each point has an **ease in** (how the curve arrives at it) and an **ease out** 
 
 The **strength** (0–100%) sets how much: 0% is a straight line. Tempo changes ease their ramps the same way (Linear, Smooth or Exponential). On the timeline, a ring around a point means it has an ease; a click right on the line adds a point on the curve, a click elsewhere at that height.
 
+## Folding lanes
+
+Lanes take room. Fold the ones you aren't working on:
+
+- The **▾** in a lane's header folds it to a slim row with its curve drawn small; **▸** opens it again. A folded lane still plays.
+- The **▾** in a track's row (or a bus's, the master's) hides all its lanes at once; folded, it shows how many there are. Opened again, each lane is folded or open as you left it.
+- **Lanes ▾** in the toolbar folds or unfolds every lane. **Follow the selected track** keeps only the selected track's lanes open: choose another track (in the drum machine, the mixer or here) and its lanes open instead. Folding by hand turns it off, so your clicks are never undone.
+
+Folds are saved with the project, but they aren't undo steps: ⌘Z doesn't unfold anything. The commands are in the palette (**Fold all automation lanes**, **Unfold all automation lanes**, **Automation lanes follow the selected track**), and you can give them keys in Settings.
+
 ## Audio on the timeline
 
 A sample on the timeline plays in song time, across sections: a vocal line over a section change, a long take, a riser into the drop.
