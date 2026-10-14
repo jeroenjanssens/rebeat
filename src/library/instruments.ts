@@ -144,7 +144,7 @@ const smplr = (
 });
 
 /** Built-in and streamed instruments (your own are added by the library). */
-const SYNTH_GROUPS = ["Bass", "Leads", "Pads", "Keys", "Plucks & stabs", "FX"];
+const SYNTH_GROUPS = ["Bass", "Leads", "Pads", "Keys", "Plucks & stabs", "Percussion", "FX"];
 
 export const CATALOG: CatalogInstrument[] = [
   ...[...FACTORY_SYNTHS]

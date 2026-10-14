@@ -148,7 +148,6 @@ export class PhysVoice {
   private outL = new Float64Array(MAX_MODES);
   private outR = new Float64Array(MAX_MODES);
   private modes = 0;
-  private last = 0;
   private ratios: number[] = [];
   private ratioKey = "";
 
@@ -163,6 +162,7 @@ export class PhysVoice {
   private driveDown = 0.01;
   private amp = 1;
   private continuous = false;
+  private impulseNorm = 1;
 
   // ---- body ----
   private bodyL: Biquad[] = Array.from({ length: 6 }, () => new Biquad());
@@ -185,7 +185,7 @@ export class PhysVoice {
     this.zr.fill(0);
     this.zi.fill(0);
     this.lp = this.ap1x = this.ap1y = this.ap2x = this.ap2y = 0;
-    this.dc = this.dcY = this.exLp = this.last = this.jetX = this.jetY = 0;
+    this.dc = this.dcY = this.exLp = this.jetX = this.jetY = 0;
     this.burst = this.burstLen = this.strikeLen = this.drive = 0;
     for (const q of [...this.bodyL, ...this.bodyR]) q.clear();
     this.peak = 0;
@@ -214,6 +214,10 @@ export class PhysVoice {
       this.burst = this.strikeLen;
       this.burstLen = this.strikeLen;
     }
+    // a bank of modes adds up an impulse (a waveguide holds it): the same area for any length,
+    // so a soft mallet isn't louder than a hard one
+    this.impulseNorm =
+      !this.continuous && model !== "string" && model !== "tube" ? 2 / this.burstLen : 1;
     // the exciter's brightness: a one-pole low-pass on its noise
     this.exA = Math.exp((-TWO_PI * (300 + hard * hard * 15000)) / sr);
     // continuous exciters ramp in, softer ones slower
@@ -297,8 +301,9 @@ export class PhysVoice {
         this.cr[k] = R * Math.cos(th);
         this.ci[k] = R * Math.sin(th);
         const level = modeLevel(r.model, i) * modeShape(r.model, i, pos);
-        // continuous exciters reach a level that grows with the partial's ring: scale them down
-        this.inGain[k] = level * (this.continuous ? Math.min(1, (1 - R) * 60) : 1);
+        // a continuous exciter builds up as much as a partial rings: √(2(1 − R)) keeps the
+        // level the same for any decay
+        this.inGain[k] = level * (this.continuous ? Math.sqrt(2 * (1 - R)) * 3 : 1);
         this.outL[k] = modeShape(r.model, i, pickup);
         this.outR[k] = modeShape(r.model, i, clamp(pickup + r.width * 0.3, 0.02, 0.98));
         norm += level * level;
@@ -352,14 +357,15 @@ export class PhysVoice {
       const x = i / this.burstLen;
       const noise = rand();
       this.exLp = (1 - this.exA) * noise + this.exA * this.exLp;
+      const g = this.amp * this.impulseNorm;
       if (e.type === "strike") {
         // a raised cosine (the mallet's contact), with a little noise
         const pulse = 0.5 - 0.5 * Math.cos(TWO_PI * x);
-        return this.amp * (pulse * (1 - e.noise * 0.7) + this.exLp * e.noise) * 2;
+        return g * (pulse * (1 - e.noise * 0.7) + this.exLp * e.noise) * 2;
       }
       // a pluck: a triangle (the string pulled aside) and filtered noise
       const tri = x < 0.5 ? x * 2 : 2 - x * 2;
-      return this.amp * (tri * (1 - e.noise) + this.exLp * (0.3 + e.noise)) * 1.5;
+      return g * (tri * (1 - e.noise) + this.exLp * (0.3 + e.noise)) * 1.5;
     }
     const d = this.drive * this.amp;
     if (d < 1e-5) return 0;
@@ -403,7 +409,7 @@ export class PhysVoice {
         const dv = bowV - (bridge + nut);
         inj = dv * bowTable(dv, this.pressure);
         if (e.noise > 0) inj += rand() * e.noise * 0.002 * this.drive;
-      } else inj = this.excite(p, input) * 0.5 * this.feed();
+      } else inj = this.excite(p, input) * (this.continuous ? 0.5 * this.feed() : 1);
       this.b[this.wb] = bridge + inj;
       this.a[this.wa] = nut + inj;
       this.wa = (this.wa + 1) & MASK;
@@ -456,14 +462,9 @@ export class PhysVoice {
       this.wa = (this.wa + 1) & MASK;
       l = rr = out * this.blowGain;
     } else {
-      let x = this.excite(p, input);
-      if (e.type === "bow") {
-        // a bow on a bar or a bowl: friction against how it moves now
-        const bowV = this.drive * this.amp * (0.2 + this.pressure * 0.8);
-        const dv = bowV - this.last * 2;
-        x = dv * bowTable(dv, this.pressure) * 0.5 + x * 0.2;
-      }
-      let sum = 0;
+      // (a bow on a bar, a bell or a bowl is its rosin's noise: the partials pick their notes
+      // out of it, as a singing bowl does)
+      const x = this.excite(p, input);
       const { zr: ZR, zi: ZI, cr: CR, ci: CI, inGain: IN, outL: OL, outR: OR } = this;
       for (let k = 0, n = this.modes; k < n; k++) {
         const zr = ZR[k];
@@ -474,11 +475,9 @@ export class PhysVoice {
         ZI[k] = ni;
         l += ni * OL[k];
         rr += ni * OR[k];
-        sum += ni;
       }
-      this.last = sum / Math.max(1, this.modes);
-      l *= 0.5;
-      rr *= 0.5;
+      l *= 1.5;
+      rr *= 1.5;
     }
     // the body, blended in
     if (this.bodyMix > 0) {

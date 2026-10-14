@@ -4,7 +4,8 @@
  */
 import { makePatch, type PatchSpec, type SynthPatch } from "../model/synth";
 
-export type SynthGroup = "Bass" | "Leads" | "Pads" | "Keys" | "Plucks & stabs" | "FX";
+export type SynthGroup =
+  "Bass" | "Leads" | "Pads" | "Keys" | "Plucks & stabs" | "Percussion" | "FX";
 
 export interface FactorySynth {
   id: string;
@@ -31,6 +32,18 @@ function voiced(spec: PatchSpec): SynthPatch {
     voice: { glideMode: "always", ...spec.voice },
     output: { spread: 0, ...spec.output },
   });
+}
+
+/** A physical model's patch (D249): no filter, an amp envelope that leaves the decay to it. */
+function phys(physical: PatchSpec["physical"], spec: PatchSpec = {}, volume = -12): PatchSpec {
+  return {
+    source: "physical",
+    filters: [{ on: false }],
+    envs: [{ attack: 0.001, sustain: 1, release: 2, velocity: 0 }],
+    physical,
+    output: { volume },
+    ...spec,
+  };
 }
 
 const synth = (
@@ -1269,6 +1282,485 @@ export const FACTORY_SYNTHS: FactorySynth[] = [
       output: { volume: -16 },
     },
     "ring modulation with a warbling LFO",
+  ),
+
+  // ---- wavetables (D258): the position moves, by envelope, LFO or macro ----
+  synth(
+    "wt-vowel-pad",
+    "Wavetable · Vowel Pad",
+    "Pads",
+    {
+      osc: [
+        { type: "wavetable", table: "factory:vowels", position: 0.05, unison: 3, detune: 16 },
+        { type: "wavetable", table: "factory:vowels", position: 0.3, octave: -1, level: 0.45 },
+      ],
+      filters: [{ cutoff: 6000, reso: 0.1, keytrack: 0.3 }],
+      envs: [
+        { attack: 0.35, decay: 0.5, sustain: 0.9, release: 1.6 },
+        {},
+        { attack: 2.5, decay: 2, sustain: 0.6, release: 2 },
+      ],
+      lfos: [{ rate: 0.15 }],
+      matrix: [
+        { source: "env3", dest: "osc1.position", amount: 0.7 },
+        { source: "lfo1", dest: "osc2.position", amount: 0.25 },
+      ],
+      output: { volume: -14, spread: 0.4 },
+    },
+    "a choir of vowels opening as each chord holds",
+  ),
+  synth(
+    "wt-growl-bass",
+    "Wavetable · Growl Bass",
+    "Bass",
+    {
+      osc: [
+        { type: "wavetable", table: "factory:fm", position: 0.35, warp: "sync", warpAmount: 0.2 },
+      ],
+      sub: { level: 0.5 },
+      filters: [{ model: "ladder", cutoff: 900, reso: 0.25, env: 2.5 }],
+      envs: [
+        { decay: 0.4, sustain: 0.8, release: 0.15 },
+        { decay: 0.25, sustain: 0.2 },
+      ],
+      lfos: [{ sync: "1/8", shape: "triangle" }],
+      matrix: [{ source: "lfo1", dest: "osc1.position", amount: 0.35 }],
+      voice: { mode: "mono", glide: 0.04 },
+      output: { volume: -7 },
+    },
+    "a dubstep-style growl: FM frames and sync, the position on the beat",
+  ),
+  synth(
+    "wt-glass-keys",
+    "Wavetable · Glass Keys",
+    "Keys",
+    {
+      osc: [
+        { type: "wavetable", table: "factory:metal", position: 0.15 },
+        { type: "wavetable", table: "factory:harmonics", position: 0.25, octave: 1, level: 0.35 },
+      ],
+      filters: [{ cutoff: 9000, reso: 0.05, keytrack: 0.5 }],
+      envs: [
+        { decay: 1.4, sustain: 0.15, release: 0.9, velocity: 0.6 },
+        {},
+        { decay: 0.8, sustain: 0, release: 0.8 },
+      ],
+      matrix: [{ source: "env3", dest: "osc1.position", amount: 0.5 }],
+      output: { volume: -10 },
+    },
+    "glassy metallic keys whose shimmer fades with each note",
+  ),
+  synth(
+    "wt-digital-pluck",
+    "Wavetable · Digital Pluck",
+    "Plucks & stabs",
+    {
+      osc: [{ type: "wavetable", table: "factory:bitcrush", position: 0, smooth: false }],
+      filters: [{ cutoff: 7000, reso: 0.1 }],
+      envs: [
+        { decay: 0.35, sustain: 0, release: 0.25 },
+        {},
+        { decay: 0.3, sustain: 0, release: 0.3 },
+      ],
+      matrix: [{ source: "env3", dest: "osc1.position", amount: 0.8 }],
+      output: { volume: -3 },
+    },
+    "a crunchy video-game pluck stepping through its frames",
+  ),
+  synth(
+    "wt-evolving-pad",
+    "Wavetable · Evolving Pad",
+    "Pads",
+    {
+      osc: [
+        { type: "wavetable", table: "factory:formant", position: 0.2, unison: 4, detune: 20 },
+        { type: "wavetable", table: "factory:comb", position: 0.5, level: 0.5, semi: 7 },
+      ],
+      filters: [{ cutoff: 4500, reso: 0.15 }],
+      envs: [{ attack: 1.6, decay: 1, sustain: 0.9, release: 3 }],
+      lfos: [{ rate: 0.07 }, { rate: 0.5 }, { rate: 0.11, shape: "triangle" }],
+      matrix: [
+        { source: "lfo1", dest: "osc1.position", amount: 0.5 },
+        { source: "lfo3", dest: "osc2.position", amount: 0.4 },
+      ],
+      output: { volume: -8, spread: 0.5 },
+    },
+    "a slow-moving formant pad that never sounds the same twice",
+  ),
+  synth(
+    "wt-choir-lead",
+    "Wavetable · Choir Lead",
+    "Leads",
+    {
+      osc: [{ type: "wavetable", table: "factory:choir", position: 0.6, unison: 3, detune: 10 }],
+      filters: [{ cutoff: 5000, reso: 0.1 }],
+      envs: [{ attack: 0.08, decay: 0.5, sustain: 0.85, release: 0.6 }],
+      lfos: [{ rate: 5.2, delay: 0.4 }],
+      matrix: [
+        { source: "lfo1", dest: "pitch", amount: 0.006 },
+        { source: "velocity", dest: "osc1.position", amount: 0.3 },
+      ],
+      voice: { mode: "legato", glide: 0.08 },
+      output: { volume: -6 },
+    },
+    "a singing lead: “oo” when played softly, “ah” when played hard",
+  ),
+  synth(
+    "wt-hoover",
+    "Wavetable · Hoover",
+    "Leads",
+    {
+      osc: [
+        { type: "wavetable", table: "factory:pwm", position: 0.3, unison: 7, detune: 45 },
+        { type: "wavetable", table: "factory:filtered-saw", position: 0.8, octave: -1, level: 0.6 },
+      ],
+      filters: [{ cutoff: 6000, reso: 0.1 }],
+      envs: [
+        { attack: 0.02, decay: 0.5, sustain: 0.9, release: 0.4 },
+        {},
+        { attack: 0.001, decay: 0.25, sustain: 0, release: 0.2 },
+      ],
+      lfos: [{ rate: 0.6 }],
+      matrix: [
+        { source: "env3", dest: "pitch", amount: -0.08 },
+        { source: "lfo1", dest: "osc1.position", amount: 0.3 },
+      ],
+      voice: { mode: "mono", glide: 0.15 },
+      output: { volume: -11 },
+    },
+    "the rave hoover: a wide stack of pulses that swoops into each note",
+  ),
+  synth(
+    "wt-comb-bass",
+    "Wavetable · Comb Bass",
+    "Bass",
+    {
+      osc: [{ type: "wavetable", table: "factory:comb", position: 0.15 }],
+      sub: { level: 0.4 },
+      filters: [{ cutoff: 2500, reso: 0.1 }],
+      envs: [{ decay: 0.5, sustain: 0.6, release: 0.15 }, {}, { decay: 0.45, sustain: 0.1 }],
+      matrix: [{ source: "env3", dest: "osc1.position", amount: 0.6 }],
+      voice: { mode: "mono", glide: 0.03 },
+      output: { volume: -9 },
+    },
+    "a bass whose notches sweep with every note",
+  ),
+  synth(
+    "wt-organ",
+    "Wavetable · Organ",
+    "Keys",
+    {
+      osc: [{ type: "wavetable", table: "factory:organ", position: 3 / 7, smooth: false }],
+      filters: [{ cutoff: 9000, reso: 0, keytrack: 0.3 }],
+      envs: [{ attack: 0.005, decay: 0.1, sustain: 1, release: 0.08 }],
+      lfos: [{ rate: 6.5 }],
+      matrix: [{ source: "lfo1", dest: "amp", amount: 0.08 }],
+      output: { volume: -13 },
+    },
+    "drawbar registrations; Character steps through them",
+  ),
+  synth(
+    "wt-riser",
+    "Wavetable · Riser",
+    "FX",
+    {
+      osc: [{ type: "wavetable", table: "factory:grit", position: 0, unison: 5, detune: 30 }],
+      filters: [{ cutoff: 8000, reso: 0.2 }],
+      envs: [
+        { attack: 0.8, decay: 1, sustain: 1, release: 1.5 },
+        {},
+        { attack: 6, decay: 1, sustain: 1, release: 1 },
+      ],
+      matrix: [
+        { source: "env3", dest: "osc1.position", amount: 1 },
+        { source: "env3", dest: "pitch", amount: 0.5 },
+      ],
+      output: { volume: -12 },
+    },
+    "noise frozen into cycles, brightening and rising as you hold it",
+  ),
+
+  // ---- physical models (D258): exciter → resonator → body ----
+  synth(
+    "pm-nylon-guitar",
+    "Physical · Nylon Guitar",
+    "Plucks & stabs",
+    phys(
+      {
+        exciter: { type: "pluck", hardness: 0.4, position: 0.18, noise: 0.15 },
+        resonator: { model: "string", decay: 3, damping: 0.6, pickup: 0.2, release: 0.6 },
+        body: { type: "guitar", mix: 0.55 },
+      },
+      {},
+      -5,
+    ),
+    "a classical guitar: a soft thumb on nylon, a wooden body",
+  ),
+  synth(
+    "pm-steel-harp",
+    "Physical · Steel Harp",
+    "Plucks & stabs",
+    phys(
+      {
+        exciter: { type: "pluck", hardness: 0.65, position: 0.3, noise: 0.1 },
+        resonator: {
+          model: "string",
+          decay: 6,
+          damping: 0.25,
+          pickup: 0.45,
+          width: 0.5,
+          release: 0.2,
+        },
+      },
+      {},
+      -16,
+    ),
+    "bright steel strings that ring on",
+  ),
+  synth(
+    "pm-kalimba",
+    "Physical · Kalimba",
+    "Plucks & stabs",
+    phys(
+      {
+        exciter: { type: "pluck", hardness: 0.6, position: 0.12, noise: 0.05 },
+        resonator: { model: "bar", structure: 1, decay: 1.6, damping: 0.6, modes: 8 },
+        body: { type: "box", mix: 0.35, size: 0.7 },
+      },
+      {},
+      1,
+    ),
+    "a thumb piano: metal tines on a wooden box",
+  ),
+  synth(
+    "pm-marimba",
+    "Physical · Marimba",
+    "Keys",
+    phys(
+      {
+        exciter: { type: "strike", hardness: 0.4, position: 0.25, noise: 0.05 },
+        resonator: { model: "bar", structure: 0, decay: 1.2, damping: 0.55, modes: 8 },
+        body: { type: "tube", mix: 0.6 },
+      },
+      {},
+      -12,
+    ),
+    "rosewood bars, felt mallets, tuned tubes under them",
+  ),
+  synth(
+    "pm-vibraphone",
+    "Physical · Vibraphone",
+    "Keys",
+    phys(
+      {
+        exciter: { type: "strike", hardness: 0.55, position: 0.25, noise: 0.05 },
+        resonator: { model: "bar", structure: 0, decay: 4, damping: 0.15, modes: 8, release: 0.7 },
+        body: { type: "tube", mix: 0.4 },
+      },
+      {
+        lfos: [{ rate: 5 }],
+        matrix: [{ source: "lfo1", dest: "amp", amount: 0.25 }],
+      },
+      -18,
+    ),
+    "metal bars with the motor's tremolo",
+  ),
+  synth(
+    "pm-tubular-bell",
+    "Physical · Tubular Bell",
+    "Keys",
+    phys(
+      {
+        exciter: { type: "strike", hardness: 0.85, position: 0.1, noise: 0.1 },
+        resonator: { model: "bell", structure: 1, decay: 6, damping: 0.3, modes: 16, release: 0.1 },
+      },
+      {},
+      -17,
+    ),
+    "an orchestra's chimes, struck with a hammer",
+  ),
+  synth(
+    "pm-glass-bowl",
+    "Physical · Glass Bowl",
+    "Pads",
+    phys(
+      {
+        exciter: { type: "bow", pressure: 0.5, hardness: 0.3, position: 0.3 },
+        resonator: { model: "glass", structure: 1, decay: 8, damping: 0.2, modes: 8, width: 0.6 },
+      },
+      { envs: [{ attack: 0.3, sustain: 1, release: 3, velocity: 0 }] },
+      -15,
+    ),
+    "a singing bowl rubbed with a stick",
+  ),
+  synth(
+    "pm-steel-drum",
+    "Physical · Steel Drum",
+    "Plucks & stabs",
+    phys(
+      {
+        exciter: { type: "strike", hardness: 0.5, position: 0.3, noise: 0.05 },
+        resonator: { model: "plate", structure: 0.25, decay: 1.5, damping: 0.4, modes: 16 },
+      },
+      {},
+      -12,
+    ),
+    "a Caribbean steel pan",
+  ),
+  synth(
+    "pm-bowed-cello",
+    "Physical · Bowed Cello",
+    "Pads",
+    phys(
+      {
+        exciter: { type: "bow", pressure: 0.55, hardness: 0.4, position: 0.12, noise: 0.2 },
+        resonator: { model: "string", decay: 3, damping: 0.5, pickup: 0.15, release: 0.5 },
+        body: { type: "cello", mix: 0.6 },
+      },
+      {
+        envs: [{ attack: 0.12, sustain: 1, release: 0.6, velocity: 0 }],
+        lfos: [{ rate: 5, delay: 0.5 }],
+        matrix: [{ source: "lfo1", dest: "pitch", amount: 0.004 }],
+      },
+      -8,
+    ),
+    "a bow on a string, a wooden body, vibrato as the note settles",
+  ),
+  synth(
+    "pm-breathy-flute",
+    "Physical · Breathy Flute",
+    "Leads",
+    phys(
+      {
+        exciter: { type: "blow", pressure: 0.5, noise: 0.45, hardness: 0.6 },
+        resonator: { model: "tube", end: "open", decay: 2, damping: 0.4 },
+      },
+      {
+        envs: [{ attack: 0.06, sustain: 1, release: 0.25, velocity: 0 }],
+        lfos: [{ rate: 5.5, delay: 0.3 }],
+        matrix: [{ source: "lfo1", dest: "pitch", amount: 0.004 }],
+        voice: { mode: "legato", glide: 0.05 },
+      },
+      -15,
+    ),
+    "a jet of breath across an open tube",
+  ),
+  synth(
+    "pm-clarinet",
+    "Physical · Clarinet",
+    "Leads",
+    phys(
+      {
+        exciter: { type: "blow", pressure: 0.6, noise: 0.1, hardness: 0.5 },
+        resonator: { model: "tube", end: "closed", decay: 2, damping: 0.45 },
+      },
+      {
+        envs: [{ attack: 0.04, sustain: 1, release: 0.2, velocity: 0 }],
+        voice: { mode: "legato", glide: 0.04 },
+      },
+      -10,
+    ),
+    "a reed on a closed tube: hollow, woody, odd harmonics",
+  ),
+  synth(
+    "pm-resonant-saw",
+    "Physical · Resonant Saw",
+    "Leads",
+    phys(
+      {
+        exciter: { type: "oscillators", level: 0.6 },
+        resonator: { model: "string", decay: 4, damping: 0.3, pickup: 0.3, width: 0.5 },
+      },
+      {
+        osc: [{ shape: 2 }],
+        envs: [{ attack: 0.01, sustain: 1, release: 0.5 }],
+      },
+      -28,
+    ),
+    "a saw played into a string: a synth that rings like an instrument",
+  ),
+
+  // ---- physical drums, for Hits (D258) ----
+  synth(
+    "pm-tom",
+    "Physical · Tom",
+    "Percussion",
+    phys(
+      {
+        exciter: { type: "strike", hardness: 0.5, position: 0.3, noise: 0.2 },
+        resonator: { model: "membrane", structure: 0.3, decay: 0.6, damping: 0.5, modes: 16 },
+      },
+      {
+        envs: [{}, {}, { attack: 0.001, decay: 0.15, sustain: 0, release: 0.15 }],
+        matrix: [{ source: "env3", dest: "pitch", amount: 0.08 }],
+      },
+      -8,
+    ),
+    "a drum head struck with a stick, its pitch dropping",
+  ),
+  synth(
+    "pm-conga",
+    "Physical · Conga",
+    "Percussion",
+    phys(
+      {
+        exciter: { type: "strike", hardness: 0.7, position: 0.4, noise: 0.15 },
+        resonator: { model: "membrane", structure: 0.6, decay: 0.4, damping: 0.45, modes: 16 },
+        body: { type: "box", mix: 0.3, size: 0.8 },
+      },
+      {},
+      -11,
+    ),
+    "a hand on a skin over a wooden shell",
+  ),
+  synth(
+    "pm-woodblock",
+    "Physical · Woodblock",
+    "Percussion",
+    phys(
+      {
+        exciter: { type: "strike", hardness: 0.9, position: 0.2 },
+        resonator: { model: "bar", structure: 1, decay: 0.3, damping: 0.8, modes: 8 },
+      },
+      {},
+      -7,
+    ),
+    "a hollow block of wood",
+  ),
+  synth(
+    "pm-cowbell",
+    "Physical · Cowbell",
+    "Percussion",
+    phys(
+      {
+        exciter: { type: "strike", hardness: 0.8, position: 0.2, noise: 0.1 },
+        resonator: { model: "plate", structure: 0.2, decay: 0.4, damping: 0.2, modes: 8 },
+      },
+      {},
+      -10,
+    ),
+    "a cowbell, struck with a stick",
+  ),
+  synth(
+    "pm-gong",
+    "Physical · Gong",
+    "Percussion",
+    phys(
+      {
+        exciter: { type: "strike", hardness: 0.3, position: 0.4, noise: 0.2 },
+        resonator: {
+          model: "plate",
+          structure: 0.8,
+          decay: 8,
+          damping: 0.1,
+          modes: 32,
+          release: 0,
+        },
+      },
+      {},
+      -15,
+    ),
+    "a large gong, a soft beater",
   ),
 ];
 
