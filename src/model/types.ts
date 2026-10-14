@@ -28,12 +28,37 @@ export interface Step {
   notes?: Note[];
 }
 
+/** The shapes a note's bend can take (D220). */
+export const BEND_SHAPES = ["scoop", "fall", "doit", "dip", "rise", "next", "shake"] as const;
+export type BendShape = (typeof BEND_SHAPES)[number];
+
+/**
+ * A note's own bend (D220, schema 12): a pitch movement that starts with the note (or, for a
+ * Fall or a Doit, with its release) and ends with it. Synths only for now (D225).
+ */
+export interface NoteBend {
+  shape: BendShape;
+  /** Semitones, −24..24; the sign is the direction (a Scoop of −2 starts 2 below). */
+  amount: number;
+  /** How long the movement takes, and how long the note waits before it starts. */
+  time: number;
+  delay: number;
+  /** "s": seconds; "q": quarter notes (follows the tempo). */
+  unit: "s" | "q";
+  /** The movement's ease (Linear when absent). */
+  ease?: Ease;
+  /** Shake: the vibrato's rate, in Hz ("s") or cycles per quarter note ("q"). */
+  rate?: number;
+}
+
 export interface Note {
   pitch: number; // MIDI, middle C = 60 = C4
   length: number; // in steps (fractional when Snap is off)
   velocity: number; // 0..1
   /** 303-style glide into this note (mono synths). */
   slide?: boolean;
+  /** Its own bend (D220). */
+  bend?: NoteBend;
   /**
    * Sub-step start offset in steps (schema 9, D128). When Snap is off, a note starts at
    * `step + offset` rather than exactly at the step boundary. Range: −0.5..0.5 of a step.

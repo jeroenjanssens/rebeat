@@ -20,6 +20,8 @@ import {
   type ModSource,
   type SynthPatch,
 } from "../../model/synth";
+import { atRelease, bendAt, releaseTail } from "../../model/bend";
+import type { NoteBend } from "../../model/types";
 
 export const CONTROL = 16;
 const MAX_UNISON = 8;
@@ -280,6 +282,12 @@ class Voice {
   random = 0;
   /** Seconds since the note started (LFO fade-in). */
   age = 0;
+  /** The note's own bend (D223): from `bendFrom` (its age then); `bendRelease`: when it was let
+   * go; `holdUntil`: a Fall or Doit keeps it sounding until then (D221). */
+  bend: NoteBend | null = null;
+  bendFrom = 0;
+  bendRelease: number | null = null;
+  holdUntil = -1;
   phases = new Float64Array(3 * MAX_UNISON);
   drift = new Float64Array(3 * MAX_UNISON);
   driftTarget = new Float64Array(3 * MAX_UNISON);
@@ -313,7 +321,15 @@ class Voice {
 
 type Event =
   /** `from`: a 303-style slide from that note (held on, gliding, without a new attack). */
-  | { at: number; kind: "on"; id: number; note: number; velocity: number; from?: number }
+  | {
+      at: number;
+      kind: "on";
+      id: number;
+      note: number;
+      velocity: number;
+      from?: number;
+      bend?: NoteBend;
+    }
   | { at: number; kind: "off"; id: number }
   | { at: number; kind: "releaseAll" }
   /** A parameter lock on the macros (values), or its end (null: back unless locked again since). */
@@ -434,18 +450,18 @@ export class SynthCore {
     return this.auto.size > 0;
   }
 
-  /** Schedule a note; `at` and `end` are in samples. */
-  noteOn(id: number, note: number, velocity: number, at: number) {
-    this.queue({ at, kind: "on", id, note, velocity });
+  /** Schedule a note; `at` and `end` are in samples; `bend`: its own bend (D223). */
+  noteOn(id: number, note: number, velocity: number, at: number, bend?: NoteBend) {
+    this.queue({ at, kind: "on", id, note, velocity, bend });
   }
 
   /**
    * A slide (303-style): note `from` keeps sounding (its note-off is dropped) and glides into
    * this one without a new attack.
    */
-  slideTo(from: number, id: number, note: number, velocity: number, at: number) {
+  slideTo(from: number, id: number, note: number, velocity: number, at: number, bend?: NoteBend) {
     this.events = this.events.filter((e) => !(e.kind === "off" && e.id === from));
-    this.queue({ at, kind: "on", id, note, velocity, from });
+    this.queue({ at, kind: "on", id, note, velocity, from, bend });
   }
   noteOff(id: number, at: number) {
     this.queue({ at, kind: "off", id });
@@ -550,10 +566,11 @@ export class SynthCore {
           v.note = prev.note;
           return;
         }
-        if (!this.held.length && v.id === e.id) this.release(v);
+        if (!this.held.length && v.id === e.id) this.letGo(v);
         return;
       }
-      for (const v of this.voices) if (v.active && v.id === e.id && v.gate) this.release(v);
+      for (const v of this.voices)
+        if (v.active && v.id === e.id && v.gate && v.holdUntil < 0) this.letGo(v);
       return;
     }
     const velocity = this.curveVelocity(e.velocity);
@@ -572,6 +589,7 @@ export class SynthCore {
         );
         // already let go (the note-off came first): hold it again, from where it is
         if (!v.gate) this.start(v, e.note, velocity, false);
+        this.setBend(v, e.bend);
         return;
       }
     }
@@ -583,8 +601,9 @@ export class SynthCore {
       this.glideTo(v, e.note, overlapping);
       v.id = e.id;
       v.note = e.note;
-      if (legato) return;
-      this.start(v, e.note, velocity, false);
+      if (!legato) this.start(v, e.note, velocity, false);
+      // legato: the new note's bend from now, without a new attack
+      this.setBend(v, e.bend);
       return;
     }
     const v = this.allocate();
@@ -595,6 +614,25 @@ export class SynthCore {
     v.id = e.id;
     v.note = e.note;
     this.start(v, e.note, velocity, true);
+    this.setBend(v, e.bend);
+  }
+
+  /** A voice's bend (D223) from now: its own, or none. */
+  private setBend(v: Voice, bend: NoteBend | undefined) {
+    v.bend = bend ?? null;
+    v.bendFrom = v.age;
+    v.bendRelease = null;
+    v.holdUntil = -1;
+  }
+
+  /** A note-off: released, or a Fall or Doit first (it keeps the note sounding, D221). */
+  private letGo(v: Voice) {
+    if (v.bend && atRelease(v.bend)) {
+      v.bendRelease = v.age;
+      v.holdUntil = v.age + releaseTail(v.bend, 60 / this.bpm);
+      return;
+    }
+    this.release(v);
   }
 
   private glideTo(v: Voice, note: number, overlapping: boolean) {
@@ -650,6 +688,7 @@ export class SynthCore {
 
   private release(v: Voice) {
     v.gate = false;
+    v.holdUntil = -1;
     for (const e of v.envs) e.release();
   }
 
@@ -708,6 +747,8 @@ export class SynthCore {
     for (let vi = 0; vi < this.voices.length; vi++) {
       const v = this.voices[vi];
       if (!v.active) continue;
+      // a Fall or Doit is done: now the note is let go
+      if (v.holdUntil >= 0 && v.age >= v.holdUntil) this.release(v);
       this.control(v, glfo, blockSec);
       this.render(v, left, right, pos, len, outGain);
       v.age += blockSec;
@@ -767,8 +808,17 @@ export class SynthCore {
         v.slide = 0;
       }
     }
+    // the note's own bend (D223)
+    const own = v.bend
+      ? bendAt(
+          v.bend,
+          v.age - v.bendFrom,
+          v.bendRelease === null ? null : v.bendRelease - v.bendFrom,
+          60 / this.bpm,
+        )
+      : 0;
     const base =
-      v.pitch + mod("pitch") + this.controls.pitchbend * p.voice.bend + p.voice.tune / 100;
+      v.pitch + own + mod("pitch") + this.controls.pitchbend * p.voice.bend + p.voice.tune / 100;
 
     // oscillators: increments, stereo gains, shapes
     const spreadPan = (u: number, n: number) => (n > 1 ? (u / (n - 1)) * 2 - 1 : 0);

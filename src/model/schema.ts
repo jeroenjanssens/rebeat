@@ -7,6 +7,7 @@ import { uid } from "./id";
 import { EFFECT_PARAMS, MIX_PARAMS, SOUND_PARAMS, defaultParams } from "./params";
 import { emptyLane, type Project } from "./project";
 import { steppedPoints } from "./steppedLanes";
+import { sanitizeBend } from "./bend";
 import { clampBpm } from "./tempoMap";
 import { player } from "./tracks";
 import {
@@ -283,6 +284,12 @@ export function normalizeProject(p: Project): Project {
           if (n.offset !== undefined) {
             n.offset = Math.max(-0.5, Math.min(0.5, n.offset));
             if (n.offset === 0) delete n.offset;
+          }
+          // a note's bend (D224): kept when it's one, else dropped
+          if (n.bend !== undefined) {
+            const bend = sanitizeBend(n.bend);
+            if (bend) n.bend = bend;
+            else delete n.bend;
           }
         }
       }

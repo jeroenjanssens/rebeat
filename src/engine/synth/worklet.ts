@@ -4,6 +4,7 @@
  */
 import { upgradePatch } from "../../model/synth";
 import { SynthCore, type AutoValue, type Controls } from "./core";
+import type { NoteBend } from "../../model/types";
 
 export type SynthMessage =
   | { type: "patch"; patch: unknown }
@@ -11,7 +12,15 @@ export type SynthMessage =
   /** A patch path's automation (D228): points in seconds; numbers ramp where `ramp` says. */
   | { type: "automate"; path: string; points: { t: number; v: AutoValue; ramp: boolean }[] }
   | { type: "automateEnd"; at: number }
-  | { type: "on"; id: number; note: number; velocity: number; at: number; from?: number }
+  | {
+      type: "on";
+      id: number;
+      note: number;
+      velocity: number;
+      at: number;
+      from?: number;
+      bend?: NoteBend;
+    }
   | { type: "off"; id: number; at: number }
   | { type: "releaseAll"; at: number }
   | { type: "panic" }
@@ -71,8 +80,8 @@ class SynthProcessor extends AudioWorkletProcessor {
         return this.core.automateEnd(frame(m.at));
       case "on":
         return m.from !== undefined
-          ? this.core.slideTo(m.from, m.id, m.note, m.velocity, frame(m.at))
-          : this.core.noteOn(m.id, m.note, m.velocity, frame(m.at));
+          ? this.core.slideTo(m.from, m.id, m.note, m.velocity, frame(m.at), m.bend)
+          : this.core.noteOn(m.id, m.note, m.velocity, frame(m.at), m.bend);
       case "off":
         return this.core.noteOff(m.id, frame(m.at));
       case "releaseAll":

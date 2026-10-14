@@ -339,6 +339,37 @@ describe("migration 11 → 12 (D229, D230)", () => {
   });
 });
 
+describe("bends per note (D224)", () => {
+  it("keeps a note's bend and drops one that isn't", () => {
+    const p = demoProject();
+    const lane = Object.values(p.patterns)[0].lanes[p.tracks.find((t) => t.mode === "notes")!.id];
+    lane.steps[0] = {
+      ...lane.steps[0],
+      on: true,
+      notes: [
+        {
+          pitch: 60,
+          length: 1,
+          velocity: 0.8,
+          bend: { shape: "scoop", amount: -2, time: 0.1, delay: 0, unit: "s" },
+        },
+        { pitch: 64, length: 1, velocity: 0.8, bend: { shape: "wobble", amount: 1 } as never },
+      ],
+    };
+    const d = deserializeProject(JSON.parse(JSON.stringify(serializeProject(p))));
+    const notes = Object.values(d.patterns)[0].lanes[p.tracks.find((t) => t.mode === "notes")!.id]
+      .steps[0].notes!;
+    expect(notes[0].bend).toEqual({ shape: "scoop", amount: -2, time: 0.1, delay: 0, unit: "s" });
+    expect(notes[1].bend).toBeUndefined();
+  });
+
+  it("loads a version 11 project unchanged", () => {
+    const p = demoProject();
+    const v11 = { ...JSON.parse(JSON.stringify(serializeProject(p))), schemaVersion: 11 };
+    expect(deserializeProject(v11)).toEqual(p);
+  });
+});
+
 describe("migration 9 → 10 (D182)", () => {
   it("loads a version 9 project unchanged", () => {
     const p = demoProject();

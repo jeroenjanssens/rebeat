@@ -4,7 +4,7 @@
  */
 import type * as Tone from "tone";
 import type { SynthPatch } from "../../model/synth";
-import type { Note } from "../../model/types";
+import type { Note, NoteBend } from "../../model/types";
 import type { AutoValue, Controls } from "./core";
 import type { SynthMessage, SynthReport } from "./worklet";
 import workletUrl from "./worklet.ts?worker&url";
@@ -23,7 +23,8 @@ export function loadSynthWorklet(ctx: BaseAudioContext): Promise<void> {
 
 export interface WorkletSynth {
   play(notes: Note[], time: number, stepDur: number): void;
-  hold(pitch: number, velocity: number, time: number): (end: number) => void;
+  /** A held note (the keys); `bend`: its own bend (D223). */
+  hold(pitch: number, velocity: number, time: number, bend?: NoteBend): (end: number) => void;
   releaseAll(time: number): void;
   /** Silence now: voices and notes still to come are dropped (stop, D99). */
   panic(): void;
@@ -92,15 +93,15 @@ export function workletSynth(dest: Tone.Gain | { input: AudioNode }): WorkletSyn
         const id = next++;
         // a slide carries on from the note before (a monophonic line: the latest one)
         const from = n.slide && last && last.end > time - stepDur ? last.id : undefined;
-        send({ type: "on", id, note: n.pitch, velocity: n.velocity, at: time, from });
+        send({ type: "on", id, note: n.pitch, velocity: n.velocity, at: time, from, bend: n.bend });
         const end = time + n.length * stepDur * 0.95;
         send({ type: "off", id, at: end });
         last = { id, end };
       }
     },
-    hold(pitch, velocity, time) {
+    hold(pitch, velocity, time, bend) {
       const id = next++;
-      send({ type: "on", id, note: pitch, velocity, at: time });
+      send({ type: "on", id, note: pitch, velocity, at: time, bend });
       return (end) => send({ type: "off", id, at: end });
     },
     releaseAll: (at) => send({ type: "releaseAll", at }),

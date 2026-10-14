@@ -5,7 +5,8 @@
  */
 import * as Tone from "tone";
 import { toUnit } from "../model/params";
-import type { AudioRegion, Note, Track } from "../model/types";
+import type { AudioRegion, Note, NoteBend, Track } from "../model/types";
+import { releaseTail } from "../model/bend";
 import type { Project } from "../model/project";
 import { isAudible, useStore } from "../state/store";
 import { BusChannel, TrackChannel, faderGain } from "./channel";
@@ -648,7 +649,10 @@ function playNotes(track: Track, velocity: number, time: number, o: TriggerOptio
     voice.play(pitched, time, step);
   }
   const maxOffset = hasOffsets ? Math.max(...pitched.map((n) => (n.offset ?? 0) * step)) : 0;
-  const dur = maxOffset + Math.max(...notes.map((n) => n.length)) * step;
+  const secPerQ = 60 / (S.tempo ?? useStore.getState().project.bpm);
+  // a Fall or a Doit sounds on after the note (D221)
+  const tails = Math.max(0, ...notes.map((n) => (n.bend ? releaseTail(n.bend, secPerQ) : 0)));
+  const dur = maxOffset + Math.max(...notes.map((n) => n.length)) * step + tails;
   const release = toUnit.ms(1, 8000)(track.params["sound.release"] ?? 0.35) / 1000;
   S.activeUntil.set(
     track.id,
@@ -701,6 +705,7 @@ export function holdNote(
   pitch: number,
   velocity: number,
   at = audioNow(),
+  bend?: NoteBend,
 ): (end?: number) => void {
   if (player(track) !== "voice") return () => {};
   const shift = track.transpose ?? 0;
@@ -709,14 +714,17 @@ export function holdNote(
   const t = at;
   S.activeUntil.set(track.id, Infinity);
   const release =
-    v.hold?.(pitch + shift, velocity, t) ??
+    v.hold?.(pitch + shift, velocity, t, bend) ??
     // instruments without held notes: a long note
     (v.play([{ pitch: pitch + shift, length: 8, velocity }], t, 0.125), () => {});
   return (at = audioNow()) => {
     // a note that ends before it starts (a short arp gate) ends just after it
     const end = Math.max(at, t + 0.005);
     release(end);
-    const tail = toUnit.ms(1, 8000)(track.params["sound.release"] ?? 0.35) / 1000;
+    // a Fall or a Doit sounds on after the release (D221)
+    const tail =
+      toUnit.ms(1, 8000)(track.params["sound.release"] ?? 0.35) / 1000 +
+      (bend ? releaseTail(bend, 60 / (S.tempo ?? useStore.getState().project.bpm)) : 0);
     S.activeUntil.set(track.id, end + Math.max(tail, 2) + 0.5);
     if (S.live) idleLive(track.id);
   };

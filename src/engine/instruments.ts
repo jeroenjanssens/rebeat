@@ -13,7 +13,7 @@ import { markBusy, markDownloaded } from "../library/downloads";
 import { CATALOG, sustainsByLooping } from "../library/instruments";
 import { toUnit } from "../model/params";
 import { noteName } from "../model/notes";
-import type { Note, Sound, Track } from "../model/types";
+import type { Note, NoteBend, Sound, Track } from "../model/types";
 import { getBuffer } from "./samples";
 import { db } from "../storage/db";
 
@@ -54,8 +54,9 @@ export interface InstrumentVoice {
   update(track: Track, bpm?: number): void;
   /** Synths: mod wheel, aftertouch and pitch bend; modulation reports for the editor. */
   synth?: WorkletSynth;
-  /** Start a held note; the returned function releases it (keyboards, MIDI). */
-  hold?(pitch: number, velocity: number, time: number): (end: number) => void;
+  /** Start a held note; the returned function releases it (keyboards, MIDI). `bend`: its own
+   * bend (D223; synths only, the others ignore it). */
+  hold?(pitch: number, velocity: number, time: number, bend?: NoteBend): (end: number) => void;
   dispose(): void;
   /** For sampled instruments: whether the samples are loaded. */
   state: () => "ready" | "loading" | "error";
@@ -81,7 +82,7 @@ function synthVoice(track: Track, src: Sound, dest: Tone.Gain): InstrumentVoice 
     key: "synth",
     state: () => (synth.ready() ? "ready" : "loading"),
     play: (notes, time, step) => synth.play(notes, time, step),
-    hold: (pitch, velocity, time) => synth.hold(pitch, velocity, time),
+    hold: (pitch, velocity, time, bend) => synth.hold(pitch, velocity, time, bend),
     releaseAll: (time) => synth.releaseAll(time),
     panic: () => (synth.panic(), false),
     update: (t, bpm = 120) => synth.setPatch(effective(t), bpm),

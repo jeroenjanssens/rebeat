@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { makePatch, type PatchSpec } from "../../model/synth";
 import { SynthCore, applyMacros } from "./core";
+import type { NoteBend } from "../../model/types";
 
 const SR = 48000;
 
@@ -467,6 +468,86 @@ describe("synth core", () => {
       expect(peak(l.subarray(Math.round(t * SR), Math.round((t + 0.01) * SR)))).toBeLessThan(
         steady * 2,
       );
+  });
+
+  describe("bends per note (D223)", () => {
+    const run = (
+      bend: NoteBend,
+      off: number | null,
+      seconds: number,
+      voice: PatchSpec["voice"] = {},
+      bpm = 120,
+    ) => {
+      const p = makePatch({
+        osc: [sine],
+        filters: [{ on: false }],
+        envs: [{ sustain: 1, release: 0.01 }],
+        voice: { glide: 0, ...voice },
+      });
+      const core = new SynthCore(SR, p);
+      core.setTempo(bpm);
+      core.noteOn(1, 57, 1, 0, bend);
+      if (off !== null) core.noteOff(1, Math.round(off * SR));
+      const n = Math.round(seconds * SR);
+      const l = new Float32Array(n);
+      const r = new Float32Array(n);
+      for (let f = 0; f < n; f += 128)
+        core.process(l.subarray(f, f + 128), r.subarray(f, f + 128), f);
+      return l;
+    };
+    const at = (l: Float32Array, t: number, w = 0.03) => freq(slice(l, t, t + w));
+    const semis = (hz: number) => 12 * Math.log2(hz / 220);
+
+    it("a Scoop starts below and slides into the note", () => {
+      const l = run({ shape: "scoop", amount: -12, time: 0.2, delay: 0.1, unit: "s" }, null, 0.5);
+      expect(semis(at(l, 0.02, 0.06))).toBeCloseTo(-12, 0);
+      expect(semis(at(l, 0.19, 0.02))).toBeCloseTo(-6, 0);
+      expect(semis(at(l, 0.35))).toBeCloseTo(0, 0);
+    });
+
+    it("a Fall drops after the release, and keeps the note sounding until it's done", () => {
+      const l = run({ shape: "fall", amount: -12, time: 0.2, delay: 0, unit: "s" }, 0.2, 0.6);
+      expect(semis(at(l, 0.1))).toBeCloseTo(0, 0);
+      expect(semis(at(l, 0.29, 0.02))).toBeCloseTo(-6, 0);
+      // still sounding during the fall, silent after it (and the short release)
+      expect(rms(slice(l, 0.35, 0.39))).toBeGreaterThan(0.05);
+      expect(rms(slice(l, 0.45, 0.55))).toBeLessThan(1e-3);
+    });
+
+    it("a Doit flicks up at the release", () => {
+      const l = run({ shape: "doit", amount: 3, time: 0.1, delay: 0, unit: "s" }, 0.2, 0.4);
+      expect(semis(at(l, 0.1))).toBeCloseTo(0, 0);
+      expect(semis(at(l, 0.245, 0.01))).toBeCloseTo(1.5, 0);
+    });
+
+    it("a Rise (and Next) climbs after its delay and stays; a Dip comes back", () => {
+      const rise = run({ shape: "next", amount: 2, time: 0.1, delay: 0.1, unit: "s" }, null, 0.5);
+      expect(semis(at(rise, 0.02, 0.06))).toBeCloseTo(0, 0);
+      expect(semis(at(rise, 0.3))).toBeCloseTo(2, 0);
+      const dip = run({ shape: "dip", amount: -4, time: 0.2, delay: 0, unit: "s" }, null, 0.5);
+      expect(semis(at(dip, 0.095, 0.01))).toBeCloseTo(-4, 0);
+      expect(semis(at(dip, 0.3))).toBeCloseTo(0, 0);
+    });
+
+    it("a Shake is a vibrato that builds up", () => {
+      const l = run(
+        { shape: "shake", amount: 1, time: 0.4, delay: 0, unit: "s", rate: 5 },
+        null,
+        1.2,
+      );
+      const swing = (from: number) => {
+        const f = [0, 0.05, 0.1, 0.15].map((d) => semis(at(l, from + d, 0.02)));
+        return Math.max(...f) - Math.min(...f);
+      };
+      expect(swing(0.0)).toBeLessThan(swing(0.8));
+      expect(swing(0.8)).toBeGreaterThan(1);
+    });
+
+    it("beat units follow the tempo", () => {
+      // a quarter at 60 BPM is a second
+      const l = run({ shape: "rise", amount: 12, time: 1, delay: 0, unit: "q" }, null, 1.2, {}, 60);
+      expect(semis(at(l, 0.49, 0.02))).toBeCloseTo(6, 0);
+    });
   });
 
   it("renders well faster than real time", () => {
