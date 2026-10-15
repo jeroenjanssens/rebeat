@@ -321,6 +321,23 @@ preloaded chunks (`<link rel=modulepreload>`):
 - Settings closed: **1 ms** for 1 000 messages (pure-JS dispatch; React updates are async)
 - Settings → MIDI open: **1 ms** (same; per-message `useMidi.setState({ last })` is batched)
 
+### After phase 4 (P4.1–P4.9)
+
+**P0.2 React commits** — same script, same machine:
+
+- Dragging a track knob (encoder strip) for 2 s: ~**22 commits/s** (unchanged; the caches don't
+  reduce the commit count — they reduce what each commit costs)
+- Toggling 16 steps (32 clicks): ~**48 commits/s** (~2 per click, same order as before)
+- Playing Long Way Home for 5 s (Timeline + Controller + drum machine open): ~**0 commits/s**
+  (unchanged; playback is still audio-clock driven)
+
+**P0.4 MIDI throughput** — same script, same machine:
+
+- Settings closed: **1 ms** for 1 000 messages (unchanged)
+- Settings → MIDI open: **1 ms** (unchanged in wall time; the `useMidi.setState({ last })` call
+  is now gone entirely and the monitor accumulates only when the panel is visible, so the work
+  that was batched before is now not done at all when Settings is closed)
+
 ## Deviations
 
 - **P1.12**: No code change. A unit test (`src/engine/renderCycle.test.ts`) confirms that for
