@@ -1,5 +1,5 @@
 import { chainMenu } from "../../components/fxMenus";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { memo, useEffect, useRef, useState, type CSSProperties } from "react";
 import { droppedInstrument, droppedSamples, isSampleDrag } from "../../library/drop";
 import {
   addInstrumentTrack,
@@ -35,7 +35,7 @@ import {
   reverseLane,
   rotateLane,
 } from "../../model/project";
-import { STEP_SIZES, clipOf, type Lane, type Pattern, type Track } from "../../model/types";
+import { STEP_SIZES, clipOf, type Lane, type Track } from "../../model/types";
 import { canClip, player, sampleOf } from "../../model/tracks";
 import { applyHeld, fnClick } from "../../state/actions";
 import { useStore } from "../../state/store";
@@ -50,7 +50,8 @@ interface Props {
   track: Track;
   index: number;
   lane: Lane;
-  pattern: Pattern;
+  patternId: string;
+  stepCount: number;
   geo: Geometry;
   selectedSteps: Set<number>;
   isSelected: boolean;
@@ -109,7 +110,16 @@ function chips(
   };
 }
 
-export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSelected }: Props) {
+function TrackRowInner({
+  track,
+  index,
+  lane,
+  patternId,
+  stepCount,
+  geo,
+  selectedSteps,
+  isSelected,
+}: Props) {
   const mutedHere = useStore(
     (s) => !!s.project.slots.find((x) => x.id === s.editSlotId)?.mutes?.includes(track.id),
   );
@@ -121,10 +131,10 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
   const setUi = useStore((s) => s.setUi);
   const jogOpen = useStore((s) => !!s.jogOpen[track.id]);
   const [dropMode, setDropMode] = useState<"replace" | "insert" | null>(null);
-  const flats = useStore((s) => keyUsesFlats(pageKey(s.project, pattern)));
+  const flats = useStore((s) => keyUsesFlats(pageKey(s.project, s.project.patterns[patternId])));
   const cursorIndex = useStore((s) => (s.cursor?.trackId === track.id ? s.cursor.index : -1));
   const compact = geo.sizeClass === "compact";
-  const length = lane.stepCountOverride ?? pattern.stepCount;
+  const length = lane.stepCountOverride ?? stepCount;
   const clip = track.mode === "clip";
 
   // playhead + trigger flashes, straight on the DOM (no React re-render per step)
@@ -133,7 +143,7 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
     return onStep((e) => {
       head?.classList.remove("head");
       head = null;
-      if (e.pageStep < 0 || e.patternId !== pattern.id || clip) return;
+      if (e.pageStep < 0 || e.patternId !== patternId || clip) return;
       const i = e.laneSteps.get(track.id) ?? e.pageStep % length;
       const el = stepsRef.current?.querySelector(`[data-i="${i}"]`);
       if (!el) return;
@@ -145,7 +155,7 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
         el.classList.add("trig");
       }
     });
-  }, [pattern.id, length, clip, track.id]);
+  }, [patternId, length, clip, track.id]);
 
   const update = (fn: (t: Track) => void, key?: string) =>
     commit((p) => {
@@ -155,7 +165,7 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
 
   const updateLane = (fn: (l: Lane) => void) =>
     commit((p) => {
-      const l = p.patterns[pattern.id].lanes[track.id];
+      const l = p.patterns[patternId].lanes[track.id];
       if (l) fn(l);
     });
 
@@ -601,6 +611,8 @@ export function TrackRow({ track, index, lane, pattern, geo, selectedSteps, isSe
     </div>
   );
 }
+
+export const TrackRow = memo(TrackRowInner);
 
 function TrackButton(props: {
   label: string;

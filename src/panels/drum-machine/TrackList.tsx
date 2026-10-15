@@ -326,7 +326,8 @@ export function TrackList({ geo }: { geo: Geometry }) {
                     track={track}
                     index={i}
                     lane={lane}
-                    pattern={pattern}
+                    patternId={pattern.id}
+                    stepCount={pattern.stepCount}
                     geo={geo}
                     selectedSteps={selectedByTrack.get(track.id) ?? EMPTY}
                     isSelected={isSel}

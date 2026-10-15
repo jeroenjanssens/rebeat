@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import { useEditPattern, useStore } from "../../state/store";
 import { useSettings } from "../../state/settings";
 import { EncoderStrip } from "./EncoderStrip";
@@ -18,7 +18,13 @@ export function DrumMachine() {
   const hasTracks = useStore((s) => s.project.tracks.length > 0);
   const pattern = useEditPattern();
   const { sizeClass, width } = useSizeClass(ref);
-  const geo = geometry(width, pattern, sizeClass, zoom);
+  // Memoize by the fields geometry actually reads (stepCount, stepSize) so a step toggle
+  // doesn't rebuild geo and re-render TrackList unnecessarily.
+  const geo = useMemo(
+    () => geometry(width, pattern, sizeClass, zoom),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [width, pattern.stepCount, pattern.stepSize, sizeClass, zoom],
+  );
 
   return (
     <div
