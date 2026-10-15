@@ -18,7 +18,7 @@ import {
   type Track,
 } from "../model/types";
 import { useSettings } from "../state/settings";
-import { isAudible, useStore } from "../state/store";
+import { useStore } from "../state/store";
 import { playingProject } from "../state/automationOverride";
 import {
   audioNow,
@@ -407,13 +407,15 @@ export function playStep(
   const secPerQ = 60 / bpm;
   const mutes = ctx.section?.mutes;
   const transpose = (pattern.transpose ?? 0) + (ctx.section?.transpose ?? 0) || undefined;
+  // compute anySolo once so isAudible doesn't re-scan tracks per track per step
+  const anySolo = project.tracks.some((t) => t.solo);
   effectsStep(time, pageStep * qPage, qPage, secPerQ);
   for (const track of project.tracks) {
     const lane = pattern.lanes[track.id];
     if (!lane) continue;
     // muted in this section (D183): silent here, its clones play it
     const mutedHere = !!mutes?.includes(track.id);
-    const audible = isAudible(track.id, project) && !mutedHere;
+    const audible = !track.mute && (!anySolo || track.solo) && !mutedHere;
     if (track.mode === "clip") {
       const clip = clipOf(lane);
       if (pageStep === 0) {
