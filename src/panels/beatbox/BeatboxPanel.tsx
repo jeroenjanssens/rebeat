@@ -304,7 +304,7 @@ function RecordingRow({
   guesses: Record<string, Guess | null>;
   selected: boolean;
 }) {
-  const voices = useBeatbox((s) => s.voices);
+  // voices only needed in the context menu; read lazily to avoid subscribing on every render
   const counts = new Map<BeatboxClass, number>();
   let unlabeled = 0;
   for (const h of hits) {
@@ -319,13 +319,14 @@ function RecordingRow({
       onClick={() => useBeatbox.getState().set({ selectedRecordingId: rec.id, selectedHitIds: [] })}
       onContextMenu={(e) =>
         contextMenu(e, [
-          ...voices
-            .filter((v) => v.id !== rec.voiceId)
+          ...useBeatbox
+            .getState()
+            .voices.filter((v) => v.id !== rec.voiceId)
             .map((v) => ({
               label: `Move to “${v.name}”`,
               onSelect: () => void updateRecording(rec.id, { voiceId: v.id }),
             })),
-          ...(voices.length > 1 ? [{ separator: true }] : []),
+          ...(useBeatbox.getState().voices.length > 1 ? [{ separator: true }] : []),
           {
             label: rec.kind === "take" ? "Treat as single sounds" : "Treat as a take",
             onSelect: () =>
@@ -380,12 +381,7 @@ function RecordingRow({
 
 function RecordingStatus() {
   const session = useBeatboxRecorder((r) => r.session)!;
-  const [now, setNow] = useState(0);
-  useEffect(() => {
-    const id = window.setInterval(() => setNow(performance.now()), 50);
-    return () => window.clearInterval(id);
-  }, []);
-  void now;
+  // label is purely derived from session; useBeatboxRecorder already re-renders when it changes
   const label =
     session.status === "count-in"
       ? "Get ready…"
