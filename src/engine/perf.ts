@@ -171,6 +171,9 @@ export function applyCrossfader() {
   });
 }
 
+/** Timer ids for pending queued mute-group toggles, so they can be cancelled on stop. */
+const muteTimers: ReturnType<typeof setTimeout>[] = [];
+
 /** Toggle a mute group now, or at the next bar when mutes are queued. */
 export function toggleMuteGroup(i: number) {
   const apply = () => {
@@ -187,13 +190,15 @@ export function toggleMuteGroup(i: number) {
   const at = nextBarTime();
   if (at === null) return apply();
   usePerf.setState((s) => ({ pending: [...s.pending, i] }));
-  setTimeout(
+  const id = setTimeout(
     () => {
+      muteTimers.splice(muteTimers.indexOf(id), 1);
       apply();
       usePerf.setState((s) => ({ pending: s.pending.filter((x) => x !== i) }));
     },
     Math.max(0, (at - audioNow()) * 1000 - 10),
   );
+  muteTimers.push(id);
 }
 
 /** MIDI-mapped performance controls. */
@@ -238,6 +243,11 @@ function jog(v: number) {
 export function startPerf() {
   ensureChain();
   onPanic(flushChain);
+  // clear any pending mute-group timers on stop so they don't fire into a stopped session
+  onPanic(() => {
+    for (const id of muteTimers.splice(0)) clearTimeout(id);
+    usePerf.setState({ pending: [] });
+  });
   let last = useStore.getState().project.perf;
   useStore.subscribe((s) => {
     if (s.project.perf === last) return;
