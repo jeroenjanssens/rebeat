@@ -6,7 +6,7 @@
 import { ChevronDown, ChevronRight, Plus } from "lucide-react";
 import { Fragment, type ReactNode } from "react";
 import { contextMenu, type MenuItem } from "../../components/Menu";
-import { curveAt, layout, toSong } from "../../model/arrangement";
+import { layout, toSong } from "../../model/arrangement";
 import { IN_TYPES, OUT_TYPES } from "../../model/ease";
 import {
   knobFor,
@@ -197,7 +197,7 @@ function Lanes({
               <CurveLane
                 laneKey={lane.id}
                 points={points}
-                curve={(q) => curveAt(resolved, q)}
+                resolved={resolved}
                 ppq={ppq}
                 width={width}
                 height={LANE_FOLDED_H}
@@ -287,7 +287,7 @@ function Lanes({
             <CurveLane
               laneKey={lane.id}
               points={points}
-              curve={(q) => curveAt(resolved, q)}
+              resolved={resolved}
               ppq={ppq}
               width={width}
               height={LANE_H}

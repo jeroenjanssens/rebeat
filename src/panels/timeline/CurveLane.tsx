@@ -10,7 +10,7 @@
  * selects in every lane it covers (Shift adds, Alt takes out, D236), and dragging a selected point
  * moves them all (Alt: one direction only, D237). The selection is the table's too (D200).
  */
-import { useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import {
   countText,
   onlyIn,
@@ -30,6 +30,7 @@ import {
   selectionStarts,
   type PointStart,
 } from "../../state/timelineActions";
+import { curveAt, type ResolvedPoint } from "../../model/arrangement";
 import { useStore } from "../../state/store";
 import { dragListeners } from "./dragListeners";
 
@@ -48,8 +49,12 @@ interface Props {
   /** The lane's id, or "tempo": the key of the shared selection. */
   laneKey: string;
   points: LanePoint[];
-  /** The curve's value at song position q (null: nothing to draw). */
-  curve: (q: number) => number | null;
+  /**
+   * Pass either `resolved` (preferred for automation lanes: stable between renders) or `curve`
+   * (a function, for the tempo lane which uses a different interpolation).
+   */
+  resolved?: ResolvedPoint[];
+  curve?: (q: number) => number | null;
   /** Pixels per quarter note, and the lane's width in pixels. */
   ppq: number;
   width: number;
@@ -133,22 +138,29 @@ export function CurveLane(p: Props) {
       : r;
   };
   const [hover, setHover] = useState<{ x: number; y: number; text: string } | null>(null);
+  // Prefer resolved points (stable reference from immer) over an inline curve closure.
+  const getCurve = p.resolved ? (q: number) => curveAt(p.resolved!, q) : p.curve!;
 
   // the curve, sampled every few pixels and just before and at every point (so jumps are sharp)
-  const path: [number, number][] = [];
-  if (p.points.some((pt) => pt.on) || p.curve(0) !== null) {
-    const qs = new Set<number>();
-    for (let px = 0; px <= p.width; px += 3) qs.add(px / p.ppq);
-    for (const pt of p.points)
-      if (pt.on) {
-        qs.add(Math.max(0, pt.q - 1e-6));
-        qs.add(pt.q);
+  // Memoize on resolved (or width/ppq/min/max when resolved is absent) so unchanged lanes skip.
+  const path = useMemo(() => {
+    const out: [number, number][] = [];
+    if (p.points.some((pt) => pt.on) || getCurve(0) !== null) {
+      const qs = new Set<number>();
+      for (let px = 0; px <= p.width; px += 3) qs.add(px / p.ppq);
+      for (const pt of p.points)
+        if (pt.on) {
+          qs.add(Math.max(0, pt.q - 1e-6));
+          qs.add(pt.q);
+        }
+      for (const q of [...qs].sort((a, b) => a - b)) {
+        const v = getCurve(q);
+        if (v !== null) out.push([x(q), y(v)]);
       }
-    for (const q of [...qs].sort((a, b) => a - b)) {
-      const v = p.curve(q);
-      if (v !== null) path.push([x(q), y(v)]);
     }
-  }
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [p.resolved ?? p.curve, p.width, p.ppq, p.min, p.max, p.compact, p.points]);
 
   /** Each lane's move for a share of a lane's range (a stepped lane: whole bands). */
   const valueMoves = (starts: PointStart[], share: number) => {
@@ -267,7 +279,7 @@ export function CurveLane(p: Props) {
       }
       // a click: on the line, a point on the curve; elsewhere, at the clicked height (D203)
       const q = p.snap(Math.max(0, start.px / p.ppq), ev.shiftKey);
-      const there = p.curve(start.px / p.ppq);
+      const there = getCurve(start.px / p.ppq);
       const onLine = there !== null && Math.abs(y(there) - start.py) <= NEAR;
       const index = p.onAdd(q, onLine ? there! : round(vAt(start.py), ev.shiftKey), onLine);
       setPointSelection(index >= 0 ? onlyIn(p.laneKey, [index]) : NO_POINTS);
