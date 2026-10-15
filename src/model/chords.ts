@@ -5,6 +5,9 @@
  * after a slash ("C/E", "D7/C").
  */
 
+// Chord roots use C♯ and F♯ rather than D♭/G♭: those are the correct spellings for a major
+// third above A/D and a perfect fourth above C, matching common notation. notes.ts:NAMES_FLAT
+// uses D♭ and G♭ for the key selector, where flats are conventional.
 const NAMES = ["C", "C♯", "D", "E♭", "E", "F", "F♯", "G", "A♭", "A", "B♭", "B"];
 
 /** Chord tones as semitones above the root. Extensions sit an octave up (9 = 2 + 12). */
