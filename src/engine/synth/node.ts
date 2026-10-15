@@ -129,8 +129,18 @@ export function workletSynth(dest: Tone.Gain | { input: AudioNode }): WorkletSyn
     },
     releaseAll: (at) => send({ type: "releaseAll", at }),
     panic() {
-      // notes not sent yet never play
-      pending = pending.filter((m) => m.type !== "on" && m.type !== "off" && m.type !== "macros");
+      // notes and automation queued before the node exists are dropped; keep only the latest
+      // automateEnd so the worklet can hand back when it comes up
+      const lastEnd = pending.filter((m) => m.type === "automateEnd").at(-1);
+      pending = pending.filter(
+        (m) =>
+          m.type !== "on" &&
+          m.type !== "off" &&
+          m.type !== "macros" &&
+          m.type !== "automate" &&
+          m.type !== "automateEnd",
+      );
+      if (lastEnd) pending.push(lastEnd);
       held = [];
       send({ type: "panic" });
     },
