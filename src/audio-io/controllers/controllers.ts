@@ -106,7 +106,11 @@ function handle(c: Connected, m: { type: string; number: number; value: number }
 
 /** Remove entries for outputs that are no longer present (disconnected). */
 function pruneDisconnected() {
-  const currentIds = new Set(midiOutputs().map((o) => o.id));
+  const currentIds = new Set(
+    midiOutputs()
+      .filter((o) => o.state !== "disconnected")
+      .map((o) => o.id),
+  );
   const before = connected.length;
   connected.splice(0, connected.length, ...connected.filter((c) => currentIds.has(c.output.id)));
   if (connected.length !== before) {

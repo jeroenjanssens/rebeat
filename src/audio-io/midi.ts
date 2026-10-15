@@ -224,17 +224,17 @@ export async function startMidi(sysex = false): Promise<boolean> {
   if (access && (!sysex || sysexGranted)) return true;
   if (!platform.midi.supported) return false;
   useMidi.setState({ status: "asking" });
-  const oldAccess = access;
-  access = await platform.midi.request(sysex);
-  // D129: detach old handlers only after new access is ready, so no messages are dropped in the gap
-  if (oldAccess) {
-    for (const input of oldAccess.inputs.values()) input.onmidimessage = null;
-  }
-  sysexGranted ||= sysex && !!access;
-  if (!access) {
-    useMidi.setState({ status: "denied" });
+  const next = await platform.midi.request(sysex);
+  if (!next) {
+    // asking again for SysEx and being refused keeps the access we had
+    useMidi.setState({ status: access ? "on" : "denied" });
     return false;
   }
+  // D129: detach the old handlers only now (refreshPorts attaches new ones right below), so no
+  // message is lost while the browser asks, and none is handled twice
+  if (access) for (const input of access.inputs.values()) input.onmidimessage = null;
+  access = next;
+  sysexGranted ||= sysex;
   useMidi.setState({ status: "on" });
   access.onstatechange = refreshPorts;
 
