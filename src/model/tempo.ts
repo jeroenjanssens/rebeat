@@ -18,3 +18,9 @@ export const TIME_SIGNATURES: [number, number][] = [
   [6, 8],
   [7, 8],
 ];
+
+/** Format a duration in seconds as "m:ss". */
+export function formatSeconds(seconds: number): string {
+  const s = Math.max(0, Math.round(seconds));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}

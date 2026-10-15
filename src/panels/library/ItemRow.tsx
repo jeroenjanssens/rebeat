@@ -1,4 +1,5 @@
 import { Cloud, Heart, Keyboard, Loader2 } from "lucide-react";
+import { formatSeconds } from "../../model/tempo";
 import { SoundIcon, soundKind } from "../../components/soundIcons";
 import { toast } from "../../components/Toast";
 import { prefetchInstrument } from "../../engine/instruments";
@@ -37,9 +38,7 @@ const cancelPlay = () => {
 const DOUBLE_CLICK_MS = 250;
 
 function fmtDur(s: number) {
-  return s >= 60
-    ? `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`
-    : `${s.toFixed(s < 10 ? 2 : 1)}s`;
+  return s >= 60 ? formatSeconds(s) : `${s.toFixed(s < 10 ? 2 : 1)}s`;
 }
 
 /** The samples of a folder as one multi-sample instrument (notes from their names, D82). */

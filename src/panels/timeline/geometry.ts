@@ -1,6 +1,7 @@
 /** The timeline's geometry: snapping song positions, the rows' sizes. */
 import { bars, barQuarters, blockAt } from "../../model/arrangement";
 import type { Project } from "../../model/project";
+import { formatSeconds } from "../../model/tempo";
 import type { TimelineSnap } from "../../state/settings";
 
 /** The width of the row headers, in pixels. */
@@ -44,7 +45,4 @@ export function snapQ(project: Project, q: number, snap: TimelineSnap): number {
 }
 
 /** "1:23" */
-export function clock(seconds: number): string {
-  const s = Math.max(0, Math.round(seconds));
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
-}
+export const clock = formatSeconds;
