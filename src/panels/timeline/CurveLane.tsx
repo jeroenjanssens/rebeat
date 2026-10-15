@@ -31,6 +31,7 @@ import {
   type PointStart,
 } from "../../state/timelineActions";
 import { useStore } from "../../state/store";
+import { dragListeners } from "./dragListeners";
 
 export interface LanePoint {
   /** Index in the saved list (the key for edits). */
@@ -211,13 +212,7 @@ export function CurveLane(p: Props) {
         text: moved ? `${p.format(v)} (${moved})` : p.format(v),
       });
     };
-    const up = () => {
-      el.removeEventListener("pointermove", move as EventListener);
-      el.removeEventListener("pointerup", up);
-      setReadout(null);
-    };
-    el.addEventListener("pointermove", move as EventListener);
-    el.addEventListener("pointerup", up);
+    dragListeners(el, move, () => setReadout(null));
   };
 
   const onBackgroundDown = (e: React.PointerEvent) => {
@@ -257,8 +252,6 @@ export function CurveLane(p: Props) {
       useBox.setState({ rect, inside: pointsIn(root, rect), mode });
     };
     const up = (ev: PointerEvent) => {
-      el.removeEventListener("pointermove", move as EventListener);
-      el.removeEventListener("pointerup", up as EventListener);
       if (moved) {
         const inside = pointsIn(root, rectAt(ev));
         const now = pointSelection();
@@ -279,8 +272,7 @@ export function CurveLane(p: Props) {
       const index = p.onAdd(q, onLine ? there! : round(vAt(start.py), ev.shiftKey), onLine);
       setPointSelection(index >= 0 ? onlyIn(p.laneKey, [index]) : NO_POINTS);
     };
-    el.addEventListener("pointermove", move as EventListener);
-    el.addEventListener("pointerup", up as EventListener);
+    dragListeners(el, move, up);
   };
 
   /** The next grid line from q in a direction (the snap grid; fine: a 64th). */

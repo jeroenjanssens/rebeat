@@ -15,6 +15,7 @@ import { useStore } from "../../state/store";
 import { moveSections, setRepeats, setSectionSteps } from "../../state/timelineActions";
 import { SectionBadges } from "../drum-machine/SongStrip";
 import { sectionMenu } from "../drum-machine/sectionMenu";
+import { dragListeners } from "./dragListeners";
 import { SECTIONS_H } from "./geometry";
 import { ViewCanvas, type View } from "./ViewCanvas";
 
@@ -144,8 +145,6 @@ export function SectionsRow({
       setDrag({ ids, x, to: dropIndex(x, ids) });
     };
     const up = (ev: PointerEvent) => {
-      el.removeEventListener("pointermove", move);
-      el.removeEventListener("pointerup", up);
       setDrag(null);
       if (!dragging) return click(b, ev);
       const to = dropIndex(rowX(ev.clientX), ids);
@@ -153,8 +152,7 @@ export function SectionsRow({
       const made = moveSections(ids, to, mode);
       if (made.length) setSelected(made);
     };
-    el.addEventListener("pointermove", move);
-    el.addEventListener("pointerup", up);
+    dragListeners(el, move, up);
   };
 
   /** The right edge: repeats; with Alt, the steps it plays (snapped to beats). */
@@ -172,12 +170,7 @@ export function SectionsRow({
         setSectionSteps(b.section.id, Math.max(perBeat, Math.min(b.pattern.stepCount, n)));
       } else setRepeats(b.section.id, Math.max(1, Math.min(64, Math.round(dx / (b.length * ppq)))));
     };
-    const up = () => {
-      el.removeEventListener("pointermove", move);
-      el.removeEventListener("pointerup", up);
-    };
-    el.addEventListener("pointermove", move);
-    el.addEventListener("pointerup", up);
+    dragListeners(el, move, () => {});
   };
 
   const dropX =

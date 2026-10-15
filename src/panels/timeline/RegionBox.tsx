@@ -23,6 +23,7 @@ import {
   splitRegion,
   trimRegion,
 } from "../../state/timelineActions";
+import { dragListeners } from "./dragListeners";
 import { TRACK_H, snapQ } from "./geometry";
 
 /** Seconds of the sample per quarter note at q: a warped clip follows the tempo (D192). */
@@ -141,15 +142,12 @@ export function RegionBoxes({
             }
           };
           const up = (ev: PointerEvent) => {
-            el.removeEventListener("pointermove", move);
-            el.removeEventListener("pointerup", up);
             if (moved && what === "move" && ev.altKey) {
               const d = local(ev.clientX) - at0;
               copyRegion(r.id, grid(Math.max(0, q + d), ev.shiftKey));
             }
           };
-          el.addEventListener("pointermove", move);
-          el.addEventListener("pointerup", up);
+          dragListeners(el, move, up);
         };
         const split = () => {
           const at = songPosition() ?? startPosition();
