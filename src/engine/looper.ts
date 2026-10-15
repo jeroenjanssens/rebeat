@@ -142,12 +142,7 @@ async function finish(
   if (get().playing) {
     const pattern = slotPattern(get().project, get().playSlotId);
     // join in right away (late by the time it took to save), the next page start restarts it
-    startClip(
-      updated,
-      playAt,
-      pageDuration(pattern, get().project.bpm, get().project.swing),
-      false,
-    );
+    startClip(updated, playAt, pageDuration(pattern, tempoNow(), get().project.swing), false);
   }
   toast(
     updated.layers?.length ? `Overdub layer ${updated.layers.length} recorded` : "Loop recorded",
