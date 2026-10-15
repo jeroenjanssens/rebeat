@@ -91,8 +91,8 @@ export function setFilter(v: number) {
 /** Timer id for the tape-stop timeout, so it can be cancelled if Play starts before it fires. */
 let tapeStopTimer: ReturnType<typeof setTimeout> | null = null;
 
-/** Restore the perf chain to a clean (non-tape-stopped) state. */
-function cancelTapeStop() {
+/** End a tape stop at once (Play during one): its timer would stop the new play session. */
+export function cancelTapeStop() {
   if (tapeStopTimer === null) return;
   clearTimeout(tapeStopTimer);
   tapeStopTimer = null;
@@ -103,11 +103,6 @@ function cancelTapeStop() {
   c.gain.gain.cancelScheduledValues(t);
   c.gain.gain.setValueAtTime(1, t + 0.06);
   usePerf.setState({ tapeStopping: false });
-}
-
-/** Called when transport.play() starts, so a pending tape-stop doesn't halt the new session. */
-export function onTapeStopPlay() {
-  cancelTapeStop();
 }
 
 /** Slow everything down to a halt like a stopping turntable, then stop the transport. */
