@@ -92,7 +92,7 @@ export interface EngineScope {
   /** The keys' own channel per track (D134): its sound and effects, but unmuted and at 0 dB
    * unless recording. */
   liveChannels: Map<string, TrackChannel>;
-  voices: Voice[];
+  voices: Set<Voice>;
   clips: Map<string, Clip>;
   activeUntil: Map<string, number>;
   scratchState: Map<string, { pos: number; speed: number }>;
@@ -116,7 +116,7 @@ export function newScope(live = false): EngineScope {
     synths: new Map(),
     liveVoices: new Map(),
     liveChannels: new Map(),
-    voices: [],
+    voices: new Set(),
     clips: new Map(),
     activeUntil: new Map(),
     scratchState: new Map(),
@@ -627,11 +627,10 @@ function playDrum(track: Track, velocity: number, time: number, o: TriggerOption
   src.start(time, offset);
   src.stop(end);
   const voice: Voice = { src, env, trackId: track.id, end };
-  S.voices.push(voice);
+  S.voices.add(voice);
   src.onended = () => {
     env.disconnect();
-    const i = S.voices.indexOf(voice);
-    if (i >= 0) S.voices.splice(i, 1);
+    S.voices.delete(voice);
   };
   S.activeUntil.set(track.id, Math.max(S.activeUntil.get(track.id) ?? 0, end + 0.1));
   return voice;
