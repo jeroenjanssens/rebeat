@@ -349,7 +349,10 @@ export function MiniLab3Svg({
     clearTimeout(timers.get(selector));
     timers.set(
       selector,
-      setTimeout(() => delete el.dataset.turning, 260),
+      setTimeout(() => {
+        delete el.dataset.turning;
+        timers.delete(selector);
+      }, 260),
     );
   }, []);
   useEffect(() => {

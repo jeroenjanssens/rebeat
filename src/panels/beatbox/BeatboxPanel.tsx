@@ -418,9 +418,12 @@ function SoundsPrompt() {
   const dot = useRef<HTMLSpanElement>(null);
   const text = useRef<HTMLSpanElement>(null);
   useEffect(() => {
+    let alive = true;
     let raf = 0;
     const tick = async () => {
       const { audioContext } = await import("../../engine/context");
+      // the first await can outlast an unmount; bail if the component is gone
+      if (!alive) return;
       const t = audioContext().currentTime;
       const prompts = session.prompts ?? [];
       const i = prompts.findIndex((p) => p > t - 0.15);
@@ -432,7 +435,10 @@ function SoundsPrompt() {
       raf = requestAnimationFrame(() => void tick());
     };
     void tick();
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      alive = false;
+      cancelAnimationFrame(raf);
+    };
   }, [session]);
   return (
     <span className="flex items-center gap-1.5 text-[11px] text-dim">

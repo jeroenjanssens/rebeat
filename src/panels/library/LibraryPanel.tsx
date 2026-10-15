@@ -210,11 +210,12 @@ export function LibraryPanel() {
     const inLib = samples.some((s) => s.id === id);
     if (!inLib && !id.startsWith("kit:")) return;
     select(id);
-    requestAnimationFrame(() =>
+    const raf = requestAnimationFrame(() =>
       listRef.current
         ?.querySelector(`[data-sample="${CSS.escape(id)}"]`)
         ?.scrollIntoView({ block: "nearest" }),
     );
+    return () => cancelAnimationFrame(raf);
   }, [track, samples]);
 
   const play = (item: Item) =>
