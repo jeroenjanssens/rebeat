@@ -7,6 +7,7 @@ import { SynthCore, type AutoValue, type Controls } from "./core";
 import type { NoteBend } from "../../model/types";
 import type { MippedTable } from "../../model/wavetables";
 import { addTable } from "./wavetable";
+import { seedPhysical } from "./physical";
 
 export type SynthMessage =
   | { type: "patch"; patch: unknown }
@@ -48,7 +49,11 @@ class SynthProcessor extends AudioWorkletProcessor {
   constructor(options?: { processorOptions?: Record<string, unknown> }) {
     super(options);
     const seed = options?.processorOptions?.seed;
-    if (typeof seed === "number") this.random = seeded(seed);
+    if (typeof seed === "number") {
+      this.random = seeded(seed);
+      // seed the physical model's own xorshift32 so offline renders are deterministic (D98)
+      seedPhysical(seed);
+    }
     // offline renders hand over everything at the start (messages could arrive too late)
     this.seeded(() => {
       for (const m of (options?.processorOptions?.messages as SynthMessage[] | undefined) ?? [])
