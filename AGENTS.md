@@ -836,6 +836,16 @@ dq, dv, key)` from the positions at the start (`selectionStarts`, `clampGroupDq`
   level follows its length or the decay. `sanitizePatch` caps a patch's volume at +6 dB.
 - **The factory synth levels test** used to fail sometimes because of random oscillator phases;
   it now seeds `Math.random`. New level-sensitive tests should do the same.
+- **`lastCommitTime` is set only by `commit()`**, never by `undo()`, `redo()`, `editView()` or
+  `setPlayMode()`. Watchers that need to distinguish a knob turn from a history move (such as the
+  automation override and the record-automation subscriber) compare `s.lastCommitTime ===
+prev.lastCommitTime` to skip history moves. Comparing `s.past.length < prev.past.length`
+  is wrong because redo also grows `past`.
+- **Project load resets per-session state in `state/keys.ts`.** When `projectId` changes (via
+  `loadProject`), a `useStore.subscribe` in keys.ts releases all held voices, clears `chordPads`,
+  `dialDown`, `dialUsed`, `history` and `auto.armed`. The MIDI module does the same for `held` and
+  the chord-pad held maps, but via its own subscription — importing keys.ts from midi.ts would
+  create a cycle.
 
 ## 9. Where decisions are recorded
 
