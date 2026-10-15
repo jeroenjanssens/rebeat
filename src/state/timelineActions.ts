@@ -15,6 +15,7 @@ import {
   makeTrack,
   type Project,
 } from "../model/project";
+import { clone } from "../model/synth";
 import { clampBpm, tempoAt, tempoMap } from "../model/tempoMap";
 import { getBuffer, sampleInfo } from "../engine/samples";
 import { loadSample, sampleName } from "../library/library";
@@ -508,7 +509,7 @@ export function copyRegion(id: string, q: number): string {
   const nid = uid("rgn");
   store().commit((p) => {
     const r = regionOf(p, id);
-    if (r) p.regions!.push({ ...JSON.parse(JSON.stringify(r)), id: nid, start: toAnchor(p, q) });
+    if (r) p.regions!.push({ ...clone(r), id: nid, start: toAnchor(p, q) });
   });
   return nid;
 }
@@ -520,7 +521,7 @@ export function splitRegion(id: string, q: number, startQ: number, secondsInto: 
     if (!r || q <= startQ || q >= startQ + r.length) return;
     const first = q - startQ;
     p.regions!.push({
-      ...JSON.parse(JSON.stringify(r)),
+      ...clone(r),
       id: uid("rgn"),
       start: toAnchor(p, q),
       length: r.length - first,

@@ -9,7 +9,7 @@ import type { StepSize } from "./types";
 import { INIT_PATCH as V1_INIT, type SynthPatch as SynthPatchV1 } from "./synthV1";
 
 /** Patches are plain JSON. (structuredClone doesn't exist in AudioWorklets, where this runs.) */
-const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x)) as T;
+export const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x)) as T;
 
 /** How a wavetable oscillator reads its frame (D245). */
 export const WARPS = [

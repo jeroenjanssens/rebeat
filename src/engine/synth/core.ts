@@ -11,6 +11,7 @@ import {
   MOD_DESTS,
   MOD_SOURCES,
   applyMacros,
+  clone,
   envCurve,
   macroAt,
   withMacroValues,
@@ -421,8 +422,6 @@ interface AutoPath {
   pending: AutoPoint[];
 }
 
-const clonePatch = (p: SynthPatch): SynthPatch => JSON.parse(JSON.stringify(p)) as SynthPatch;
-
 /** Values that MIDI and the UI send: mod wheel, aftertouch, pitch bend, macros. */
 export interface Controls {
   modwheel: number;
@@ -816,7 +815,7 @@ export class SynthCore {
     let w = this.work;
     let macrosMoved = false;
     if (!w) {
-      w = this.work = clonePatch(this.rest);
+      w = this.work = clone(this.rest);
       this.macroValues = w.macros.map((m) => m.value);
       macrosMoved = true;
     }

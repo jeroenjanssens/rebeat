@@ -237,4 +237,3 @@ export function catalogId(src: Sound): string | null {
   if (src.source === "sample" || src.source === "multi") return null;
   return `${src.source}:${src.preset}`;
 }
-

@@ -7,6 +7,7 @@ import { paramOf } from "../model/patchParams";
 import { SOUND_PARAMS, type ParamDef } from "../model/params";
 import { player } from "../model/tracks";
 import {
+  clone,
   SOUND_KNOB_DEFAULTS,
   movedKnobs,
   setThroughMacros,
@@ -16,9 +17,6 @@ import {
   type SynthPatch,
 } from "../model/synth";
 import type { Sound, Track } from "../model/types";
-
-/** Patches are plain JSON; this also copies out of immer drafts. */
-const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x)) as T;
 
 /** The synth a voice plays when the track has no sound yet: a bass or a pad. */
 export function defaultSynth(track: Pick<Track, "category">): Sound {

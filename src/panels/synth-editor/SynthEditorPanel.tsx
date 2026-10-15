@@ -71,6 +71,7 @@ import {
   INIT_PATCH,
   TABLE_SLOTS,
   applyMacros,
+  clone,
   refreshMacros,
   setThroughMacros,
   withMacroValues,
@@ -370,8 +371,8 @@ function EditorView({ track, target }: { track: Track; target: EditTarget }) {
   const side = ab?.side ?? "A";
   const pickSide = (to: "A" | "B") => {
     if (to === side) return;
-    const current = JSON.parse(JSON.stringify(patch)) as SynthPatch;
-    const next = JSON.parse(JSON.stringify(ab?.other ?? patch)) as SynthPatch;
+    const current = clone(patch);
+    const next = clone(ab?.other ?? patch);
     onTrack((t) => editPatch(t, (p) => Object.assign(p, next)));
     useAB.setState((s) => ({ ab: { ...s.ab, [track.id]: { side: to, other: current } } }));
   };
@@ -387,7 +388,7 @@ function EditorView({ track, target }: { track: Track; target: EditTarget }) {
         label: "Init patch",
         onSelect: () =>
           onTrack((t) => {
-            editPatch(t, (p) => Object.assign(p, JSON.parse(JSON.stringify(INIT_PATCH))));
+            editPatch(t, (p) => Object.assign(p, clone(INIT_PATCH)));
             resetMacros(t);
           }),
       },
@@ -1784,7 +1785,7 @@ function newTarget(p: SynthPatch, i: number, path: string, values: number[]): Ma
   const at = values[i] ?? p.macros[i].value;
   const v = getPath(applyMacros(withMacroValues(p, values)), path);
   // a copy (p may be a draft) with just this target
-  const probe = JSON.parse(JSON.stringify(p)) as SynthPatch;
+  const probe = clone(p);
   probe.macros = [{ name: "", value: at, targets: [{ path, min: d.min, max: d.max }] }];
   setThroughMacros(probe, path, v, d.min, d.max, [at]);
   return probe.macros[0].targets[0];
@@ -1998,7 +1999,7 @@ function Box({
                   clip: {
                     kind: clip.kind,
                     from: title,
-                    data: JSON.parse(JSON.stringify(clip.data)),
+                    data: clone(clip.data) as Record<string, unknown>,
                   },
                 });
                 toast(`Copied ${title}`);

@@ -6,6 +6,7 @@
  */
 import { makeTrack, prefixed } from "../model/project";
 import { SOUND_PARAMS, defaultParams } from "../model/params";
+import { clone } from "../model/synth";
 import type { Sound, Track } from "../model/types";
 import type { CatalogInstrument } from "./instruments";
 import { convertSynthKnobs } from "./synthTrack";
@@ -16,12 +17,12 @@ import { detectRootNote } from "./pitch";
  * saved values (the same knobs it has in the library).
  */
 export function trackForInstrument(c: CatalogInstrument): Track {
-  const sound: Sound = JSON.parse(JSON.stringify(c.source));
+  const sound: Sound = clone(c.source);
   const t = makeTrack("notes", c.low ? "bass" : "keys", c.name, c.name, [], sound);
   // clear defaults so the instrument's own params win
   for (const k of Object.keys(t.params)) if (k.startsWith("sound.")) delete t.params[k];
   Object.assign(t.params, prefixed("sound", defaultParams(SOUND_PARAMS.voice)), c.params ?? {});
-  t.effects = JSON.parse(JSON.stringify(c.effects ?? []));
+  t.effects = clone(c.effects ?? []);
   convertSynthKnobs(t);
   return t;
 }

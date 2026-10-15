@@ -4,6 +4,7 @@ import { create } from "zustand";
 import { makeEffect } from "../model/effects";
 import { uid } from "../model/id";
 import type { Project } from "../model/project";
+import { clone } from "../model/synth";
 import type { Effect } from "../model/types";
 import { useSettings } from "./settings";
 import { useStore } from "./store";
@@ -21,7 +22,7 @@ function list(p: Draft<Project>, target: FxTarget): Effect[] | undefined {
 /** The Keys strip's effects are settings: edited as a copy, no undo. */
 function editKeysEffects(fn: (fx: Effect[]) => void) {
   const settings = useSettings.getState();
-  const fx: Effect[] = JSON.parse(JSON.stringify(settings.keysMix.effects ?? []));
+  const fx: Effect[] = clone(settings.keysMix.effects ?? []);
   fn(fx);
   settings.set({ keysMix: { ...settings.keysMix, effects: fx } });
 }
@@ -54,7 +55,6 @@ export const setEffectParam = (target: FxTarget, i: number, id: string, v: numbe
 /** The effect clipboard: the app's, not the project's (it survives opening another one). */
 export const useFxClipboard = create<{ effects: Effect[] | null }>(() => ({ effects: null }));
 
-const clone = (fx: Effect[]): Effect[] => JSON.parse(JSON.stringify(fx));
 /** Copies get ids of their own: lanes and mappings stay with the originals. */
 const fresh = (fx: Effect[]): Effect[] => clone(fx).map((e) => ({ ...e, id: uid("fx") }));
 

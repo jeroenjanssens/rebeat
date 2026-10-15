@@ -16,6 +16,7 @@ import { voiceSound } from "./synthTrack";
 import { db, type InstrumentRecord } from "../storage/db";
 import { COLLECTIONS, CATALOG, type CatalogInstrument } from "./instruments";
 import { sha256 } from "./library";
+import { clone } from "../model/synth";
 import { zonesFor } from "./sources";
 
 export const useUserInstruments = create<{ list: InstrumentRecord[] }>()(() => ({ list: [] }));
@@ -39,11 +40,11 @@ function soundOf(track: Track, name: string): InstrumentRecord["sound"] {
   const params = Object.fromEntries(
     Object.entries(track.params).filter(([k]) => k.startsWith("sound.")),
   );
-  const { from: _from, ...instrument } = JSON.parse(JSON.stringify(trackSound(track))) as Sound;
+  const { from: _from, ...instrument } = clone(trackSound(track)) as Sound;
   return {
     instrument: { ...instrument, name },
     params,
-    effects: JSON.parse(JSON.stringify(track.effects)),
+    effects: clone(track.effects),
   };
 }
 

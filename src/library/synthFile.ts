@@ -2,7 +2,7 @@
  * The .rbsynth file format (§0.6e G): one synth to share, with its name, where its macros are,
  * and its effects. (Importing and exporting: rbsynth.ts.)
  */
-import { upgradePatch, type SynthPatch } from "../model/synth";
+import { clone, upgradePatch, type SynthPatch } from "../model/synth";
 import type { Effect, Track } from "../model/types";
 import { macroKey, trackPatch } from "./synthTrack";
 
@@ -29,7 +29,7 @@ export function synthFile(track: Track, name: string): SynthFile {
     name,
     patch,
     macros: patch.macros.map((m, i) => track.params[macroKey(i)] ?? m.value),
-    effects: JSON.parse(JSON.stringify(track.effects)) as Effect[],
+    effects: clone(track.effects),
   };
 }
 

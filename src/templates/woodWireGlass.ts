@@ -17,7 +17,7 @@ import { paramOf, toKnob } from "../model/patchParams";
 import type { Project } from "../model/project";
 import type { AutomationPoint, Lane, NoteBend, Pattern, Section, Track } from "../model/types";
 import { factorySynth } from "../library/synths";
-import { TABLE_SLOTS } from "../model/synth";
+import { clone, TABLE_SLOTS } from "../model/synth";
 import {
   chord,
   drum,
@@ -76,7 +76,7 @@ export function woodWireAndGlass(): Project {
   const riser = notesTrack("Riser", synth("wt-riser"), "Wavetable · Riser", "fx");
   riser.volume = 0.6;
   // the growl bass, with a second table in its slots: the drop switches to it (D248)
-  const growl = JSON.parse(JSON.stringify(factorySynth("wt-growl-bass")!.patch));
+  const growl = clone(factorySynth("wt-growl-bass")!.patch);
   growl.osc[0].tables = ["factory:sync"];
   const bass = notesTrack(
     "Bass",

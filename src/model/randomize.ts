@@ -7,6 +7,7 @@ import { SECTIONS, fromKnob, getPath, toKnob } from "./patchParams";
 import {
   LFO_SHAPES,
   applyMacros,
+  clone,
   setThroughMacros,
   withMacroValues,
   type SynthPatch,
@@ -32,7 +33,7 @@ export function randomizePatch(
   values: (number | undefined)[] = [],
   rand: () => number = Math.random,
 ): SynthPatch {
-  const p = JSON.parse(JSON.stringify(patch)) as SynthPatch;
+  const p = clone(patch);
   const heard = applyMacros(withMacroValues(patch, values));
   const open = RANDOM_GROUPS.filter((g) => !locked.includes(g.id));
   const sections = new Set<string>(open.flatMap((g) => g.sections));

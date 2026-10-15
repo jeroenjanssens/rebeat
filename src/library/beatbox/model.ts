@@ -90,4 +90,3 @@ export async function classify(windows: Float32Array[]): Promise<Classified[]> {
     worker!.postMessage({ type: "run", id, windows: flat, n: windows.length }, [flat.buffer]);
   });
 }
-
