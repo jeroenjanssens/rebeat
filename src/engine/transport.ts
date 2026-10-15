@@ -96,11 +96,16 @@ export function onStep(fn: Listener): () => void {
   };
 }
 
+/** The swing multiplier for step `index`; swing=0.5 gives equal lengths (no swing). */
+function swingFactor(swing: number, index: number): number {
+  return index % 2 === 0 ? 2 * swing : 2 - 2 * swing;
+}
+
 /** Step length in seconds; swing lengthens even steps and shortens odd ones. */
 export function stepDuration(pattern: Pattern, bpm: number, index: number, globalSwing = 0.5) {
   const base = (60 / bpm) * STEP_SIZE_QUARTERS[pattern.stepSize];
   const swing = pattern.swing ?? globalSwing;
-  return index % 2 === 0 ? base * 2 * swing : base * (2 - 2 * swing);
+  return base * swingFactor(swing, index);
 }
 
 /**
@@ -111,7 +116,7 @@ export function stepSeconds(project: Project, pattern: Pattern, q: number, index
   const stepQ = STEP_SIZE_QUARTERS[pattern.stepSize];
   const base = secondsBetween(project, q, q + stepQ);
   const swing = pattern.swing ?? project.swing;
-  return index % 2 === 0 ? base * 2 * swing : base * (2 - 2 * swing);
+  return base * swingFactor(swing, index);
 }
 
 /** One repeat of a section in seconds: its steps' lengths (with swing) through the tempo map. */
