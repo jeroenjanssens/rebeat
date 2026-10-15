@@ -516,7 +516,7 @@ function handle(e: MIDIMessageEvent, device: string) {
   if (m.type === "pitchbend") {
     // 14 bits, 8192 in the middle
     const raw = (m.data[2] << 7) | m.data[1];
-    synthControl("pitchbend", Math.max(-1, Math.min(1, (raw - 8192) / 8191)));
+    keysControl("pitchbend", Math.max(-1, Math.min(1, (raw - 8192) / 8191)));
     return report(m, "Pitch bend of the selected track", {
       kind: "strip",
       index: 0,
@@ -524,11 +524,11 @@ function handle(e: MIDIMessageEvent, device: string) {
     });
   }
   if (m.type === "aftertouch") {
-    synthControl("aftertouch", m.value / 127);
+    keysControl("aftertouch", m.value / 127);
     return report(m, "Aftertouch of the selected track");
   }
   if (m.type === "cc" && m.number === 1) {
-    synthControl("modwheel", m.value / 127);
+    keysControl("modwheel", m.value / 127);
     return report(m, "Mod wheel of the selected track", {
       kind: "strip",
       index: 1,
@@ -536,7 +536,7 @@ function handle(e: MIDIMessageEvent, device: string) {
     });
   }
   if (m.type === "cc" && m.number === 64) {
-    sustainPedal(m.value >= 64);
+    keysSustain(m.value >= 64);
     return report(m, m.value >= 64 ? "Sustain down" : "Sustain up");
   }
   report(m, "Nothing (not mapped: right-click a knob → MIDI learn)");
@@ -1050,16 +1050,6 @@ function padCC(m: MidiMessage, index: number) {
   }
   padCCsDown.set(index, "track");
   return report(m, playPadTrack(index, m.value / 127), ev);
-}
-
-/** Mod wheel, aftertouch and pitch bend go to the keys' voice. */
-function synthControl(name: "modwheel" | "aftertouch" | "pitchbend", value: number) {
-  keysControl(name, value);
-}
-
-/** The sustain pedal: delegated to the keys module so it works with all note sources. */
-function sustainPedal(down: boolean) {
-  keysSustain(down);
 }
 
 /**

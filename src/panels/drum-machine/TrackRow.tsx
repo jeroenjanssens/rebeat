@@ -42,6 +42,7 @@ import { useStore } from "../../state/store";
 import { toggleMuteHere } from "../../state/timelineActions";
 import { ClipView } from "./ClipView";
 import type { Geometry } from "./layout";
+import { chips } from "./sectionMenu";
 import { ScratchStrip } from "./ScratchStrip";
 import { SoundPicker } from "./SoundPicker";
 import { StepsArea } from "./StepsArea";
@@ -80,34 +81,6 @@ function ScopeZoom({ trackId, name, color }: { trackId: string; name: string; co
       </div>
     </div>
   );
-}
-
-function chips(
-  label: string,
-  options: { label: string; active: boolean; onClick: () => void }[],
-): MenuItem {
-  return {
-    render: (close) => (
-      <div className="px-2 py-1.5">
-        <div className="label mb-1.5">{label}</div>
-        <div className="flex flex-wrap gap-1">
-          {options.map((o) => (
-            <button
-              key={o.label}
-              className="tool-btn border border-line"
-              data-active={o.active}
-              onClick={() => {
-                o.onClick();
-                close();
-              }}
-            >
-              {o.label}
-            </button>
-          ))}
-        </div>
-      </div>
-    ),
-  };
 }
 
 function TrackRowInner({

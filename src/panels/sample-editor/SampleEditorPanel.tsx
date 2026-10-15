@@ -11,7 +11,6 @@ import { toAudioBuffer } from "../../engine/recorder";
 import { detectBpm, detectKey, detectOnsets, loudness, toMono } from "../../library/analysis";
 import {
   copyRange,
-  cropRange,
   cutRange,
   gridMarkers,
   pasteAt,
@@ -564,7 +563,7 @@ function EditTab({
           data-hint="editor.crop"
           onClick={() => {
             if (!sel) return;
-            editor.replaceSource(cropRange(source, sr, sel.start, sel.end), {
+            editor.replaceSource(copyRange(source, sr, sel.start, sel.end), {
               trimStart: 0,
               trimEnd: null,
             });

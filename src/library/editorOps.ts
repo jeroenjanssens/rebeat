@@ -21,10 +21,6 @@ export function cutRange(ch: Channels, sr: number, start: number, end: number): 
   });
 }
 
-export function cropRange(ch: Channels, sr: number, start: number, end: number): Channels {
-  return copyRange(ch, sr, start, end);
-}
-
 export function silenceRange(ch: Channels, sr: number, start: number, end: number): Channels {
   const n = ch[0].length;
   return ch.map((c) => {
