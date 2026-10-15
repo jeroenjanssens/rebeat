@@ -312,7 +312,49 @@ export function MiniLab3Svg({
   const colors = shiftHeld ? SHIFT_PAD_COLORS : padColors;
   const colorsRef = useRef(colors);
   const svgRef = useRef<SVGSVGElement>(null);
+  /** DOM elements cached once at mount so the frame loop avoids querySelector on every frame. */
+  const elemRef = useRef<{
+    keys: (SVGElement | null)[];
+    keyNotes: (SVGTextElement | null)[];
+    keyDots: (SVGCircleElement | null)[];
+    pads: (SVGElement | null)[];
+    padLabels: (SVGElement | null)[];
+    knobCaps: (SVGElement | null)[];
+    faderThumbs: (SVGElement | null)[];
+    enc: SVGElement | null;
+    stripFills: (SVGElement | null)[];
+  } | null>(null);
   const liveRef = useRef<LiveState>(makeLiveState());
+
+  // Cache SVG elements once after mount so the frame loop doesn't querySelector every frame.
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    elemRef.current = {
+      keys: KEY_LAYOUT.map((k) => svg.querySelector<SVGElement>(`[data-key="${k.midi}"]`)),
+      keyNotes: KEY_LAYOUT.map((k) =>
+        svg.querySelector<SVGTextElement>(`[data-key-note="${k.midi}"]`),
+      ),
+      keyDots: KEY_LAYOUT.map((k) =>
+        svg.querySelector<SVGCircleElement>(`[data-key-dot="${k.midi}"]`),
+      ),
+      pads: Array.from({ length: 8 }, (_, i) => svg.querySelector<SVGElement>(`[data-pad="${i}"]`)),
+      padLabels: Array.from({ length: 8 }, (_, i) =>
+        svg.querySelector<SVGElement>(`[data-pad-label="${i}"]`),
+      ),
+      knobCaps: Array.from({ length: 8 }, (_, i) =>
+        svg.querySelector<SVGElement>(`[data-knob-cap="${i}"]`),
+      ),
+      faderThumbs: Array.from({ length: 4 }, (_, i) =>
+        svg.querySelector<SVGElement>(`[data-fader-thumb="${i}"]`),
+      ),
+      enc: svg.querySelector<SVGElement>("[data-enc-cap]"),
+      stripFills: Array.from({ length: 2 }, (_, i) =>
+        svg.querySelector<SVGElement>(`[data-strip-fill="${i}"]`),
+      ),
+    };
+  }, []);
+
   // the labels (and the values they control) for the frame loop, which runs outside React
   const labelsRef = useRef(labels);
   const scaleKeyRef = useRef(scaleKey);
@@ -421,12 +463,13 @@ export function MiniLab3Svg({
 
   // Flush dirty state to DOM per frame
   useEffect(() => {
-    const svg = svgRef.current;
-    if (!svg) return;
+    if (!svgRef.current) return;
     return onFrame(() => {
       const live = liveRef.current;
       if (!live.dirty) return;
       live.dirty = false;
+      const elems = elemRef.current;
+      if (!elems) return;
 
       // the notes that started or stopped sounding by now (later ones wait for their time)
       if (live.lightQueue.length) {
@@ -457,7 +500,7 @@ export function MiniLab3Svg({
         const held = live.keyVel[k.midi] > 0;
         const vels = live.audible.get(k.midi + live.shift);
         const sounding = !!vels;
-        const el = svg.querySelector<SVGElement>(`[data-key="${k.midi}"]`);
+        const el = elems.keys[i];
         if (el) {
           const under = k.white ? WHITE_KEY : BLACK_KEY;
           const pct = sounding ? Math.round(Math.max(...vels) * 100) : 0;
@@ -474,10 +517,10 @@ export function MiniLab3Svg({
           else delete el.dataset.waiting;
         }
         // while a key sounds or is held: the note it plays (the device's octave included)
-        const label = svg.querySelector<SVGTextElement>(`[data-key-note="${k.midi}"]`);
+        const label = elems.keyNotes[i];
         if (label) label.textContent = held || sounding ? noteName(k.midi + live.shift) : "";
         // Key mode: a dot on the keys in its key, a bigger one on the root
-        const dot = svg.querySelector<SVGCircleElement>(`[data-key-dot="${k.midi}"]`);
+        const dot = elems.keyDots[i];
         if (dot) {
           const key = scaleKeyRef.current;
           const note = k.midi + live.shift;
@@ -494,20 +537,20 @@ export function MiniLab3Svg({
       for (let i = 0; i < 8; i++) {
         const vel = live.padVel[i];
         const color = colorsRef.current[i] ?? PAD_UNLIT;
-        const el = svg.querySelector<SVGElement>(`[data-pad="${i}"]`);
+        const el = elems.pads[i];
         if (el)
           el.style.fill =
             vel > 0
               ? `color-mix(in oklab, ${color} ${Math.round(45 + (vel / 127) * 50)}%, ${PAD_FACE})`
               : "";
         // its label turns white on the lit face, so it stays readable
-        const text = svg.querySelector<SVGElement>(`[data-pad-label="${i}"]`);
+        const text = elems.padLabels[i];
         if (text) text.style.fill = vel > 0 ? "#ffffff" : "";
       }
 
       // Knob caps: the heptagon turns with the knob
       for (let i = 0; i < 8; i++) {
-        const el = svg.querySelector<SVGElement>(`[data-knob-cap="${i}"]`);
+        const el = elems.knobCaps[i];
         if (el) el.setAttribute("transform", `rotate(${live.knobAngle[i].toFixed(1)})`);
       }
 
@@ -517,20 +560,20 @@ export function MiniLab3Svg({
         const seen = live.seen[i] === 1;
         const pos = seen ? live.faderPos[i] : (labels.faders[i]?.pos ?? 0.5);
         const y = FADER_TOP + FADER_TRAVEL * (1 - pos);
-        const cap = svg.querySelector<SVGElement>(`[data-fader-thumb="${i}"]`);
+        const cap = elems.faderThumbs[i];
         if (cap) {
           cap.setAttribute("transform", `translate(0,${y.toFixed(1)})`);
           cap.style.opacity = seen ? "1" : "0.45";
         }
       }
 
-      const enc = svg.querySelector<SVGElement>("[data-enc-cap]");
+      const enc = elems.enc;
       if (enc) enc.setAttribute("transform", `rotate(${live.encoderAngle.toFixed(1)})`);
 
       // Strip fills
       for (let i = 0; i < 2; i++) {
         const pos = live.stripPos[i];
-        const el = svg.querySelector<SVGElement>(`[data-strip-fill="${i}"]`);
+        const el = elems.stripFills[i];
         if (el) {
           const h = (STRIP_H - 6) * pos;
           el.setAttribute("y", (STRIP_Y + STRIP_H - 3 - h).toFixed(1));
