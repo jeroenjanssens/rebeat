@@ -12,7 +12,7 @@ import { isAudible, useStore } from "../state/store";
 import { BusChannel, TrackChannel, faderGain } from "./channel";
 import { FxChain, automatedParams, schedule, type AutoEvent } from "./effects";
 import { getBuffer, sampleInfo } from "./samples";
-import { warper } from "./stretch";
+import { disposeWarper, warper } from "./stretch";
 import type { StretchNode } from "signalsmith-stretch";
 import { createInstrument, instrumentKey, type InstrumentVoice } from "./instruments";
 import { detectRootNote } from "../library/pitch";
@@ -261,11 +261,12 @@ export function reconcile(project: Project = useStore.getState().project) {
   const ids = new Set(project.tracks.map((t) => t.id));
   for (const [id, ch] of S.channels) {
     if (ids.has(id)) continue;
+    // One place where all per-track runtime state dies: channels, voices, warpers, scratches,
+    // the level/activity caches. Keep this list complete.
     ch.dispose();
     S.channels.delete(id);
     S.synths.get(id)?.dispose();
     S.synths.delete(id);
-    // also dispose the live voice for this track
     S.liveVoices.get(id)?.dispose();
     S.liveVoices.delete(id);
     S.liveChannels.get(id)?.dispose();
@@ -274,6 +275,17 @@ export function reconcile(project: Project = useStore.getState().project) {
     liveIdleTimers.delete(id);
     S.lastTracks.delete(id);
     stopClip(id);
+    // time-stretch WASM nodes (created lazily for Clip tracks)
+    disposeWarper(id);
+    // scratch worklet nodes (created lazily for Clip tracks)
+    const scratch = scratches.get(id);
+    if (scratch) {
+      scratch.node.disconnect();
+      scratches.delete(id);
+    }
+    // per-track level and activity caches
+    S.activeUntil.delete(id);
+    levelCache.delete(id);
   }
   // while the song plays its tempo changes, synced things follow the transport's tempo
   const bpm = S.tempo ?? project.bpm;
