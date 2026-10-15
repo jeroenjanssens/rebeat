@@ -1,7 +1,7 @@
 import { defaultBuses, defaultMaster, defaultPerf } from "../model/effects";
 import { makePattern, makeTrack, type Project } from "../model/project";
-import { hitsTrack } from "./builder";
-import type { Lane, Track } from "../model/types";
+import { drum as drumPattern, hitsTrack } from "./builder";
+import type { Track } from "../model/types";
 
 export interface Template {
   id: string;
@@ -34,12 +34,7 @@ const drum = (name: string, sampleId: string, source: string, category: Track["c
   hitsTrack(name, sampleId, source, category);
 
 function hits(p: Project, patternId: string, track: Track, code: string) {
-  const lane = p.patterns[patternId].lanes[track.id] as Lane;
-  [...code.replace(/\s/g, "")].forEach((c, i) => {
-    if (c === ".") return;
-    lane.steps[i].on = true;
-    lane.steps[i].velocity = c === "X" ? 1 : c === "o" ? 0.45 : 0.8;
-  });
+  drumPattern(p.patterns[patternId], track, code);
 }
 
 function withPage(p: Project, name = "Pattern 1") {
