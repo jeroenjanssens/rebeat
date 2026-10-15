@@ -136,7 +136,11 @@ function Pads() {
 }
 
 function PageLauncher() {
-  const { project, playSlotId, queuedSlotId, playing, setUi } = useStore();
+  const project = useStore((s) => s.project);
+  const playSlotId = useStore((s) => s.playSlotId);
+  const queuedSlotId = useStore((s) => s.queuedSlotId);
+  const playing = useStore((s) => s.playing);
+  const setUi = useStore((s) => s.setUi);
   return (
     <div className="grid grid-cols-[repeat(auto-fill,minmax(88px,1fr))] gap-1.5">
       {project.slots.map((slot, i) => {
