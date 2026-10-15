@@ -103,11 +103,19 @@ export function regionSpan(project: Project, r: AudioRegion): { q0: number; q1: 
 
 /**
  * The regions of each track in song order, each cut where the next one on its track starts
- * (D188: one at a time).
+ * (D188: one at a time). Cached on `project.regions` identity — the result is the same as long
+ * as the regions array hasn't changed, so it's computed at most once per step even when
+ * `coveredTracks` and `regionStep` both call it.
  */
-function trackRegions(project: Project) {
-  const by = new Map<string, { r: AudioRegion; q0: number; q1: number }[]>();
-  for (const r of project.regions ?? []) {
+type TrackRegionMap = Map<string, { r: AudioRegion; q0: number; q1: number }[]>;
+const trackRegionsCache = new WeakMap<AudioRegion[], TrackRegionMap>();
+function trackRegions(project: Project): TrackRegionMap {
+  const key = project.regions;
+  if (!key?.length) return new Map();
+  const cached = trackRegionsCache.get(key);
+  if (cached) return cached;
+  const by: TrackRegionMap = new Map();
+  for (const r of key) {
     const s = regionSpan(project, r);
     if (!s) continue;
     const list = by.get(r.trackId) ?? [];
@@ -118,6 +126,7 @@ function trackRegions(project: Project) {
     list.sort((a, b) => a.q0 - b.q0);
     for (let i = 0; i < list.length - 1; i++) list[i].q1 = Math.min(list[i].q1, list[i + 1].q0);
   }
+  trackRegionsCache.set(key, by);
   return by;
 }
 
