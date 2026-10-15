@@ -11,8 +11,8 @@ describe("KEYS_KNOBS zone math (D140, D142, D148)", () => {
 
   it("every knob covers the full CC range: zone 0 at CC=0, last zone at CC=127", () => {
     for (const { slot, values } of KEYS_KNOBS) {
-      expect(knobZone(0, values)).toBe(0, `${slot}: CC=0 should map to zone 0`);
-      expect(knobZone(127, values)).toBe(values - 1, `${slot}: CC=127 should map to last zone`);
+      expect(knobZone(0, values), `${slot}: CC=0 should map to zone 0`).toBe(0);
+      expect(knobZone(127, values), `${slot}: CC=127 should map to last zone`).toBe(values - 1);
     }
   });
 
@@ -21,8 +21,10 @@ describe("KEYS_KNOBS zone math (D140, D142, D148)", () => {
       for (let cc = 1; cc < 128; cc++) {
         const prev = knobZone(cc - 1, values);
         const curr = knobZone(cc, values);
-        expect(curr - prev).toBeGreaterThanOrEqual(0, `${slot}: zone must not decrease`);
-        expect(curr - prev).toBeLessThanOrEqual(1, `${slot}: zone must increase by at most 1`);
+        expect(curr - prev, `${slot} CC${cc}: zone must not decrease`).toBeGreaterThanOrEqual(0);
+        expect(curr - prev, `${slot} CC${cc}: zone must increase by at most 1`).toBeLessThanOrEqual(
+          1,
+        );
       }
     }
   });
@@ -31,7 +33,7 @@ describe("KEYS_KNOBS zone math (D140, D142, D148)", () => {
     for (const { slot, values } of KEYS_KNOBS) {
       const reached = new Set<number>();
       for (let cc = 0; cc < 128; cc++) reached.add(knobZone(cc, values));
-      expect(reached.size).toBe(values, `${slot}: all ${values} zones must be reachable`);
+      expect(reached.size, `${slot}: all ${values} zones must be reachable`).toBe(values);
     }
   });
 });
