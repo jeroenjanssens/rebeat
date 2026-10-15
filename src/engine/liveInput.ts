@@ -15,7 +15,8 @@ function sync() {
   for (const [id, node] of connected)
     if (!want.has(id) || node !== src) {
       try {
-        src?.disconnect(getChannel(id)!.input.input as unknown as AudioNode);
+        // disconnect the node that was connected (node), not the new src
+        node.disconnect(getChannel(id)!.input.input as unknown as AudioNode);
       } catch {
         // already gone
       }
