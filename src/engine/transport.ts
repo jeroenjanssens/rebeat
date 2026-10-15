@@ -273,7 +273,7 @@ export function isCountingIn() {
   return audioNow() < countInUntil;
 }
 
-function conditionPasses(condition: string | undefined, cycle: number, fill: boolean): boolean {
+export function conditionPasses(condition: string | undefined, cycle: number, fill: boolean): boolean {
   switch (condition) {
     case undefined:
       return true;

@@ -285,4 +285,7 @@ End of phase 11: full Playwright run.
 
 ## Deviations
 
-(Filled in while building.)
+- **P1.12**: No code change. A unit test (`src/engine/renderCycle.test.ts`) confirms that for
+  any section with repeats N, the transport's `cycles` Map produces `[0, 1, …, N-1]` for that
+  section's repeats, which equals `cycle: r` in `render.ts`. Clones have different slot ids so
+  each independently starts from 0, matching the transport's separate per-slot counters.
