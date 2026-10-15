@@ -22,6 +22,7 @@ import {
   type ModSource,
   type SynthPatch,
 } from "../../model/synth";
+import { midiToHz } from "../../model/notes";
 import { atRelease, bendAt, releaseTail } from "../../model/bend";
 import type { NoteBend } from "../../model/types";
 import type { MippedTable } from "../../model/wavetables";
@@ -788,7 +789,7 @@ export class SynthCore {
       // a stolen or retriggered voice keeps ringing, like a string plucked again (D254)
       if (!v.phys) v.phys = new PhysVoice();
       if (!wasActive) v.phys.clear();
-      v.phys.start(p.physical, 440 * Math.pow(2, (note - 69) / 12), velocity, this.sr);
+      v.phys.start(p.physical, midiToHz(note), velocity, this.sr);
     }
   }
 
@@ -1004,7 +1005,7 @@ export class SynthCore {
         structure: mod("phys.structure"),
         pickup: mod("phys.pickup"),
       };
-      v.phys.block(p.physical, 440 * Math.pow(2, (base - 69) / 12), sr, v.gate, pm);
+      v.phys.block(p.physical, midiToHz(base), sr, v.gate, pm);
       // its stereo place: the patch's pan, the voice spread, modulation
       const voicePan = ((v.order % 2) * 2 - 1) * p.output.spread * 0.4;
       const pan = Math.max(-1, Math.min(1, p.output.pan + voicePan + mod("pan")));

@@ -1,3 +1,5 @@
+export const midiToHz = (midi: number) => 440 * Math.pow(2, (midi - 69) / 12);
+
 const NAMES_SHARP = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 const NAMES_FLAT = ["C", "D♭", "D", "E♭", "E", "F", "G♭", "G", "A♭", "A", "B♭", "B"];
 

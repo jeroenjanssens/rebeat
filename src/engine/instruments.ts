@@ -12,7 +12,7 @@ import { workletSynth, type WorkletSynth } from "./synth/node";
 import { markBusy, markDownloaded } from "../library/downloads";
 import { CATALOG, sustainsByLooping } from "../library/instruments";
 import { toUnit } from "../model/params";
-import { noteName } from "../model/notes";
+import { midiToHz, noteName } from "../model/notes";
 import type { Note, NoteBend, Sound, Track } from "../model/types";
 import { getBuffer } from "./samples";
 import { db } from "../storage/db";
@@ -38,8 +38,6 @@ export function instrumentName(src: Sound): string {
   if (src.source === "multi") return "Multi-sample";
   return "Sample";
 }
-
-const midiToHz = (m: number) => 440 * Math.pow(2, (m - 69) / 12);
 
 export interface InstrumentVoice {
   /** Changes to this key need a new voice (another preset/source/sample). */
