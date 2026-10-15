@@ -128,12 +128,17 @@ export function prefixed(prefix: string, values: Record<string, number>): Record
   return Object.fromEntries(Object.entries(values).map(([k, v]) => [`${prefix}.${k}`, v]));
 }
 
-export function makePattern(project: Project, name: string, stepCount = 16): Pattern {
+/** The next unused link color (or the first one if all are used). */
+export function nextLinkColor(project: Project): string {
   const used = new Set(Object.values(project.patterns).map((p) => p.linkColor));
+  return LINK_COLORS.find((c) => !used.has(c)) ?? LINK_COLORS[0];
+}
+
+export function makePattern(project: Project, name: string, stepCount = 16): Pattern {
   return {
     id: uid("pat"),
     name,
-    linkColor: LINK_COLORS.find((c) => !used.has(c)) ?? LINK_COLORS[0],
+    linkColor: nextLinkColor(project),
     stepCount,
     stepSize: "1/16",
     lanes: Object.fromEntries(project.tracks.map((t) => [t.id, emptyLane(t.mode)])),
@@ -157,8 +162,7 @@ function clonePattern(project: Project, source: Pattern, name: string): Pattern 
   const copy: Pattern = deepClone(source);
   copy.id = uid("pat");
   copy.name = name;
-  const used = new Set(Object.values(project.patterns).map((p) => p.linkColor));
-  copy.linkColor = LINK_COLORS.find((c) => !used.has(c)) ?? LINK_COLORS[0];
+  copy.linkColor = nextLinkColor(project);
   return copy;
 }
 
