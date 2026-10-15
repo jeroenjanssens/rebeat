@@ -24,6 +24,16 @@ export interface Schedulable {
   cancelScheduledValues(time: number): unknown;
 }
 
+/**
+ * Bridge a native AudioParam or Tone Param to the Schedulable interface used for
+ * automation scheduling. Tone's wrapper doesn't extend AudioParam in its types even though
+ * the Web Audio scheduling methods are the same; one cast here avoids `as unknown as` at
+ * every call site.
+ */
+export function rawParam(p: AudioParam | Tone.Param): Schedulable {
+  return p as unknown as Schedulable;
+}
+
 /** Params that automation moved, so stop can hand them back to their knobs. */
 export const automatedParams = new Set<Schedulable>();
 
@@ -519,8 +529,11 @@ function build(name: string, p: Params): Inner {
       Tone.connect(hc, out);
       const nyquist = raw.sampleRate / 2;
       const db = toUnit.db(-15, 15);
-      const ap = (n: BiquadFilterNode) =>
-        n as unknown as { frequency: Schedulable; gain: Schedulable; Q: Schedulable };
+      const ap = (n: BiquadFilterNode) => ({
+        frequency: rawParam(n.frequency),
+        gain: rawParam(n.gain),
+        Q: rawParam(n.Q),
+      });
       return {
         nodes: [],
         io: { input, output: out },
@@ -569,8 +582,8 @@ function build(name: string, p: Params): Inner {
       Tone.connect(smooth, range);
       Tone.connect(range, vca.gain);
       const floor = (x: number) => (x <= 0.001 ? 0 : Tone.dbToGain(lin(-80, 0)(x)));
-      const v = vca as unknown as { gain: Schedulable };
-      const sm = smooth as unknown as { frequency: Schedulable };
+      const v = { gain: rawParam(vca.gain) };
+      const sm = { frequency: rawParam(smooth.frequency) };
       return {
         nodes: [],
         io: { input, output: out },
@@ -611,7 +624,7 @@ function build(name: string, p: Params): Inner {
       lfoR.start();
       const base = (q: Params, x = val(name, q, "delay")) => ms(3, 15, x);
       const depth = (q: Params, x = val(name, q, "depth")) => x;
-      const P = (n: AudioParam) => n as unknown as Schedulable;
+      const P = rawParam;
       return {
         nodes: [],
         io: { input: s.input, output: out },
@@ -665,7 +678,7 @@ function build(name: string, p: Params): Inner {
       const g = (x: number) => 1 + x * 20;
       const wowDepth = (x: number) => x * x * 0.004;
       const flutterDepth = (x: number) => x * x * 0.0004;
-      const delayBase = wobble.delayTime as unknown as Schedulable;
+      const delayBase = rawParam(wobble.delayTime);
       return {
         nodes: [],
         io: { input: pre, output: out },
@@ -719,7 +732,7 @@ function build(name: string, p: Params): Inner {
       // cents per unit of level: full range at a level of 0.25 with Sens at 50%
       const cents = (range: number, sens: number) =>
         FX_UNIT.octaves(range) * 1200 * 4 * (0.1 + sens * 1.8);
-      const f = filter as unknown as { frequency: Schedulable; Q: Schedulable };
+      const f = { frequency: rawParam(filter.frequency), Q: rawParam(filter.Q) };
       return {
         nodes: [],
         io: { input, output: out },
