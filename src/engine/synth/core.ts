@@ -452,6 +452,8 @@ export class SynthCore {
   /** Preallocated: global LFO outputs written by block() and read by control(). No allocation per block. */
   private glfoScratch = new Float64Array(3);
   private events: Event[] = [];
+  /** Read position in events[]; compacted (spliced to 0) at the start of each process(). */
+  private eventHead = 0;
   private order = 0;
   private bpm = 120;
   /** Mono/legato: the notes held, latest last. */
@@ -533,6 +535,11 @@ export class SynthCore {
    * this one without a new attack.
    */
   slideTo(from: number, id: number, note: number, velocity: number, at: number, bend?: NoteBend) {
+    // Compact first so eventHead stays consistent after the filter.
+    if (this.eventHead > 0) {
+      this.events.splice(0, this.eventHead);
+      this.eventHead = 0;
+    }
     this.events = this.events.filter((e) => !(e.kind === "off" && e.id === from));
     this.queue({ at, kind: "on", id, note, velocity, from, bend });
   }
@@ -549,6 +556,7 @@ export class SynthCore {
    */
   panic() {
     this.events = [];
+    this.eventHead = 0;
     this.held = [];
     for (const v of this.voices) {
       v.active = false;
@@ -566,10 +574,16 @@ export class SynthCore {
   }
 
   private queue(e: Event) {
-    // keep the queue sorted (events mostly arrive in order)
-    let i = this.events.length;
-    while (i > 0 && this.events[i - 1].at > e.at) i--;
-    this.events.splice(i, 0, e);
+    // Binary search for the insertion point among unread events (stable: equal `at` appended).
+    const ev = this.events;
+    let lo = this.eventHead;
+    let hi = ev.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >>> 1;
+      if (ev[mid].at <= e.at) lo = mid + 1;
+      else hi = mid;
+    }
+    ev.splice(lo, 0, e);
   }
 
   /** The mod matrix's output of the newest sounding voice (for the editor's knob rings). */
@@ -586,17 +600,23 @@ export class SynthCore {
 
   /** Whether anything still sounds. */
   get busy() {
-    return this.voices.some((v) => v.active) || this.events.length > 0;
+    return this.voices.some((v) => v.active) || this.events.length > this.eventHead;
   }
 
   /** Render `n` samples starting at sample `frame` into `left` and `right` (added to). */
   process(left: Float32Array, right: Float32Array, frame: number, n: number = left.length) {
+    // Compact consumed events once per process() call to avoid unbounded growth.
+    if (this.eventHead > 0) {
+      this.events.splice(0, this.eventHead);
+      this.eventHead = 0;
+    }
     let pos = 0;
     while (pos < n) {
       // events due now
-      while (this.events.length && this.events[0].at <= frame + pos)
-        this.handle(this.events.shift()!);
-      const nextEvent = this.events.length ? this.events[0].at - frame : n;
+      while (this.eventHead < this.events.length && this.events[this.eventHead].at <= frame + pos)
+        this.handle(this.events[this.eventHead++]);
+      const remaining = this.events.length - this.eventHead;
+      const nextEvent = remaining > 0 ? this.events[this.eventHead].at - frame : n;
       const len = Math.max(1, Math.min(CONTROL, n - pos, Math.ceil(nextEvent - pos)));
       this.resolve(frame + pos);
       this.block(left, right, pos, len);
