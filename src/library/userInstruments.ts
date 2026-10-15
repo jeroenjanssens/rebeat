@@ -48,33 +48,53 @@ function soundOf(track: Track, name: string): InstrumentRecord["sound"] {
   };
 }
 
-const saving = new Map<string, ReturnType<typeof setTimeout>>();
+interface PendingSave {
+  timer: ReturnType<typeof setTimeout>;
+  trackId: string;
+  copyOf?: string;
+}
+
+const saving = new Map<string, PendingSave>();
+
+async function doSave(id: string, trackId: string, copyOf?: string) {
+  const track =
+    useStore.getState().project.tracks.find((t) => t.id === trackId) ?? detachedTracks.get(trackId);
+  if (!track?.sound || track.sound.from !== `user:${id}`) return;
+  const old = await db.instruments.get(id);
+  const name = track.sound.name ?? old?.name ?? "Synth";
+  await db.instruments.put({
+    id,
+    name,
+    version: 2,
+    createdAt: old?.createdAt ?? Date.now(),
+    sound: soundOf(track, name),
+    copyOf: old?.copyOf ?? copyOf,
+  });
+  await loadUserInstruments();
+}
 
 /** Store a track's sound in Your sounds entry `id` (after the edit is committed; edits in a
  * row: once). The track is looked up then: in the project, or a library sound being edited. */
 export function saveSoundSoon(id: string, trackId: string, delay: number, copyOf?: string) {
-  clearTimeout(saving.get(id));
-  saving.set(
-    id,
-    setTimeout(async () => {
+  const pending = saving.get(id);
+  if (pending) clearTimeout(pending.timer);
+  saving.set(id, {
+    timer: setTimeout(() => {
       saving.delete(id);
-      const track =
-        useStore.getState().project.tracks.find((t) => t.id === trackId) ??
-        detachedTracks.get(trackId);
-      if (!track?.sound || track.sound.from !== `user:${id}`) return;
-      const old = await db.instruments.get(id);
-      const name = track.sound.name ?? old?.name ?? "Synth";
-      await db.instruments.put({
-        id,
-        name,
-        version: 2,
-        createdAt: old?.createdAt ?? Date.now(),
-        sound: soundOf(track, name),
-        copyOf: old?.copyOf ?? copyOf,
-      });
-      await loadUserInstruments();
+      void doSave(id, trackId, copyOf);
     }, delay),
-  );
+    trackId,
+    copyOf,
+  });
+}
+
+/** Flush all pending saveSoundSoon timers immediately (e.g. on page unload). */
+export function flushSounds() {
+  for (const [id, pending] of saving) {
+    clearTimeout(pending.timer);
+    saving.delete(id);
+    void doSave(id, pending.trackId, pending.copyOf);
+  }
 }
 
 // factory synths never change (D90): the first edit makes the track's sound a copy of its own

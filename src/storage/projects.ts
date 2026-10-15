@@ -10,6 +10,7 @@ import { projectThumbnail } from "../render/thumbnail";
 import { useSettings } from "../state/settings";
 import { useStore } from "../state/store";
 import { db, type ProjectRecord } from "./db";
+import { flushSounds } from "../library/userInstruments";
 
 const LAST = "lastProjectId";
 
@@ -164,6 +165,7 @@ async function start(fallback: string) {
     timer = window.setTimeout(saveNow, 800);
   });
   platform.onBeforeUnload(() => {
+    flushSounds();
     const dirty = useStore.getState().saveStatus === "dirty";
     if (dirty && useSettings.getState().autosave) void saveNow();
     return dirty && !useSettings.getState().autosave;
