@@ -69,14 +69,14 @@ export function Keyboard({
     });
   };
 
-  // let go of everything when unmounted (or the octave changes under a held key)
+  // let go of everything when unmounted or when the octave shifts under held keys
   useEffect(() => {
     const map = releases.current;
     return () => {
       for (const r of map.values()) r();
       map.clear();
     };
-  }, []);
+  }, [low]);
 
   const onKey = (e: KeyboardEvent, isDown: boolean) => {
     if ((e.target as HTMLElement).closest("input, select")) return;

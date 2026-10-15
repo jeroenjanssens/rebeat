@@ -369,10 +369,10 @@ function PianoRoll({ track }: { track: Track }) {
   const onGridUp = () => {
     const g = gesture.current;
     if (g?.kind === "draw") {
-      const n = getNote(
-        useStore.getState().project.patterns[pattern.id].lanes[track.id] as Lane,
-        g,
-      );
+      // the pattern may have been deleted between pointer-down and pointer-up
+      const lane = useStore.getState().project.patterns[pattern.id]?.lanes[track.id] as
+        Lane | undefined;
+      const n = lane ? getNote(lane, g) : null;
       if (n) setNoteLen(n.length);
     }
     gesture.current = null;
