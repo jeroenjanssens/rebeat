@@ -3,6 +3,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
+import { visualizer } from "rollup-plugin-visualizer";
 
 export default defineConfig({
   // GitHub Pages serves the site under /rebeat/ (BASE=/rebeat/ in pages.yml); the desktop app and
@@ -80,8 +81,12 @@ export default defineConfig({
       },
     }),
   ],
-  // Tone.js, React and Dockview make up most of the main chunk; editors and WASM load lazily
-  build: { chunkSizeWarningLimit: 1100 },
+  // ANALYZE=1 pnpm build  →  stats.html  (bundle treemap; P11.6)
+  ...(process.env.ANALYZE ? { plugins: [visualizer({ open: true, gzipSize: true })] } : {}),
+  // Tone.js and Dockview make up most of the entry bundle; editors and WASM load lazily.
+  // Limit is just above the engine chunk (largest intentional split, ~430 kB); the entry itself
+  // will warn until more code is moved off the startup path.
+  build: { chunkSizeWarningLimit: 500 },
   // the beatbox model's runtime is imported on first use; found then, Vite would optimize it and
   // reload every open page (the beatbox e2e tests failed on a fresh dev server)
   optimizeDeps: { include: ["onnxruntime-web/wasm"] },
