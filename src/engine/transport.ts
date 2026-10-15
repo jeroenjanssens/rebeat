@@ -245,7 +245,13 @@ export function scheduledSteps(): readonly ScheduledStep[] {
 /** Audio time of the next beat while playing (for starting things in time). */
 export function nextBeatTime(): number | null {
   const now = audioNow();
-  const cur = [...history].reverse().find((h) => h.time <= now);
+  let cur: ScheduledStep | undefined;
+  for (let i = history.length - 1; i >= 0; i--) {
+    if (history[i].time <= now) {
+      cur = history[i];
+      break;
+    }
+  }
   if (!cur) return null;
   const spb = stepsPerBeat(cur.pattern);
   const left = spb - (cur.pageStep % spb);
@@ -255,7 +261,14 @@ export function nextBeatTime(): number | null {
 /** Audio time of the next bar line while playing. */
 export function nextBarTime(): number | null {
   const now = audioNow();
-  const cur = [...history].reverse().find((h) => h.time <= now) ?? history[0];
+  let cur: ScheduledStep | undefined;
+  for (let i = history.length - 1; i >= 0; i--) {
+    if (history[i].time <= now) {
+      cur = history[i];
+      break;
+    }
+  }
+  cur ??= history[0];
   if (!cur) return null;
   const spb = stepsPerBeat(cur.pattern);
   const bar = spb * useStore.getState().project.timeSignature[0];
