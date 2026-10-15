@@ -3,6 +3,9 @@
  * progressions. Basslines and synth parts are written in the style of the originals (they aren't
  * note-for-note copies). Examples are read-only: the first change makes a copy (storage/projects).
  */
+export { EXAMPLE_META, isExampleId } from "./example-id";
+export { EXAMPLE_PREFIX } from "./example-id";
+import { EXAMPLE_PREFIX } from "./example-id";
 import { longWayHome } from "./arrangement";
 import { sweepsAndBends } from "./sweeps";
 import { woodWireAndGlass } from "./woodWireGlass";
@@ -441,6 +444,4 @@ export const EXAMPLES: Example[] = [
   },
 ];
 
-export const EXAMPLE_PREFIX = "example:";
-export const isExampleId = (id: string) => id.startsWith(EXAMPLE_PREFIX);
 export const exampleFor = (id: string) => EXAMPLES.find((e) => `${EXAMPLE_PREFIX}${e.id}` === id);

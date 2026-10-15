@@ -29,7 +29,7 @@ import { platform } from "../platform";
 import { getLoad, startMainLoad } from "../engine/load";
 import { useSettings } from "../state/settings";
 import { useStore } from "../state/store";
-import { isExampleId } from "../templates/examples";
+import { isExampleId } from "../templates/example-id";
 import { KeysChip } from "./KeysChip";
 import { LAYOUT_PRESETS, applyPreset, openPanel } from "./layouts";
 import { openGuide } from "./openers";

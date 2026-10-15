@@ -11,7 +11,7 @@ import {
 } from "../storage/projects";
 import { exportRebeat, importRebeat, rebeatFileName } from "../storage/rebeatFile";
 import { TEMPLATES } from "../templates";
-import { isExampleId } from "../templates/examples";
+import { isExampleId } from "../templates/example-id";
 import { useShell } from "./shell";
 
 export async function newFromTemplate(templateId: string) {

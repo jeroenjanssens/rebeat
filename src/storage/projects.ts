@@ -2,7 +2,7 @@
 import { stop } from "../engine/transport";
 import { toast } from "../components/Toast";
 import { uid } from "../model/id";
-import { exampleFor, isExampleId } from "../templates/examples";
+import { EXAMPLE_META, EXAMPLE_PREFIX, isExampleId } from "../templates/example-id";
 import type { Project } from "../model/project";
 import { deserializeProject, serializeProject } from "../model/schema";
 import { platform } from "../platform";
@@ -33,8 +33,12 @@ export async function saveProject(id: string, project: Project) {
 
 export async function readProject(id: string): Promise<Project | null> {
   // examples are generated, never stored: they can't be overwritten
-  const example = exampleFor(id);
-  if (example) return example.create();
+  if (isExampleId(id)) {
+    const { exampleFor } = await import("../templates/examples");
+    const example = exampleFor(id);
+    if (example) return example.create();
+    return null;
+  }
   const rec = await db.projects.get(id);
   return rec ? deserializeProject(rec.data) : null;
 }
@@ -104,13 +108,14 @@ let timer = 0;
  */
 function forkExample() {
   const s = useStore.getState();
-  const example = exampleFor(s.projectId);
-  if (!example) return;
+  // only the id and name are needed here; the full project data is already in the store
+  const meta = EXAMPLE_META.find((e) => `${EXAMPLE_PREFIX}${e.id}` === s.projectId);
+  if (!meta) return;
   const id = uid("prj");
-  const name = s.project.name === example.name ? `${example.name} (copy)` : s.project.name;
+  const name = s.project.name === meta.name ? `${meta.name} (copy)` : s.project.name;
   useStore.setState({ projectId: id, project: { ...s.project, name } });
   void saveProject(id, useStore.getState().project).then(() =>
-    toast(`Saved your changes as “${name}”. The example stays as it was.`),
+    toast(`Saved your changes as "${name}". The example stays as it was.`),
   );
 }
 
