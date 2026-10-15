@@ -270,12 +270,23 @@ export function deleteTempoChange(index: number) {
 /** The lane for a target (made if needed, with a point at q at `value`); returns its id. */
 export function automate(target: string, q: number, value: number): string {
   const existing = store().project.automation?.find((l) => l.target === target);
-  // the lane shows: unfolded, and its owner's lanes too (D234)
-  setOwnerFolded(ownerId(target), false);
+  const owId = ownerId(target);
   if (existing) {
-    setLaneFolded(existing.id, false);
-    return existing.id;
+    // unfold the owner and the lane together in one editView call (D234)
+    const laneId = existing.id;
+    store().editView((p) => {
+      const list = (p.timelineFolded ?? []).filter((o) => o !== owId);
+      if (list.length < (p.timelineFolded?.length ?? 0)) {
+        if (list.length) p.timelineFolded = list;
+        else delete p.timelineFolded;
+      }
+      const l = p.automation?.find((x) => x.id === laneId);
+      if (l) delete l.folded;
+    });
+    return laneId;
   }
+  // new lane: unfold the owner, then commit the lane
+  setOwnerFolded(owId, false);
   const lane: AutomationLane = { id: uid("auto"), target, on: true, points: [] };
   const steps = laneSteps(store().project, target);
   if (steps) value = snapStep(value, steps);
