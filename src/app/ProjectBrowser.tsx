@@ -41,7 +41,7 @@ export function ProjectBrowser() {
   useEffect(() => {
     if (!isOpen) return;
     let alive = true;
-    listProjects().then((p) => alive && setProjects(p));
+    void listProjects().then((p) => alive && setProjects(p));
     return () => {
       alive = false;
     };
@@ -76,7 +76,7 @@ export function ProjectBrowser() {
       onDrop={(e) => {
         e.preventDefault();
         const f = [...e.dataTransfer.files].find((x) => /\.(rebeat|zip)$/i.test(x.name));
-        if (f) importProjectFile(f);
+        if (f) void importProjectFile(f);
       }}
     >
       <div className="mx-auto flex w-full max-w-[1100px] min-h-0 flex-1 flex-col px-8 py-6">
@@ -240,7 +240,7 @@ export function ProjectBrowser() {
                       className="tool-btn border border-[#ef4444] !text-[#ef4444]"
                       onClick={() => {
                         setConfirm(null);
-                        deleteProject(p.id).then(refresh);
+                        void deleteProject(p.id).then(refresh);
                       }}
                     >
                       Delete

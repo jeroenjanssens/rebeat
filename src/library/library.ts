@@ -369,7 +369,7 @@ export function loadSample(id: string): Promise<AudioBuffer | null> {
       }
     })();
     // remove a null result so the next call retries (e.g. a race where the blob arrived later)
-    p.then((b) => {
+    void p.then((b) => {
       if (!b) loading.delete(id);
     });
     loading.set(id, p);

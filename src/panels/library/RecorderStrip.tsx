@@ -23,7 +23,9 @@ export function RecorderStrip() {
 
   useEffect(() => {
     const load = () =>
-      platform.media.devices().then((d) => setDevices(d.filter((x) => x.kind === "audioinput")));
+      void platform.media
+        .devices()
+        .then((d) => setDevices(d.filter((x) => x.kind === "audioinput")));
     load();
     return platform.media.onDevicesChange(load);
   }, [mic.status]);

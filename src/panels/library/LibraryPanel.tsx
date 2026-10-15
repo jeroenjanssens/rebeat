@@ -272,7 +272,7 @@ export function LibraryPanel() {
       if (isPlayable) {
         putOnKeys(next);
       } else {
-        play(next);
+        void play(next);
       }
       listRef.current
         ?.querySelector(

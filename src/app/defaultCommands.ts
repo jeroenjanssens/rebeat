@@ -487,7 +487,7 @@ export function defaultCommands(): Command[] {
         const fs = shell().fullscreen;
         if (fs && fs !== "app") return void platform.fullscreen.exit();
         const id = dock.api?.activePanel?.id;
-        if (id) togglePanelFullscreen(id);
+        if (id) void togglePanelFullscreen(id);
       },
     },
     {

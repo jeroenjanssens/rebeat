@@ -54,7 +54,7 @@ function useDevices(kind: MediaDeviceKind) {
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   useEffect(() => {
     const load = () =>
-      platform.media.devices().then((d) => setDevices(d.filter((x) => x.kind === kind)));
+      void platform.media.devices().then((d) => setDevices(d.filter((x) => x.kind === kind)));
     load();
     return platform.media.onDevicesChange(load);
   }, [kind]);
@@ -118,8 +118,8 @@ function StorageInfo() {
   const [info, setInfo] = useState<{ usage: number; quota: number } | null>(null);
   const [persisted, setPersisted] = useState<boolean | null>(null);
   useEffect(() => {
-    platform.storage.estimate().then(setInfo);
-    navigator.storage?.persisted?.().then(setPersisted);
+    void platform.storage.estimate().then(setInfo);
+    void navigator.storage?.persisted?.().then(setPersisted);
   }, []);
   const mb = (n: number) => `${(n / 1024 / 1024).toFixed(1)} MB`;
   return (

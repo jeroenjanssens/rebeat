@@ -58,7 +58,7 @@ export function useEditor(sampleId: string): Editor {
 
   useEffect(() => {
     let alive = true;
-    (async () => {
+    void (async () => {
       const [buf, rec] = await Promise.all([loadOriginal(sampleId), db.samples.get(sampleId)]);
       if (!alive || !buf) return;
       const snap: Snapshot = {

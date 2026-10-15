@@ -16,6 +16,21 @@ export default tseslint.config(
         "error",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_", ignoreRestSiblings: true },
       ],
+      "@typescript-eslint/no-explicit-any": "warn",
+    },
+  },
+  // Type-aware rules for src/ only (needs the project's tsconfig; test files excluded).
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["src/**/*.test.ts"],
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+    rules: {
+      "@typescript-eslint/no-floating-promises": "error",
     },
   },
 );

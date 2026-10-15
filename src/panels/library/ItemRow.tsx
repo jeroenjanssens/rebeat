@@ -102,7 +102,7 @@ function sampleMenu(
                 label="Tags"
                 value={item.tags.join(", ")}
                 onCommit={(v) => {
-                  updateSample(item.id, {
+                  void updateSample(item.id, {
                     tags: v
                       .split(",")
                       .map((t) => t.trim())
@@ -119,7 +119,7 @@ function sampleMenu(
                 label="Folder"
                 value={item.folder}
                 onCommit={(v) => {
-                  updateSample(item.id, { folder: v.replace(/^\/+|\/+$/g, "") });
+                  void updateSample(item.id, { folder: v.replace(/^\/+|\/+$/g, "") });
                   close();
                 }}
               />
@@ -430,7 +430,7 @@ export function ItemRow({
             }}
             onBlur={(e) => {
               const v = e.currentTarget.value.trim();
-              if (v && v !== item.name) updateSample(item.id, { name: v });
+              if (v && v !== item.name) void updateSample(item.id, { name: v });
               setRenaming(false);
             }}
           />
@@ -465,7 +465,7 @@ export function ItemRow({
             data-hint="library.sample.favorite"
             onClick={(e) => {
               e.stopPropagation();
-              updateSample(item.id, { favorite: item.favorite ? 0 : 1 });
+              void updateSample(item.id, { favorite: item.favorite ? 0 : 1 });
             }}
           >
             <Heart size={11} fill={item.favorite ? "currentColor" : "none"} />

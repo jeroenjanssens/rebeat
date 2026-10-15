@@ -153,7 +153,7 @@ export function Locations({
               }
               onDrop={(e) => {
                 const id = e.dataTransfer.getData(SAMPLE_MIME);
-                if (id && l.loc.kind === "folder") updateSample(id, { folder: l.loc.path });
+                if (id && l.loc.kind === "folder") void updateSample(id, { folder: l.loc.path });
               }}
             >
               <Icon size={12} className="shrink-0" />
