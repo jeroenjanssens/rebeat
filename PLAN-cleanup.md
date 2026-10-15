@@ -291,6 +291,12 @@ measured with `performance.now()`:
 - (a) Dense analog: 16 voices held, unison 8, drift 0.3, drive 0.5 — median **1453 ms** (14.5% real-time)
 - (b) Physical model (Nylon Guitar, pluck exciter): 8 voices — median **240 ms** (2.4% real-time)
 
+### After phase 3 (P3.0–P3.7, P3.6 skipped)
+
+**P0.1 Audio thread** — same script, same machine:
+- (a) Dense analog: median **1060 ms** (10.6% real-time) — **−27%** vs. baseline
+- (b) Physical model: median **189 ms** (1.9% real-time) — **−21%** vs. baseline
+
 **P0.2 React commits** — dev server (Vite), React DevTools global hook stub counting
 `onCommitFiberRoot` calls:
 - Dragging a track knob (encoder strip) for 2 s: ~**22 commits/s**
@@ -316,3 +322,10 @@ preloaded chunks (`<link rel=modulepreload>`):
   any section with repeats N, the transport's `cycles` Map produces `[0, 1, …, N-1]` for that
   section's repeats, which equals `cycle: r` in `render.ts`. Clones have different slot ids so
   each independently starts from 0, matching the transport's separate per-slot counters.
+- **P3.6**: Skipped. The plan assumed factory synths have `drift: 0` (the `voiced()` house style),
+  so replacing `Math.random() < blockSec * 4` with a per-voice countdown would only change patch G
+  in the snapshot test. Verification (`grep drift src/library/synths.ts`) found 23 lines with
+  non-zero drift (warm-pad, sub-bass, fm-growl-bass, stab-saw, and others override the default).
+  Replacing the countdown would move the golden level recordings for those synths in Sweeps and
+  Bends, Long Way Home, etc. The saving is modest (one `Math.random()` call per voice per 250 ms);
+  the cost is a re-record — not worth it.
