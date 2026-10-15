@@ -4,7 +4,7 @@ The [Beatbox panel](panel:beatbox) turns your beatboxing into step tracks. Beatb
 
 A small machine learning model guesses what each hit is. It was trained on recordings of many people, but every beatboxer's kick sounds different, so it gets much better once it knows yours: label a few of your sounds and it **calibrates** to your voice.
 
-Open it from the layout menu or the command palette (**Show Beatbox**). The model downloads the first time you open the panel (about 6 MB) and works offline after that.
+Open it from the layout menu or the command palette (**Show Beatbox**). The model downloads the first time you open the panel (about 6 MB) and works offline after that. If the download fails, the Model view shows the reason; click the model status button to try again.
 
 ## Recording {#beatbox-recording}
 
