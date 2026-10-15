@@ -281,7 +281,34 @@ End of phase 11: full Playwright run.
 
 ## Measurements
 
-(Filled in during phases 0, 3, 4, 5 and 9.)
+### Baseline (after phase 1)
+
+Scripts in `/tmp/rebeat-measure/`: `p0_audio_bench.test.ts` (P0.1, vitest, copy to `src/` to run),
+`p0_react_midi_final.spec.ts` (P0.2 + P0.4, Playwright, copy to `e2e/` to run).
+
+**P0.1 Audio thread** — `SynthCore` rendering 10 s, 3 runs, Node/vitest, 48 kHz,
+measured with `performance.now()`:
+- (a) Dense analog: 16 voices held, unison 8, drift 0.3, drive 0.5 — median **1453 ms** (14.5% real-time)
+- (b) Physical model (Nylon Guitar, pluck exciter): 8 voices — median **240 ms** (2.4% real-time)
+
+**P0.2 React commits** — dev server (Vite), React DevTools global hook stub counting
+`onCommitFiberRoot` calls:
+- Dragging a track knob (encoder strip) for 2 s: ~**22 commits/s**
+- Toggling 16 steps (32 clicks): ~**43 commits/s** (~2 per click)
+- Playing Long Way Home for 5 s (Timeline + Controller + drum machine open): ~**0 commits/s**
+  (playback is audio-clock driven, not React; step highlight uses CSS classes, not state)
+
+**P0.3 Startup bundle** — `pnpm build` (Rolldown/Vite); startup = entry chunk + all statically
+preloaded chunks (`<link rel=modulepreload>`):
+- Entry chunk `index-*.js`: **1,300 kB** raw / **367 kB** gzip
+- Preloaded: `engine-*.js` 340 kB / 90 kB gz, `context-*.js` 156 kB / 59 kB gz,
+  `db-*.js` 104 kB / 35 kB gz, `synths-*.js` 47 kB / 13 kB gz,
+  `synthTrack-*.js` 47 kB / 16 kB gz (factory synth specs pulled in by the engine at startup)
+- Total startup parse: ~2 MB raw / ~620 kB gzip
+
+**P0.4 MIDI throughput** — `midiKeyboard` helper, 1 000 synchronous CC sends via `__midi`:
+- Settings closed: **1 ms** for 1 000 messages (pure-JS dispatch; React updates are async)
+- Settings → MIDI open: **1 ms** (same; per-message `useMidi.setState({ last })` is batched)
 
 ## Deviations
 
