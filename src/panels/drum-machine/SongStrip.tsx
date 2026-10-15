@@ -147,7 +147,12 @@ function SectionThumb({
   });
   const progress = useRef<HTMLDivElement>(null);
   const thumbRef = useRef<HTMLDivElement | null>(null);
-  const { editSlotId, playSlotId, queuedSlotId, playing, setUi, commit } = useStore();
+  const editSlotId = useStore((s) => s.editSlotId);
+  const playSlotId = useStore((s) => s.playSlotId);
+  const queuedSlotId = useStore((s) => s.queuedSlotId);
+  const playing = useStore((s) => s.playing);
+  const setUi = useStore((s) => s.setUi);
+  const commit = useStore((s) => s.commit);
   const pattern = project.patterns[slot.patternId];
   const linked = linkCount(project, slot.patternId) > 1;
   const isEdit = slot.id === editSlotId;
@@ -253,7 +258,11 @@ function SectionThumb({
 
 export function SongStrip({ sizeClass }: { sizeClass: SizeClass }) {
   const project = useStore((s) => s.project);
-  const { songLoop, editSlotId, setUi, setPlayMode, commit } = useStore();
+  const songLoop = useStore((s) => s.songLoop);
+  const editSlotId = useStore((s) => s.editSlotId);
+  const setUi = useStore((s) => s.setUi);
+  const setPlayMode = useStore((s) => s.setPlayMode);
+  const commit = useStore((s) => s.commit);
   const playMode = useStore((s) => s.project.playMode);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const mods = useRef({ alt: false, shift: false });

@@ -44,7 +44,9 @@ interface Slot {
 /** What the 8 encoders control for the selected track and bank. */
 function useEncoderSlots(track: Track): { slots: Slot[]; note?: string; locking?: boolean } {
   const pattern = useEditPattern();
-  const { bank, fxIndex, commit } = useStore();
+  const bank = useStore((s) => s.bank);
+  const fxIndex = useStore((s) => s.fxIndex);
+  const commit = useStore((s) => s.commit);
   const selected = useStore((s) => s.selectedSteps);
   const nop = () => {};
 
@@ -271,7 +273,9 @@ function Display({ track, width }: { track: Track; width: number }) {
 
 export function EncoderStrip({ sizeClass }: { sizeClass: SizeClass }) {
   const track = useSelectedTrack();
-  const { bank, fxIndex, setUi } = useStore();
+  const bank = useStore((s) => s.bank);
+  const fxIndex = useStore((s) => s.fxIndex);
+  const setUi = useStore((s) => s.setUi);
   const { slots, note, locking } = useEncoderSlots(track);
   const [open, setOpen] = useState(false);
   const fx = track.effects[fxIndex];

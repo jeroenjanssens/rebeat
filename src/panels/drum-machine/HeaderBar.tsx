@@ -94,7 +94,13 @@ export function HeaderBar({
   const pattern = useEditPattern();
   const slots = useStore((s) => s.project.slots);
   const editSlotId = useStore((s) => s.editSlotId);
-  const { view, tool, quantize, follow, lanes, setUi, commit } = useStore();
+  const view = useStore((s) => s.view);
+  const tool = useStore((s) => s.tool);
+  const quantize = useStore((s) => s.quantize);
+  const follow = useStore((s) => s.follow);
+  const lanes = useStore((s) => s.lanes);
+  const setUi = useStore((s) => s.setUi);
+  const commit = useStore((s) => s.commit);
   const zoom = useSettings((s) => s.zoom);
   const setZoom = (z: number | "fit") => useSettings.getState().set({ zoom: z });
   const pageNumber = slots.findIndex((s) => s.id === editSlotId) + 1;

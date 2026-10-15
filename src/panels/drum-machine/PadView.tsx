@@ -212,7 +212,9 @@ function NotePads({ track, size }: { track: Track; size: SizeClass }) {
   const octave = useStore((s) => s.keyboardOctave);
   const pattern = useEditPattern();
   const key = useStore((s) => pageKey(s.project, pattern));
-  const { scaleLock, chordMode, setUi } = useStore();
+  const scaleLock = useStore((s) => s.scaleLock);
+  const chordMode = useStore((s) => s.chordMode);
+  const setUi = useStore((s) => s.setUi);
   const flats = keyUsesFlats(key);
   const padSize = size === "large" ? 64 : size === "compact" ? 36 : 50;
   const base = (track.category === "bass" ? 36 : 48) + octave * 12 + key.root;
@@ -310,7 +312,9 @@ function NotePads({ track, size }: { track: Track; size: SizeClass }) {
 export function PadView({ sizeClass, width }: { sizeClass: SizeClass; width: number }) {
   const track = useSelectedTrack();
   const pattern = useEditPattern();
-  const { commit, selectedSteps, setUi } = useStore();
+  const commit = useStore((s) => s.commit);
+  const selectedSteps = useStore((s) => s.selectedSteps);
+  const setUi = useStore((s) => s.setUi);
   const stepsRef = useRef<HTMLDivElement>(null);
   const lane = pattern.lanes[track.id];
   const length = lane?.stepCountOverride ?? pattern.stepCount;
