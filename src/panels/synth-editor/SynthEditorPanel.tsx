@@ -72,6 +72,7 @@ import {
   TABLE_SLOTS,
   applyMacros,
   clone,
+  numberAt,
   refreshMacros,
   setThroughMacros,
   withMacroValues,
@@ -100,7 +101,6 @@ import {
   KNOB_OF_DEST,
   SECTIONS,
   fromKnob,
-  getPath,
   knobDef,
   modRanges,
   modulated,
@@ -440,14 +440,14 @@ function EditorView({ track, target }: { track: Track; target: EditTarget }) {
   const ranges = modRanges(shown);
   const DESTS = Object.keys(MOD_DESTS) as ModDest[];
   const knob = (d: PatchParam) => {
-    const value = getPath(shown, d.path);
+    const value = numberAt(shown, d.path);
     const r = ranges.get(d.path);
     const octaves = r ? KNOB_OF_DEST[r.dest]?.octaves : false;
     const toK = (v: number) => toKnob(d, Math.min(d.max, Math.max(d.min, v)));
     return (
       <Encoder
         key={d.path}
-        def={knobDef(d, getPath(defaults, d.path))}
+        def={knobDef(d, numberAt(defaults, d.path))}
         value={toKnob(d, value)}
         onChange={(k) => set(d.path, fromKnob(d, k))}
         color={track.color}
@@ -507,7 +507,7 @@ function EditorView({ track, target }: { track: Track; target: EditTarget }) {
   const liveOf = (path: string, lo = 0, hi = 1) => {
     const r = ranges.get(path);
     if (!r || !synth) return undefined;
-    const value = getPath(shown, path);
+    const value = numberAt(shown, path);
     return () => {
       const m = synth.modulation();
       return m ? Math.min(hi, Math.max(lo, value + m[DESTS.indexOf(r.dest)])) : null;
@@ -1783,7 +1783,7 @@ function Macros({
 function newTarget(p: SynthPatch, i: number, path: string, values: number[]): MacroTarget {
   const d = paramOf(path)!;
   const at = values[i] ?? p.macros[i].value;
-  const v = getPath(applyMacros(withMacroValues(p, values)), path);
+  const v = numberAt(applyMacros(withMacroValues(p, values)), path);
   // a copy (p may be a draft) with just this target
   const probe = clone(p);
   probe.macros = [{ name: "", value: at, targets: [{ path, min: d.min, max: d.max }] }];

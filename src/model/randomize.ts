@@ -3,11 +3,12 @@
  * distance (up to `amount` of its whole range) from where you hear it now. Macros keep their
  * place (setThroughMacros). Loudness and tuning stay put: the output level, voices, bend and tune.
  */
-import { SECTIONS, fromKnob, getPath, toKnob } from "./patchParams";
+import { SECTIONS, fromKnob, toKnob } from "./patchParams";
 import {
   LFO_SHAPES,
   applyMacros,
   clone,
+  numberAt,
   setThroughMacros,
   withMacroValues,
   type SynthPatch,
@@ -51,7 +52,7 @@ export function randomizePatch(
       const o = /^osc\.(\d)\.(position|warpAmount|shape|pw)$/.exec(d.path);
       if (o && (patch.osc[Number(o[1])].type === "wavetable") !== /position|warp/.test(o[2]))
         continue;
-      const k = Math.min(1, Math.max(0, toKnob(d, getPath(heard, d.path)) + step()));
+      const k = Math.min(1, Math.max(0, toKnob(d, numberAt(heard, d.path)) + step()));
       setThroughMacros(p, d.path, fromKnob(d, k), d.min, d.max, values);
     }
   }

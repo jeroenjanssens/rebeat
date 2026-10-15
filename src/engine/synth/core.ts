@@ -14,6 +14,7 @@ import {
   clone,
   envCurve,
   macroAt,
+  setNumber,
   withMacroValues,
   noteLengthQuarters,
   type Env,
@@ -836,13 +837,13 @@ export class SynthCore {
         if (!mkeys) continue;
         for (let ti = 0; ti < m.targets.length; ti++) {
           const tkeys = mkeys[ti];
-          if (tkeys) setKeys(w, tkeys, macroAt(m.targets[ti], m.value));
+          if (tkeys) setNumber(w, tkeys.join("."), macroAt(m.targets[ti], m.value));
         }
       }
     }
     for (const a of this.auto.values()) {
       if (!a.cur || a.macro >= 0) continue;
-      setKeys(w, a.keys, valueAt(a, frame));
+      setNumber(w, a.keys.join("."), valueAt(a, frame));
     }
     this.patch = w;
   }
@@ -1237,17 +1238,6 @@ function valueAt(a: AutoPath, frame: number): AutoValue {
   )
     return cur.v + (next.v - cur.v) * Math.min(1, (frame - cur.at) / (next.at - cur.at));
   return cur.v;
-}
-
-/** Write a value at a path that's already split ("filters", "0", "cutoff"). */
-function setKeys(p: SynthPatch, keys: string[], v: AutoValue) {
-  let obj = p as unknown as Record<string, unknown>;
-  for (let i = 0; i < keys.length - 1; i++) {
-    obj = obj[keys[i]] as Record<string, unknown>;
-    if (!obj) return;
-  }
-  const last = keys[keys.length - 1];
-  if (last in obj) obj[last] = v;
 }
 
 export { applyMacros };

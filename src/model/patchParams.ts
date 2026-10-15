@@ -3,7 +3,10 @@
  * curve, how it reads, and what it does (also the explain-mode text).
  */
 import type { ParamDef } from "./params";
-import { MOD_DESTS, type ModDest, type SynthPatch } from "./synth";
+import { MOD_DESTS, numberAt, type ModDest, type SynthPatch } from "./synth";
+
+/** @deprecated import numberAt from model/synth instead */
+export const getPath = numberAt;
 
 export interface PatchParam {
   /** "osc.0.level", "filters.1.cutoff", "voice.glide" */
@@ -641,12 +644,6 @@ export const paramName = (path: string) => {
   if (!s) return path;
   return s.short ? `${s.short} · ${paramOf(path)!.label}` : paramOf(path)!.label;
 };
-
-export function getPath(p: SynthPatch, path: string): number {
-  return path
-    .split(".")
-    .reduce<unknown>((o, k) => (o as Record<string, unknown>)?.[k], p) as number;
-}
 
 /** A value ↔ the knob's 0..1. */
 export function toKnob(d: PatchParam, v: number): number {

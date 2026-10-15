@@ -470,15 +470,15 @@ export function macroAt(t: MacroTarget, v: number): number {
   return geometric(t) ? t.min * Math.pow(t.max / t.min, v) : t.min + (t.max - t.min) * v;
 }
 
-const numberAt = (p: SynthPatch, path: string) =>
-  path.split(".").reduce<unknown>((o, k) => (o as Record<string, unknown>)?.[k], p);
+export const numberAt = (p: SynthPatch, path: string): number =>
+  path.split(".").reduce<unknown>((o, k) => (o as Record<string, unknown>)?.[k], p) as number;
 
-function setNumber(p: SynthPatch, path: string, v: number) {
+export function setNumber(p: SynthPatch, path: string, v: number | string | boolean | null) {
   const keys = path.split(".");
   const last = keys.pop()!;
   let obj = p as unknown as Record<string, unknown>;
   for (const k of keys) obj = obj?.[k] as Record<string, unknown>;
-  if (typeof obj?.[last] === "number") obj[last] = v;
+  if (obj && last in obj) obj[last] = v;
 }
 
 /** The patch with each macro's targets set from its value. */

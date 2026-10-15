@@ -6,11 +6,11 @@ import { isDraft } from "immer";
 import { curveAt, lanePoints, type ResolvedPoint } from "./arrangement";
 import { effectivePatch, isSynthTrack, soundDefs, trackPatch } from "../library/synthTrack";
 import { EFFECT_PARAMS, MIX_PARAMS, SOUND_PARAMS, type ParamDef } from "./params";
-import { KNOB_SECTIONS, getPath, knobDef, paramName, paramOf, toKnob } from "./patchParams";
+import { KNOB_SECTIONS, knobDef, paramName, paramOf, toKnob } from "./patchParams";
 import { SWITCHES, switchAt, switchDef, switchIndex, switchOf } from "./patchSwitches";
 import type { Bus, Master } from "./effects";
 import type { Project } from "./project";
-import { applyMacros, type SynthPatch } from "./synth";
+import { applyMacros, numberAt, type SynthPatch } from "./synth";
 import { tableName } from "./wavetables";
 import type { AutomationLane, Effect, Track } from "./types";
 
@@ -182,7 +182,7 @@ function synthKnobs(track: Track): AutomatableKnob[] {
         section: "Synth",
         part: { id: `synth:${section.id}`, name: section.title },
         name: d.label,
-        def: knobDef(d, getPath(base, d.path) ?? d.min),
+        def: knobDef(d, numberAt(base, d.path) ?? d.min),
         note: notes.join(". ") || undefined,
         why:
           lfo && base.lfos[Number(lfo[1])].mode === "global"
@@ -481,7 +481,7 @@ export function knobValue(project: Project, target: string): number {
         ? switchIndex(sw, switchAt(heardPatch(t), path)) / (sw.options.length - 1)
         : 0;
     const d = paramOf(path);
-    const v = isSynthTrack(t) ? getPath(heardPatch(t), path) : undefined;
+    const v = isSynthTrack(t) ? numberAt(heardPatch(t), path) : undefined;
     return d && typeof v === "number" ? Math.min(1, Math.max(0, toKnob(d, v))) : 0;
   }
   return t.params[key] ?? 0.5;
