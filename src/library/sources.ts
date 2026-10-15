@@ -4,13 +4,13 @@
  * onlineImport.ts.
  */
 
+import { AUDIO_EXT } from "./audioExt";
+
 export type ParsedUrl =
   | { kind: "file"; url: string; name: string }
   | { kind: "json"; url: string; name: string }
   | { kind: "github"; owner: string; repo: string; ref: string; path: string; name: string }
   | { kind: "unknown"; url: string; name: string };
-
-const AUDIO = /\.(wav|wave|mp3|ogg|oga|opus|flac|aac|m4a|aif|aiff|webm|caf)$/i;
 
 const lastPart = (path: string) =>
   decodeURIComponent(path.split("/").filter(Boolean).pop() ?? "").replace(/\.[a-z0-9]+$/i, "");
@@ -58,7 +58,7 @@ export function parseSourceUrl(input: string): ParsedUrl | null {
         : lastPart(file.slice(0, file.lastIndexOf("/"))) || url.hostname;
     return { kind: "json", url: url.href, name };
   }
-  if (AUDIO.test(file) || /\.zip$/i.test(file))
+  if (AUDIO_EXT.test(file) || /\.zip$/i.test(file))
     return { kind: "file", url: url.href, name: decodeURIComponent(parts.at(-1) ?? "sample") };
   return { kind: "unknown", url: url.href, name: lastPart(file) || url.hostname };
 }
@@ -127,7 +127,7 @@ export function groupRepoFiles(
 ): Record<string, string[]> {
   const prefix = under ? `${under.replace(/\/$/, "")}/` : "";
   const out: Record<string, string[]> = {};
-  for (const p of paths.filter((p) => p.startsWith(prefix) && AUDIO.test(p)).sort()) {
+  for (const p of paths.filter((p) => p.startsWith(prefix) && AUDIO_EXT.test(p)).sort()) {
     const rel = p.slice(prefix.length);
     const folder = rel.includes("/") ? rel.slice(0, rel.lastIndexOf("/")) : "samples";
     (out[folder] ??= []).push(url(p));

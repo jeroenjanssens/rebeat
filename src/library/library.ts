@@ -17,8 +17,9 @@ import { db, type SampleRecord } from "../storage/db";
 import { detectBpm, guessCategory, toMono } from "./analysis";
 import { encodeWav } from "./wav";
 import { isDefault, renderSettings, withDefaults, type SampleSettings } from "./processing";
+import { AUDIO_EXT } from "./audioExt";
 
-export const AUDIO_EXT = /\.(wav|wave|mp3|ogg|oga|opus|flac|aac|m4a|aif|aiff|webm|caf)$/i;
+export { AUDIO_EXT };
 const MIME: Record<string, string> = {
   wav: "audio/wav",
   wave: "audio/wav",
