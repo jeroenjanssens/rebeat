@@ -60,6 +60,7 @@ export function BeatboxPanel() {
   useEffect(() => {
     void loadBeatbox();
     // the model downloads the first time the panel is used (D109)
+    // a failure is in useModel: the status chip and the Model view show it with its reason
     void loadModel().catch(() => {});
   }, []);
 

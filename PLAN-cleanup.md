@@ -412,3 +412,6 @@ preloaded chunks (`<link rel=modulepreload>`):
 - New lazy chunks split by P9.1: `examples-*.js` 45 kB (example songs, loaded on first open),
   `BeatboxPanel-*.js` 50 kB, `SynthEditorPanel-*.js` 49 kB, `GuidePanel-*.js` 236 kB
 - Total startup parse: ~1,986 kB raw / ~620 kB gzip (entry chunk down −80 kB raw)
+- **P10.1**: the review was wrong here. A model that fails to load is already shown: `loadModel`
+  puts the error in `useModel`, and the panel's status chip and the Model view show its reason.
+  The empty `catch` only keeps the rejection from going unhandled; it now says so.
