@@ -157,7 +157,9 @@ const enabled = (id: string) => useSettings.getState().midiInputs[id] !== false;
 // ---------- D129: duplicate message filter ----------
 // The MiniLab 3 sends on its MIDI port AND its MCU port simultaneously; ignore the second
 // copy of an identical CC that arrives within 10 ms from a "sibling" port of the same device.
-const lastMsgKey = new Map<string, { device: string; time: number }>();
+// keyed by type:channel:number only, storing the value with the time, so the map is bounded
+// to at most ~6 k entries across all CC numbers and note numbers
+const lastMsgKey = new Map<string, { device: string; value: number; time: number }>();
 
 /** Strip common port-name suffixes to compare device families. */
 const deviceFamily = (name: string) =>
@@ -168,12 +170,13 @@ const deviceFamily = (name: string) =>
 
 function isDuplicate(m: MidiMessage): boolean {
   if (m.type !== "cc" && m.type !== "noteon" && m.type !== "noteoff") return false;
-  const key = `${m.type}:${m.channel}:${m.number}:${m.value}`;
+  const key = `${m.type}:${m.channel}:${m.number}`;
   const now = Date.now();
   const prev = lastMsgKey.get(key);
-  lastMsgKey.set(key, { device: m.device, time: now });
+  lastMsgKey.set(key, { device: m.device, value: m.value, time: now });
   if (
     prev &&
+    prev.value === m.value &&
     now - prev.time < 10 &&
     prev.device !== m.device &&
     deviceFamily(prev.device) === deviceFamily(m.device)
