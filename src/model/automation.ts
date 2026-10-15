@@ -8,6 +8,7 @@ import { effectivePatch, isSynthTrack, soundDefs, trackPatch } from "../library/
 import { EFFECT_PARAMS, MIX_PARAMS, SOUND_PARAMS, type ParamDef } from "./params";
 import { KNOB_SECTIONS, getPath, knobDef, paramName, paramOf, toKnob } from "./patchParams";
 import { SWITCHES, switchAt, switchDef, switchIndex, switchOf } from "./patchSwitches";
+import type { Bus, Master } from "./effects";
 import type { Project } from "./project";
 import { applyMacros, type SynthPatch } from "./synth";
 import { tableName } from "./wavetables";
@@ -246,19 +247,141 @@ export function trackKnobs(track: Track): AutomatableKnob[] {
   return out;
 }
 
-/** The lists per project (D226: a synth track adds about a hundred knobs; the lanes, the knob
- * menus and the override watcher ask on every render and commit). Drafts aren't cached. */
-const lists = new WeakMap<
-  Project,
-  { all: AutomatableKnob[]; ok: AutomatableKnob[]; by: Map<string, AutomatableKnob> }
->();
-function knobLists(project: Project) {
-  let l = lists.get(project);
-  if (l) return l;
-  const all = buildPickerKnobs(project);
-  l = { all, ok: all.filter((k) => !k.why), by: new Map(all.map((k) => [k.target, k])) };
-  if (!isDraft(project) && !isDraft(project.tracks)) lists.set(project, l);
-  return l;
+// ---------- per-part caches (P4.1) ----------
+// trackKnobs() depends on track.sound, track.effects, track.name, track.mode and track.id, but
+// NOT on track.params (no knob value is in the output). When only params change (a knob drag),
+// track.effects is the same array reference (immer structural sharing), so keying on that gives
+// a hit. The entry also stores the other fields so two different tracks with the same effects
+// array (shouldn't happen with immer but worth guarding) don't collide.
+
+interface TrackKnobsEntry {
+  sound: Track["sound"];
+  name: string;
+  mode: Track["mode"];
+  id: string;
+  knobs: AutomatableKnob[];
+}
+const trackKnobsCache = new WeakMap<Effect[], TrackKnobsEntry>();
+
+function cachedTrackKnobs(track: Track): AutomatableKnob[] {
+  if (isDraft(track)) return trackKnobs(track);
+  const e = trackKnobsCache.get(track.effects);
+  if (
+    e &&
+    e.sound === track.sound &&
+    e.name === track.name &&
+    e.mode === track.mode &&
+    e.id === track.id
+  )
+    return e.knobs;
+  const knobs = trackKnobs(track);
+  trackKnobsCache.set(track.effects, {
+    sound: track.sound,
+    name: track.name,
+    mode: track.mode,
+    id: track.id,
+    knobs,
+  });
+  return knobs;
+}
+
+// Bus knobs: level + fxKnobs; keyed on bus.effects (changes when an effect is added/removed).
+interface BusKnobsEntry {
+  id: string;
+  name: string;
+  knobs: AutomatableKnob[];
+}
+const busKnobsCache = new WeakMap<Effect[], BusKnobsEntry>();
+
+function buildBusKnobs(b: Bus): AutomatableKnob[] {
+  const name = `Bus ${b.name}`;
+  return [
+    {
+      target: `bus:${b.id}`,
+      label: `${name} · Level`,
+      group: name,
+      section: "Mix",
+      name: "Level",
+      def: VOLUME,
+    },
+    ...fxKnobs(b.effects, `bus:${b.id}`, name, name),
+  ];
+}
+
+function cachedBusKnobs(b: Bus): AutomatableKnob[] {
+  if (isDraft(b)) return buildBusKnobs(b);
+  const e = busKnobsCache.get(b.effects);
+  if (e && e.id === b.id && e.name === b.name) return e.knobs;
+  const knobs = buildBusKnobs(b);
+  busKnobsCache.set(b.effects, { id: b.id, name: b.name, knobs });
+  return knobs;
+}
+
+// Master knobs: level + fxKnobs; keyed on master.effects.
+const masterKnobsCache = new WeakMap<Effect[], AutomatableKnob[]>();
+
+function buildMasterKnobs(master: Master): AutomatableKnob[] {
+  return [
+    {
+      target: "master:volume",
+      label: "Master · Level",
+      group: "Master",
+      section: "Mix",
+      name: "Level",
+      def: VOLUME,
+    },
+    ...fxKnobs(master.effects, "master", "Master", "Master"),
+  ];
+}
+
+function cachedMasterKnobs(master: Master): AutomatableKnob[] {
+  if (isDraft(master)) return buildMasterKnobs(master);
+  const cached = masterKnobsCache.get(master.effects);
+  if (cached) return cached;
+  const knobs = buildMasterKnobs(master);
+  masterKnobsCache.set(master.effects, knobs);
+  return knobs;
+}
+
+// Combined: rebuild only when any per-part array changed identity.
+type KnobListEntry = {
+  all: AutomatableKnob[];
+  ok: AutomatableKnob[];
+  by: Map<string, AutomatableKnob>;
+};
+interface CombinedCache {
+  trackParts: AutomatableKnob[][];
+  busParts: AutomatableKnob[][];
+  masterPart: AutomatableKnob[];
+  entry: KnobListEntry;
+}
+let lastCombined: CombinedCache | null = null;
+
+function knobLists(project: Project): KnobListEntry {
+  if (isDraft(project) || isDraft(project.tracks)) {
+    const all = buildPickerKnobs(project);
+    return { all, ok: all.filter((k) => !k.why), by: new Map(all.map((k) => [k.target, k])) };
+  }
+  const trackParts = project.tracks.map(cachedTrackKnobs);
+  const busParts = project.buses.map(cachedBusKnobs);
+  const masterPart = cachedMasterKnobs(project.master);
+  if (
+    lastCombined &&
+    trackParts.length === lastCombined.trackParts.length &&
+    trackParts.every((p, i) => p === lastCombined!.trackParts[i]) &&
+    busParts.length === lastCombined.busParts.length &&
+    busParts.every((p, i) => p === lastCombined!.busParts[i]) &&
+    masterPart === lastCombined.masterPart
+  )
+    return lastCombined.entry;
+  const all = [...trackParts.flat(), ...busParts.flat(), ...masterPart];
+  const entry: KnobListEntry = {
+    all,
+    ok: all.filter((k) => !k.why),
+    by: new Map(all.map((k) => [k.target, k])),
+  };
+  lastCombined = { trackParts, busParts, masterPart, entry };
+  return entry;
 }
 
 /** Every knob for the picker (D208), grouped by track, then the buses and the master; the ones
@@ -267,8 +390,11 @@ export function pickerKnobs(project: Project): AutomatableKnob[] {
   return knobLists(project).all;
 }
 
-function buildPickerKnobs(project: Project): AutomatableKnob[] {
-  const out = project.tracks.flatMap(trackKnobs);
+/**
+ * The raw (uncached) knob list for a project. Exported for testing the cache logic: compare the
+ * cached result against a fresh build to verify correctness.
+ */
+export function buildPickerKnobs(project: Project): AutomatableKnob[] {
   const level = (target: string, group: string): AutomatableKnob => ({
     target,
     label: `${group} · Level`,
@@ -277,6 +403,7 @@ function buildPickerKnobs(project: Project): AutomatableKnob[] {
     name: "Level",
     def: VOLUME,
   });
+  const out = project.tracks.flatMap(trackKnobs);
   for (const b of project.buses) {
     const name = `Bus ${b.name}`;
     out.push(level(`bus:${b.id}`, name));
