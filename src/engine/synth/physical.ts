@@ -7,6 +7,7 @@
  * - Bar, Bell, Membrane, Plate, Glass: banks of decaying complex resonators, one per partial
  * then a body (a few fixed resonances). Pure, like core.ts; tested in Node.
  */
+import { clamp } from "../../model/params";
 import type { Physical } from "../../model/synth";
 import { BODY_MODES, MAX_MODES, modeLevel, modeRatios, modeShape } from "./modal";
 
@@ -36,8 +37,6 @@ function rand() {
 /** The generator's state: an offline synth keeps its own and swaps it in while it runs (D98). */
 export const physicalSeed = () => seed;
 export const seedPhysical = (s: number) => void (seed = s >>> 0 || 1);
-
-const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
 /** A read `d` samples back (d ≥ 2) with 4-point Lagrange interpolation (D253). */
 function lagrange(buf: Float32Array, w: number, d: number) {

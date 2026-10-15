@@ -3,6 +3,7 @@
  * LFO shapes. They draw what the engine plays (envCurve is shared with engine/synth/core.ts).
  */
 import { useRef } from "react";
+import { clamp } from "../../model/params";
 import { envCurve, noteLengthQuarters, type Env, type Lfo } from "../../model/synth";
 
 export const W = 230;
@@ -66,7 +67,6 @@ export function EnvelopeView({
     const px = ((e.clientX - box.left) / box.width) * W;
     const py = ((e.clientY - box.top) / box.height) * H;
     const next: Partial<Env> = {};
-    const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
     // curves: down = slower, up = faster
     const bend = clamp(g.c + ((py - g.y) / span) * 2, -1, 1);
     if (g.point === "a") next.attack = Math.min(10, fromX(px));

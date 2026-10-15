@@ -3,6 +3,7 @@
  * upgraded to version 2 (model/synth.ts) when read. Synth patches (D79): a synth sound as data.
  * One voice implementation (engine/synth.ts) plays every patch, live and offline.
  */
+import { clamp } from "./params";
 import type { StepSize } from "./types";
 
 /** Patches are plain JSON. (structuredClone doesn't exist in AudioWorklets, where this runs.) */
@@ -130,8 +131,6 @@ export function makePatch(spec: PatchSpec = {}): SynthPatch {
   }
   return p;
 }
-
-const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
 /** Keep every value in its range (guards the engine against hand-edited or old data). */
 export function sanitizePatch(p: SynthPatch): SynthPatch {

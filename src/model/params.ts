@@ -19,6 +19,8 @@ import { setStepVelocity, stepVelocity, type Step, type TrackMode } from "./type
 import type { Player } from "./tracks";
 import { notesLabel } from "./notes";
 
+export const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+
 /** An encoder parameter. Values are stored normalized (0..1). */
 export interface ParamDef {
   id: string;

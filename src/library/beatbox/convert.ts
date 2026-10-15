@@ -3,6 +3,7 @@
  * Snap or Keep feel timing, detected or constant velocity, and repetitions folded into one
  * pattern by majority. Pure: the result is applied to the project by `state/beatboxActions.ts`.
  */
+import { clamp } from "../../model/params";
 import { STEP_SIZE_QUARTERS, type StepSize } from "../../model/types";
 import { BEATBOX_CLASSES, type BeatboxClass } from "./classes";
 
@@ -81,8 +82,6 @@ export interface ConvertResult {
 export function stepsPerBar(stepSize: StepSize, beatsPerBar = 4, beatUnit = 4) {
   return Math.round((beatsPerBar * (4 / beatUnit)) / STEP_SIZE_QUARTERS[stepSize]);
 }
-
-const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
 interface Placed {
   id: string;
