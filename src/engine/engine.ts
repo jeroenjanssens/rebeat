@@ -93,6 +93,9 @@ export interface EngineScope {
    * unless recording. */
   liveChannels: Map<string, TrackChannel>;
   voices: Set<Voice>;
+  /** Choke group membership: group number → track ids. Built in reconcile so playDrum never
+   * reads the store. Only groups > 0 appear. */
+  chokeMap: Map<number, Set<string>>;
   clips: Map<string, Clip>;
   activeUntil: Map<string, number>;
   scratchState: Map<string, { pos: number; speed: number }>;
@@ -117,6 +120,7 @@ export function newScope(live = false): EngineScope {
     liveVoices: new Map(),
     liveChannels: new Map(),
     voices: new Set(),
+    chokeMap: new Map(),
     clips: new Map(),
     activeUntil: new Map(),
     scratchState: new Map(),
@@ -329,6 +333,16 @@ export function reconcile(project: Project = useStore.getState().project) {
   m.fx.sync(project.master.effects, bpm);
   m.fader.gain.rampTo(faderGain(project.master.volume), 0.02);
   Tone.getTransport().bpm.value = bpm;
+  // rebuild choke group membership so playDrum doesn't need the store
+  S.chokeMap.clear();
+  for (const t of project.tracks) {
+    const g = chokeGroup(t);
+    if (g > 0) {
+      let members = S.chokeMap.get(g);
+      if (!members) S.chokeMap.set(g, (members = new Set()));
+      members.add(t.id);
+    }
+  }
 }
 
 let started = false;
@@ -598,9 +612,9 @@ function playDrum(track: Track, velocity: number, time: number, o: TriggerOption
   const p = o.locks ? { ...track.params, ...o.locks } : track.params;
   const group = chokeGroup(track);
   if (group > 0) {
-    const { project } = useStore.getState();
-    const members = new Set(project.tracks.filter((t) => chokeGroup(t) === group).map((t) => t.id));
-    for (const v of S.voices) if (members.has(v.trackId) && v.end > time) stopVoice(v, time);
+    const members = S.chokeMap.get(group);
+    if (members)
+      for (const v of S.voices) if (members.has(v.trackId) && v.end > time) stopVoice(v, time);
   }
   const src = ctx.createBufferSource();
   src.buffer = buffer;
