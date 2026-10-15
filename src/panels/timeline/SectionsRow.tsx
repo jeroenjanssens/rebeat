@@ -97,7 +97,11 @@ export function SectionsRow({
   selected: string[];
   setSelected: (ids: string[]) => void;
 }) {
-  const { editSlotId, playSlotId, queuedSlotId, playing, setUi } = useStore();
+  const editSlotId = useStore((s) => s.editSlotId);
+  const playSlotId = useStore((s) => s.playSlotId);
+  const queuedSlotId = useStore((s) => s.queuedSlotId);
+  const playing = useStore((s) => s.playing);
+  const setUi = useStore((s) => s.setUi);
   const playMode = useStore((s) => s.project.playMode);
   const row = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<Drag | null>(null);

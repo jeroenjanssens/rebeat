@@ -58,7 +58,10 @@ const SNAPS: { id: TimelineSnap; label: string }[] = [
 
 function Ruler({ ppq, width, view }: { ppq: number; width: number; view: View }) {
   const project = useStore((s) => s.project);
-  const { editSlotId, startAt, setUi, playing } = useStore();
+  const editSlotId = useStore((s) => s.editSlotId);
+  const startAt = useStore((s) => s.startAt);
+  const playing = useStore((s) => s.playing);
+  const setUi = useStore((s) => s.setUi);
   const playMode = project.playMode;
   const snap = useSettings((s) => s.timelineSnap);
   const lines = useMemo(() => bars(project), [project]);
@@ -277,7 +280,10 @@ function zoomTo(z: number) {
 
 export function Timeline() {
   const project = useStore((s) => s.project);
-  const { follow, songLoop, setUi, setPlayMode } = useStore();
+  const follow = useStore((s) => s.follow);
+  const songLoop = useStore((s) => s.songLoop);
+  const setUi = useStore((s) => s.setUi);
+  const setPlayMode = useStore((s) => s.setPlayMode);
   const recordAutomation = useStore((s) => s.recordAutomation);
   const settings = useSettings();
   const overridden = useOverrides((s) => s.overridden);
