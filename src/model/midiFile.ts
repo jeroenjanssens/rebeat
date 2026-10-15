@@ -34,7 +34,8 @@ function vlq(n: number): number[] {
   return out;
 }
 
-const str = (s: string) => [...new TextEncoder().encode(s)];
+const encoder = new TextEncoder();
+const str = (s: string) => [...encoder.encode(s)];
 const u32 = (n: number) => [(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255];
 
 interface Ev {
