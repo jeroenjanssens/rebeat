@@ -15,8 +15,27 @@ import { PrototypeSums, blend, softmax } from "./calibrate";
 import type { BeatboxHit, BeatboxRecording, BeatboxVoice, LabeledBy } from "./dataset";
 import { classify, useModel } from "./model";
 import { detectOnsets, firstOnset, hitEnd, hitWindow, peakDb } from "./onsets";
-import { mono, resample } from "./resample";
+import { mono } from "./resample";
+import ResampleWorker from "./resample.worker?worker";
 import type { ConvertSettings } from "./convert";
+
+/** Resample mono audio off the main thread (same sinc code as resample.ts). */
+function resampleInWorker(x: Float32Array, sampleRate: number): Promise<Float32Array> {
+  return new Promise((resolve, reject) => {
+    const w = new ResampleWorker();
+    w.onmessage = (e: MessageEvent<Float32Array>) => {
+      resolve(e.data);
+      w.terminate();
+    };
+    w.onerror = (e) => {
+      reject(e);
+      w.terminate();
+    };
+    // transfer the buffer so the worker gets a zero-copy view
+    const copy = x.slice();
+    w.postMessage({ x: copy, from: sampleRate }, [copy.buffer]);
+  });
+}
 
 export interface Prediction {
   logits: Float32Array;
@@ -104,11 +123,8 @@ export function loadAudio(rec: BeatboxRecording): Promise<Audio | null> {
       if (b) buffer = await audioContext().decodeAudioData(await b.blob.arrayBuffer());
     } else buffer = await loadOriginal(rec.audio.sampleId);
     if (!buffer) return null;
-    const a: Audio = {
-      buffer,
-      x: resample(mono(audioBufferChannels(buffer)), buffer.sampleRate),
-      peaks: computePeaks(buffer, 2048),
-    };
+    const x = await resampleInWorker(mono(audioBufferChannels(buffer)), buffer.sampleRate);
+    const a: Audio = { buffer, x, peaks: computePeaks(buffer, 2048) };
     audio.set(rec.id, a);
     get().set({ audioVersion: get().audioVersion + 1 });
     return a;
@@ -170,11 +186,8 @@ async function addRecordingWith(
     ...(opts.bpm ? { bpm: opts.bpm } : {}),
     ...(opts.barStart !== undefined ? { barStart: opts.barStart } : {}),
   };
-  const a: Audio = {
-    buffer,
-    x: resample(mono(audioBufferChannels(buffer)), buffer.sampleRate),
-    peaks: computePeaks(buffer, 2048),
-  };
+  const x = await resampleInWorker(mono(audioBufferChannels(buffer)), buffer.sampleRate);
+  const a: Audio = { buffer, x, peaks: computePeaks(buffer, 2048) };
   audio.set(rec.id, a);
   decoding.set(rec.id, Promise.resolve(a));
   const found: { start: number; end: number; label?: BeatboxClass }[] =
