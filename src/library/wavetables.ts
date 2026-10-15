@@ -7,6 +7,7 @@ import { create } from "zustand";
 import { db, type WavetableRecord } from "../storage/db";
 import { FRAME, MAX_FRAMES, setTableName } from "../model/wavetables";
 import { setUserTableLoader } from "../engine/synth/tables";
+import { sha256 } from "./library";
 
 export const useWavetables = create<{ list: WavetableRecord[] }>(() => ({ list: [] }));
 
@@ -23,11 +24,6 @@ function bytesOf(frames: Float32Array[]): Uint8Array {
   const all = new Float32Array(frames.length * FRAME);
   frames.forEach((f, i) => all.set(f.subarray(0, FRAME), i * FRAME));
   return new Uint8Array(all.buffer);
-}
-
-async function sha256(bytes: Uint8Array) {
-  const h = await crypto.subtle.digest("SHA-256", bytes as Uint8Array<ArrayBuffer>);
-  return [...new Uint8Array(h)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 let loaderSet = false;
@@ -48,7 +44,7 @@ export async function loadWavetables() {
 /** Save frames as one of your tables; returns its id (an existing one if it's the same). */
 export async function saveWavetable(name: string, frames: Float32Array[]): Promise<string> {
   const bytes = bytesOf(frames.slice(0, MAX_FRAMES));
-  const id = `user:${await sha256(bytes)}`;
+  const id = `user:${await sha256(bytes.buffer as ArrayBuffer)}`;
   await putWavetable(id, name, bytes);
   return id;
 }
