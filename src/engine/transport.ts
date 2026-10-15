@@ -50,11 +50,9 @@ export interface StepEvent {
 
 type Listener = (e: StepEvent) => void;
 const listeners = new Set<Listener>();
-const stepHooks = new Set<(info: ScheduledStep) => void>();
-
 const LOOKAHEAD = 0.12;
 
-export interface ScheduledStep {
+interface ScheduledStep {
   time: number;
   dur: number;
   slotId: string;
@@ -78,7 +76,6 @@ let pageStep = -1;
 let tick = 0;
 let slotId = "";
 let repeatCount = 0;
-let countInUntil = 0;
 /** Beat repeat: loop this many steps (from where it was switched on). */
 let repeat: { length: number; start: number | null } | null = null;
 
@@ -96,14 +93,6 @@ export function onStep(fn: Listener): () => void {
   listeners.add(fn);
   return () => {
     listeners.delete(fn);
-  };
-}
-
-/** Called for every scheduled step, ahead of time (used by recording and the arpeggiator). */
-export function onScheduleStep(fn: (s: ScheduledStep) => void): () => void {
-  stepHooks.add(fn);
-  return () => {
-    stepHooks.delete(fn);
   };
 }
 
@@ -280,10 +269,6 @@ export function nextBarTime(): number | null {
 /** When the first step plays (after any count-in), for the current run. */
 export function playStartTime() {
   return firstStepTime;
-}
-
-export function isCountingIn() {
-  return audioNow() < countInUntil;
 }
 
 export function conditionPasses(
@@ -573,7 +558,6 @@ function scheduleStep(time: number) {
   };
   history.push(info);
   if (history.length > 64) history.shift();
-  for (const fn of stepHooks) fn(info);
   tick += 1;
   emit({ slotId: slot.id, patternId: pattern.id, pageStep, triggered, laneSteps }, time);
   nextTime = time + dur;
@@ -615,7 +599,6 @@ export function play() {
     const beats = project.timeSignature[0] * useSettings.getState().countInBars;
     for (let i = 0; i < beats; i++) click(start + i * beat, i % project.timeSignature[0] === 0);
     start += beats * beat;
-    countInUntil = start;
   }
   nextTime = start;
   firstStepTime = start;
@@ -636,7 +619,6 @@ export function stop() {
   void import("../library/audition").then((a) => (a.stopPreview(), a.stopAudition()));
   Tone.getDraw().cancel(0);
   pageStep = -1;
-  countInUntil = 0;
   history.length = 0;
   useStore.getState().setUi({ playing: false, queuedSlotId: null });
   const e = {

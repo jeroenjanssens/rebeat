@@ -3,10 +3,6 @@ import * as Tone from "tone";
 
 let out: GainNode | null = null;
 
-export function setMetronomeVolume(v: number) {
-  if (out) out.gain.value = v;
-}
-
 export function click(time: number, accent: boolean) {
   const ctx = Tone.getContext().rawContext as AudioContext;
   if (!out) {

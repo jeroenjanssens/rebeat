@@ -213,19 +213,10 @@ function bus(id: string): BusChannel {
   return b;
 }
 
-export function getBus(id: string) {
-  return S.buses.get(id);
-}
-
 /** The master chain's performance-FX insert point. */
 export function masterPerfPoints() {
   const m = ensureMaster();
   return { input: m.perfIn, output: m.perfOut };
-}
-
-/** The master bus input (tracks, send returns). */
-export function masterInput() {
-  return ensureMaster().input;
 }
 
 export function masterOutput() {
@@ -239,17 +230,8 @@ function channel(trackId: string): TrackChannel {
     ch.sendA.connect(bus("bus-a").input);
     ch.sendB.connect(bus("bus-b").input);
     S.channels.set(trackId, ch);
-    channelListeners.forEach((fn) => fn(trackId, ch!));
   }
   return ch;
-}
-
-const channelListeners = new Set<(trackId: string, ch: TrackChannel) => void>();
-/** Called when a channel strip is created (effects and sends hook in here). */
-export function onChannel(fn: (trackId: string, ch: TrackChannel) => void) {
-  channelListeners.add(fn);
-  for (const [id, ch] of S.channels) fn(id, ch);
-  return () => channelListeners.delete(fn);
 }
 
 export function getChannel(trackId: string) {
@@ -1048,12 +1030,6 @@ function setClipGain(trackId: string, g: number) {
   const c = S.clips.get(trackId);
   if (!c) return;
   for (const env of c.gains) env.gain.setTargetAtTime(g, audioNow(), 0.005);
-}
-
-/** Old name kept for the jog strip: position-less scratching uses scratchMove. */
-export function scratch(track: Track, pos: number | null, speed = 0) {
-  if (pos === null) scratchEnd(track);
-  else scratchMove(track.id, speed);
 }
 
 export function stopAll() {
