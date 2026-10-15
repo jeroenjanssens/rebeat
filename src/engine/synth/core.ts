@@ -272,6 +272,19 @@ const SOURCE_INDEX = Object.fromEntries(MOD_SOURCES.map((k, i) => [k, i])) as Re
   number
 >;
 
+/** Default render order when FM is off (or the modulator comes before the carrier). */
+const ORDER_012: readonly [0, 1, 2] = [0, 1, 2];
+
+/** Filter pre-drive gain: maps the drive knob 0..1 to the input pre-scale. */
+function driveGain(d: number) {
+  return 1 + d * 8;
+}
+
+/** Whether oscillator `o` of a patch uses FM-warp from its neighbour (reads `lastMono`). */
+function isWarpFm(osc: SynthPatch["osc"][number]) {
+  return osc.type === "wavetable" && osc.warp === "fm";
+}
+
 class Voice {
   active = false;
   gate = false;
@@ -344,6 +357,14 @@ class Voice {
   fm = 0;
   amp = 1;
   pan = 0;
+  /**
+   * Scratch arrays preallocated once per voice so render() and block() make no allocations on
+   * the audio thread.  GC pauses in an AudioWorklet are glitches (AGENTS.md §8 / P3.2).
+   */
+  monoScratch = new Float64Array(3); // oscillator sum per sample, before writing lastMono
+  neededScratch = new Uint8Array(3); // which oscillators to compute this block
+  orderScratch = new Uint8Array(3); // render order (FM: modulator first)
+  preGainScratch = new Float64Array(2); // filter pre-drive gain
 }
 
 type Event =
@@ -996,30 +1017,52 @@ export class SynthCore {
     const phys = p.source === "physical" ? v.phys : null;
     // a physical model only hears the oscillators when they're its exciter
     const oscillators = !phys || p.physical.exciter.type === "oscillators";
-    // an FM warp reads its neighbour (2 for 1, 3 for 2, 1 for 3)
-    const warpFm = (o: number) =>
-      p.osc[(o + 2) % 3].type === "wavetable" && p.osc[(o + 2) % 3].warp === "fm";
-    const needed = [
+    // which oscillators need computing this block (scratch: no allocation per block)
+    const needed = v.neededScratch;
+    needed[0] = +(
       oscillators &&
-        o1.on &&
-        (v.level[0] > 0 || v.ring > 0 || syncing || (fmOn && modOsc === 0) || warpFm(0)),
-      oscillators && o2.on && (v.level[1] > 0 || v.ring > 0 || (fmOn && modOsc === 1) || warpFm(1)),
-      oscillators && o3.on && (v.level[2] > 0 || (fmOn && modOsc === 2) || warpFm(2)),
-    ];
-    // modulators are computed first
-    const order =
-      fmOn && modOsc > carrier ? [modOsc, ...[0, 1, 2].filter((o) => o !== modOsc)] : [0, 1, 2];
+      o1.on &&
+      (v.level[0] > 0 || v.ring > 0 || syncing || (fmOn && modOsc === 0) || isWarpFm(o1))
+    );
+    needed[1] = +(
+      oscillators &&
+      o2.on &&
+      (v.level[1] > 0 || v.ring > 0 || (fmOn && modOsc === 1) || isWarpFm(o2))
+    );
+    needed[2] = +(
+      oscillators &&
+      o3.on &&
+      (v.level[2] > 0 || (fmOn && modOsc === 2) || isWarpFm(o3))
+    );
+    // modulators are computed first; ORDER_012 avoids allocating the common case (scratch for FM)
+    let order: ArrayLike<number>;
+    if (fmOn && modOsc > carrier) {
+      const s = v.orderScratch;
+      s[0] = modOsc;
+      let j = 1;
+      for (let o = 0; o < 3; o++) if (o !== modOsc) s[j++] = o;
+      order = s;
+    } else {
+      order = ORDER_012;
+    }
     const fl = p.filters;
-    const drive = (d: number) => 1 + d * 8;
-    const preGain = [drive(fl[0].drive + v.mod[DEST_INDEX["filter1.drive"]]), drive(fl[1].drive)];
+    // filter pre-drive gains (scratch: no allocation per block)
+    const preGain = v.preGainScratch;
+    preGain[0] = driveGain(fl[0].drive + v.mod[DEST_INDEX["filter1.drive"]]);
+    preGain[1] = driveGain(fl[1].drive);
     const outDrive = p.output.drive;
-    const mono = new Float64Array(3);
+    // hoist 1/tanh(k) out of the sample loop — k is constant per block (P3.2)
+    const outK = outDrive > 0.01 ? 1 + outDrive * 6 : 0;
+    const invTanhK = outK > 0 ? 1 / Math.tanh(outK) : 0;
+    // per-sample oscillator output (scratch: no allocation per block)
+    const mono = v.monoScratch;
     for (let n = 0; n < len; n++) {
       const env = v.envs[0].step(amp, 1, sr, v.gate);
       let l = 0;
       let r = 0;
       let sync1 = -1;
-      for (const o of order) {
+      for (let oi = 0; oi < 3; oi++) {
+        const o = order[oi];
         if (!needed[o]) {
           mono[o] = 0;
           continue;
@@ -1101,10 +1144,9 @@ export class SynthCore {
       const g = env * v.amp * outGain;
       l *= g;
       r *= g;
-      if (outDrive > 0.01) {
-        const k = 1 + outDrive * 6;
-        l = Math.tanh(l * k) / Math.tanh(k);
-        r = Math.tanh(r * k) / Math.tanh(k);
+      if (outK > 0) {
+        l = Math.tanh(l * outK) * invTanhK;
+        r = Math.tanh(r * outK) * invTanhK;
       }
       left[pos + n] += l;
       right[pos + n] += r;
@@ -1112,7 +1154,7 @@ export class SynthCore {
   }
 
   /** Both filters for one channel of a voice, in series or parallel. */
-  private filter(v: Voice, ch: number, x: number, preGain: number[]) {
+  private filter(v: Voice, ch: number, x: number, preGain: Float64Array) {
     const fl = this.patch.filters;
     const units = v.filters[ch];
     if (this.patch.routing === "parallel" && fl[1].on && fl[0].on)
