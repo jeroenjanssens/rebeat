@@ -1313,6 +1313,7 @@ function nextBar(): number {
 
 // the song starts: an armed Auto starts with it, on its first step after the count-in, from the
 // top; the song stops: Auto stops, and an armed one waits for the next Play (take after take)
+// (`?.` because keys.test.ts mocks the store without subscribe)
 useStore.subscribe?.((s, prev) => {
   if (s.playing && !prev.playing && auto.armed && !auto.running)
     // the transport sets its first step's time right after it says it plays
