@@ -434,11 +434,16 @@ export async function samplesInUse(): Promise<Set<string>> {
  * stay, moved to the folder above; the rest go, with their audio. Returns how many of each.
  */
 export async function removeFolder(path: string): Promise<{ removed: number; kept: number }> {
-  const plan = planRemoval(await db.samples.toArray(), path, await samplesInUse());
+  const allSamples = await db.samples.toArray();
+  const plan = planRemoval(allSamples, path, await samplesInUse());
+  const keepSet = new Set(plan.keep);
+  const kept = allSamples
+    .filter((r) => keepSet.has(r.id))
+    .map((r) => ({ ...r, folder: plan.parent }));
   await db.transaction("rw", db.samples, db.blobs, async () => {
     await db.samples.bulkDelete(plan.remove);
     await db.blobs.bulkDelete(plan.remove);
-    for (const id of plan.keep) await db.samples.update(id, { folder: plan.parent });
+    if (kept.length) await db.samples.bulkPut(kept);
   });
   await refresh();
   return { removed: plan.remove.length, kept: plan.keep.length };

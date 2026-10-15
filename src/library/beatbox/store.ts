@@ -400,10 +400,15 @@ export async function removeVoice(id: string) {
   const s = get();
   if (s.voices.length < 2) return;
   const to = s.voices.find((v) => v.id !== id)!.id;
-  for (const r of s.recordings.filter((r) => r.voiceId === id))
-    await updateRecording(r.id, { voiceId: to });
-  await db.beatboxVoices.delete(id);
-  get().set({ voices: get().voices.filter((v) => v.id !== id) });
+  const moved = s.recordings.filter((r) => r.voiceId === id).map((r) => ({ ...r, voiceId: to }));
+  await db.transaction("rw", db.beatboxRecordings, db.beatboxVoices, async () => {
+    if (moved.length) await db.beatboxRecordings.bulkPut(moved);
+    await db.beatboxVoices.delete(id);
+  });
+  get().set({
+    voices: get().voices.filter((v) => v.id !== id),
+    recordings: s.recordings.map((r) => (r.voiceId === id ? { ...r, voiceId: to } : r)),
+  });
   if (s.voiceId === id) await setVoice(to);
 }
 
