@@ -167,10 +167,13 @@ export interface ResolvedPoint {
   index: number;
 }
 
-const resolved = new WeakMap<AutomationPoint[], { slots: Section[]; points: ResolvedPoint[] }>();
+const resolved = new WeakMap<
+  AutomationPoint[],
+  { slots: Section[]; patterns: Project["patterns"]; points: ResolvedPoint[] }
+>();
 const resolvedStepped = new WeakMap<
   AutomationPoint[],
-  { slots: Section[]; steps: number; points: ResolvedPoint[] }
+  { slots: Section[]; patterns: Project["patterns"]; steps: number; points: ResolvedPoint[] }
 >();
 
 /** A value on one of `steps` bands (D229): 0, 1/(steps − 1) … 1. */
@@ -189,18 +192,31 @@ export function lanePoints(
   const draft = isDraft(points) || isDraft(project.slots) || isDraft(project.patterns);
   if (steps >= 2) {
     const hit = draft ? undefined : resolvedStepped.get(points);
-    if (hit && hit.slots === project.slots && hit.steps === steps) return hit.points;
+    if (
+      hit &&
+      hit.slots === project.slots &&
+      hit.patterns === project.patterns &&
+      hit.steps === steps
+    )
+      return hit.points;
     const out = lanePoints(project, points).map((p) => ({
       q: p.q,
       value: snapStep(p.value, steps),
       out: HOLD,
       index: p.index,
     }));
-    if (!draft) resolvedStepped.set(points, { slots: project.slots, steps, points: out });
+    if (!draft)
+      resolvedStepped.set(points, {
+        slots: project.slots,
+        patterns: project.patterns,
+        steps,
+        points: out,
+      });
     return out;
   }
   const cached = draft ? undefined : resolved.get(points);
-  if (cached && cached.slots === project.slots) return cached.points;
+  if (cached && cached.slots === project.slots && cached.patterns === project.patterns)
+    return cached.points;
   const out: ResolvedPoint[] = [];
   points.forEach((p, index) => {
     if (p.on === false) return;
@@ -208,7 +224,8 @@ export function lanePoints(
     if (q !== null) out.push({ q, value: p.value, in: p.in, out: p.out, index });
   });
   out.sort((a, b) => a.q - b.q);
-  if (!draft) resolved.set(points, { slots: project.slots, points: out });
+  if (!draft)
+    resolved.set(points, { slots: project.slots, patterns: project.patterns, points: out });
   return out;
 }
 

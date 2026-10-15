@@ -5,6 +5,7 @@ import {
   anchoredTo,
   bars,
   blockAt,
+  lanePoints,
   layout,
   positionOf,
   songLength,
@@ -179,5 +180,30 @@ describe("keeping anchors (D187)", () => {
     splitLongPages(p);
     expect(p.slots.length).toBe(4);
     expect(toSong(p, p.automation[0].points[0])).toBe(20);
+  });
+});
+
+describe("lanePoints cache (P1.3)", () => {
+  it("invalidates when the first section's pattern step count changes", () => {
+    // Two sections: S1 (16 steps = 4 q, ×1) then S2 (16 steps = 4 q, ×1).
+    // A point sits 1 quarter into S2, so its song position is 5 (4 + 1).
+    const p = emptyProject("Test", 120);
+    page(p, "S1", 16, 1);
+    page(p, "S2", 16, 1);
+    const pointInS2 = { slotId: p.slots[1].id, at: 1, value: 0.5 };
+    p.automation = [lane([pointInS2])];
+    const pts = p.automation[0].points;
+
+    const q1 = lanePoints(p, pts)[0].q;
+    expect(q1).toBeCloseTo(5); // S1 span = 4, point at 1 within S2 = 5
+
+    // Double S1's step count: its span grows from 4 to 8, so S2 starts at 8.
+    const p2 = produce(p, (d) => {
+      const patId = d.slots[0].patternId;
+      d.patterns[patId].stepCount = 32;
+    });
+
+    const q2 = lanePoints(p2, p2.automation![0].points)[0].q;
+    expect(q2).toBeCloseTo(9); // S1 span = 8, point at 1 within S2 = 9
   });
 });
