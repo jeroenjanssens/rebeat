@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { MenuHost } from "./components/Menu";
 import { AskHost } from "./components/Ask";
 import { AudioStartOverlay } from "./app/AudioStartOverlay";
@@ -14,13 +14,28 @@ import { SettingsDialog } from "./app/SettingsDialog";
 import { ShortcutsDialog } from "./app/ShortcutsDialog";
 import { TransportBar } from "./app/TransportBar";
 import { useAppearance } from "./app/useAppearance";
-import { ExportDialog } from "./app/ExportDialog";
-import { SynthWizardDialog } from "./app/SynthWizardDialog";
-import { WavetableDialog } from "./app/WavetableDialog";
-import { SampleExportDialog } from "./app/SampleExportDialog";
-import { WelcomeDialog } from "./app/WelcomeDialog";
-import { ProjectBrowser } from "./app/ProjectBrowser";
 import { ToastHost, toast } from "./components/Toast";
+
+// Dialogs that open infrequently or pull in heavy deps are lazily loaded so
+// they don't end up in the startup bundle.
+const ExportDialog = lazy(() =>
+  import("./app/ExportDialog").then((m) => ({ default: m.ExportDialog })),
+);
+const SynthWizardDialog = lazy(() =>
+  import("./app/SynthWizardDialog").then((m) => ({ default: m.SynthWizardDialog })),
+);
+const WavetableDialog = lazy(() =>
+  import("./app/WavetableDialog").then((m) => ({ default: m.WavetableDialog })),
+);
+const SampleExportDialog = lazy(() =>
+  import("./app/SampleExportDialog").then((m) => ({ default: m.SampleExportDialog })),
+);
+const WelcomeDialog = lazy(() =>
+  import("./app/WelcomeDialog").then((m) => ({ default: m.WelcomeDialog })),
+);
+const ProjectBrowser = lazy(() =>
+  import("./app/ProjectBrowser").then((m) => ({ default: m.ProjectBrowser })),
+);
 import { useStore } from "./state/store";
 import { startProjects } from "./storage/projects";
 import { startLibrary } from "./library/library";
@@ -80,12 +95,14 @@ export function App() {
       <CommandPalette />
       <SettingsDialog />
       <ShortcutsDialog />
-      <ProjectBrowser />
-      <ExportDialog />
-      <SynthWizardDialog />
-      <WavetableDialog />
-      <SampleExportDialog />
-      <WelcomeDialog />
+      <Suspense fallback={null}>
+        <ProjectBrowser />
+        <ExportDialog />
+        <SynthWizardDialog />
+        <WavetableDialog />
+        <SampleExportDialog />
+        <WelcomeDialog />
+      </Suspense>
       <ToastHost />
       <AudioStartOverlay />
     </div>
