@@ -377,3 +377,14 @@ preloaded chunks (`<link rel=modulepreload>`):
   caching). Sharing it with `fft.ts:hannWindow` is functionally identical but the plan says to
   leave `onsets.ts` alone unless a change also goes into `ml/` and the parity fixtures are
   updated. The cache in `fft.ts` is available for future use by onsets.ts after a training run.
+- **A11 (chord names follow key)**: Not implemented. `chords.ts` uses a deliberately mixed
+  set (`NAMES`: C♯/F♯ for correct harmonic spellings, E♭/A♭/B♭ for the conventional flat
+  names) — the comment at line 8–10 explains the choice. The existing unit tests pin the
+  exact spellings and cannot be edited per the ground rules. The only call site in the app
+  (`ControllerPanel.tsx`) could receive the key from the store, but changing the output would
+  break the tests. The suggestions panel (`suggest.ts`) already uses `pitchClassName(root, flats)`
+  for key-aware naming; `chordName` serves a different purpose (chord detection without key
+  context).
+- **A12 (keysPlaySynth)**: kept, already clear. The function has three branches for three
+  different sources (synth editor, library sound, project track) and calls `keysTrack()` once
+  per relevant branch, not up to three times on the same path.
