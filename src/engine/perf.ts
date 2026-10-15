@@ -88,6 +88,28 @@ export function setFilter(v: number) {
   c.hp.frequency.rampTo(hpHz, 0.03);
 }
 
+/** Timer id for the tape-stop timeout, so it can be cancelled if Play starts before it fires. */
+let tapeStopTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** Restore the perf chain to a clean (non-tape-stopped) state. */
+function cancelTapeStop() {
+  if (tapeStopTimer === null) return;
+  clearTimeout(tapeStopTimer);
+  tapeStopTimer = null;
+  const c = ensureChain();
+  const t = audioNow();
+  c.delay.delayTime.cancelScheduledValues(t);
+  c.delay.delayTime.setValueAtTime(0, t + 0.05);
+  c.gain.gain.cancelScheduledValues(t);
+  c.gain.gain.setValueAtTime(1, t + 0.06);
+  usePerf.setState({ tapeStopping: false });
+}
+
+/** Called when transport.play() starts, so a pending tape-stop doesn't halt the new session. */
+export function onTapeStopPlay() {
+  cancelTapeStop();
+}
+
 /** Slow everything down to a halt like a stopping turntable, then stop the transport. */
 export function tapeStop(seconds = 1.2) {
   const c = ensureChain();
@@ -104,8 +126,9 @@ export function tapeStop(seconds = 1.2) {
   c.delay.delayTime.setValueCurveAtTime(curve, t0, seconds);
   c.gain.gain.setValueAtTime(1, t0 + seconds * 0.6);
   c.gain.gain.linearRampToValueAtTime(0, t0 + seconds);
-  setTimeout(
+  tapeStopTimer = setTimeout(
     () => {
+      tapeStopTimer = null;
       stop();
       const t = audioNow();
       c.delay.delayTime.cancelScheduledValues(t);

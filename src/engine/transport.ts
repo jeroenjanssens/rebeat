@@ -37,6 +37,7 @@ import { automationStep, coveredTracks, regionStep } from "./automation";
 import { click, silenceMetronome } from "./metronome";
 import { notifyTick } from "./load";
 import { startTicker } from "./ticker";
+import { onTapeStopPlay } from "./perf";
 
 export interface StepEvent {
   slotId: string;
@@ -571,6 +572,8 @@ function onTick() {
 export function play() {
   const s = useStore.getState();
   if (s.playing) return;
+  // cancel any in-flight tape stop so its timer can't halt this new play session
+  onTapeStopPlay();
   initEngine();
   // tracks muted by a stop open again
   ungate();
