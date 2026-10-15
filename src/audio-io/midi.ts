@@ -9,7 +9,7 @@ import { create } from "zustand";
 import { releaseCommand, runCommand } from "../app/commands";
 import { toast } from "../components/Toast";
 import { trigger } from "../engine/engine";
-import { uid } from "../model/id";
+import { persistedUid, uid } from "../model/id";
 import type { MidiMapping, MidiMode } from "../model/project";
 import { platform } from "../platform";
 import {
@@ -250,7 +250,7 @@ export async function startMidi(sysex = false): Promise<boolean> {
     return m;
   });
   // and add the slots the map gained since you picked it (the MiniLab 3's encoder)
-  const added = map ? missingSlots(map, fixed, (p) => `${p}-${crypto.randomUUID()}`) : [];
+  const added = map ? missingSlots(map, fixed, (p) => persistedUid(p)) : [];
   if (added.length || fixed.some((m, i) => m !== s.midiMappings[i])) {
     s.set({ midiMappings: [...fixed, ...added] });
   }
@@ -293,8 +293,7 @@ function finishLearn(m: MidiMessage, mode: MidiMapping["mode"]) {
   capture = null;
   if (!learn) return;
   const mapping: MidiMapping = {
-    // global mappings outlive the session: a random id, not model/id's counter
-    id: learn.scope === "global" ? `midi-${crypto.randomUUID()}` : uid("midi"),
+    id: learn.scope === "global" ? persistedUid("midi") : uid("midi"),
     type: m.type === "cc" ? "cc" : "note",
     channel: m.channel,
     number: m.number,

@@ -4,6 +4,7 @@
  * they're not part of the project or its undo.
  */
 import { create } from "zustand";
+import { persistedUid } from "../../model/id";
 import { db } from "../../storage/db";
 import { audioContext } from "../../engine/context";
 import { computePeaks } from "../../engine/samples";
@@ -62,8 +63,7 @@ export const useBeatbox = create<BeatboxState>()((set) => ({
 }));
 
 const get = () => useBeatbox.getState();
-// saved records outlive the session, so ids are random rather than model/id's counter
-const uid = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
+const uid = persistedUid;
 const VOICE_KEY = "beatbox.voice";
 
 // ---------- loading ----------

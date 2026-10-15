@@ -17,6 +17,7 @@ import {
 import { startMidiLearn } from "../midi/learn";
 import type { PadsChannel } from "../midi/mapping";
 import type { MidiMapping, MidiMode } from "../model/project";
+import { persistedUid } from "../model/id";
 import { platform } from "../platform";
 import { useSettings } from "../state/settings";
 import { useStore } from "../state/store";
@@ -39,10 +40,7 @@ export function chooseControllerMap(id: string) {
   const map = mapById(id);
   s.set({
     midiController: id,
-    midiMappings: [
-      ...others,
-      ...(map ? mappingsOf(map, (p) => `${p}-${crypto.randomUUID()}`) : []),
-    ],
+    midiMappings: [...others, ...(map ? mappingsOf(map, (p) => persistedUid(p)) : [])],
     ...(map ? { midiPadsChannel: map.padsChannel } : {}),
   });
 }
