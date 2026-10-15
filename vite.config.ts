@@ -84,9 +84,7 @@ export default defineConfig({
   // ANALYZE=1 pnpm build  →  stats.html  (bundle treemap; P11.6)
   ...(process.env.ANALYZE ? { plugins: [visualizer({ open: true, gzipSize: true })] } : {}),
   // Tone.js and Dockview make up most of the entry bundle; editors and WASM load lazily.
-  // Limit is just above the engine chunk (largest intentional split, ~430 kB); the entry itself
-  // will warn until more code is moved off the startup path.
-  // just above the entry chunk (≈1,220 kB): a warning means it grew
+  // The limit sits just above the entry chunk (≈1,220 kB): a warning means it grew.
   build: { chunkSizeWarningLimit: 1250 },
   // the beatbox model's runtime is imported on first use; found then, Vite would optimize it and
   // reload every open page (the beatbox e2e tests failed on a fresh dev server)
