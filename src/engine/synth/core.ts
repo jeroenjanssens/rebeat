@@ -431,6 +431,8 @@ export class SynthCore {
   private macroValues: number[] = [];
   private voices: Voice[] = Array.from({ length: 16 }, () => new Voice());
   private globalLfos = [new LfoState(), new LfoState(), new LfoState()];
+  /** Preallocated: global LFO outputs written by block() and read by control(). No allocation per block. */
+  private glfoScratch = new Float64Array(3);
   private events: Event[] = [];
   private order = 0;
   private bpm = 120;
@@ -801,10 +803,13 @@ export class SynthCore {
     const p = this.patch;
     const sr = this.sr;
     const blockSec = len / sr;
-    // global LFOs
-    const glfo = this.globalLfos.map((l, i) =>
-      p.lfos[i].mode === "global" ? l.step(p.lfos[i].shape, this.lfoRate(i, 0) * blockSec) : 0,
-    );
+    // global LFOs (preallocated scratch — no Array allocation per block)
+    const glfo = this.glfoScratch;
+    for (let i = 0; i < 3; i++)
+      glfo[i] =
+        p.lfos[i].mode === "global"
+          ? this.globalLfos[i].step(p.lfos[i].shape, this.lfoRate(i, 0) * blockSec)
+          : 0;
     const outGain = Math.pow(10, p.output.volume / 20);
     for (let vi = 0; vi < this.voices.length; vi++) {
       const v = this.voices[vi];
@@ -824,7 +829,7 @@ export class SynthCore {
   }
 
   /** Envelopes 2–3, LFOs and the mod matrix for one voice; sets its per-block values. */
-  private control(v: Voice, glfo: number[], blockSec: number) {
+  private control(v: Voice, glfo: Float64Array, blockSec: number) {
     const p = this.patch;
     const sr = this.sr;
     const n = Math.round(blockSec * sr);
