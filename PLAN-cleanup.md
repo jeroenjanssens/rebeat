@@ -415,3 +415,5 @@ preloaded chunks (`<link rel=modulepreload>`):
 - **P10.1**: the review was wrong here. A model that fails to load is already shown: `loadModel`
   puts the error in `useModel`, and the panel's status chip and the Model view show its reason.
   The empty `catch` only keeps the rejection from going unhandled; it now says so.
+- **P11.5** (part): `workbox-window` stays in devDependencies. Nothing in `src/` imports it, but
+  `vite-plugin-pwa`'s `virtual:pwa-register` does, and the build fails without it.
