@@ -352,3 +352,7 @@ preloaded chunks (`<link rel=modulepreload>`):
   Bends, Long Way Home, etc. The saving is modest (a `Math.random()` per oscillator per voice per
   control block, cheap next to the rest of the block); the cost is re-recorded goldens — not worth
   it.
+- **P4.3** (part): the monitor keeps updating on every message, as before. Updating it only while
+  Settings shows it broke what the monitor is for elsewhere (tests and anything reading
+  `useMidi.monitor` right after a message). Its cost was the React renders of a whole-store
+  subscriber, which the selectors in MidiSettings remove; the setState itself is cheap.

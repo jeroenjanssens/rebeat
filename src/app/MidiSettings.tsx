@@ -5,14 +5,7 @@ import {
   startMiniLab3Display,
   stopMiniLab3Display,
 } from "../audio-io/controllers/minilab3";
-import {
-  cancelLearn,
-  isMackie,
-  setInputEnabled,
-  startMidi,
-  useMidi,
-  watchMonitor,
-} from "../audio-io/midi";
+import { cancelLearn, isMackie, setInputEnabled, startMidi, useMidi } from "../audio-io/midi";
 import { toast } from "../components/Toast";
 import {
   CONTROLLER_MAPS,
@@ -84,7 +77,6 @@ export function MidiSettings() {
   const controllers = useControllers((s) => s.connected);
   const commit = useStore((s) => s.commit);
   // raise the monitor watcher count while this panel is mounted so report() fills the list
-  useEffect(() => watchMonitor(), []);
   if (!platform.midi.supported)
     return (
       <p className="py-3 text-[12px] text-dim">

@@ -49,7 +49,18 @@ describe("knobLists cache (P4.1)", () => {
       const patternId = Object.keys(draft.patterns)[0];
       const pattern = draft.patterns[patternId];
       const trackId = draft.tracks[0].id;
-      const lane = (pattern.lanes[trackId] ??= { steps: Array(128).fill({ on: false, velocity: 0.8, probability: 1, nudge: 0, ratchet: 1, pitch: 0, gate: 1, accent: false }) });
+      const lane = (pattern.lanes[trackId] ??= {
+        steps: Array(128).fill({
+          on: false,
+          velocity: 0.8,
+          probability: 1,
+          nudge: 0,
+          ratchet: 1,
+          pitch: 0,
+          gate: 1,
+          accent: false,
+        }),
+      });
       lane.steps[0] = { ...lane.steps[0], on: !lane.steps[0].on };
     });
 
