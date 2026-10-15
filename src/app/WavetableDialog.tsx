@@ -10,6 +10,7 @@ import { toast } from "../components/Toast";
 import { TablePicture } from "../panels/synth-editor/wavetable";
 import { FRAME, clmFrameSize, cutTable, mipTable, type CutMode } from "../model/wavetables";
 import { detectPitchHz } from "../library/pitch";
+import { mono } from "../library/beatbox/resample";
 import { decodeWav } from "../library/wav";
 import { saveWavetable } from "../library/wavetables";
 import { noteName } from "../model/notes";
@@ -25,15 +26,6 @@ interface Request {
 
 export const useWavetableDialog = create<{ req: Request | null }>(() => ({ req: null }));
 
-const mono = (b: AudioBuffer) => {
-  const out = new Float32Array(b.length);
-  for (let c = 0; c < b.numberOfChannels; c++) {
-    const ch = b.getChannelData(c);
-    for (let i = 0; i < b.length; i++) out[i] += ch[i] / b.numberOfChannels;
-  }
-  return out;
-};
-
 /** Open the dialog for a library sample. */
 export async function wavetableFromSample(
   sampleId: string,
@@ -44,7 +36,12 @@ export async function wavetableFromSample(
   const buf = await loadSample(sampleId);
   if (!buf) return toast("Couldn't read that sample", "error");
   useWavetableDialog.setState({
-    req: { audio: mono(buf), sampleRate: buf.sampleRate, name, onSaved },
+    req: {
+      audio: mono(Array.from({ length: buf.numberOfChannels }, (_, c) => buf.getChannelData(c))),
+      sampleRate: buf.sampleRate,
+      name,
+      onSaved,
+    },
   });
 }
 
@@ -63,7 +60,12 @@ export async function wavetableFromFile(file: File, onSaved?: Request["onSaved"]
     const { audioContext } = await import("../engine/context");
     const buf = await audioContext().decodeAudioData(bytes.buffer.slice(0) as ArrayBuffer);
     useWavetableDialog.setState({
-      req: { audio: mono(buf), sampleRate: buf.sampleRate, name, onSaved },
+      req: {
+        audio: mono(Array.from({ length: buf.numberOfChannels }, (_, c) => buf.getChannelData(c))),
+        sampleRate: buf.sampleRate,
+        name,
+        onSaved,
+      },
     });
   } catch {
     toast(`Couldn't read ${file.name}`, "error");

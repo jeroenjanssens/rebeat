@@ -1,6 +1,7 @@
 /** Audio analysis: tempo of loops, onsets for slicing, and a sound category guess from the name. */
 import type { SoundCategory } from "../model/types";
 import { stft } from "./fft";
+import { mono } from "./beatbox/resample";
 
 export interface MonoSignal {
   data: Float32Array;
@@ -8,13 +9,10 @@ export interface MonoSignal {
 }
 
 export function toMono(buffer: AudioBuffer): MonoSignal {
-  const n = buffer.length;
-  const out = new Float32Array(n);
-  for (let c = 0; c < buffer.numberOfChannels; c++) {
-    const d = buffer.getChannelData(c);
-    for (let i = 0; i < n; i++) out[i] += d[i] / buffer.numberOfChannels;
-  }
-  return { data: out, sampleRate: buffer.sampleRate };
+  const channels = Array.from({ length: buffer.numberOfChannels }, (_, c) =>
+    buffer.getChannelData(c),
+  );
+  return { data: mono(channels), sampleRate: buffer.sampleRate };
 }
 
 /** Onset strength per hop: the rise in log energy. */
