@@ -61,6 +61,18 @@ async function refresh() {
   useLibrary.getState().set({ samples, loaded: true });
 }
 
+/** Replace one record in state without a full DB read. */
+function patchRecord(id: string, update: Partial<SampleRecord>) {
+  useLibrary.setState((s) => ({
+    samples: s.samples.map((r) => (r.id === id ? { ...r, ...update } : r)),
+  }));
+}
+
+/** Remove one record from state without a full DB read. */
+function removeRecord(id: string) {
+  useLibrary.setState((s) => ({ samples: s.samples.filter((r) => r.id !== id) }));
+}
+
 export async function sha256(data: ArrayBuffer): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", data);
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -248,10 +260,11 @@ export async function applySettings(id: string, settings: SampleSettings) {
   const original = await loadOriginal(id);
   const rec = await db.samples.get(id);
   if (!original || !rec) return;
-  await db.samples.update(id, { settings: isDefault(settings) ? undefined : settings });
+  const patch = { settings: isDefault(settings) ? undefined : settings };
+  await db.samples.update(id, patch);
   const buffer = isDefault(settings) ? original : await renderSettings(original, settings);
   registerSample({ id, name: rec.name, category: guessCategory(rec.name), bpm: rec.bpm }, buffer);
-  await refresh();
+  patchRecord(id, patch);
 }
 
 /**
@@ -292,7 +305,16 @@ export async function replaceAudio(
     { id, name: rec?.name ?? id, category: guessCategory(rec?.name ?? ""), bpm: rec?.bpm },
     buffer,
   );
-  await refresh();
+  patchRecord(id, {
+    contentHash,
+    mime: "audio/wav",
+    size: data.byteLength,
+    duration: original.duration,
+    sampleRate,
+    channels: channels.length,
+    peaks: [...computePeaks(original, 96)].map((v) => Math.round(v * 1000) / 1000),
+    settings: isDefault(settings) ? undefined : settings,
+  });
 }
 
 /** Save audio as a new library sample (a new version of `parentId`); returns its id. */
@@ -314,8 +336,11 @@ export async function saveVersion(
       bpm: bpm ?? parent?.bpm,
     },
   ]);
-  if (id && parentId) await db.samples.update(id, { parentId });
-  await refresh();
+  // importItems already refreshed the list; just patch the parentId in state
+  if (id && parentId) {
+    await db.samples.update(id, { parentId });
+    patchRecord(id, { parentId });
+  }
   return id;
 }
 
@@ -356,7 +381,7 @@ export function loadSample(id: string): Promise<AudioBuffer | null> {
 
 export async function updateSample(id: string, patch: Partial<SampleRecord>) {
   await db.samples.update(id, patch);
-  await refresh();
+  patchRecord(id, patch);
 }
 
 export async function deleteSample(id: string) {
@@ -366,18 +391,39 @@ export async function deleteSample(id: string) {
   });
   loading.delete(id);
   originals.delete(id);
-  await refresh();
+  removeRecord(id);
+}
+
+/**
+ * Extract sample ids from raw (possibly old-schema) project JSON without migrating.
+ * The sampleId fields exist in every schema version so no migration is needed.
+ */
+function rawSampleIds(data: unknown): string[] {
+  const p = data as {
+    tracks?: {
+      sound?: { sampleId?: string; zones?: { sampleId: string }[] };
+      layers?: { sampleId: string }[];
+    }[];
+    regions?: { sampleId: string }[];
+  };
+  const ids = new Set<string>();
+  for (const t of p.tracks ?? []) {
+    for (const l of t.layers ?? []) ids.add(l.sampleId);
+    if (t.sound?.sampleId) ids.add(t.sound.sampleId);
+    for (const z of t.sound?.zones ?? []) ids.add(z.sampleId);
+  }
+  for (const r of p.regions ?? []) ids.add(r.sampleId);
+  return [...ids];
 }
 
 /** Samples that projects play (D100): the open one, and every saved one. */
 export async function samplesInUse(): Promise<Set<string>> {
-  const { deserializeProject, projectSampleIds } = await import("../model/schema");
   const ids = new Set(projectSampleIds(useStore.getState().project));
   for (const rec of await db.projects.toArray()) {
     try {
-      for (const id of projectSampleIds(deserializeProject(rec.data))) ids.add(id);
+      for (const id of rawSampleIds(rec.data)) ids.add(id);
     } catch {
-      // a project that doesn't load can't play anything
+      // a project that can't be read can't play anything
     }
   }
   return ids;
