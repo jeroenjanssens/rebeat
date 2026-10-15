@@ -353,6 +353,10 @@ export function loadSample(id: string): Promise<AudioBuffer | null> {
         return null;
       }
     })();
+    // remove a null result so the next call retries (e.g. a race where the blob arrived later)
+    p.then((b) => {
+      if (!b) loading.delete(id);
+    });
     loading.set(id, p);
   }
   return p;
@@ -370,6 +374,8 @@ export async function deleteSample(id: string) {
     await db.samples.delete(id);
     await db.blobs.delete(id);
   });
+  loading.delete(id);
+  originals.delete(id);
   await refresh();
 }
 
