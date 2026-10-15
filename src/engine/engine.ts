@@ -1281,10 +1281,13 @@ export function panic() {
 }
 
 let flushTimer = 0;
-const onPanicFns: (() => void)[] = [];
+const onPanicFns = new Set<() => void>();
 
 /** Something with its own nodes on the master (the performance filters) flushes on stop too. */
-export const onPanic = (fn: () => void) => void onPanicFns.push(fn);
+export function onPanic(fn: () => void): () => void {
+  onPanicFns.add(fn);
+  return () => onPanicFns.delete(fn);
+}
 
 /** Open the master again after a stop. */
 function reopen() {
