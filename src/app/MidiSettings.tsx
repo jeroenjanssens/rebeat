@@ -5,7 +5,14 @@ import {
   startMiniLab3Display,
   stopMiniLab3Display,
 } from "../audio-io/controllers/minilab3";
-import { cancelLearn, isMackie, setInputEnabled, startMidi, useMidi } from "../audio-io/midi";
+import {
+  cancelLearn,
+  isMackie,
+  setInputEnabled,
+  startMidi,
+  useMidi,
+  watchMonitor,
+} from "../audio-io/midi";
 import { toast } from "../components/Toast";
 import {
   CONTROLLER_MAPS,
@@ -68,18 +75,23 @@ function ModeSelect({ value, onChange }: { value: MidiMode; onChange: (m: MidiMo
 /** Settings → MIDI: inputs, your controller's map, how notes and knobs behave, mappings in
  * every project and in this one, and a monitor (D119–D125). */
 export function MidiSettings() {
-  const midi = useMidi();
+  const status = useMidi((s) => s.status);
+  const inputs = useMidi((s) => s.inputs);
+  const learning = useMidi((s) => s.learning);
+  const monitor = useMidi((s) => s.monitor);
   const settings = useSettings();
   const mappings = useStore((s) => s.project.midiMappings);
   const controllers = useControllers((s) => s.connected);
   const commit = useStore((s) => s.commit);
+  // raise the monitor watcher count while this panel is mounted so report() fills the list
+  useEffect(() => watchMonitor(), []);
   if (!platform.midi.supported)
     return (
       <p className="py-3 text-[12px] text-dim">
         Web MIDI isn't supported in this browser (try Chrome or Edge, or the desktop app).
       </p>
     );
-  const detected = detectController(midi.inputs.map((p) => p.name));
+  const detected = detectController(inputs.map((p) => p.name));
   const map = mapById(settings.midiController);
   const global = settings.midiMappings;
   const setGlobal = (fn: (list: MidiMapping[]) => MidiMapping[]) =>
@@ -88,7 +100,7 @@ export function MidiSettings() {
 
   return (
     <div className="flex flex-col gap-4 py-3 text-[12px]" data-testid="midi-settings">
-      {midi.status !== "on" ? (
+      {status !== "on" ? (
         <div className="flex items-center gap-3">
           <button
             className="hw-btn"
@@ -100,7 +112,7 @@ export function MidiSettings() {
             Enable MIDI
           </button>
           <span className="text-dim">
-            {midi.status === "denied"
+            {status === "denied"
               ? "Access was denied in the browser."
               : "Pads, keyboards and controllers."}
           </span>
@@ -109,10 +121,8 @@ export function MidiSettings() {
         <>
           <section>
             <div className="label mb-1">Inputs</div>
-            {midi.inputs.length === 0 && (
-              <div className="text-faint">No MIDI inputs connected.</div>
-            )}
-            {midi.inputs.map((p) => {
+            {inputs.length === 0 && <div className="text-faint">No MIDI inputs connected.</div>}
+            {inputs.map((p) => {
               const named = /\bMCU\b|mackie/i.test(p.name);
               return (
                 <div key={p.id} className="flex items-center gap-3 py-0.5">
@@ -193,12 +203,12 @@ export function MidiSettings() {
                   <tbody>
                     {map.slots.map((slot) => {
                       const m = global.find((x) => x.slot === slot.slot);
-                      const learning = midi.learning?.slot === slot.slot;
+                      const slotLearning = learning?.slot === slot.slot;
                       return (
                         <tr key={slot.slot} className="border-t border-line">
                           <td className="py-1 pr-2">{slot.label}</td>
                           <td className="num py-1 pr-2 text-dim">
-                            {learning ? (
+                            {slotLearning ? (
                               <span className="text-accent">Move it…</span>
                             ) : m ? (
                               control(m)
@@ -374,17 +384,17 @@ export function MidiSettings() {
         }
       />
 
-      {midi.status === "on" && (
+      {status === "on" && (
         <section data-hint="app.midi.monitor">
           <div className="label mb-1">Monitor</div>
           <div
             className="scroll-thin max-h-40 overflow-y-auto rounded border border-line bg-surface p-1.5 font-mono text-[10.5px]"
             data-testid="midi-monitor"
           >
-            {midi.monitor.length === 0 && (
+            {monitor.length === 0 && (
               <div className="text-faint">Press a key or turn a knob on your controller.</div>
             )}
-            {midi.monitor.map((e, i) => (
+            {monitor.map((e, i) => (
               <div key={`${e.time}-${i}`} className="flex gap-2">
                 <span className="w-28 shrink-0 truncate text-faint">{e.device}</span>
                 <span className="w-44 shrink-0 text-ink">{e.text}</span>

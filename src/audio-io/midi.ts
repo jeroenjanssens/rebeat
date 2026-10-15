@@ -98,8 +98,7 @@ interface MidiState {
   inputs: MidiPort[];
   outputs: MidiPort[];
   learning: Learning | null;
-  last: string;
-  /** The last 20 messages (D125). */
+  /** The last 20 messages (D125). Updated only while something is watching (see watchMonitor). */
   monitor: MonitorEntry[];
 }
 
@@ -108,9 +107,30 @@ export const useMidi = create<MidiState>()(() => ({
   inputs: [],
   outputs: [],
   learning: null,
-  last: "",
   monitor: [],
 }));
+
+// ---------- monitor watcher count and frame-batching (P4.3) ----------
+// The monitor is only updated while something shows it (Settings → MIDI, the Controller
+// panel's event list), so the per-message setState doesn't run in the background.
+let monitorWatcherCount = 0;
+let pendingMonitorEntries: MonitorEntry[] = [];
+let monitorRaf = 0;
+
+/**
+ * Tell the monitor it's visible. Returns an unsubscribe: call it on unmount. The monitor stays
+ * at most one frame behind, and stops accumulating when nothing is watching.
+ */
+export function watchMonitor(): () => void {
+  monitorWatcherCount++;
+  return () => {
+    if (--monitorWatcherCount === 0) {
+      cancelAnimationFrame(monitorRaf);
+      monitorRaf = 0;
+      pendingMonitorEntries = [];
+    }
+  };
+}
 
 export interface MidiMessage {
   type: "noteon" | "noteoff" | "cc" | "pitchbend" | "aftertouch" | "start" | "stop" | "other";
@@ -395,15 +415,26 @@ function report(
     turn?: number;
   },
 ) {
-  const entry: MonitorEntry = {
-    time: Date.now(),
-    device: m.device,
-    text: describe(m),
-    action,
-    ...(ev ? { eventKind: ev.kind, eventIndex: ev.index } : {}),
-  };
-  useMidi.setState((s) => ({ monitor: [entry, ...s.monitor].slice(0, 20) }));
   lastReported = m;
+  // update the monitor only while something is showing it (frame-batched)
+  if (monitorWatcherCount > 0) {
+    const entry: MonitorEntry = {
+      time: Date.now(),
+      device: m.device,
+      text: describe(m),
+      action,
+      ...(ev ? { eventKind: ev.kind, eventIndex: ev.index } : {}),
+    };
+    pendingMonitorEntries.unshift(entry);
+    if (!monitorRaf) {
+      monitorRaf = requestAnimationFrame(() => {
+        monitorRaf = 0;
+        const entries = pendingMonitorEntries.splice(0);
+        if (entries.length)
+          useMidi.setState((s) => ({ monitor: [...entries, ...s.monitor].slice(0, 20) }));
+      });
+    }
+  }
   if (ev) {
     emitControllerEvent({
       device: m.device,
@@ -464,7 +495,6 @@ function handle(e: MIDIMessageEvent, device: string) {
   // D129: drop duplicate from sibling port of the same device within 10 ms
   if (isDuplicate(m)) return;
 
-  useMidi.setState({ last: `${m.type} ch${m.channel + 1} #${m.number} = ${m.value}` });
   for (const h of hooks) if (h(m)) return report(m, "Controller driver");
 
   if (useMidi.getState().learning && (m.type === "cc" || m.type === "noteon")) {
