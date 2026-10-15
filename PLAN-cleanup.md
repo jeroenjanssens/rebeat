@@ -371,3 +371,9 @@ preloaded chunks (`<link rel=modulepreload>`):
   so only the `overrides` dependency triggers the memo to re-run with the updated key labels.
   Removing it would make the guide show stale shortcuts after rebinding. A clarifying comment
   was added in place of the suppression comment.
+- **P7.1 partial**: `model/synthV1.ts` keeps its own local `clone` because `synth.ts` already
+  imports from `synthV1.ts`; the reverse import would be circular.
+- **P7.9 partial**: `library/beatbox/onsets.ts` keeps its own inline Hann window (N=512, no
+  caching). Sharing it with `fft.ts:hannWindow` is functionally identical but the plan says to
+  leave `onsets.ts` alone unless a change also goes into `ml/` and the parity fixtures are
+  updated. The cache in `fft.ts` is available for future use by onsets.ts after a training run.

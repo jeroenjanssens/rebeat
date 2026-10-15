@@ -34,12 +34,24 @@ export function fft(re: Float32Array, im: Float32Array) {
   }
 }
 
+const hannCache = new Map<number, Float32Array>();
+
+/** A Hann window of `size` samples (cached by size). */
+export function hannWindow(size: number): Float32Array {
+  let w = hannCache.get(size);
+  if (!w) {
+    w = Float32Array.from(
+      { length: size },
+      (_, i) => 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / size),
+    );
+    hannCache.set(size, w);
+  }
+  return w;
+}
+
 /** Magnitude spectra of windowed frames (Hann). */
 export function stft(data: Float32Array, size: number, hop: number): Float32Array[] {
-  const win = Float32Array.from(
-    { length: size },
-    (_, i) => 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / size),
-  );
+  const win = hannWindow(size);
   const frames: Float32Array[] = [];
   const re = new Float32Array(size);
   const im = new Float32Array(size);
