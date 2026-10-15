@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
+import { useElementSize } from "../../render/useElementSize";
 import { focusPanel } from "../../app/openers";
 import { EffectEditor } from "../../components/EffectEditor";
 import { Encoder } from "../../components/Encoder";
@@ -29,23 +30,6 @@ function fxLabel(effects: { name: string }[]) {
 
 const SEND_A = MIX_PARAMS.find((p) => p.id === "sendA")!;
 const SEND_B = MIX_PARAMS.find((p) => p.id === "sendB")!;
-
-function useHeight(ref: React.RefObject<HTMLElement | null>) {
-  const [h, setH] = useState(300);
-  useEffect(() => {
-    let raf = 0;
-    const ro = new ResizeObserver(([e]) => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => setH(e.contentRect.height));
-    });
-    ro.observe(ref.current!);
-    return () => {
-      cancelAnimationFrame(raf);
-      ro.disconnect();
-    };
-  }, [ref]);
-  return h;
-}
 
 /** Open an effect chain editor as a popover under an element. */
 function chainPopover(
@@ -549,7 +533,7 @@ export function MixerPanel() {
   const tracks = useStore((s) => s.project.tracks);
   const buses = useStore((s) => s.project.buses);
   const root = useRef<HTMLDivElement>(null);
-  const h = useHeight(root);
+  const { height: h } = useElementSize(root);
   // short panels hide sends and pan (they're in the Inspector too)
   const compact = h < 360;
   // strip chrome above and below the fader: name, FX, sends, pan, labels, buttons

@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { useElementSize } from "../../render/useElementSize";
 import { FolderInput, FolderMinus, Link2, Upload, Volume2, Wand2 } from "lucide-react";
 import { askRemoveFolder, RemoveFolderDialog } from "./RemoveFolder";
 import { WavetableList } from "./Wavetables";
@@ -39,23 +40,6 @@ import {
 import { Locations } from "./Locations";
 import { OnlineKits } from "./OnlineKits";
 import { RecorderStrip } from "./RecorderStrip";
-
-function useWidth(ref: React.RefObject<HTMLElement | null>) {
-  const [w, setW] = useState(300);
-  useEffect(() => {
-    let raf = 0;
-    const ro = new ResizeObserver(([e]) => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => setW(e.contentRect.width));
-    });
-    ro.observe(ref.current!);
-    return () => {
-      cancelAnimationFrame(raf);
-      ro.disconnect();
-    };
-  }, [ref]);
-  return w;
-}
 
 /** The computer keyboard as a piano: the A row plays white keys, the row above the black ones. */
 const KEY_NOTES: Record<string, number> = {
@@ -121,7 +105,7 @@ function FamilyHeader({ items, family }: { items: Item[]; family: Family }) {
 export function LibraryPanel() {
   const root = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  const width = useWidth(root);
+  const { width } = useElementSize(root);
   const samples = useLibrary((s) => s.samples);
   const selectedId = useLibrary((s) => s.selectedId);
   const importing = useLibrary((s) => s.importing);

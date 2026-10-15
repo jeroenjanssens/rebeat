@@ -1,24 +1,12 @@
-import { useEffect, useState, type RefObject } from "react";
+import { type RefObject } from "react";
+import { useElementSize } from "../../render/useElementSize";
 import { STEP_SIZE_QUARTERS, type Pattern } from "../../model/types";
 
 export type SizeClass = "compact" | "regular" | "large";
 
 /** The panel's size class comes from its own width (container-based, not the window). */
 export function useSizeClass(ref: RefObject<HTMLElement | null>) {
-  const [width, setWidth] = useState(1200);
-  useEffect(() => {
-    let raf = 0;
-    // deferred a frame: changing the layout inside the observer callback causes RO loop errors
-    const ro = new ResizeObserver(([e]) => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => setWidth(e.contentRect.width));
-    });
-    ro.observe(ref.current!);
-    return () => {
-      cancelAnimationFrame(raf);
-      ro.disconnect();
-    };
-  }, [ref]);
+  const { width } = useElementSize(ref);
   const sizeClass: SizeClass = width < 860 ? "compact" : width < 1560 ? "regular" : "large";
   return { sizeClass, width };
 }

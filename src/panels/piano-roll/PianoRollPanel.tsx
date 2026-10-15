@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useElementSize } from "../../render/useElementSize";
 import { Magnet, MousePointer2, Pencil } from "lucide-react";
 import { contextMenu } from "../../components/Menu";
 import * as engine from "../../engine/engine";
@@ -64,25 +65,6 @@ type Gesture =
   | { kind: "marquee"; x: number; y: number; additive: boolean }
   | { kind: "velocity"; key: string };
 
-function useSize(ref: React.RefObject<HTMLElement | null>) {
-  const [size, setSize] = useState({ w: 600, h: 300 });
-  useEffect(() => {
-    let raf = 0;
-    const ro = new ResizeObserver(([e]) => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() =>
-        setSize({ w: e.contentRect.width, h: e.contentRect.height }),
-      );
-    });
-    ro.observe(ref.current!);
-    return () => {
-      cancelAnimationFrame(raf);
-      ro.disconnect();
-    };
-  }, [ref]);
-  return size;
-}
-
 /** Full note editor for the selected instrument track on the page being edited. */
 export function PianoRollPanel() {
   const track = useSelectedTrack();
@@ -132,7 +114,7 @@ function PianoRoll({ track }: { track: Track }) {
   const body = useRef<HTMLDivElement>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const head = useRef<HTMLDivElement>(null);
-  const size = useSize(body);
+  const size = useElementSize(body);
   const [tool, setTool] = useState<"draw" | "select">("draw");
   const [noteLen, setNoteLen] = useState(1);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -143,12 +125,12 @@ function PianoRoll({ track }: { track: Track }) {
   const gesture = useRef<Gesture | null>(null);
   const clipboard = useRef<{ dStep: number; pitch: number; note: Note }[]>([]);
 
-  const rowH = size.h > 420 ? 16 : 13;
+  const rowH = size.height > 420 ? 16 : 13;
   // seconds per quarter and per step, for drawing bends (D224)
   const secPerQ = 60 / bpm;
   const stepSec = STEP_SIZE_QUARTERS[lane.stepSizeOverride ?? pattern.stepSize] * secPerQ;
   const rows = HIGH - LOW + 1;
-  const colW = Math.max(14, Math.min(64, ((size.w - KEYS_W - 16) / length) * zoom));
+  const colW = Math.max(14, Math.min(64, ((size.width - KEYS_W - 16) / length) * zoom));
   const gridW = length * colW;
   const gridH = rows * rowH;
   const spb = Math.max(1, Math.round(1 / STEP_SIZE_QUARTERS[pattern.stepSize]));
@@ -175,7 +157,7 @@ function PianoRoll({ track }: { track: Track }) {
     const pitches = notes.map((n) => n.pitch);
     const center = pitches.length ? (Math.max(...pitches) + Math.min(...pitches)) / 2 : 60;
     el.scrollTop = (HIGH - center) * rowH - el.clientHeight / 2;
-  }, [track.id, pattern.id, notes, rowH, size.h]);
+  }, [track.id, pattern.id, notes, rowH, size.height]);
 
   // playhead, straight on the DOM
   useEffect(
