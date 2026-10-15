@@ -388,3 +388,21 @@ preloaded chunks (`<link rel=modulepreload>`):
 - **A12 (keysPlaySynth)**: kept, already clear. The function has three branches for three
   different sources (synth editor, library sound, project track) and calls `keysTrack()` once
   per relevant branch, not up to three times on the same path.
+- **P9.3 (factory synths off startup path)**: not done. `model/schema.ts` calls
+  `patchOf` synchronously in migrations, which needs `factorySynth` from `library/synths.ts`;
+  `engine/instruments.ts` also imports it statically for voice creation. Making either async
+  would require large structural changes. The synths chunk (33 kB raw) stays in the startup
+  bundle alongside `synthTrack` (36 kB). Deviation recorded; the other P9 items were completed.
+
+### After phase 9 (P9.1–P9.9, P9.3 deviates)
+
+**P0.3 Startup bundle** — `pnpm build` (Rolldown/Vite); same measurement as baseline:
+
+- Entry chunk `index-*.js`: **1,220 kB** raw / **342 kB** gzip (−80 kB / −25 kB gz vs. phase 3
+  baseline; P9.1 moved 6 heavy dialogs to lazy chunks, P9.2 split example metadata from the
+  full song code)
+- Preloaded: `engine-*.js` 433 kB / ~118 kB gz, `context-*.js` 163 kB / ~60 kB gz,
+  `synths-*.js` 33 kB / ~9 kB gz, `synthTrack-*.js` 36 kB / ~11 kB gz
+- New lazy chunks split by P9.1: `examples-*.js` 45 kB (example songs, loaded on first open),
+  `BeatboxPanel-*.js` 50 kB, `SynthEditorPanel-*.js` 49 kB, `GuidePanel-*.js` 236 kB
+- Total startup parse: ~1,986 kB raw / ~620 kB gzip (entry chunk down −80 kB raw)

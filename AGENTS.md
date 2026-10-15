@@ -226,7 +226,8 @@ src/
                        - beatbox/ (D105–D118): classes, onsets (+ resample to 16 kHz), model.ts +
                          model.worker.ts (ONNX Runtime Web, loaded on first use), calibrate,
                          store (voices, recordings, hits in IndexedDB; predictions), record,
-                         convert (grid, timing, velocity, folding), preview, transfer (dataset zips)
+                         convert (grid, timing, velocity, folding), preview, transfer (dataset zips);
+                         resample.worker.ts (windowed-sinc resampler off the main thread, P9.8)
                        - library.ts (import, dedupe, decode, versions), analysis (BPM/onsets/key/LUFS)
                        - processing (sample settings), editorOps, renderFx, encode, wav, fft
                        - audition.ts (previews), online kits (onlineKits, onlineImport, sources)
@@ -261,7 +262,9 @@ src/
                        tracks an element's ResizeObserver dimensions), theme (tokens), thumbnail
   help/                chapters/*.md (the user guide, one file per topic), guide.ts (renderer),
                        hints/ (explain-mode texts keyed by data-hint ids)
-  templates/           builder.ts (song-writing helpers), examples.ts (example songs), showcase.ts,
+  templates/           builder.ts (song-writing helpers), example-id.ts (lightweight example
+                       metadata, no heavy imports; used at startup), examples.ts (full example
+                       songs, loaded lazily), showcase.ts,
                        synthSongs.ts, nightDrive.ts, index.ts (new-project templates)
 public/worklets/       recorder.js, scratch.js, utility.js (plain JS AudioWorklets)
 public/models/beatbox/ the beatbox model per version (model.onnx, model.json, report.md)
