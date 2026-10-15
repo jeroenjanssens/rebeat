@@ -1,8 +1,8 @@
 # Cleanup: bugs, hot paths, lifetimes, dead code, duplication (§0.6t)
 
 The plan for every finding in `REVIEW-2026-10-15.md` (references like R§1#3 point there). Nothing
-here is meant to change what Rebeat does or how it sounds, except the bug fixes. Proposed
-2026-10-15, not yet agreed: the open questions are at the end, each with a default.
+here is meant to change what Rebeat does or how it sounds, except the bug fixes. Agreed with
+Jeroen on 2026-10-15: every open question (at the end) takes its default.
 
 ## Ground rules
 
