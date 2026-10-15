@@ -33,7 +33,8 @@ function rand() {
   seed ^= seed << 5;
   return (seed >>> 0) / 0x80000000 - 1;
 }
-/** Reseed (the worklet's offline seed, D98). */
+/** The generator's state: an offline synth keeps its own and swaps it in while it runs (D98). */
+export const physicalSeed = () => seed;
 export const seedPhysical = (s: number) => void (seed = s >>> 0 || 1);
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));

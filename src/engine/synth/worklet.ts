@@ -7,7 +7,7 @@ import { SynthCore, type AutoValue, type Controls } from "./core";
 import type { NoteBend } from "../../model/types";
 import type { MippedTable } from "../../model/wavetables";
 import { addTable } from "./wavetable";
-import { seedPhysical } from "./physical";
+import { physicalSeed, seedPhysical } from "./physical";
 
 export type SynthMessage =
   | { type: "patch"; patch: unknown }
@@ -45,14 +45,15 @@ class SynthProcessor extends AudioWorkletProcessor {
 
   /** Offline renders: this synth's own seeded Math.random, so an export renders the same every time. */
   private random: (() => number) | null = null;
+  /** …and its own state of the physical models' generator (the processors share one scope). */
+  private physSeed = 1;
 
   constructor(options?: { processorOptions?: Record<string, unknown> }) {
     super(options);
     const seed = options?.processorOptions?.seed;
     if (typeof seed === "number") {
       this.random = seeded(seed);
-      // seed the physical model's own xorshift32 so offline renders are deterministic (D98)
-      seedPhysical(seed);
+      this.physSeed = seed >>> 0 || 1;
     }
     // offline renders hand over everything at the start (messages could arrive too late)
     this.seeded(() => {
@@ -63,15 +64,20 @@ class SynthProcessor extends AudioWorkletProcessor {
       this.seeded(() => this.message(e.data));
   }
 
-  /** Run with this synth's random numbers (oscillator phases, drift), when it has its own. */
+  /** Run with this synth's random numbers (oscillator phases, drift, the physical models' noise),
+   * when it has its own. */
   private seeded<T>(fn: () => T): T {
     if (!this.random) return fn();
     const random = Math.random;
+    const phys = physicalSeed();
     Math.random = this.random;
+    seedPhysical(this.physSeed);
     try {
       return fn();
     } finally {
+      this.physSeed = physicalSeed();
       Math.random = random;
+      seedPhysical(phys);
     }
   }
 
