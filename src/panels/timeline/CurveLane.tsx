@@ -159,7 +159,7 @@ export function CurveLane(p: Props) {
       }
     }
     return out;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- x/y/getCurve are closures that change every render but depend exactly on the listed props
   }, [p.resolved ?? p.curve, p.width, p.ppq, p.min, p.max, p.compact, p.points]);
 
   /** Each lane's move for a share of a lane's range (a stepped lane: whole bands). */

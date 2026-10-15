@@ -65,7 +65,11 @@ function Ruler({ ppq, width, view }: { ppq: number; width: number; view: View })
   const playMode = project.playMode;
   const snap = useSettings((s) => s.timelineSnap);
   const lines = useMemo(() => bars(project), [project]);
-  const start = useMemo(() => transport.startPosition(), [project, editSlotId, startAt]); // eslint-disable-line react-hooks/exhaustive-deps
+  const start = useMemo(
+    () => transport.startPosition(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- project/editSlotId/startAt are triggers; transport.startPosition reads module state, not its arguments
+    [project, editSlotId, startAt],
+  );
   const edit = layout(project).find((b) => b.section.id === editSlotId);
 
   const at = (e: React.MouseEvent) =>

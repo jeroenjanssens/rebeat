@@ -80,7 +80,7 @@ export function BeatboxPanel() {
     const out = new Map<string, ReturnType<typeof calibrationOf>>();
     for (const v of s.voices) out.set(v.id, calibrationOf(v.id, s));
     return out;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- calibrationOf reads s but only the listed fields are semantically relevant
   }, [s.voices, s.recordings, s.hits, s.predictions]);
 
   const guesses = useMemo(() => {
@@ -89,7 +89,7 @@ export function BeatboxPanel() {
     for (const h of s.hits)
       out[h.id] = guessOf(h, calibrations.get(voiceOf.get(h.recordingId) ?? "") ?? null);
     return out;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- s.recordings changes trigger a new calibrations, which already covers recording changes
   }, [s.hits, s.predictions, calibrations]);
 
   const voiceRecordings = s.recordings.filter((r) => r.voiceId === s.voiceId);

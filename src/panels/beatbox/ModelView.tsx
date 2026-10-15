@@ -24,7 +24,7 @@ export function ModelView({ guesses }: { guesses: Record<string, Guess | null> }
   const model = useModel();
   const stats = useMemo(
     () => voiceStats(s.voiceId, s),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- voiceStats reads s but only needs to rerun on these specific fields
     [s.voiceId, s.hits, s.recordings, s.predictions, guesses],
   );
   const voice = s.voices.find((v) => v.id === s.voiceId);

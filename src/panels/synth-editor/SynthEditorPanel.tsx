@@ -1595,7 +1595,7 @@ function WavePreview({ patch, color }: { patch: SynthPatch; color: string }) {
     });
     const peak = Math.max(...ys.map(Math.abs));
     return ys.map((y, i) => `${(i / n) * W},${H / 2 - (y / (peak || 1)) * (H / 2 - 3)}`);
-  }, [patch]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [patch]); // eslint-disable-line react-hooks/exhaustive-deps -- wave/W/H are stable module-level imports
   return (
     <svg
       width="100%"

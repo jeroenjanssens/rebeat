@@ -124,7 +124,7 @@ export function Scope({ trackId, color, meter = true, className = "", mode = "wa
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         draw(ctx, width, height, now);
       }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- draw/ref/size are accessed through stable refs; re-register the callback when visual params change
     [trackId, color, mode],
   );
 

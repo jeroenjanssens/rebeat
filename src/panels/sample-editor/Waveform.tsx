@@ -135,7 +135,7 @@ export function Waveform({ editor, snap, playhead, onSeek }: Props) {
       regions.current = null;
       envelope.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- WaveSurfer is rebuilt only when the source changes; other deps (callbacks, settings) are applied incrementally
   }, [source, sampleRate]);
 
   // keep the regions in sync with the settings
@@ -238,7 +238,7 @@ export function Waveform({ editor, snap, playhead, onSeek }: Props) {
       });
       envelope.current = env;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- envelope changes are applied through its API; only recreate when null→present or source changes
   }, [settings.volumeEnvelope === null, source]);
 
   // playhead — kept as its own rAF loop because WaveSurfer's setTime API

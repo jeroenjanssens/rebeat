@@ -102,7 +102,7 @@ export function Encoder({
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- changeRef/valueRef/quantize/clamp are stable; re-attach wheel only when knob definition changes
   }, [def]);
 
   // the live dot moves without React: straight on the DOM, every frame

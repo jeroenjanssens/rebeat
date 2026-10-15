@@ -65,7 +65,7 @@ export function VMeter({
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         draw(ctx, w, h, now);
       }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-time frame callback registration; draw/ref/size are accessed through stable refs each frame
     [],
   );
   return <canvas ref={ref} style={{ width, height }} className="block" />;

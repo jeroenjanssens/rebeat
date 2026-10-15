@@ -22,7 +22,7 @@ export function DrumMachine() {
   // doesn't rebuild geo and re-render TrackList unnecessarily.
   const geo = useMemo(
     () => geometry(width, pattern, sizeClass, zoom),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- geometry only reads stepCount/stepSize from pattern; step edits don't rebuild the layout
     [width, pattern.stepCount, pattern.stepSize, sizeClass, zoom],
   );
 

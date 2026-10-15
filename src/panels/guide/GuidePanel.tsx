@@ -16,10 +16,7 @@ export function GuidePanel({ params }: PanelProps) {
 
   const html = useMemo(
     () => CHAPTERS.map((ch) => renderChapter(ch, commands)).join(""),
-    // overrides isn't read by the memo body, but it changes when shortcuts are rebound, so
-    // including it ensures the guide re-renders with the new key labels (keysFor reads the store
-    // directly, so the memo body doesn't subscribe to it otherwise).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- overrides triggers a re-render when shortcuts change (keysFor reads the store directly, not through deps)
     [commands, overrides],
   );
 

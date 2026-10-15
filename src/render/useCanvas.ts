@@ -56,7 +56,7 @@ export function useCanvas(
     };
   }, [redraw]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps is the caller's array passed through; the hook has no additional deps of its own
   useEffect(redraw, deps);
 
   return { ref, redraw, size: sizeRef };

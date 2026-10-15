@@ -47,7 +47,7 @@ export function ViewCanvas({
     ctx.translate(-view.left, 0);
     drawRef.current(ctx, view.left, view.width);
   };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- paint closes over ref/drawRef which are stable; canvas is repainted when view or explicit deps change
   useLayoutEffect(paint, [view.left, view.width, height, ...deps]);
 
   useLayoutEffect(() => onThemeChange(paint), []);

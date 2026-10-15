@@ -178,7 +178,7 @@ export function HitWaveform(props: Props) {
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         draw(ctx, width, height);
       }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- draw is a closure over the listed deps; re-registering on every render would be wasteful
     [audio, hits, selected, guesses, view, flagged, grid],
   );
 

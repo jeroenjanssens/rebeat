@@ -517,7 +517,7 @@ function LearnAll({ map }: { map: ControllerMap }) {
     const learned = slotMapping(at) !== before.current;
     const id = window.setTimeout(() => (learned ? begin(at + 1) : setAt(null)), 150);
     return () => window.clearTimeout(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- begin/setAt/slotMapping are stable; before is a ref
   }, [learning, at]);
   return (
     <div className="flex items-center gap-2" data-hint="app.midi.learnall">

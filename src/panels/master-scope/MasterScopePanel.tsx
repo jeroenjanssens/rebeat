@@ -159,7 +159,7 @@ export function MasterScopePanel() {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       draw(ctx, width, height);
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-time frame callback registration; draw/ref/size are accessed through stable refs
   }, []);
 
   return (

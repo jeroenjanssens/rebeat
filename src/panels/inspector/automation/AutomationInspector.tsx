@@ -341,7 +341,7 @@ function PointTable({ source, project }: { source: PointSource; project: Project
     const top = pos * ROW_H;
     if (top < el.scrollTop || top + ROW_H > el.scrollTop + el.clientHeight)
       el.scrollTo({ top: Math.max(0, top - ROW_H) });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- list/rows/ROW_H are stable refs or constants; scroll only when `first` changes
   }, [first]);
 
   const select = (row: Row, e: { shiftKey: boolean; metaKey: boolean; ctrlKey: boolean }) => {

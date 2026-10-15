@@ -37,7 +37,7 @@ export function Card({
     if (reveal.id !== id || !reveal.n) return;
     if (useSettings.getState().controllerFolds[id]) setFolded(false);
     ref.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reveal.id/ref are stable; only scroll when reveal counter increments
   }, [reveal.n]);
   return (
     <section

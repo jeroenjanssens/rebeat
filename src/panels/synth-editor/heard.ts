@@ -67,8 +67,7 @@ export function useDeviceWheels(
         if (name === "aftertouch" || !keysPlayInto({ trackId, panelId })) return;
         onWheel(name, value);
       }),
-    // the callback sets state; it's the same for the editor's life
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onWheel is stable for the editor's lifetime; re-subscribing on every render would double events
     [trackId, panelId],
   );
 }

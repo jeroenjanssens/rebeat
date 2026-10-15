@@ -52,7 +52,7 @@ export function ConvertView({ rec, hits, calibration, onGrid, onFlagged }: Props
   const projectBpm = useStore((s) => s.project.bpm);
   const timeSignature = useStore((s) => s.project.timeSignature);
   const saved = useBeatbox((s) => s.convert[rec.id]);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- computed once per recording; hits/projectBpm are initial defaults that user edits override
   const fallback = useMemo(() => initial(rec, hits, projectBpm), [rec.id]);
   const settings = saved ?? fallback;
   const predictions = useBeatbox((s) => s.predictions);
@@ -71,7 +71,7 @@ export function ConvertView({ rec, hits, calibration, onGrid, onFlagged }: Props
         const label = finalLabel(h, calibration);
         return label ? [{ id: h.id, start: h.start, label, peakDb: hitPeakDb(h) }] : [];
       }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- finalLabel/hitPeakDb are stable imports; audioVersion invalidates hitPeakDb (reads module-level audio map)
     [hits, calibration, predictions, audioVersion],
   );
   const result = useMemo(
@@ -182,7 +182,7 @@ export function ConvertView({ rec, hits, calibration, onGrid, onFlagged }: Props
   // a running preview follows the settings
   useEffect(() => {
     if (preview !== "off") start(preview);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- preview/start are intentionally omitted: restart only on result/sounds change, not on every mode toggle
   }, [result, sounds]);
 
   const create = async () => {
