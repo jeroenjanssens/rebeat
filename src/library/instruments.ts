@@ -238,4 +238,3 @@ export function catalogId(src: Sound): string | null {
   return `${src.source}:${src.preset}`;
 }
 
-export const catalogEntry = (id: string) => CATALOG.find((c) => c.id === id);

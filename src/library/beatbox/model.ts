@@ -91,5 +91,3 @@ export async function classify(windows: Float32Array[]): Promise<Classified[]> {
   });
 }
 
-/** Whether the model was ever loaded this session (tests check it stays unloaded until used). */
-export const modelLoaded = () => !!loading;

@@ -227,17 +227,6 @@ async function waitForKeysReady(
   }
 }
 
-/** Set whether the browse list includes all samples (including drums). Used by the Playable panel. */
-export function setPlayableAllSamples(all: boolean) {
-  browseAllSamples = all;
-  browseListCache = []; // invalidate
-}
-
-/** Get the current browse index (used by the Playable panel to follow encoder browsing). */
-export function getBrowseIndex(): number {
-  return browseIndex;
-}
-
 /** Set the browse index directly (when the user selects an item in the Playable panel). */
 export function setBrowseIndex(id: string, allSamples = true) {
   browseAllSamples = allSamples;

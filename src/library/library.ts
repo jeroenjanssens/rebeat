@@ -318,17 +318,6 @@ export async function saveVersion(
   return id;
 }
 
-/** Point every track in the open project from one sample to another. */
-export function replaceInProject(from: string, to: string) {
-  useStore.getState().commit((p) => {
-    for (const t of p.tracks) {
-      if (t.sound?.sampleId === from) t.sound.sampleId = to;
-      for (const z of t.sound?.zones ?? []) if (z.sampleId === from) z.sampleId = to;
-      for (const l of t.layers ?? []) if (l.sampleId === from) l.sampleId = to;
-    }
-  });
-}
-
 /** Make sure a sample's audio is decoded and available to the engine. */
 export function loadSample(id: string): Promise<AudioBuffer | null> {
   const ready = getBuffer(id);
