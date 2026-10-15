@@ -23,14 +23,18 @@ function ensureWorker() {
 }
 
 export function startTicker(fn: () => void, intervalMs = 20): () => void {
+  const first = subscribers.size === 0;
   subscribers.add(fn);
   const w = ensureWorker();
   let fallback = 0;
-  if (w) w.postMessage(intervalMs);
-  else fallback = window.setInterval(fn, intervalMs);
+  // post the interval only when the first subscriber arrives; subsequent callers share the tick
+  if (first) {
+    if (w) w.postMessage(intervalMs);
+    else fallback = window.setInterval(() => subscribers.forEach((f) => f()), intervalMs);
+  }
   return () => {
     subscribers.delete(fn);
-    if (fallback) clearInterval(fallback);
+    if (fallback && subscribers.size === 0) clearInterval(fallback);
     if (w && subscribers.size === 0) w.postMessage(0);
   };
 }
