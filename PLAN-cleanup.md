@@ -338,6 +338,16 @@ preloaded chunks (`<link rel=modulepreload>`):
   is now gone entirely and the monitor accumulates only when the panel is visible, so the work
   that was batched before is now not done at all when Settings is closed)
 
+### After phase 5 (P5.1–P5.10)
+
+**P0.2 React commits** — same script, same machine:
+
+- Dragging a track knob (encoder strip) for 2 s: ~**20 commits/s** (−9% vs. phase 4; per-field
+  selectors narrow what each whole-store subscriber re-renders on)
+- Toggling 16 steps (32 clicks): ~**50 commits/s** (~2 per click, same order as before)
+- Playing Long Way Home for 5 s (Timeline + Controller + drum machine open): ~**0 commits/s**
+  (unchanged; playback is audio-clock driven, not React)
+
 ## Deviations
 
 - **P1.12**: No code change. A unit test (`src/engine/renderCycle.test.ts`) confirms that for
