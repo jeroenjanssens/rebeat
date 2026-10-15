@@ -65,6 +65,7 @@ import {
 } from "../midi/controllers";
 import { emitControllerEvent, type ControlKind } from "../midi/controllerEvents";
 import { browsePlayable } from "../library/playable";
+import { KEYS_KNOBS_BY_SLOT } from "../midi/keysKnobs";
 
 export interface MidiPort {
   id: string;
@@ -580,17 +581,13 @@ const STEPPED: Record<
   }
 > = {
   knob1: {
-    name: "chord voicing",
-    target: "keys:voicing",
-    values: 2 * VOICING_RANGE + 1,
+    ...KEYS_KNOBS_BY_SLOT["knob1"],
     index: () => useSettings.getState().chordVoicing + VOICING_RANGE,
     set: (i) => setChordVoicing(i - VOICING_RANGE),
     text: () => signed(useSettings.getState().chordVoicing),
   },
   knob2: {
-    name: "transpose",
-    target: "keys:transpose",
-    values: 25,
+    ...KEYS_KNOBS_BY_SLOT["knob2"],
     index: () => useKeys.getState().transpose + 12,
     set: (i) => setTranspose(i - 12),
     text: () => signed(useKeys.getState().transpose),
@@ -598,9 +595,7 @@ const STEPPED: Record<
   // left is deeper: −6 … −1, Off
   // the play styles (D150–D153): far left is off
   knob3: {
-    name: "strum",
-    target: "keys:strum",
-    values: STRUM_TIMES.length + 1,
+    ...KEYS_KNOBS_BY_SLOT["knob3"],
     index: () => {
       const st = playStyle().strum;
       if (!st.on) return 0;
@@ -614,42 +609,32 @@ const STEPPED: Record<
     text: () => (playStyle().strum.on ? `${Math.round(playStyle().strum.time * 1000)} ms` : "off"),
   },
   knob4: {
-    name: "arp",
-    target: "keys:arp",
-    values: ARP_RATES.length + 1,
+    ...KEYS_KNOBS_BY_SLOT["knob4"],
     index: () => (playStyle().arp.on ? ARP_RATES.indexOf(playStyle().arp.rate) + 1 : 0),
     set: (i) => setPlayStyle({ arp: i ? { on: true, rate: ARP_RATES[i - 1] } : { on: false } }),
     text: () => (playStyle().arp.on ? playStyle().arp.rate : "off"),
   },
   knob6: {
-    name: "slop",
-    target: "keys:slop",
-    values: 11,
+    ...KEYS_KNOBS_BY_SLOT["knob6"],
     index: () => (playStyle().slop.on ? Math.max(1, Math.round(playStyle().slop.amount * 10)) : 0),
     set: (i) => setPlayStyle({ slop: i ? { on: true, amount: i / 10 } : { on: false } }),
     text: () => (playStyle().slop.on ? `${Math.round(playStyle().slop.amount * 100)}%` : "off"),
   },
   knob7: {
-    name: "pattern",
-    target: "keys:pattern",
-    values: PATTERNS.length + 1,
+    ...KEYS_KNOBS_BY_SLOT["knob7"],
     index: () =>
       playStyle().pattern.on ? PATTERNS.findIndex((p) => p.id === playStyle().pattern.id) + 1 : 0,
     set: (i) => setPlayStyle({ pattern: i ? { on: true, id: PATTERNS[i - 1].id } : { on: false } }),
     text: () => (playStyle().pattern.on ? patternById(playStyle().pattern.id).name : "off"),
   },
   knob8: {
-    name: "balance",
-    target: "keys:balance",
-    values: 11,
+    ...KEYS_KNOBS_BY_SLOT["knob8"],
     index: () => Math.round(playStyle().balance * 10),
     set: (i) => setPlayStyle({ balance: i / 10 }),
     text: () => `${Math.round(playStyle().balance * 100)}%`,
   },
   knob5: {
-    name: "bass",
-    target: "keys:bass",
-    values: BASS_OCTAVES + 1,
+    ...KEYS_KNOBS_BY_SLOT["knob5"],
     index: () => BASS_OCTAVES - useSettings.getState().bassOctaves,
     set: (i) => setBassOctaves(BASS_OCTAVES - i),
     text: () => {
