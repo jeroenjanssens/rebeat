@@ -1323,6 +1323,20 @@ useStore.subscribe?.((s, prev) => {
   if (!s.playing && prev.playing && auto.running && auto.withSong) haltAuto();
 });
 
+// Opening a new project: release everything held, reset per-session state.
+// Voices from the old project's audio graph would error if released after a load.
+useStore.subscribe?.((s, prev) => {
+  if (s.projectId === prev.projectId) return;
+  releaseAllKeys();
+  // reset the chord pads, dial and suggestion history so the new project starts clean
+  chordPads = [];
+  useKeys.setState({ pads: [] });
+  dialDown = false;
+  dialUsed = false;
+  history = [];
+  auto.armed = false;
+});
+
 // ---------- play styles (D149–D154) ----------
 
 /** Change how the keys play; what's held plays the new way at once. */
@@ -1452,8 +1466,9 @@ setRhythmPlayer({
   },
 });
 
-// Stop (a panic, D99) lets go of what's latched too, and every key goes dark
+// Stop (a panic, D99) lets go of every held and latched key, and every key goes dark
 onPerformPanic(() => {
+  for (const p of down.splice(0)) end(p);
   endLatched();
   if (auto.running) haltAuto();
   publish();

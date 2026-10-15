@@ -1149,3 +1149,14 @@ window.addEventListener(
   "keydown",
   (e) => e.key === "Escape" && useMidi.getState().learning && cancelLearn(),
 );
+
+// Opening a new project: the old graph is gone, so call and forget the release closures to avoid
+// errors when they fire against the old AudioContext.
+useStore.subscribe((s, prev) => {
+  if (s.projectId === prev.projectId) return;
+  for (const release of held.values()) release();
+  held.clear();
+  for (const release of nextPadsHeld.values()) release();
+  nextPadsHeld.clear();
+  chordPadsHeld.clear();
+});
