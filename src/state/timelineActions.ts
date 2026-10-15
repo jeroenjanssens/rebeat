@@ -186,14 +186,6 @@ export function addTempoChange(q: number, bpm: number, ramp = false): number {
   return index;
 }
 
-export function moveTempoChange(index: number, q: number, bpm: number, key: string) {
-  store().commit((p) => {
-    const t = p.tempo?.[index];
-    if (!t) return;
-    Object.assign(t, toAnchor(p, q), { bpm: Math.round(clampBpm(bpm) * 10) / 10 });
-  }, key);
-}
-
 export function setTempoRamp(index: number, ramp: boolean) {
   store().commit((p) => {
     const t = p.tempo?.[index];
@@ -258,13 +250,6 @@ export function deleteTempoChanges(indexes: number[]) {
   });
 }
 
-export function deleteTempoChange(index: number) {
-  store().commit((p) => {
-    p.tempo?.splice(index, 1);
-    if (p.tempo && !p.tempo.length) delete p.tempo;
-  });
-}
-
 // ---------- automation (D186) ----------
 
 /** The lane for a target (made if needed, with a point at q at `value`); returns its id. */
@@ -324,16 +309,6 @@ export function addPoint(laneId: string, q: number, value: number): number {
     if (l) index = l.points.push({ ...toAnchor(p, q), value: valueFor(steps, value) }) - 1;
   });
   return index;
-}
-
-export function movePoint(laneId: string, index: number, q: number, value: number, key: string) {
-  const steps = stepsOf(laneId);
-  store().commit((p) => {
-    const pt = laneOf(p, laneId)?.points[index];
-    if (!pt) return;
-    Object.assign(pt, toAnchor(p, q), { value: valueFor(steps, value) });
-    plain(pt, steps);
-  }, key);
 }
 
 /** Eases on one side of points (D196); Linear clears it (the default). */
