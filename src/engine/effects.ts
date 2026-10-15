@@ -290,6 +290,9 @@ function build(name: string, p: Params): Inner {
         knobs: {
           damp: [k(damp.frequency, (x) => 20000 * Math.pow(1500 / 20000, x), { exp: true })],
         },
+        // clear the debounce timer when the effect is disposed, so it doesn't write to a
+        // disposed Tone node after the effect is removed
+        extra: [{ dispose: () => clearTimeout(timer) }],
       };
     }
     case "Chorus": {
