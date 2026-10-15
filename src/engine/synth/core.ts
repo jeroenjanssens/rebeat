@@ -275,6 +275,24 @@ const SOURCE_INDEX = Object.fromEntries(MOD_SOURCES.map((k, i) => [k, i])) as Re
 /** Default render order when FM is off (or the modulator comes before the carrier). */
 const ORDER_012: readonly [0, 1, 2] = [0, 1, 2];
 
+/**
+ * Precomputed destination indexes for the three oscillators and two filters (P3.4): avoids
+ * building template strings like `osc1.shape` on every control block (~3 000 times per second).
+ */
+const OSC_DEST = [0, 1, 2].map((o) => ({
+  shape: DEST_INDEX[`osc${o + 1}.shape` as ModDest],
+  pw: DEST_INDEX[`osc${o + 1}.pw` as ModDest],
+  level: DEST_INDEX[`osc${o + 1}.level` as ModDest],
+  pitch: DEST_INDEX[`osc${o + 1}.pitch` as ModDest],
+  position: DEST_INDEX[`osc${o + 1}.position` as ModDest],
+  warp: DEST_INDEX[`osc${o + 1}.warp` as ModDest],
+}));
+const FILTER_DEST = [0, 1].map((f) => ({
+  cutoff: DEST_INDEX[`filter${f + 1}.cutoff` as ModDest],
+  reso: DEST_INDEX[`filter${f + 1}.reso` as ModDest],
+}));
+const LFO_RATE_DEST = [0, 1, 2].map((i) => DEST_INDEX[`lfo${i + 1}.rate` as ModDest]);
+
 /** Filter pre-drive gain: maps the drive knob 0..1 to the input pre-scale. */
 function driveGain(d: number) {
   return 1 + d * 8;
@@ -841,10 +859,7 @@ export class SynthCore {
       let val =
         l.mode === "global"
           ? glfo[i]
-          : v.lfos[i].step(
-              l.shape,
-              this.lfoRate(i, v.mod[DEST_INDEX[`lfo${i + 1}.rate` as ModDest]]) * blockSec,
-            );
+          : v.lfos[i].step(l.shape, this.lfoRate(i, v.mod[LFO_RATE_DEST[i]]) * blockSec);
       if (l.unipolar) val = (val + 1) / 2;
       // fade in after the delay
       if (l.delay > 0) val *= Math.min(1, v.age / l.delay);
@@ -900,14 +915,11 @@ export class SynthCore {
     const spreadPan = (u: number, n: number) => (n > 1 ? (u / (n - 1)) * 2 - 1 : 0);
     for (let o = 0; o < 3; o++) {
       const osc = p.osc[o];
-      const key = `osc${o + 1}` as "osc1";
-      v.shape[o] = Math.min(3, Math.max(0, osc.shape + mod(`${key}.shape` as ModDest)));
-      v.pw[o] = Math.min(0.95, Math.max(0.05, osc.pw + mod(`${key}.pw` as ModDest)));
-      v.level[o] = osc.on
-        ? Math.min(1, Math.max(0, osc.level + mod(`${key}.level` as ModDest)))
-        : 0;
-      const semis =
-        base + osc.octave * 12 + osc.semi + osc.fine / 100 + mod(`${key}.pitch` as ModDest);
+      const od = OSC_DEST[o]; // precomputed destination indexes for this oscillator (P3.4)
+      v.shape[o] = Math.min(3, Math.max(0, osc.shape + v.mod[od.shape]));
+      v.pw[o] = Math.min(0.95, Math.max(0.05, osc.pw + v.mod[od.pw]));
+      v.level[o] = osc.on ? Math.min(1, Math.max(0, osc.level + v.mod[od.level])) : 0;
+      const semis = base + osc.octave * 12 + osc.semi + osc.fine / 100 + v.mod[od.pitch];
       const n = osc.unison;
       for (let u = 0; u < n; u++) {
         const i = o * MAX_UNISON + u;
@@ -934,14 +946,14 @@ export class SynthCore {
     // wavetables (D244): the table in the slot that plays, its mip levels, position and warp
     for (let o = 0; o < 3; o++) {
       const osc = p.osc[o];
-      const key = `osc${o + 1}` as "osc1";
+      const od = OSC_DEST[o];
       const id = osc.slot > 0 ? (osc.tables[osc.slot - 1] ?? osc.table) : osc.table;
       // a table that hasn't arrived yet plays as the analog morph at the same place (D243)
       const m = osc.type === "wavetable" ? (TABLES.get(id) ?? null) : null;
       v.wt[o] = m;
       if (osc.type !== "wavetable") continue;
-      const position = Math.min(1, Math.max(0, osc.position + mod(`${key}.position` as ModDest)));
-      const warp = Math.min(1, Math.max(0, osc.warpAmount + mod(`${key}.warp` as ModDest)));
+      const position = Math.min(1, Math.max(0, osc.position + v.mod[od.position]));
+      const warp = Math.min(1, Math.max(0, osc.warpAmount + v.mod[od.warp]));
       v.posFrom[o] = v.fresh ? position : v.posTo[o];
       v.warpFrom[o] = v.fresh ? warp : v.warpTo[o];
       v.posTo[o] = position;
@@ -979,13 +991,14 @@ export class SynthCore {
     for (let f = 0; f < 2; f++) {
       const fl = p.filters[f];
       if (!fl.on) continue;
+      const fd = FILTER_DEST[f]; // precomputed destination indexes for this filter (P3.4)
       const octaves =
         fl.keytrack * ((v.pitch - 60) / 12) +
         fl.env * env2 +
         fl.velocity * (v.velocity - 0.5) +
-        mod(`filter${f + 1}.cutoff` as ModDest);
+        v.mod[fd.cutoff];
       const cutoff = Math.min(20000, Math.max(20, fl.cutoff * Math.pow(2, octaves)));
-      const reso = Math.min(1, Math.max(0, fl.reso + mod(`filter${f + 1}.reso` as ModDest)));
+      const reso = Math.min(1, Math.max(0, fl.reso + v.mod[fd.reso]));
       const kind = fl.model === "ladder" && fl.type === "lp" ? "ladder" : "svf";
       const switched = v.filterKind[f] !== kind;
       v.filterKind[f] = kind;
