@@ -415,8 +415,10 @@ function report(
   }
 }
 
+export const isMackieName = (name: string) => /\bMCU\b|mackie/i.test(name);
+
 export const isMackie = (device: string) =>
-  /\bMCU\b|mackie/i.test(device) || useSettings.getState().midiMackieInputs.includes(device);
+  isMackieName(device) || useSettings.getState().midiMackieInputs.includes(device);
 
 /** Mackie Control's transport (D123): notes on channel 1, the jog wheel on CC 60. */
 const MACKIE: Record<number, [string, string]> = {

@@ -5,7 +5,7 @@ import {
   startMiniLab3Display,
   stopMiniLab3Display,
 } from "../audio-io/controllers/minilab3";
-import { cancelLearn, isMackie, setInputEnabled, startMidi, useMidi } from "../audio-io/midi";
+import { cancelLearn, isMackieName, setInputEnabled, startMidi, useMidi } from "../audio-io/midi";
 import { toast } from "../components/Toast";
 import {
   CONTROLLER_MAPS,
@@ -113,7 +113,7 @@ export function MidiSettings() {
             <div className="label mb-1">Inputs</div>
             {inputs.length === 0 && <div className="text-faint">No MIDI inputs connected.</div>}
             {inputs.map((p) => {
-              const named = /\bMCU\b|mackie/i.test(p.name);
+              const named = isMackieName(p.name);
               return (
                 <div key={p.id} className="flex items-center gap-3 py-0.5">
                   <label className="flex flex-1 items-center gap-2" data-hint="app.midi.input">
@@ -131,7 +131,7 @@ export function MidiSettings() {
                   >
                     <input
                       type="checkbox"
-                      checked={isMackie(p.name)}
+                      checked={named || settings.midiMackieInputs.includes(p.name)}
                       disabled={named}
                       onChange={(e) => {
                         const list = settings.midiMackieInputs.filter((n) => n !== p.name);
