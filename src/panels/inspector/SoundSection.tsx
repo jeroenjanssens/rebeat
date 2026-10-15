@@ -55,9 +55,14 @@ const NOTES = Array.from({ length: 61 }, (_, i) => 24 + i);
 function useInstrumentState(trackId: string) {
   const [state, setState] = useState(() => instrumentState(trackId));
   useEffect(() => {
-    const t = setInterval(() => setState(instrumentState(trackId)), 400);
+    // poll only until settled; "ready" and "error" are terminal states
+    if (state !== "loading") return;
+    const t = setInterval(() => {
+      const next = instrumentState(trackId);
+      if (next !== state) setState(next); // avoid re-renders when nothing changed
+    }, 400);
     return () => clearInterval(t);
-  }, [trackId]);
+  }, [trackId, state]);
   return state;
 }
 
