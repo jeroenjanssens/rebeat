@@ -59,6 +59,13 @@ export function watchOverrides(): () => void {
     if (s.project === prev.project || !s.project.automation?.length) return;
     // undo and redo move the project without updating lastCommitTime; a knob turn always does
     if (s.lastCommitTime === prev.lastCommitTime) return;
+    // step edits change patterns but not the knob-holding parts; skip if none of those changed
+    if (
+      s.project.tracks === prev.project.tracks &&
+      s.project.buses === prev.project.buses &&
+      s.project.master === prev.project.master
+    )
+      return;
     for (const lane of s.project.automation)
       if (lane.on && knobValue(s.project, lane.target) !== knobValue(prev.project, lane.target))
         overrideLane(lane.target);

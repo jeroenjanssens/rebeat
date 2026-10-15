@@ -53,6 +53,13 @@ export function watchRecordAutomation(): () => void {
     if (was && !on) return flush();
     // undo and redo don't update lastCommitTime; recording reads only deliberate knob turns
     if (!on || s.project === prev.project || s.lastCommitTime === prev.lastCommitTime) return;
+    // step edits change patterns but not the knob-holding parts; skip if none of those changed
+    if (
+      s.project.tracks === prev.project.tracks &&
+      s.project.buses === prev.project.buses &&
+      s.project.master === prev.project.master
+    )
+      return;
     const q = songPosition();
     if (q === null) return;
     for (const k of automatableKnobs(s.project)) {
