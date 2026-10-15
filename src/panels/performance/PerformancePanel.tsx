@@ -16,6 +16,7 @@ import {
   usePerf,
 } from "../../engine/perf";
 import { onStep } from "../../engine/transport";
+import { onFrame } from "../../render/raf";
 import { STEP_SIZE_QUARTERS, type Track } from "../../model/types";
 import { startMidiLearn } from "../../midi/learn";
 import { padInput } from "../../state/input";
@@ -292,19 +293,12 @@ function PlatterFor({
   const angle = useRef(0);
   const lastA = useRef(0);
 
-  // the label turns with playback when not touched
+  // the label turns with playback when not touched; dt (ms) from the shared frame loop
   useEffect(() => {
-    let raf = 0;
-    let prev = performance.now();
-    const tick = (now: number) => {
-      if (!s.active() && engine.clipPosition(track.id) !== null)
-        angle.current += ((now - prev) / 1000) * 200;
-      prev = now;
+    return onFrame((_now, dt) => {
+      if (!s.active() && engine.clipPosition(track.id) !== null) angle.current += (dt / 1000) * 200;
       if (rot.current) rot.current.style.transform = `rotate(${angle.current}deg)`;
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    });
   }, [track.id, s]);
 
   const angleAt = (e: React.PointerEvent) => {

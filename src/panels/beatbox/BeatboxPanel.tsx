@@ -31,6 +31,7 @@ import { RecordDialog } from "./RecordDialog";
 import { RecordingView } from "./RecordingView";
 import { ModelView } from "./ModelView";
 import { addMenu, datasetMenu } from "./actions";
+import { onFrame } from "../../render/raf";
 
 type Filter = "all" | "unlabeled" | "uncertain" | "disagree";
 
@@ -414,27 +415,21 @@ function SoundsPrompt() {
   const dot = useRef<HTMLSpanElement>(null);
   const text = useRef<HTMLSpanElement>(null);
   useEffect(() => {
-    let alive = true;
-    let raf = 0;
-    const tick = async () => {
-      const { audioContext } = await import("../../engine/context");
-      // the first await can outlast an unmount; bail if the component is gone
-      if (!alive) return;
-      const t = audioContext().currentTime;
-      const prompts = session.prompts ?? [];
+    // import audioContext once; subsequent calls return the cached module
+    let getTime: (() => number) | null = null;
+    void import("../../engine/context").then(({ audioContext }) => {
+      getTime = () => audioContext().currentTime;
+    });
+    const prompts = session.prompts ?? [];
+    return onFrame(() => {
+      const t = getTime?.() ?? 0;
       const i = prompts.findIndex((p) => p > t - 0.15);
       const lit = i >= 0 && Math.abs(prompts[i] - t) < 0.12;
       if (dot.current) dot.current.dataset.lit = String(lit);
       if (text.current)
         text.current.textContent =
           i < 0 ? "done" : t < prompts[0] - 0.2 ? "on the light" : `${i + 1} of ${prompts.length}`;
-      raf = requestAnimationFrame(() => void tick());
-    };
-    void tick();
-    return () => {
-      alive = false;
-      cancelAnimationFrame(raf);
-    };
+    });
   }, [session]);
   return (
     <span className="flex items-center gap-1.5 text-[11px] text-dim">

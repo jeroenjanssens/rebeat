@@ -241,7 +241,9 @@ export function Waveform({ editor, snap, playhead, onSeek }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings.volumeEnvelope === null, source]);
 
-  // playhead
+  // playhead — kept as its own rAF loop because WaveSurfer's setTime API
+  // tightly couples to the WaveSurfer instance lifecycle; onFrame would work
+  // here too, but the coupling isn't worth the change for this one call site.
   useEffect(() => {
     let raf = 0;
     const tick = () => {
