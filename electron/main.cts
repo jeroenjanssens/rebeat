@@ -23,6 +23,19 @@ import { autoUpdater } from "electron-updater";
 
 const DEV_URL = process.env.REBEAT_DEV_URL;
 const DIST = path.join(__dirname, "../../dist");
+
+/** Defense in depth: only accept IPC from Rebeat's own renderer (packaged or dev server). */
+function isAllowedSender(url: string): boolean {
+  if (url.startsWith("rebeat://")) return true;
+  if (DEV_URL != null) {
+    try {
+      return url.startsWith(new URL(DEV_URL).origin);
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
 const ALLOWED = new Set([
   "media",
   "midi",
@@ -186,6 +199,7 @@ function buildMenu() {
 ipcMain.handle(
   "dialog:open",
   async (e, opts: { accept?: string[]; multiple?: boolean; directory?: boolean }) => {
+    if (!isAllowedSender(e.senderFrame?.url ?? "")) return [];
     const win = BrowserWindow.fromWebContents(e.sender) ?? undefined;
     const exts = (opts.accept ?? []).filter((a) => a.startsWith(".")).map((a) => a.slice(1));
     const audio = (opts.accept ?? []).some((a) => a.startsWith("audio/"));
@@ -236,6 +250,7 @@ ipcMain.handle(
 );
 
 ipcMain.handle("dialog:save", async (e, name: string, data: Uint8Array) => {
+  if (!isAllowedSender(e.senderFrame?.url ?? "")) return false;
   const win = BrowserWindow.fromWebContents(e.sender) ?? undefined;
   const r = await dialog.showSaveDialog(win!, { defaultPath: name });
   if (r.canceled || !r.filePath) return false;
