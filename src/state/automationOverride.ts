@@ -57,8 +57,8 @@ export function watchOverrides(): () => void {
   return useStore.subscribe((s, prev) => {
     if (s.projectId !== prev.projectId) return backToAutomation();
     if (s.project === prev.project || !s.project.automation?.length) return;
-    // undoing isn't a hand on a knob
-    if (s.past.length < prev.past.length) return;
+    // undo and redo move the project without updating lastCommitTime; a knob turn always does
+    if (s.lastCommitTime === prev.lastCommitTime) return;
     for (const lane of s.project.automation)
       if (lane.on && knobValue(s.project, lane.target) !== knobValue(prev.project, lane.target))
         overrideLane(lane.target);

@@ -51,7 +51,8 @@ export function watchRecordAutomation(): () => void {
     const was =
       prev.recordAutomation && prev.recording && prev.playing && prev.project.playMode === "song";
     if (was && !on) return flush();
-    if (!on || s.project === prev.project || s.past.length < prev.past.length) return;
+    // undo and redo don't update lastCommitTime; recording reads only deliberate knob turns
+    if (!on || s.project === prev.project || s.lastCommitTime === prev.lastCommitTime) return;
     const q = songPosition();
     if (q === null) return;
     for (const k of automatableKnobs(s.project)) {

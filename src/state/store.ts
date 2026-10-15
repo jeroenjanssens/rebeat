@@ -100,6 +100,11 @@ interface State extends UiState {
   past: Project[];
   future: Project[];
   lastCommitKey: string | null;
+  /**
+   * Set by `commit` to the current time; left unchanged by `undo`, `redo`, `setPlayMode` and
+   * `editView`. Subscribers use this to distinguish a knob turn (lastCommitTime changed) from
+   * a history move or a view change (lastCommitTime stayed the same).
+   */
   lastCommitTime: number;
   /** Change the project and record an undo step. Calls with the same `key` within 600 ms are merged. */
   commit: (recipe: (p: Draft<Project>) => void, key?: string) => void;
@@ -169,8 +174,8 @@ export const useStore = create<State>()((set, get) => ({
   lanes: { velocity: false, probability: false, nudge: false },
   bank: "sound",
   fxIndex: 0,
-  selectedTrackId: project.tracks[1].id,
-  editSlotId: project.slots[1].id,
+  selectedTrackId: project.tracks[1]?.id ?? "",
+  editSlotId: project.slots[1]?.id ?? "",
   selectedSteps: {},
   cursor: null,
   keyboardPads: true,
@@ -190,7 +195,7 @@ export const useStore = create<State>()((set, get) => ({
   recording: false,
   loopBars: 0,
   looper: { status: "idle", trackId: "", start: 0, end: 0 },
-  playSlotId: project.slots[1].id,
+  playSlotId: project.slots[1]?.id ?? "",
   queuedSlotId: null,
   startAt: null,
   recordAutomation: false,
@@ -229,7 +234,8 @@ export const useStore = create<State>()((set, get) => ({
     if (future.length === 0) return;
     set({
       project: future[0],
-      past: [...past, project],
+      // keep the same 200-step cap as commit, so redo can't grow past unboundedly
+      past: [...past.slice(-199), project],
       future: future.slice(1),
       lastCommitKey: null,
     });
