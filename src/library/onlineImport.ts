@@ -1,4 +1,5 @@
 /** Downloading online kit sounds: previews stay in memory; importing adds them to the library. */
+import { toast } from "../components/Toast";
 import { importFiles, importItems } from "./library";
 import type { CatalogInstrument } from "./instruments";
 import { machineName, soundName, type OnlineKit, type OnlineSound } from "./onlineKits";
@@ -11,19 +12,22 @@ import {
   rawGithub,
   type ParsedUrl,
 } from "./sources";
+import { DownloadLru } from "./downloadLru";
 
-// downloads are kept for the session, so previewing again (or adding later) is instant
-const downloads = new Map<string, Promise<ArrayBuffer>>();
+const FETCH_TIMEOUT_MS = 15_000;
+
+// downloads are kept for the session (LRU: 64 entries or 64 MB, whichever comes first)
+const lru = new DownloadLru();
 
 function download(url: string): Promise<ArrayBuffer> {
-  let p = downloads.get(url);
+  let p = lru.get(url);
   if (!p) {
-    p = fetch(url).then((res) => {
+    p = fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) }).then((res) => {
       if (!res.ok) throw new Error(`Download failed (${res.status})`);
       return res.arrayBuffer();
     });
-    p.catch(() => downloads.delete(url));
-    downloads.set(url, p);
+    p.catch(() => lru.delete(url));
+    lru.set(url, p);
   }
   // decoding detaches a buffer: hand out copies
   return p.then((b) => b.slice(0));
@@ -63,13 +67,21 @@ export type Resolved = { kind: "files"; ids: string[] } | { kind: "collection"; 
 async function get(url: string): Promise<Response> {
   let res: Response;
   try {
-    res = await fetch(url);
-  } catch {
+    res = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+  } catch (e) {
     // network errors include sites that don't allow downloads from other sites (CORS)
-    throw new Error(`Couldn't reach ${new URL(url).hostname} (or it doesn't allow downloads)`);
+    const msg =
+      e instanceof DOMException && e.name === "TimeoutError"
+        ? `Timed out fetching ${new URL(url).hostname}`
+        : `Couldn't reach ${new URL(url).hostname} (or it doesn't allow downloads)`;
+    toast(msg, "error");
+    throw new Error(msg, { cause: e });
   }
-  if (!res.ok)
-    throw new Error(`${res.status === 404 ? "Not found" : `Error ${res.status}`}: ${url}`);
+  if (!res.ok) {
+    const msg = `${res.status === 404 ? "Not found" : `Error ${res.status}`}: ${url}`;
+    toast(msg, "error");
+    throw new Error(msg);
+  }
   return res;
 }
 

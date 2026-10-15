@@ -82,9 +82,11 @@ export function machineName(machine: string) {
 
 let index: Promise<OnlineKit[]> | null = null;
 
+const FETCH_TIMEOUT_MS = 15_000;
+
 export function fetchKitIndex(): Promise<OnlineKit[]> {
   index ??= (async () => {
-    const res = await fetch(INDEX);
+    const res = await fetch(INDEX, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
     if (!res.ok) throw new Error(`Kit index unavailable (${res.status})`);
     const json = (await res.json()) as Record<string, string[] | string>;
     const base = String(json._base ?? "");
