@@ -447,6 +447,8 @@ export class SynthCore {
   private auto = new Map<string, AutoPath>();
   private work: SynthPatch | null = null;
   private macroValues: number[] = [];
+  /** Precomputed macro target paths, split once when the patch is set. */
+  private macroTargetKeys: string[][][] = [];
   private voices: Voice[] = Array.from({ length: 16 }, () => new Voice());
   private globalLfos = [new LfoState(), new LfoState(), new LfoState()];
   /** Preallocated: global LFO outputs written by block() and read by control(). No allocation per block. */
@@ -475,6 +477,8 @@ export class SynthCore {
     this.patch = this.rest;
     // automation is written into a fresh copy at the next block
     this.work = null;
+    // Pre-split macro target paths so resolve() doesn't split on every block.
+    this.macroTargetKeys = patch.macros.map((m) => m.targets.map((t) => t.path.split(".")));
   }
 
   /** Lock the macros at `values` from `at` (samples); `values` null ends lock `id`. */
@@ -827,7 +831,15 @@ export class SynthCore {
     }
     if (macrosMoved) {
       w.macros.forEach((m, i) => (m.value = this.macroValues[i] ?? m.value));
-      for (const m of w.macros) for (const t of m.targets) setAt(w, t.path, macroAt(t, m.value));
+      for (let mi = 0; mi < w.macros.length; mi++) {
+        const m = w.macros[mi];
+        const mkeys = this.macroTargetKeys[mi];
+        if (!mkeys) continue;
+        for (let ti = 0; ti < m.targets.length; ti++) {
+          const tkeys = mkeys[ti];
+          if (tkeys) setKeys(w, tkeys, macroAt(m.targets[ti], m.value));
+        }
+      }
     }
     for (const a of this.auto.values()) {
       if (!a.cur || a.macro >= 0) continue;
@@ -1237,16 +1249,6 @@ function setKeys(p: SynthPatch, keys: string[], v: AutoValue) {
   }
   const last = keys[keys.length - 1];
   if (last in obj) obj[last] = v;
-}
-
-/** Paths split once (macro targets are written on every block while a macro moves). */
-const split = new Map<string, string[]>();
-
-/** A macro target's value (a number path). */
-function setAt(p: SynthPatch, path: string, v: number) {
-  let keys = split.get(path);
-  if (!keys) split.set(path, (keys = path.split(".")));
-  setKeys(p, keys, v);
 }
 
 export { applyMacros };
