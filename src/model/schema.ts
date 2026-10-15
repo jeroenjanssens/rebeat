@@ -240,7 +240,7 @@ export function migrate(data: unknown): Json {
 /** Fill in anything missing or inconsistent so the rest of the app can trust the data. */
 export function normalizeProject(p: Project): Project {
   p.name ||= "Untitled";
-  p.bpm = Math.min(300, Math.max(20, Number(p.bpm) || 120));
+  p.bpm = clampBpm(p.bpm);
   p.tracks ??= [];
   p.patterns ??= {};
   p.slots ??= [];
