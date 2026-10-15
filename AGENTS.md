@@ -6,7 +6,7 @@ pieces talk to each other, how to verify a change, and the gotchas that cost tim
 and every design decision (§6, D1–D240). When this file and the code disagree, the code wins.
 Please fix this file in the same change.
 
-Status (2026-10-14): every phase of the original roadmap is built, plus several feature batches
+Status (2026-10-15): every phase of the original roadmap is built, plus several feature batches
 (PLAN.md §0.6b–§0.6g). The biggest recent batch is **step tracks** (§0.6f, D93–D98, built on
 the `step-tracks` branch and merged): the drum / instrument / audio track kinds became one kind
 of track with a **sound** (sample, synth, sampled instrument) and a **mode** (Hits, Notes,
@@ -38,10 +38,12 @@ Sweeps and Bends; and **wavetables and physical models** (§0.6s, D241–D261,
 `PLAN-wavetable-physical.md`): each oscillator Analog or Wavetable (tables band-limited per octave,
 scrubbed in a picture, 8 slots a lane switches between, your own from samples), the synth's Source
 a physical model (an exciter into a string, a tube or a bank of partials, and a body), patch
-version 3 and schema 13, 27 new factory synths, the demo song Wood, Wire and Glass. Left: tests
-with real hardware (mic, MIDI, Launchpad/Push), signing the desktop release, the license (D6),
-and the "later" items in PLAN.md §0.7. The repository is public and `main` deploys to GitHub
-Pages.
+version 3 and schema 13, 27 new factory synths, the demo song Wood, Wire and Glass; and a
+**cleanup batch** (§0.6t, `PLAN-cleanup.md`): a raft of correctness, performance and tooling
+improvements across 11 phases — errors and tests, perf, React, DSP, imports, schema, duplication,
+big-file splits, bundle, robustness, and ESLint. Left: tests with real hardware (mic, MIDI,
+Launchpad/Push), signing the desktop release, the license (D6), and the "later" items in
+PLAN.md §0.7. The repository is public and `main` deploys to GitHub Pages.
 
 ---
 
@@ -108,6 +110,7 @@ Environment:
 | `just ml-train <name>`        | train and evaluate a run into `ml/runs/<name>` (uv, PyTorch)         |
 | `just ml-export <run> <ver>`  | ship a run as `public/models/beatbox/<ver>` (+ the parity fixtures)  |
 | `just ml-test`                | the Python tests in `ml/`                                            |
+| `ANALYZE=1 just build`        | production build + open `stats.html` (bundle treemap; P11.6)         |
 
 **Verify every change** with the full sequence. Use `--workers=4`: more parallel browsers make
 audio-timing tests flaky on a laptop.
@@ -846,6 +849,21 @@ dq, dv, key)` from the positions at the start (`selectionStarts`, `clampGroupDq`
   level follows its length or the decay. `sanitizePatch` caps a patch's volume at +6 dB.
 - **The factory synth levels test** used to fail sometimes because of random oscillator phases;
   it now seeds `Math.random`. New level-sensitive tests should do the same.
+- **`engine/synth/output.test.ts` is the DSP fingerprint test** (P3.0): it renders a set of
+  patches with fixed seeds and checks sum-of-squares, sum-of-abs and four spread samples. Any
+  change to `core.ts`, `physical.ts`, `modal.ts` or `wavetable.ts` that changes the audio output
+  must update those fingerprints in the same commit and explain why in the commit message.
+- **Per-track runtime state dies in one place** (`engine.ts ~line 250`): when `reconcile` removes
+  a track it calls `disposeWarper`, disconnects and deletes the scratch node, and removes the
+  `activeUntil` and `levelCache` entries — all in one clearly commented block. A new map of
+  per-track state (voices, LFOs, etc.) must join that block or it leaks until the engine is reset.
+- **The knob-list cache is keyed on `track.effects` identity** (`model/automation.ts:
+  cachedTrackKnobs`): it skips a rebuild when `track.effects`, `track.sound`, `track.mode`,
+  `track.name` and `track.id` all match. The combined list (`knobLists`) is likewise cached on
+  the parts. A new automatable target that lives outside a track's effects or sound (such as a
+  per-track boolean flag) must either be added to `trackKnobs` or get its own cache entry; the
+  lists aren't cached for immer drafts, and `laneSteps` reads them from the project outside
+  recipes for the same reason.
 - **`lastCommitTime` is set only by `commit()`**, never by `undo()`, `redo()`, `editView()` or
   `setPlayMode()`. Watchers that need to distinguish a knob turn from a history move (such as the
   automation override and the record-automation subscriber) compare `s.lastCommitTime ===

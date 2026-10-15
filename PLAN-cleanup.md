@@ -388,6 +388,12 @@ preloaded chunks (`<link rel=modulepreload>`):
 - **A12 (keysPlaySynth)**: kept, already clear. The function has three branches for three
   different sources (synth editor, library sound, project track) and calls `keysTrack()` once
   per relevant branch, not up to three times on the same path.
+- **P11.1 (test file excluded from type-aware rule)**: `src/library/onlineImport.test.ts` line 26
+  calls `lru.get()` and intentionally ignores its `Promise | undefined` return. The plan says
+  "don't edit existing tests", so the type-aware `no-floating-promises` rule was restricted to
+  non-test files (`ignores: ["src/**/*.test.ts"]` in the type-aware config block).
+- **P11.4 (noUncheckedIndexedAccess)**: skipped per Q8 default. Enabling it would require
+  non-trivial changes across the codebase; the correctness benefit does not justify the churn now.
 - **P9.3 (factory synths off startup path)**: not done. `model/schema.ts` calls
   `patchOf` synchronously in migrations, which needs `factorySynth` from `library/synths.ts`;
   `engine/instruments.ts` also imports it statically for voice creation. Making either async

@@ -1,6 +1,6 @@
 # Rebeat — Product & Technical Plan
 
-> **Status (2026-10-14):** All phases of §7 are implemented (M, G, 0–10), plus the batches in §0.6b–§0.6s, the latest being wavetables and physical models in the synth (§0.6s, `PLAN-wavetable-physical.md`). Repo: `github.com/jeroenjanssens/rebeat` (public; `main` deploys to GitHub Pages). §0 describes the current code; §0.7 lists known limitations and what is left for later.
+> **Status (2026-10-15):** All phases of §7 are implemented (M, G, 0–10), plus the batches in §0.6b–§0.6t, the latest being a cleanup batch (§0.6t, `PLAN-cleanup.md`). Repo: `github.com/jeroenjanssens/rebeat` (public; `main` deploys to GitHub Pages). §0 describes the current code; §0.7 lists known limitations and what is left for later.
 > Every open question in §6 has a **default**. All defaults were accepted when Phase M was started, except where §6 records a different choice. To change one, refer to it by number (e.g. "D7: B").
 
 ---
@@ -103,6 +103,7 @@ Key implementation patterns:
 0. Beatbox to step tracks (§0.6h, D105–D118) ✅ merged into `main` (2026-10-10). Decide whether the shipped model may train on beatboxset1 (CC BY-SA, D108). Record and
    label your own sounds (and friends'), export them, and train model 2 with them (`ml/README.md`).
 0b. MIDI controllers (§0.6i, D119–D125) ✅ merged into `main` (2026-10-10). With a device: check what it sends (the Monitor in Settings → MIDI) and fix its map.
+0t. Cleanup batch (§0.6t, `PLAN-cleanup.md`) ✅ on `cleanup` branch (2026-10-15): correctness (undo/redo invariant, Electron IPC sender check, tempo-aware looper), perf (synth core −27%, knob-list cache), React (selectors, memoization), canvas (frame-loop only), exhaustive-deps reasons, duplication removed, big-file splits, lazy dialogs, ESLint type rules. Ask before merging to `main`.
 0k. Bends per note, every synth knob and switch automatable, stepped lanes, folding lanes, moving many points, Sweeps and Bends (§0.6r, D220–D240) ✅ on `main` (2026-10-14). With the MiniLab 3: the Bend card's Strip on Newest note. Later: bends on sampled instruments, recording the strip on one note, MPE.
 0j. A tidier interface, effects everywhere (§0.6q, D206–D219) ✅ on `main` (2026-10-13): the Controller panel's cards, a smaller top bar, every effect knob automatable with a grouped knob picker, a full Keys strip, copying effects, eight new effects, Auto at beat speeds, Edit sound following the editor.
 0i. Editing automation as a table in the Inspector, eases between points and on tempo ramps (§0.6p, D196–D205) ✅ on `main` (2026-10-13).
@@ -807,6 +808,49 @@ wavetable, 12 physical, 5 physical drums in a new Percussion group), the wizard'
 struck and Evolving, a demo song, **Wood, Wire and Glass**. Then (D262): the synth editor's piano
 lights what a MIDI keyboard plays into it and follows its octave, its wheels follow the device's,
 and it can hide while a MIDI keyboard is connected.
+
+### 0.6t Cleanup batch (agreed and done 2026-10-15) ✅
+
+The plan is `PLAN-cleanup.md` (11 phases). A summary of what changed:
+
+- **P1–P2 Correctness and tests**: undo/redo no longer overrides automation lanes
+  (`lastCommitTime` invariant in `store.ts`); per-track engine state cleaned up in one place
+  (`engine.ts:reconcile`); the DSP fingerprint test (`engine/synth/output.test.ts`); project
+  load resets held keys and MIDI pad maps; session state in `keys.ts` consolidated around
+  `loads`; `midi.ts` and `keys.ts` reset separately on project load to avoid circular imports.
+- **P3 DSP performance**: the synth core's hot block preallocates its arrays; constants hoisted;
+  AHDSR transitions precomputed; envelope `phase` an integer. Baseline −27% on the dense analog
+  bench, −21% on the physical-model bench.
+- **P4 React and store**: the knob-list cache keyed on `track.effects` identity; `useMidi`
+  selectors in `MidiSettings`; `useStore` selectors in `ControllerPanel`; `reconcile` skips voice
+  rebuild when only the channel changed; `performFn` as a ref; watcher key stabilized.
+- **P5 Canvas and animation**: `MasterScopePanel`, `VMeter`, `LevelMeter` draw from `onFrame`
+  only; `WaveSurfer` and `Encoder` guard against stale refs.
+- **P6 `useEffect` deps**: 22 `exhaustive-deps` suppressions turned into `-- reason` comments;
+  `overrides` correctly kept in the guide memo.
+- **P7 Duplication**: `clone` exported from `model/synth.ts`; `numberAt`/`setNumber` in
+  `model/synth.ts`; `clamp` from `model/params.ts`; `midiToHz` from `model/notes.ts`;
+  `useElementSize` in `render/useElementSize.ts`; `formatSeconds` in `model/tempo.ts`; `uid`
+  in `model/id.ts`; many small local copies removed; template builders consolidated.
+- **P8 Big-file splits**: `SynthEditorPanel.tsx` → `basic.tsx`, `switches.tsx`, `matrix.tsx`;
+  `midi.ts` stepped-keys knobs → `midi/keysKnobs.ts`.
+- **P9 Bundle and lazy loading**: 6 heavy dialogs (Export, Sample Export, Settings, Welcome,
+  WavetableDialog, ProjectBrowser) are lazily imported; example song data split into a lazy
+  `examples-*.js` chunk; `ANALYZE=1 pnpm build` opens `stats.html` (bundle treemap).
+- **P10 Robustness**: beatbox model errors shown in the Model view and in the guide; failed
+  project reopens surfaced as a toast; service-worker update failure logged; Electron IPC
+  handlers check `senderFrame.url`; looper overdub uses `tempoNow()` instead of `project.bpm`;
+  pitch bend parsed once to −1..1 in `parse()`; all 22 `exhaustive-deps` suppressions carry a
+  reason.
+- **P11 Tooling**: `no-floating-promises` (error, type-aware for `src/`); `no-explicit-any`
+  (warn); `rawParam` helper in `engine/effects.ts`; runtime libs in `dependencies`; `workbox-
+  window` dropped.
+
+**Measurements (before → after)**:
+
+- SynthCore bench (a) dense analog: 1453 ms → 1060 ms (−27%); (b) physical model: 240 ms → 189 ms (−21%)
+- Startup bundle entry chunk: 1,300 kB raw / 367 kB gz → 1,220 kB raw / 342 kB gz; new lazy chunks: Export, Settings, Welcome, WavetableDialog, ProjectBrowser, SampleExport (~180 kB total), examples (~45 kB)
+- ESLint time (type-aware `no-floating-promises` for `src/`): ~9.3 s → ~10.6 s (+14%)
 
 ### 0.7 Known limitations and later work
 
