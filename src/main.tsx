@@ -17,7 +17,10 @@ if (location.protocol.startsWith("http") && "serviceWorker" in navigator && impo
       immediate: true,
       onRegisteredSW(_url, registration) {
         if (!registration) return;
-        const check = () => void registration.update().catch(() => {});
+        const check = () =>
+          void registration
+            .update()
+            .catch((e: unknown) => console.warn("Service worker update failed:", e));
         setInterval(check, 30 * 60 * 1000);
         document.addEventListener("visibilitychange", () => {
           if (document.visibilityState === "visible") check();
