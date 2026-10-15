@@ -1,6 +1,5 @@
 /** Read design tokens (CSS custom properties) for canvas drawing; cached until the theme changes. */
 let cache: Record<string, string> = {};
-let version = 0;
 const listeners = new Set<() => void>();
 
 export function token(name: string): string {
@@ -8,10 +7,6 @@ export function token(name: string): string {
     cache[name] = getComputedStyle(document.documentElement).getPropertyValue(`--${name}`).trim();
   }
   return cache[name];
-}
-
-export function themeVersion() {
-  return version;
 }
 
 export function onThemeChange(fn: () => void): () => void {
@@ -27,7 +22,6 @@ export function applyTheme(theme: string, accent: string | null = null) {
   if (accent) root.style.setProperty("--accent", accent);
   else root.style.removeProperty("--accent");
   cache = {};
-  version += 1;
   for (const fn of listeners) fn();
 }
 

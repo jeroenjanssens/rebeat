@@ -366,3 +366,8 @@ preloaded chunks (`<link rel=modulepreload>`):
   Settings shows it broke what the monitor is for elsewhere (tests and anything reading
   `useMidi.monitor` right after a message). Its cost was the React renders of a whole-store
   subscriber, which the selectors in MidiSettings remove; the setState itself is cheap.
+- **P6 GuidePanel overrides dep**: kept. `overrides` IS required in the memo's deps: when
+  shortcuts are rebound, `useCommands()` does not re-fire (it only fires on `registerCommands`),
+  so only the `overrides` dependency triggers the memo to re-run with the updated key labels.
+  Removing it would make the guide show stale shortcuts after rebinding. A clarifying comment
+  was added in place of the suppression comment.

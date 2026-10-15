@@ -1476,7 +1476,6 @@ onPerformPanic(() => {
   light(null, false, audioNow());
 });
 
-/** Pitch bend (−1..1), mod wheel and aftertouch (0..1) for the keys' voice. */
 /** Pitch bend, the mod wheel or aftertouch went to the keys' sound (the synth editor's wheels
  * follow them). */
 export type KeysControlListener = (

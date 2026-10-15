@@ -453,7 +453,7 @@ function EditorView({ track, target }: { track: Track; target: EditTarget }) {
         size={34}
         // room for the longer names (Hardness, Stiffness, Structure)
         width={d.label.length > 7 ? 66 : undefined}
-        hint={hintFor(d.path)}
+        hint={pathHint(d.path)}
         midiTarget={target.library ? undefined : `track:${track.id}:synth:${d.path}`}
         learnLabel={`${track.name} · ${paramName(d.path)}`}
         modRange={
@@ -1821,7 +1821,7 @@ function TargetSelect({
 }
 
 /** The explain-mode hint of a knob: the same for every oscillator, filter, envelope and LFO. */
-export const hintFor = (path: string) => `synth.${path.replace(/\.\d+\./, ".")}`;
+const pathHint = (path: string) => `synth.${path.replace(/\.\d+\./, ".")}`;
 
 /** The mod matrix: 8 slots of source → destination × amount, optionally scaled by "via". */
 function Matrix({

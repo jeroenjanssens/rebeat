@@ -26,8 +26,3 @@ export function onFrame(fn: FrameFn): () => void {
     subscribers.delete(fn);
   };
 }
-
-/** Main-thread load of the UI loop (0..1), for the CPU meter. */
-export function frameLoad() {
-  return load;
-}

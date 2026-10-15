@@ -1,12 +1,10 @@
-import { createContext, useContext, useEffect, useRef, type ReactNode } from "react";
+import { createContext, useEffect, useRef, type ReactNode } from "react";
 import { platform } from "../platform";
 import { FloatingTransport } from "./FloatingTransport";
 import { useShell } from "./shell";
 
 const frames = new Map<string, HTMLElement>();
 const PanelIdContext = createContext<string>("");
-
-export const usePanelId = () => useContext(PanelIdContext);
 
 /**
  * Wraps every panel's content: a container-query root and the element that goes full screen

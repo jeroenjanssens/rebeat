@@ -1,10 +1,9 @@
 import { Fragment, useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
-import { FolderMinus } from "lucide-react";
+import { FolderInput, FolderMinus, Link2, Upload, Volume2, Wand2 } from "lucide-react";
 import { askRemoveFolder, RemoveFolderDialog } from "./RemoveFolder";
 import { WavetableList } from "./Wavetables";
 import { inFolder } from "../../library/folders";
 import { sampleOf } from "../../model/tracks";
-import { FolderInput, Link2, Upload, Volume2, Wand2 } from "lucide-react";
 import { useShell } from "../../app/shell";
 import { toast } from "../../components/Toast";
 import { kitSounds } from "../../engine/kits";
