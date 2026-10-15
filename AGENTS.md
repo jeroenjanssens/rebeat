@@ -214,12 +214,14 @@ src/
   audio-io/            mic.ts (one shared stream), midi.ts (Web MIDI: learn, notes, bend/mod,
                        sustain), controllers/ (Launchpad/Push grid model, profiles, runtime;
                        minilab3.ts: the MiniLab 3's display over SysEx)
-  midi/                learn.ts (startMidiLearn(target, label, scope)), mapping.ts (pure: relative
-                       encoders, roles such as "selected:sound:3", which mapping wins, pads by
-                       channel, pickup), controllers.ts (controller maps: MiniLab 3, MPK Mini MK3,
-                       Launchkey Mini MK3/MK4; slot kinds), controllerEvents.ts (what each control
-                       did, for the Controller panel), display.ts (a device's screen text, mirrored),
-                       displayFeed.ts (names to show), padColors.ts (what the pads light in, D144)
+  midi/                mapping.ts (pure: relative encoders, roles such as "selected:sound:3",
+                       which mapping wins, pads by channel, pickup), controllers.ts (controller maps:
+                       MiniLab 3, MPK Mini MK3, Launchkey Mini MK3/MK4; slot kinds),
+                       keysKnobs.ts (pure static metadata for the 8 stepped knobs in Chord/Key mode:
+                       slot, name, target, values count; used by audio-io/midi.ts and its unit test),
+                       controllerEvents.ts (what each control did, for the Controller panel),
+                       display.ts (a device's screen text, mirrored), displayFeed.ts (names to show),
+                       padColors.ts (what the pads light in, D144)
   library/             samples and instruments:
                        - beatbox/ (D105–D118): classes, onsets (+ resample to 16 kHz), model.ts +
                          model.worker.ts (ONNX Runtime Web, loaded on first use), calibrate,
@@ -244,14 +246,19 @@ src/
                        beatbox (recordings list, HitWaveform, RecordDialog, ConvertView, ModelView),
                        controller (the MiniLab 3 drawn live, other maps as lists; the settings as
                        Cards: Chords, Bass, Suggest, Play, D213; Bend, D222),
+                       synth-editor (SynthEditorPanel.tsx: the shell and EditorView; basic.tsx:
+                       the Basic view macros/voice/scope; matrix.tsx: macroDef, Macros, Matrix;
+                       switches.tsx: Group, Box, and switch atoms Choice/Toggle/SwitchSelect/BoxToggle),
                        timeline (D184: ruler, Tempo lane, sections, track rows, curve lanes, regions;
-                       canvases cover only the visible part, ViewCanvas); inspector/automation/
+                       canvases cover only the visible part, ViewCanvas; dragListeners.ts: pointer
+                       event helpers shared across timeline drag gestures); inspector/automation/
                        (D199–D204: the point table, its sources, ScrubField, parsing)
   components/          Encoder (knob), Fader, MiniFader, DragValue, Keyboard (piano), Scope,
                        PeaksCanvas, Playhead, Menu (contextMenu/dropdown, headings), Dialog, Toast,
                        EffectEditor, fxMenus (Add effect by group, copy/paste, Copy to…), EqCurve,
                        KnobPicker (D208), glide (smooth resets), soundIcons…
-  render/              raf.ts (one shared animation loop), useCanvas, theme (tokens), thumbnail
+  render/              raf.ts (one shared animation loop), useCanvas, useElementSize (a hook that
+                       tracks an element's ResizeObserver dimensions), theme (tokens), thumbnail
   help/                chapters/*.md (the user guide, one file per topic), guide.ts (renderer),
                        hints/ (explain-mode texts keyed by data-hint ids)
   templates/           builder.ts (song-writing helpers), examples.ts (example songs), showcase.ts,
