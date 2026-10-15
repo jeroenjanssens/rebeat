@@ -18,7 +18,7 @@ import {
   type NoteRef,
 } from "../../model/noteOps";
 import { inKey, keyName, keyUsesFlats, noteName, snapToKey } from "../../model/notes";
-import { pageKey, slotPattern, type Project } from "../../model/project";
+import { slotPattern, type Project } from "../../model/project";
 import {
   BEND_SHAPES,
   STEP_SIZE_QUARTERS,
@@ -117,14 +117,16 @@ export function PianoRollPanel() {
 function PianoRoll({ track }: { track: Track }) {
   const pattern = useEditPattern();
   const lane = pattern.lanes[track.id] as Lane;
-  const project = useStore((s) => s.project);
   const commit = useStore((s) => s.commit);
   const scaleLock = useStore((s) => s.scaleLock);
   const quantize = useStore((s) => s.quantize);
+  const bpm = useStore((s) => s.project.bpm);
+  const timeSigNumerator = useStore((s) => s.project.timeSignature[0]);
+  const projectKey = useStore((s) => s.project.key);
   const recordMode = useSettings((s) => s.recordMode);
   const snap = useSettings((s) => s.snap);
   const setSettings = useSettings((s) => s.set);
-  const key = pageKey(project, pattern);
+  const key = pattern.keyOverride ?? projectKey;
   const flats = keyUsesFlats(key);
   const length = lane.stepCountOverride ?? pattern.stepCount;
   const body = useRef<HTMLDivElement>(null);
@@ -143,7 +145,7 @@ function PianoRoll({ track }: { track: Track }) {
 
   const rowH = size.h > 420 ? 16 : 13;
   // seconds per quarter and per step, for drawing bends (D224)
-  const secPerQ = 60 / project.bpm;
+  const secPerQ = 60 / bpm;
   const stepSec = STEP_SIZE_QUARTERS[lane.stepSizeOverride ?? pattern.stepSize] * secPerQ;
   const rows = HIGH - LOW + 1;
   const colW = Math.max(14, Math.min(64, ((size.w - KEYS_W - 16) / length) * zoom));
@@ -209,7 +211,7 @@ function PianoRoll({ track }: { track: Track }) {
         ctx.fillRect(0, y + rowH - 0.5, w, 0.5);
       }
       for (let i = 0; i <= length; i++) {
-        const bar = i % (spb * project.timeSignature[0]) === 0;
+        const bar = i % (spb * timeSigNumerator) === 0;
         const beat = i % spb === 0;
         ctx.fillStyle = bar ? token("border-strong") : token("border");
         ctx.globalAlpha = bar ? 1 : beat ? 0.8 : 0.35;
@@ -217,7 +219,7 @@ function PianoRoll({ track }: { track: Track }) {
       }
       ctx.globalAlpha = 1;
     },
-    [rowH, colW, length, key.root, key.scale, spb, project.timeSignature[0]],
+    [rowH, colW, length, key.root, key.scale, spb, timeSigNumerator],
   );
 
   // ---------- editing ----------
