@@ -139,6 +139,7 @@ async function start(fallback: string) {
     if (last) recovered = await openProject(last);
   } catch (e) {
     console.error("Could not reopen the last project", e);
+    toast("Could not reopen the last project.", "error");
   }
   if (!recovered) await openProject(fallback);
 
