@@ -14,7 +14,7 @@ import {
   mappingsOf,
   type ControllerMap,
 } from "../midi/controllers";
-import { startMidiLearn } from "../midi/learn";
+import { startLearn } from "../audio-io/midi";
 import type { PadsChannel } from "../midi/mapping";
 import type { MidiMapping, MidiMode } from "../model/project";
 import { persistedUid } from "../model/id";
@@ -222,7 +222,7 @@ export function MidiSettings() {
                             <button
                               className="tool-btn !h-5"
                               onClick={() =>
-                                startMidiLearn(
+                                startLearn(
                                   slot.target,
                                   `${map.name} · ${slot.label}`,
                                   "global",
@@ -509,7 +509,7 @@ function LearnAll({ map }: { map: ControllerMap }) {
     const slot = map.slots[i];
     before.current = slotMapping(i);
     setAt(i);
-    startMidiLearn(slot.target, `${map.name} · ${slot.label}`, "global", slot.slot);
+    startLearn(slot.target, `${map.name} · ${slot.label}`, "global", slot.slot);
   };
   // when a slot is learned, go on to the next; Esc ends the walk-through
   useEffect(() => {

@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 import type { ParamDef } from "../model/params";
 import { contextMenu } from "./Menu";
-import { startMidiLearn } from "../midi/learn";
+import { startLearn } from "../audio-io/midi";
 import { useGlide } from "./glide";
 import { onFrame } from "../render/raf";
 import { automateItems, useAutomated } from "../state/automationKnob";
@@ -183,14 +183,13 @@ export function Encoder({
             {
               label: globalTarget ? "MIDI learn (this track, in this project)" : "MIDI learn",
               disabled: !midiTarget,
-              onSelect: () => midiTarget && startMidiLearn(midiTarget, learnLabel ?? def.label),
+              onSelect: () => midiTarget && startLearn(midiTarget, learnLabel ?? def.label),
             },
             ...(globalTarget
               ? [
                   {
                     label: `MIDI learn: ${globalTarget.label} (every project)`,
-                    onSelect: () =>
-                      startMidiLearn(globalTarget.target, globalTarget.label, "global"),
+                    onSelect: () => startLearn(globalTarget.target, globalTarget.label, "global"),
                   },
                 ]
               : []),

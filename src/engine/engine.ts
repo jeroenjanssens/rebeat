@@ -1121,7 +1121,7 @@ export function releaseAutomation() {
   S.autoSynths.clear();
   const project = useStore.getState().project;
   for (const ch of S.channels.values()) ch.release();
-  for (const b of project.buses) S.buses.get(b.id)?.release(b, project.bpm);
+  for (const b of project.buses) S.buses.get(b.id)?.release(b);
   if (S.master) {
     S.master.fx.refresh();
     S.master.fader.gain.rampTo(faderGain(project.master.volume), 0.02);

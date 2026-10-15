@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { useGlide } from "./glide";
 import { contextMenu } from "./Menu";
-import { startMidiLearn } from "../midi/learn";
+import { startLearn } from "../audio-io/midi";
 import { automateItems } from "../state/automationKnob";
 import { VOLUME_FORMAT } from "../model/params";
 
@@ -55,13 +55,13 @@ export function Fader({
           { separator: true },
           {
             label: midi.global ? "MIDI learn (in this project)" : "MIDI learn",
-            onSelect: () => startMidiLearn(midi.target, midi.label),
+            onSelect: () => startLearn(midi.target, midi.label),
           },
           ...(midi.global
             ? [
                 {
                   label: `MIDI learn: ${midi.global.label} (every project)`,
-                  onSelect: () => startMidiLearn(midi.global!.target, midi.global!.label, "global"),
+                  onSelect: () => startLearn(midi.global!.target, midi.global!.label, "global"),
                 },
               ]
             : []),

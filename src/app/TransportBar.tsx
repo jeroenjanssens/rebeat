@@ -17,7 +17,7 @@ import {
 import { DragValue } from "../components/DragValue";
 import { LevelMeter } from "../components/LevelMeter";
 import { contextMenu, dropdown, useMenu, type MenuItem } from "../components/Menu";
-import { startMidiLearn } from "../midi/learn";
+import { startLearn } from "../audio-io/midi";
 import * as engine from "../engine/engine";
 import * as clock from "../engine/transport";
 import { TIME_SIGNATURES, createTapTempo } from "../model/tempo";
@@ -77,7 +77,7 @@ const learnCommand = (id: string, title: string) => (e: React.MouseEvent) =>
   contextMenu(e, [
     {
       label: `MIDI learn: ${title} (every project)`,
-      onSelect: () => startMidiLearn(`command:${id}`, title, "global"),
+      onSelect: () => startLearn(`command:${id}`, title, "global"),
     },
   ]);
 

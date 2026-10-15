@@ -65,10 +65,9 @@ export class BusChannel {
   }
 
   /** Automation ended: the knobs' own values again. */
-  release(bus: Bus, bpm: number) {
+  release(bus: Bus) {
     this.fx.refresh();
     this.fader.gain.rampTo(bus.mute ? 0 : faderGain(bus.volume), 0.02);
-    void bpm;
   }
 
   update(bus: Bus, bpm: number) {

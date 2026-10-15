@@ -56,7 +56,9 @@ export function withDefaults(s: Partial<SampleSettings> | undefined): SampleSett
 }
 
 export function isDefault(s: SampleSettings) {
-  return JSON.stringify(withDefaults(s)) === JSON.stringify(DEFAULT_SETTINGS);
+  return (Object.keys(DEFAULT_SETTINGS) as (keyof SampleSettings)[]).every(
+    (k) => s[k] === DEFAULT_SETTINGS[k],
+  );
 }
 
 /** Fade shape: 0..1 → gain 0..1. */

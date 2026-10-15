@@ -4,7 +4,7 @@ import { Dialog } from "../components/Dialog";
 import { useSettings } from "../state/settings";
 import { eventShortcut, formatKeys, keysFor, useCommands, type Command } from "./commands";
 import { useMidi } from "../audio-io/midi";
-import { startMidiLearn } from "../midi/learn";
+import { startLearn } from "../audio-io/midi";
 import { useShell } from "./shell";
 
 /** Cheat sheet of all shortcuts; click a shortcut to rebind it. */
@@ -131,7 +131,7 @@ function MidiButton({ command }: { command: Command }) {
         title="Learn a MIDI button or pad for this (every project)"
         data-hint="app.shortcuts.midi"
         data-testid={`midi-learn-${command.id}`}
-        onClick={() => startMidiLearn(target, command.title, "global")}
+        onClick={() => startLearn(target, command.title, "global")}
       >
         {learning ? (
           <span className="text-accent">Press a button…</span>

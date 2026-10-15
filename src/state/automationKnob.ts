@@ -61,7 +61,7 @@ export function controlItems(target: string | undefined, label: string): MenuIte
     {
       label: "MIDI learn",
       onSelect: () =>
-        void import("../midi/learn").then((m) => m.startMidiLearn(target, label, "project")),
+        void import("../audio-io/midi").then((m) => m.startLearn(target, label, "project")),
     },
     ...automateItems(target),
   ];

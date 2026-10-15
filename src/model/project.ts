@@ -6,7 +6,6 @@ import { MIX_PARAMS, SOUND_PARAMS, defaultParams, toUnit } from "./params";
 import {
   MAX_STEPS,
   emptyStep,
-  laneLength,
   type AudioRegion,
   type AutomationLane,
   type TempoChange,
@@ -299,8 +298,6 @@ export function euclid(pulses: number, length: number, rotation = 0): boolean[] 
 export function applyPattern(lane: Lane, hits: boolean[]) {
   hits.forEach((on, i) => (lane.steps[i].on = on));
 }
-
-export { laneLength };
 
 // ---------- track operations ----------
 

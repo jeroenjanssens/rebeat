@@ -106,10 +106,7 @@ export function moveNotes(
 }
 
 export function resizeNotes(lane: Lane, refs: NoteRef[], length: (old: number) => number) {
-  for (const r of refs) {
-    const n = getNote(lane, r);
-    if (n) n.length = Math.max(1, Math.min(128, length(n.length)));
-  }
+  resizeNotesFree(lane, refs, length, 1);
 }
 
 /**

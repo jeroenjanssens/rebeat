@@ -50,8 +50,8 @@ const learn = (e: React.MouseEvent, id: string, label: string) =>
     {
       label: `MIDI learn: Bend ${label}`,
       onSelect: () =>
-        void import("../../midi/learn").then((m) =>
-          m.startMidiLearn(`bend:${id}`, `Bend · ${label}`, "global"),
+        void import("../../audio-io/midi").then((m) =>
+          m.startLearn(`bend:${id}`, `Bend · ${label}`, "global"),
         ),
     },
   ]);

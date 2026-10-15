@@ -192,9 +192,7 @@ function resolveParamLabel(target: string): string | null {
   if (target.startsWith("bus:") && target.endsWith(":volume")) {
     const busId = target.split(":")[1];
     const project = useStore.getState().project;
-    const bus = (project.buses as Array<{ id: string; name: string }> | undefined)?.find(
-      (b) => b.id === busId,
-    );
+    const bus = project.buses?.find((b) => b.id === busId);
     return bus ? `${bus.name} level` : "Bus level";
   }
 

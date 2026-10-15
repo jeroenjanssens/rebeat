@@ -18,7 +18,7 @@ import {
 import { onStep } from "../../engine/transport";
 import { onFrame } from "../../render/raf";
 import { STEP_SIZE_QUARTERS, type Track } from "../../model/types";
-import { startMidiLearn } from "../../midi/learn";
+import { startLearn } from "../../audio-io/midi";
 import { padInput } from "../../state/input";
 import { useStore } from "../../state/store";
 
@@ -349,7 +349,7 @@ function PlatterFor({
             contextMenu(e, [
               {
                 label: "MIDI learn: jog wheel",
-                onSelect: () => startMidiLearn("perf:jog", "Jog wheel"),
+                onSelect: () => startLearn("perf:jog", "Jog wheel"),
               },
             ])
           }
