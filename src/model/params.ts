@@ -71,9 +71,12 @@ const pan = (v: number) => {
   return p === 0 ? "C" : p < 0 ? `L${-p}` : `R${p}`;
 };
 
+/** Fader position that maps to 0 dB (the 40·log10 curve). */
+export const FADER_UNITY = 0.8;
+
 export const VOLUME_FORMAT = (v: number) => {
   if (v <= 0.001) return "-∞";
-  const dB = 40 * Math.log10(v / 0.8); // 0.8 fader position = 0 dB
+  const dB = 40 * Math.log10(v / FADER_UNITY);
   return `${dB > 0 ? "+" : ""}${dB.toFixed(1)}`;
 };
 

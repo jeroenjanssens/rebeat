@@ -4,7 +4,7 @@
  */
 import { player } from "../model/tracks";
 import * as Tone from "tone";
-import { toUnit } from "../model/params";
+import { FADER_UNITY, toUnit } from "../model/params";
 import type { Track } from "../model/types";
 import type { Bus } from "../model/effects";
 import { FxChain, schedule, type AutoEvent } from "./effects";
@@ -13,9 +13,9 @@ import { Drive, FlatEQ } from "./tone";
 const FADE = 0.008;
 
 export function faderGain(position: number): number {
-  // 0.8 fader position = 0 dB; 40·log10 curve, as on the mini fader
+  // FADER_UNITY position = 0 dB; 40·log10 curve, as on the mini fader
   if (position <= 0.001) return 0;
-  return Math.pow(position / 0.8, 2);
+  return Math.pow(position / FADER_UNITY, 2);
 }
 
 /** A send/return bus: effects (e.g. one reverb) shared by every track that sends to it. */
