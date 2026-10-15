@@ -40,6 +40,8 @@ function rand() {
   seed ^= seed << 5;
   return (seed >>> 0) / 0x80000000 - 1;
 }
+/** Seed the module-level xorshift for deterministic tests. */
+export const seedCore = (s: number) => void (seed = s >>> 0 || 1);
 
 /** polyBLEP correction for a discontinuity at phase 0 (t = phase, dt = increment). */
 function blep(t: number, dt: number) {
