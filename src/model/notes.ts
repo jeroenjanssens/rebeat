@@ -123,11 +123,3 @@ export function arpOrder(pitches: number[], mode: string, octaves: number): numb
   if (mode === "played") return pitches;
   return up;
 }
-
-/** C natural minor, the key used by the mockup. */
-export const KEY_ROOT = 0;
-export const SCALE_MINOR = [0, 2, 3, 5, 7, 8, 10];
-
-export function inScale(midi: number, root = KEY_ROOT, scale = SCALE_MINOR): boolean {
-  return scale.includes((midi - root + 120) % 12);
-}

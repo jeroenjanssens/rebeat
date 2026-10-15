@@ -74,15 +74,6 @@ export function playsInOrder(project: Project, range: "song" | "section", slotId
   );
 }
 
-/** The patterns in order (the song, or one section). */
-export function patternsInOrder(
-  project: Project,
-  range: "song" | "section",
-  slotId?: string,
-): Pattern[] {
-  return playsInOrder(project, range, slotId).map((p) => p.pattern);
-}
-
 function trackEvents(track: Track, plays: Play[], channel: number): Ev[] {
   const ev: Ev[] = [
     { tick: 0, data: [0xff, 0x03, ...vlq(str(track.name).length), ...str(track.name)] },

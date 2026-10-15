@@ -648,16 +648,6 @@ export function getPath(p: SynthPatch, path: string): number {
     .reduce<unknown>((o, k) => (o as Record<string, unknown>)?.[k], p) as number;
 }
 
-export function setPath(p: SynthPatch, path: string, v: unknown) {
-  const keys = path.split(".");
-  const last = keys.pop()!;
-  const obj = keys.reduce<Record<string, unknown>>(
-    (o, k) => o[k] as Record<string, unknown>,
-    p as unknown as Record<string, unknown>,
-  );
-  obj[last] = v;
-}
-
 /** A value ↔ the knob's 0..1. */
 export function toKnob(d: PatchParam, v: number): number {
   if (d.curve === "exp") return Math.log(v / d.min) / Math.log(d.max / d.min);

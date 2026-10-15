@@ -101,7 +101,6 @@ export function stepMenu(trackId: string, index: number): MenuItem[] {
       onSelect: () =>
         edit((x) => {
           delete x.locks;
-          delete x.locked;
         }),
     },
   ];

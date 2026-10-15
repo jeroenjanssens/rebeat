@@ -282,6 +282,8 @@ export function normalizeProject(p: Project): Project {
       const steps: Step[] = lane.steps ?? [];
       for (let i = 0; i < MAX_STEPS; i++) {
         steps[i] = { ...emptyStep(), ...steps[i] };
+        // strip the legacy locked flag (Q2: removed without a schema bump)
+        delete (steps[i] as { locked?: unknown }).locked;
         // sanitize Note.offset: clamp to −0.5..0.5 and drop 0 (undefined = no offset)
         for (const n of steps[i].notes ?? []) {
           if (n.offset !== undefined) {

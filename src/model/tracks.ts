@@ -2,12 +2,7 @@
  * Step tracks (D93): every track has a sound and a mode. These helpers answer the questions the
  * old track kinds used to: how a track plays, what it plays, and which part of the engine plays it.
  */
-import type { Note, Sound, SoundFamily, Track, TrackMode } from "./types";
-import { soundFamily } from "./types";
-
-export const isHits = (t: Track) => t.mode === "hits";
-export const isNotes = (t: Track) => t.mode === "notes";
-export const isClip = (t: Track) => t.mode === "clip";
+import type { Note, Sound, Track, TrackMode } from "./types";
 
 /** Whether a track plays its steps (Hits and Notes; a Clip track keeps them, hidden). */
 export const stepped = (p: { tracks: Track[] }, trackId: string) =>
@@ -16,9 +11,6 @@ export const stepped = (p: { tracks: Track[] }, trackId: string) =>
 /** The sample a track plays (samples only; not a SoundFont's file or a multi-sample's zones). */
 export const sampleOf = (t: Pick<Track, "sound">): string | undefined =>
   t.sound?.source === "sample" ? t.sound.sampleId : undefined;
-
-export const familyOf = (t: Track): SoundFamily | undefined =>
-  t.sound ? soundFamily(t.sound) : undefined;
 
 /**
  * Which part of the engine plays a track: one-shot hits of its sample (`drum`), an instrument

@@ -21,7 +21,6 @@ export interface Step {
   gate: number; // 0..1 of a step, in Hits mode (notes have their own length)
   accent: boolean;
   condition?: string; // e.g. "1:2", "FILL"
-  locked?: boolean; // legacy flag (mockup demo)
   /** Parameter locks: this step's own values for the track's sound parameters ("sound.tune"…). */
   locks?: Record<string, number>;
   /** Notes mode: the notes starting on this step (a chord when several). Kept in Hits mode. */

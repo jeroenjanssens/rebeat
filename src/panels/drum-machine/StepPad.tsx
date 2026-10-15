@@ -69,9 +69,7 @@ export const StepPad = memo(function StepPad({
         <span className="nudge" style={{ left: `calc(50% - 3px + ${step.nudge * 100}%)` }} />
       )}
       {on && step.condition && <span className="cond">{step.condition}</span>}
-      {on && (step.locked || (step.locks && Object.keys(step.locks).length > 0)) && (
-        <span className="lock" />
-      )}
+      {on && step.locks && Object.keys(step.locks).length > 0 && <span className="lock" />}
       {on && instrument && step.notes?.length && (
         <span className="note">{notesLabel(stepPitches(step), flats)}</span>
       )}
