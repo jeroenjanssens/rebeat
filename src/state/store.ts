@@ -97,6 +97,9 @@ interface State extends UiState {
   saveStatus: SaveStatus;
   /** Replace the project (open, new, import): resets undo history and selection. */
   loadProject: (project: Project, id: string) => void;
+  /** Counts `loadProject` calls: an opened project, not an example forked into a copy (its id
+   * changes too, in the middle of playing). */
+  loads: number;
   past: Project[];
   future: Project[];
   lastCommitKey: string | null;
@@ -141,7 +144,8 @@ export const useStore = create<State>()((set, get) => ({
   saveStatus: "saved",
   loadProject: (p, id) => {
     const firstStepTrack = p.tracks.find((t) => t.mode !== "clip") ?? p.tracks[0];
-    set({
+    set((s) => ({
+      loads: s.loads + 1,
       project: p,
       projectId: id,
       past: [],
@@ -160,8 +164,9 @@ export const useStore = create<State>()((set, get) => ({
       fxIndex: 0,
       euclidOpen: false,
       jogOpen: {},
-    });
+    }));
   },
+  loads: 0,
   past: [],
   future: [],
   lastCommitKey: null,

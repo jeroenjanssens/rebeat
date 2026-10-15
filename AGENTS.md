@@ -841,11 +841,11 @@ dq, dv, key)` from the positions at the start (`selectionStarts`, `clampGroupDq`
   automation override and the record-automation subscriber) compare `s.lastCommitTime ===
 prev.lastCommitTime` to skip history moves. Comparing `s.past.length < prev.past.length`
   is wrong because redo also grows `past`.
-- **Project load resets per-session state in `state/keys.ts`.** When `projectId` changes (via
-  `loadProject`), a `useStore.subscribe` in keys.ts releases all held voices, clears `chordPads`,
-  `dialDown`, `dialUsed`, `history` and `auto.armed`. The MIDI module does the same for `held` and
-  the chord-pad held maps, but via its own subscription — importing keys.ts from midi.ts would
-  create a cycle.
+- **Project load resets per-session state in `state/keys.ts`.** On `loadProject` (the store's
+  `loads` counter, not `projectId`: forking an example changes the id while you may be holding a
+  chord), a subscriber in keys.ts releases every held voice and clears `chordPads`, `dialDown`,
+  `dialUsed`, `history` and `auto.armed`. `midi.ts` does the same for `held` and the pad maps with
+  its own subscriber (importing keys.ts there would make a cycle).
 
 ## 9. Where decisions are recorded
 

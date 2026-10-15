@@ -1323,10 +1323,11 @@ useStore.subscribe?.((s, prev) => {
   if (!s.playing && prev.playing && auto.running && auto.withSong) haltAuto();
 });
 
-// Opening a new project: release everything held, reset per-session state.
-// Voices from the old project's audio graph would error if released after a load.
+// Opening a project: release everything held, reset per-session state. Voices from the old
+// project's audio graph would error if released after a load. (Not on a forked example: its id
+// changes too, while you may be holding a chord.)
 useStore.subscribe?.((s, prev) => {
-  if (s.projectId === prev.projectId) return;
+  if (s.loads === prev.loads) return;
   releaseAllKeys();
   // reset the chord pads, dial and suggestion history so the new project starts clean
   chordPads = [];
