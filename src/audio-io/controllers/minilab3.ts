@@ -184,6 +184,11 @@ let shiftDown = false;
 let lastPads = "";
 let padTimer: ReturnType<typeof setTimeout> | null = null;
 
+function sendPadColor(out: MIDIOutput, i: number, r: number, g: number, b: number) {
+  for (const mode of DISPLAY_MODES)
+    out.send(new Uint8Array([0xf0, ...ARTURIA_MANUFACTURER, 0x7f, 0x42, 0x02, mode, 0x16, PAD_IDS[i], r, g, b, 0xf7])); // prettier-ignore
+}
+
 function sendPads(force = false) {
   if (shiftDown) return; // the MiniLab's own colors for Shift's functions
   const { project } = useStore.getState();
@@ -196,25 +201,7 @@ function sendPads(force = false) {
   const out = findOutput();
   if (!out) return;
   lastPads = key;
-  for (const mode of DISPLAY_MODES)
-    colors.forEach(([r, g, b], i) =>
-      out.send(
-        new Uint8Array([
-          0xf0,
-          ...ARTURIA_MANUFACTURER,
-          0x7f,
-          0x42,
-          0x02,
-          mode,
-          0x16,
-          PAD_IDS[i],
-          r,
-          g,
-          b,
-          0xf7,
-        ]),
-      ),
-    );
+  colors.forEach(([r, g, b], i) => sendPadColor(out, i, r, g, b));
 }
 
 /** One pad's color again (the MiniLab paints a pad its own color while it's pressed and leaves
@@ -228,23 +215,7 @@ function resendPad(i: number) {
   const [r, g, b] = deviceRgb(
     padColors(project.tracks, useSettings.getState().padMode, suggested)[i],
   );
-  for (const mode of DISPLAY_MODES)
-    out.send(
-      new Uint8Array([
-        0xf0,
-        ...ARTURIA_MANUFACTURER,
-        0x7f,
-        0x42,
-        0x02,
-        mode,
-        0x16,
-        PAD_IDS[i],
-        r,
-        g,
-        b,
-        0xf7,
-      ]),
-    );
+  sendPadColor(out, i, r, g, b);
 }
 
 function sendPadsSoon(force = false) {
