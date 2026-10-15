@@ -1593,6 +1593,18 @@ function RandomizeMenu({
   );
 }
 
+/** The Encoder def for a macro knob, shared between Basic and the Macros editor. */
+const macroDef = (
+  m: SynthPatch["macros"][number],
+  i: number,
+  label = m.name || `Macro ${i + 1}`,
+) => ({
+  id: `macro${i + 1}`,
+  label,
+  default: m.value,
+  format: (v: number) => `${Math.round(v * 100)}%`,
+});
+
 /**
  * The Basic view: the 8 macros (the track's SOUND knobs), Poly/Mono with glide, and a scope of
  * what the synth plays. Everything else is in Advanced.
@@ -1628,12 +1640,7 @@ function Basic({
         {patch.macros.map((m, i) => (
           <Encoder
             key={i}
-            def={{
-              id: `macro${i + 1}`,
-              label: m.name || `Macro ${i + 1}`,
-              default: patch.macros[i].value,
-              format: (v) => `${Math.round(v * 100)}%`,
-            }}
+            def={macroDef(m, i)}
             value={values[i]}
             onChange={(v) => setMacro(i, v)}
             color={track.color}
@@ -1697,12 +1704,7 @@ function Macros({
         >
           <div className="flex items-center gap-1.5">
             <Encoder
-              def={{
-                id: `macro${i + 1}`,
-                label: "",
-                default: m.value,
-                format: (v) => `${Math.round(v * 100)}%`,
-              }}
+              def={macroDef(m, i, "")}
               value={values[i]}
               onChange={(v) => setMacro(i, v)}
               color={track.color}
