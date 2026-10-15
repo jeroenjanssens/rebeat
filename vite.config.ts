@@ -86,7 +86,8 @@ export default defineConfig({
   // Tone.js and Dockview make up most of the entry bundle; editors and WASM load lazily.
   // Limit is just above the engine chunk (largest intentional split, ~430 kB); the entry itself
   // will warn until more code is moved off the startup path.
-  build: { chunkSizeWarningLimit: 500 },
+  // just above the entry chunk (≈1,220 kB): a warning means it grew
+  build: { chunkSizeWarningLimit: 1250 },
   // the beatbox model's runtime is imported on first use; found then, Vite would optimize it and
   // reload every open page (the beatbox e2e tests failed on a fresh dev server)
   optimizeDeps: { include: ["onnxruntime-web/wasm"] },
