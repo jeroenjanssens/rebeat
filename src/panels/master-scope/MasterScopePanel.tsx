@@ -126,7 +126,8 @@ export function MasterScopePanel() {
     ctx.shadowBlur = 0;
   };
 
-  const { ref, size } = useCanvas((ctx, { width, height }) => draw(ctx, width, height), [mode]);
+  // draw is always current through opts.current; onFrame handles all per-frame draws
+  const { ref, size } = useCanvas((ctx, { width, height }) => draw(ctx, width, height), []);
 
   useEffect(() => {
     let lastText = 0;
