@@ -111,12 +111,12 @@ class EnvState {
   }
   /** Advance by `n` samples. */
   step(e: Env, n: number, sr: number, gate: boolean) {
-    const inc = (t: number) => n / Math.max(1, t * sr);
+    // n / max(1, t*sr): fraction of stage consumed; inlined to avoid a closure per call.
     switch (this.stage) {
       case Stage.Idle:
         return 0;
       case Stage.Attack:
-        this.x += inc(e.attack);
+        this.x += n / Math.max(1, e.attack * sr);
         if (this.x >= 1) {
           this.value = this.peak;
           this.stage = e.hold > 0 ? Stage.Hold : Stage.Decay;
@@ -125,14 +125,14 @@ class EnvState {
         } else this.value = this.from + (this.peak - this.from) * curve(this.x, e.attackCurve);
         break;
       case Stage.Hold:
-        this.x += inc(e.hold);
+        this.x += n / Math.max(1, e.hold * sr);
         if (this.x >= 1) {
           this.stage = Stage.Decay;
           this.x = 0;
         }
         break;
       case Stage.Decay: {
-        this.x += inc(e.decay);
+        this.x += n / Math.max(1, e.decay * sr);
         const target = this.peak * e.sustain;
         if (this.x >= 1) {
           this.value = target;
@@ -145,7 +145,7 @@ class EnvState {
         this.value = this.peak * e.sustain;
         break;
       case Stage.Release:
-        this.x += inc(e.release);
+        this.x += n / Math.max(1, e.release * sr);
         if (this.x >= 1) {
           this.value = 0;
           this.stage = Stage.Idle;
