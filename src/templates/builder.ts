@@ -211,3 +211,13 @@ export function splitLongPages(p: Project, max = 32) {
     return out;
   });
 }
+
+/** [step, pitches, length, slide?][] — used by template files to build notes sequences. */
+export type NoteList = [number, number[], number, boolean?][];
+
+/** Spread a chord progression across bars of 16 steps. */
+export const perBar = (progression: string[], fn: (name: string, at: number) => NoteList) =>
+  progression.flatMap((c, bar) => fn(c, bar * 16));
+
+/** The same drum pattern in every bar of a page. */
+export const bars = (code: string, n: number) => code.repeat(n);

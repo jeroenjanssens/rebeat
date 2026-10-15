@@ -6,6 +6,7 @@ import { makeEffect } from "../model/effects";
 import type { Project } from "../model/project";
 import type { Pattern, Track } from "../model/types";
 import {
+  bars,
   chord,
   drum,
   emptyProject,
@@ -14,19 +15,12 @@ import {
   notes,
   notesTrack,
   page,
+  perBar,
   sampled,
   splitLongPages,
   synth,
+  type NoteList,
 } from "./builder";
-
-type NoteList = [number, number[], number, boolean?][];
-
-/** Run `fn` for each bar of a progression, with the bar's chord and first step. */
-const perBar = (progression: string[], fn: (name: string, at: number) => NoteList) =>
-  progression.flatMap((c, bar) => fn(c, bar * 16));
-
-/** The same drum pattern in every bar of a page. */
-const bars = (code: string, n: number) => code.repeat(n);
 
 // ---------- Neon Horizon: synthwave on the factory synths ----------
 

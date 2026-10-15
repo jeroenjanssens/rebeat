@@ -30,10 +30,10 @@ import {
   notes,
   notesTrack,
   page,
+  perBar,
   synth,
+  type NoteList,
 } from "./builder";
-
-type NoteList = [number, number[], number, boolean?][];
 
 const VERSE = ["Cm", "Ab", "Eb", "Bb"];
 const CHORUS = ["Ab", "Bb", "Gm", "Cm"];
@@ -57,9 +57,6 @@ function notOnFill(pattern: Pattern, track: Track, from: number, to: number) {
   const lane = pattern.lanes[track.id] as Lane;
   for (let i = from; i < to; i++) if (lane.steps[i].on) lane.steps[i].condition = "!FILL";
 }
-
-const perBar = (progression: string[], fn: (name: string, at: number) => NoteList) =>
-  progression.flatMap((c, bar) => fn(c, bar * 16));
 
 export function longWayHome(): Project {
   const p = emptyProject("Long Way Home", 112);

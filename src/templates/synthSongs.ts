@@ -17,6 +17,7 @@ import { makeTrack, type Project } from "../model/project";
 import { makePatch, type PatchSpec } from "../model/synth";
 import type { Effect, Pattern, SoundCategory, Lane, Track } from "../model/types";
 import {
+  bars,
   chord,
   drum,
   emptyProject,
@@ -25,11 +26,11 @@ import {
   notes,
   notesTrack,
   page,
+  perBar,
   splitLongPages,
   synth,
+  type NoteList,
 } from "./builder";
-
-type NoteList = [number, number[], number, boolean?][];
 
 /** A track playing a synth patch of its own (built from a spec on the init patch). */
 function patchTrack(
@@ -67,11 +68,6 @@ function lock(pattern: Pattern, track: Track, steps: [number, Record<string, num
   const lane = pattern.lanes[track.id] as Lane;
   for (const [i, locks] of steps) lane.steps[i].locks = { ...lane.steps[i].locks, ...locks };
 }
-
-const perBar = (progression: string[], fn: (name: string, at: number) => NoteList) =>
-  progression.flatMap((c, bar) => fn(c, bar * 16));
-
-const bars = (code: string, n: number) => code.repeat(n);
 
 const split = (make: () => Project) => () => {
   const p = make();
