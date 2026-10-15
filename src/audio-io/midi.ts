@@ -357,9 +357,16 @@ function parse(e: MIDIMessageEvent, device: string): MidiMessage {
             : status === 0xd0 || status === 0xa0
               ? "aftertouch"
               : "other";
-  // pitch bend is 14 bits: value is 0..127 with 64 the middle, `data` has the detail
+  // pitch bend is 14 bits; parse once to −1..1 (8192 = center, 0 = bottom, 16383 = top)
   if (type === "pitchbend")
-    return { type, channel, number: 0, value: ((d[2] << 7) | d[1]) / 128, device, data: d };
+    return {
+      type,
+      channel,
+      number: 0,
+      value: Math.max(-1, Math.min(1, (((d[2] << 7) | d[1]) - 8192) / 8191)),
+      device,
+      data: d,
+    };
   // channel pressure has its value in byte 1; polyphonic aftertouch in byte 2
   if (type === "aftertouch")
     return { type, channel, number: 0, value: status === 0xd0 ? d[1] : d[2], device, data: d };
@@ -373,7 +380,8 @@ function describe(m: MidiMessage) {
   if (m.type === "noteon") return `Note on ${m.number} vel ${m.value} · ${ch}`;
   if (m.type === "noteoff") return `Note off ${m.number} · ${ch}`;
   if (m.type === "cc") return `CC ${m.number} = ${m.value} · ${ch}`;
-  if (m.type === "pitchbend") return `Pitch bend ${Math.round(m.value)} · ${ch}`;
+  if (m.type === "pitchbend")
+    return `Pitch bend ${m.value >= 0 ? "+" : ""}${Math.round(m.value * 100)}% · ${ch}`;
   return `Aftertouch ${m.value} · ${ch}`;
 }
 
@@ -517,13 +525,12 @@ function handle(e: MIDIMessageEvent, device: string) {
     return report(m, "Note released", noteEvent(m, false));
   }
   if (m.type === "pitchbend") {
-    // 14 bits, 8192 in the middle
-    const raw = (m.data[2] << 7) | m.data[1];
-    keysControl("pitchbend", Math.max(-1, Math.min(1, (raw - 8192) / 8191)));
+    // m.value is already −1..1 from parse(); use the MSB (0..127) for the strip position
+    keysControl("pitchbend", m.value);
     return report(m, "Pitch bend of the selected track", {
       kind: "strip",
       index: 0,
-      value: Math.round(m.value),
+      value: m.data[2], // MSB of the 14-bit value: 0 (bottom) → 64 (center) → 127 (top)
     });
   }
   if (m.type === "aftertouch") {
