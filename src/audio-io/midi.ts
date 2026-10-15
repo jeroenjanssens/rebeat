@@ -224,11 +224,12 @@ export async function startMidi(sysex = false): Promise<boolean> {
   if (access && (!sysex || sysexGranted)) return true;
   if (!platform.midi.supported) return false;
   useMidi.setState({ status: "asking" });
-  // D129: clear old handlers before requesting new access, so messages aren't handled twice
-  if (access) {
-    for (const input of access.inputs.values()) input.onmidimessage = null;
-  }
+  const oldAccess = access;
   access = await platform.midi.request(sysex);
+  // D129: detach old handlers only after new access is ready, so no messages are dropped in the gap
+  if (oldAccess) {
+    for (const input of oldAccess.inputs.values()) input.onmidimessage = null;
+  }
   sysexGranted ||= sysex && !!access;
   if (!access) {
     useMidi.setState({ status: "denied" });
