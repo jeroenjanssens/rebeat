@@ -517,7 +517,7 @@ onPatchEdit` hook, debounced `saveSoundSoon`).
 
 **Factory synths** (`library/synths.ts`):
 
-- 91 synths written as specs through `voiced()`, with a house style: no drift, global LFOs, glide
+- 91 synths written as specs through `voiced()`, with a house style: global LFOs (a few override it with drift), glide
   always, no note spread. The wavetable ones are "Wavetable · …", the physical ones "Physical · …"
   (written with `phys()`), five of them drums in the Percussion group.
 - Ids are stable because projects store them.

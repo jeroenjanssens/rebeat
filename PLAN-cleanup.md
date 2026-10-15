@@ -288,17 +288,20 @@ Scripts in `/tmp/rebeat-measure/`: `p0_audio_bench.test.ts` (P0.1, vitest, copy 
 
 **P0.1 Audio thread** — `SynthCore` rendering 10 s, 3 runs, Node/vitest, 48 kHz,
 measured with `performance.now()`:
+
 - (a) Dense analog: 16 voices held, unison 8, drift 0.3, drive 0.5 — median **1453 ms** (14.5% real-time)
 - (b) Physical model (Nylon Guitar, pluck exciter): 8 voices — median **240 ms** (2.4% real-time)
 
 ### After phase 3 (P3.0–P3.7, P3.6 skipped)
 
 **P0.1 Audio thread** — same script, same machine:
+
 - (a) Dense analog: median **1060 ms** (10.6% real-time) — **−27%** vs. baseline
 - (b) Physical model: median **189 ms** (1.9% real-time) — **−21%** vs. baseline
 
 **P0.2 React commits** — dev server (Vite), React DevTools global hook stub counting
 `onCommitFiberRoot` calls:
+
 - Dragging a track knob (encoder strip) for 2 s: ~**22 commits/s**
 - Toggling 16 steps (32 clicks): ~**43 commits/s** (~2 per click)
 - Playing Long Way Home for 5 s (Timeline + Controller + drum machine open): ~**0 commits/s**
@@ -306,6 +309,7 @@ measured with `performance.now()`:
 
 **P0.3 Startup bundle** — `pnpm build` (Rolldown/Vite); startup = entry chunk + all statically
 preloaded chunks (`<link rel=modulepreload>`):
+
 - Entry chunk `index-*.js`: **1,300 kB** raw / **367 kB** gzip
 - Preloaded: `engine-*.js` 340 kB / 90 kB gz, `context-*.js` 156 kB / 59 kB gz,
   `db-*.js` 104 kB / 35 kB gz, `synths-*.js` 47 kB / 13 kB gz,
@@ -313,6 +317,7 @@ preloaded chunks (`<link rel=modulepreload>`):
 - Total startup parse: ~2 MB raw / ~620 kB gzip
 
 **P0.4 MIDI throughput** — `midiKeyboard` helper, 1 000 synchronous CC sends via `__midi`:
+
 - Settings closed: **1 ms** for 1 000 messages (pure-JS dispatch; React updates are async)
 - Settings → MIDI open: **1 ms** (same; per-message `useMidi.setState({ last })` is batched)
 
@@ -327,5 +332,6 @@ preloaded chunks (`<link rel=modulepreload>`):
   in the snapshot test. Verification (`grep drift src/library/synths.ts`) found 23 lines with
   non-zero drift (warm-pad, sub-bass, fm-growl-bass, stab-saw, and others override the default).
   Replacing the countdown would move the golden level recordings for those synths in Sweeps and
-  Bends, Long Way Home, etc. The saving is modest (one `Math.random()` call per voice per 250 ms);
-  the cost is a re-record — not worth it.
+  Bends, Long Way Home, etc. The saving is modest (a `Math.random()` per oscillator per voice per
+  control block, cheap next to the rest of the block); the cost is re-recorded goldens — not worth
+  it.
