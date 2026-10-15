@@ -425,7 +425,8 @@ function mackie(m: MidiMessage): string | null {
     if (d) runCommand(d > 0 ? "section.next" : "section.previous");
     return "Mackie: jog wheel";
   }
-  return m.type === "noteoff" ? "Mackie" : null;
+  // only swallow note-offs for numbers the Mackie map handles; others pass through so notes don't hang
+  return m.type === "noteoff" && MACKIE[m.number] ? "Mackie" : null;
 }
 
 // ---------- D129: per-mapping gesture timestamps for sniffing ----------
