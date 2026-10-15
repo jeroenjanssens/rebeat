@@ -165,8 +165,15 @@ export class PhysVoice {
   private impulseNorm = 1;
 
   // ---- body ----
-  private bodyL: Biquad[] = Array.from({ length: 6 }, () => new Biquad());
-  private bodyR: Biquad[] = Array.from({ length: 6 }, () => new Biquad());
+  // sized from the largest body so a new entry in BODY_MODES can't write out of bounds
+  private bodyL: Biquad[] = Array.from(
+    { length: Math.max(...Object.values(BODY_MODES).map((m) => m.length)) },
+    () => new Biquad(),
+  );
+  private bodyR: Biquad[] = Array.from(
+    { length: Math.max(...Object.values(BODY_MODES).map((m) => m.length)) },
+    () => new Biquad(),
+  );
   private bodyGain: number[] = [];
   private bodyKey = "";
   private bodyMix = 0;
