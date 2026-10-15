@@ -1,5 +1,5 @@
 import { useShell } from "../../app/shell";
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronDown,
   ChevronRight,
@@ -1492,6 +1492,8 @@ function ShapePicker({
 }) {
   const w = 22;
   const h = 14;
+  // Cache the SVG paths: they only depend on pw (not on the active shape or color).
+  const paths = useMemo(() => SHAPE_STOPS.map((k) => shapePath(k, pw, w, h)), [pw]);
   return (
     <div
       className="flex gap-0.5"
@@ -1500,7 +1502,7 @@ function ShapePicker({
       data-hint="synth.osc.shape"
       onContextMenu={onMenu}
     >
-      {SHAPE_STOPS.map((k) => {
+      {SHAPE_STOPS.map((k, idx) => {
         // how much of this picture you hear (1 when it's exactly this one)
         const amount = Math.max(0, 1 - Math.abs(shape - k) * 2);
         const active = Math.abs(shape - k) < 0.125;
@@ -1522,7 +1524,7 @@ function ShapePicker({
           >
             <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="block">
               <path
-                d={shapePath(k, pw, w, h)}
+                d={paths[idx]}
                 fill="none"
                 stroke={amount > 0 ? color : "currentColor"}
                 strokeWidth={1.3}
@@ -2041,15 +2043,18 @@ function WavePreview({ patch, color }: { patch: SynthPatch; color: string }) {
     const f = o.shape - a;
     return a >= 3 ? basic(3, t, o.pw) : basic(a, t, o.pw) * (1 - f) + basic(a + 1, t, o.pw) * f;
   };
-  const n = 200;
-  const ys = Array.from({ length: n + 1 }, (_, i) => {
-    const x = i / n;
-    let y = patch.sub.level * Math.sin(x * Math.PI);
-    for (const o of patch.osc) if (o.on) y += o.level * wave(o, x);
-    return y;
-  });
-  const peak = Math.max(...ys.map(Math.abs));
-  const pts = ys.map((y, i) => `${(i / n) * W},${H / 2 - (y / (peak || 1)) * (H / 2 - 3)}`);
+  // Cache the 201-point polyline; only recompute when the patch's oscillators change.
+  const pts = useMemo(() => {
+    const n = 200;
+    const ys = Array.from({ length: n + 1 }, (_, i) => {
+      const x = i / n;
+      let y = patch.sub.level * Math.sin(x * Math.PI);
+      for (const o of patch.osc) if (o.on) y += o.level * wave(o, x);
+      return y;
+    });
+    const peak = Math.max(...ys.map(Math.abs));
+    return ys.map((y, i) => `${(i / n) * W},${H / 2 - (y / (peak || 1)) * (H / 2 - 3)}`);
+  }, [patch]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <svg
       width="100%"
@@ -2153,8 +2158,13 @@ function useSwitchValue<T>(target: string | undefined, path: string, value: T): 
   useEffect(() => {
     const live = auto.live;
     if (!live) return;
-    // React skips the render while the value stays the same
-    return onFrame(() => setK(live()));
+    return onFrame(() =>
+      setK((prev) => {
+        const next = live();
+        // Avoid writes that don't change the displayed choice.
+        return next === prev ? prev : next;
+      }),
+    );
   }, [auto.live]);
   const sw = switchOf(path);
   return k === null || !sw || !auto.live ? value : (switchValue(sw, k) as T);
