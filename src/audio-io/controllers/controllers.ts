@@ -8,7 +8,7 @@ import { soundDefs } from "../../library/synthTrack";
 import { slotPattern } from "../../model/project";
 import { setStep } from "../../state/actions";
 import { useStore } from "../../state/store";
-import { midiInputs, midiOutputs, onMidiMessage, startMidi } from "../midi";
+import { midiInputs, midiOutputs, onMidiMessage, onMidiStateChange, startMidi } from "../midi";
 import { detectDevice, relative, type ControllerDevice } from "./devices";
 import { clampView, gridColors, padTarget, type GridView } from "./grid";
 
@@ -40,7 +40,11 @@ function render() {
     const key = JSON.stringify(colors);
     if (key === c.lastFrame) continue;
     c.lastFrame = key;
-    for (const msg of c.device.lights(colors)) c.output.send(msg);
+    try {
+      for (const msg of c.device.lights(colors)) c.output.send(msg);
+    } catch {
+      // port was closed (device unplugged); pruneDisconnected will remove it
+    }
   }
 }
 
@@ -100,6 +104,18 @@ function handle(c: Connected, m: { type: string; number: number; value: number }
   return true;
 }
 
+/** Remove entries for outputs that are no longer present (disconnected). */
+function pruneDisconnected() {
+  const currentIds = new Set(midiOutputs().map((o) => o.id));
+  const before = connected.length;
+  connected.splice(0, connected.length, ...connected.filter((c) => currentIds.has(c.output.id)));
+  if (connected.length !== before) {
+    useControllers.setState({
+      connected: connected.map((c) => ({ id: c.output.id, name: c.device.name })),
+    });
+  }
+}
+
 /** Look for supported controllers among the MIDI ports and connect them. */
 export async function connectControllers(): Promise<number> {
   if (!(await startMidi(true))) return 0;
@@ -131,6 +147,8 @@ export async function connectControllers(): Promise<number> {
       const c = connected.find((x) => x.input && x.input === m.device);
       return c ? handle(c, m) : false;
     });
+    // remove stale entries when a port changes state (e.g. a Launchpad unplugs)
+    onMidiStateChange(pruneDisconnected);
   }
   schedule();
   return connected.length;

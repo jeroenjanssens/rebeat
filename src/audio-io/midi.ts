@@ -133,6 +133,17 @@ export function onMidiMessage(fn: Hook): () => void {
   };
 }
 
+type StateChangeListener = () => void;
+const stateChangeListeners: StateChangeListener[] = [];
+
+/** Subscribe to MIDI port changes (connect, disconnect). */
+export function onMidiStateChange(fn: StateChangeListener): () => void {
+  stateChangeListeners.push(fn);
+  return () => {
+    stateChangeListeners.splice(stateChangeListeners.indexOf(fn), 1);
+  };
+}
+
 export function midiOutputs(): MIDIOutput[] {
   return access ? [...access.outputs.values()] : [];
 }
@@ -194,6 +205,7 @@ function refreshPorts() {
       enabled: true,
     })),
   });
+  for (const fn of stateChangeListeners) fn();
   for (const input of access.inputs.values())
     input.onmidimessage = enabled(input.id) ? (e) => handle(e, input.name ?? "") : null;
   const known = detectController([...access.inputs.values()].map((p) => p.name ?? ""));
