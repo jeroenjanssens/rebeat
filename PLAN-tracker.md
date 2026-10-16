@@ -1,7 +1,7 @@
 # Plan: a Tracker panel, fully keyboard driven, in the look of Fast Tracker 2
 
-Status: proposal, 2026-10-16. Nothing built yet. Decisions D265–D277 below are proposals with
-defaults; the open questions (§11) are Jeroen's to settle before building.
+Status: agreed 2026-10-16, not built yet. Jeroen: the colors come from the current theme
+instead of FT2's steel blue (D267), and every other default stands (§11).
 How we'd work: a `tracker` branch, commit early and often, e2e once at the end of the batch.
 
 The idea in one line: **the edited pattern as rows of text, top to bottom**, one column group
@@ -31,8 +31,8 @@ locks?, notes? }`. Hits read `on`, `pitch`, `gate`; Notes read `notes: Note[]`, 
 
 ## 1. What it looks like (D265)
 
-The panel is skinned after Fast Tracker 2's main screen: bevelled steel-blue chrome (light
-top-left edges, dark bottom-right), a black pattern area, pale monospaced text in a pixel font,
+The panel is skinned after Fast Tracker 2's main screen: bevelled chrome (light
+top-left edges, dark bottom-right) in a color from the current theme, a dark pattern area, pale monospaced text in a pixel font,
 hex row numbers, every 4th row lighter and every 16th lighter still, and the **cursor row
 fixed in the middle** as a bar across all tracks while the pattern scrolls past it. It's the
 spirit of FT2, drawn by us: no assets, fonts or palettes are copied.
@@ -75,11 +75,23 @@ spirit of FT2, drawn by us: no assets, fonts or palettes are copied.
   a 9×12 cell, drawn from a glyph atlas per color and scaled by whole numbers (×1, ×2, ×3:
   `Alt+=` / `Alt+-`), so it stays crisp on every screen. Drawing it ourselves avoids a font
   license (the project license is still open, D6).
-- **Palette** (D267): "FT2 classic" by default (steel-blue chrome, black pattern, pale text,
-  blue cursor bar), tuned by eye against screenshots of the real thing. A second choice,
-  **"Follow the app theme"**, takes the chrome and text from the theme tokens, for people
-  who want the layout without the colors. The skin only covers the panel; the rest of the app
-  keeps its theme.
+- **Colors** (D267): FT2's layout and bevels, the **current theme's** colors, so the tracker
+  belongs to whichever of the 20 themes is on and changes with it (`onThemeChange`). From the
+  theme tokens:
+
+  | Part                      | Color                                                                  |
+  | ------------------------- | ---------------------------------------------------------------------- |
+  | Chrome (FT2's steel blue) | `--accent` mixed into `--raised` (about 30%), so it's tinted, not loud |
+  | Bevel edges               | the chrome lighter (top-left) and darker (bottom-right), in oklab      |
+  | Pattern area              | `--display` (each theme's darkest surface; light in light themes)      |
+  | Text, dots, row numbers   | `--text`, `--text-faint`, `--text-dim`                                 |
+  | Every 4th / 16th row      | `--head`, once and twice                                               |
+  | Cursor bar, EDIT lamp     | `--accent` (the bar a translucent band, the field under it solid)      |
+  | Playhead bar, FOLLOW lamp | `--lit`                                                                |
+  | Track headers             | the track's own color as a thin bar                                    |
+
+  The mixes are computed once per theme in `render/theme.ts` (the canvas needs `#rrggbb`), and
+  the screenshot check covers a dark and a light theme. There's no separate FT2 palette.
 
 ## 2. Columns: how a step becomes text (D268)
 
@@ -319,8 +331,7 @@ fixtures still load.
   pop-out and full screen. A command `panel.tracker`.
 - A layout preset **Track**: the tracker large, the Inspector and the Library beside it, the
   mixer below (§11).
-- Settings → Tracker: palette (FT2 classic / Follow the app theme), font scale, hex or decimal
-  volume (D270), FT2 keys (§6), the note-off key, the default velocity, the default Add.
+- Settings → Tracker: font scale, hex or decimal volume (D270), FT2 keys (§6), the note-off key, the default velocity, the default Add.
 - The tracker's state that isn't project data (octave, Add, edit mode, follow, Rows, the
   cursor) lives in `ui` state and the settings, never in the undo history.
 
@@ -337,33 +348,31 @@ fixtures still load.
 
 ## 10. Phases and what each one has to show
 
-| Phase | What                                                                                                          | Done when                                                                                  |
-| ----- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| P0    | `model/tracker.ts`, schema 14, the fx codec, block ops                                                        | unit tests: columns, round trips, insert/delete, transpose, interpolate, ghosts, Rows Auto |
-| P1    | the panel, the pixel font, the FT2 skin, scrolling with the cursor row in the middle, the playhead, Follow    | a screenshot next to FT2's for the look; the playhead stays on time with the audio         |
-| P2    | scoped commands; notes, note-offs, moving, edit mode, Add, octave, delete/insert, previews                    | typing a drum pattern and a bass line without the mouse (e2e)                              |
-| P3    | volume, effect and lock columns, hex typing, selection, clipboard, transpose, interpolate                     | every field in §3 written from the keyboard and read back by the drum machine (e2e)        |
-| P4    | recording while playing, MIDI entry and chords                                                                | a recorded take matches the piano roll's; a MIDI chord fills note columns (e2e, fake MIDI) |
-| P5    | Rows ×n and Auto, offsets on fine rows, ghost rows, Clip tracks, section settings, bends (`1`, `2`, `4`, `W`) | a 1/16T track next to a 1/16 one, edited on Rows Auto                                      |
-| P6    | settings, the Track layout, the guide chapter, hints, accessibility, FT2 keys option                          | `hints.test.ts` and `explain.spec.ts` pass; full verification; golden levels unchanged     |
+| Phase | What                                                                                                          | Done when                                                                                                        |
+| ----- | ------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| P0    | `model/tracker.ts`, schema 14, the fx codec, block ops                                                        | unit tests: columns, round trips, insert/delete, transpose, interpolate, ghosts, Rows Auto                       |
+| P1    | the panel, the pixel font, the FT2 skin, scrolling with the cursor row in the middle, the playhead, Follow    | screenshots in a dark and a light theme, next to FT2's for the layout; the playhead stays on time with the audio |
+| P2    | scoped commands; notes, note-offs, moving, edit mode, Add, octave, delete/insert, previews                    | typing a drum pattern and a bass line without the mouse (e2e)                                                    |
+| P3    | volume, effect and lock columns, hex typing, selection, clipboard, transpose, interpolate                     | every field in §3 written from the keyboard and read back by the drum machine (e2e)                              |
+| P4    | recording while playing, MIDI entry and chords                                                                | a recorded take matches the piano roll's; a MIDI chord fills note columns (e2e, fake MIDI)                       |
+| P5    | Rows ×n and Auto, offsets on fine rows, ghost rows, Clip tracks, section settings, bends (`1`, `2`, `4`, `W`) | a 1/16T track next to a 1/16 one, edited on Rows Auto                                                            |
+| P6    | settings, the Track layout, the guide chapter, hints, accessibility, FT2 keys option                          | `hints.test.ts` and `explain.spec.ts` pass; full verification; golden levels unchanged                           |
 
 The tracker doesn't change how anything sounds, so the golden levels must stay as they are.
 
-## 11. Decisions to settle (Jeroen)
+## 11. Decisions (settled 2026-10-16)
 
-1. **Edit mode key**: Esc (Renoise-like, default) or Space as in FT2 (then play/stop needs
-   another key in the tracker, e.g. `Shift+Space`)? And should the "FT2 keys" option exist at all?
-2. **Note-off key**: `` ` `` and `1` (proposed)? CapsLock is unreliable in browsers.
-3. **Volume**: `01`–`7F` (MIDI velocity, proposed), FT2's `00`–`40`, or decimal?
-4. **Accent's letter**: `S` ("stress") is proposed; FT2 left `S` free. Or show accent in the
-   volume field instead (a bright volume)?
-5. **The palette**: as close to FT2's default colors as screenshots allow, or "in its spirit"?
-   And is "Follow the app theme" wanted?
-6. **The top panel**: shown by default, or compact by default?
-7. **A Track layout preset**: yes (proposed), or only the panel in the Panels menu?
-8. **The order list**: FT2 had one at the top left. Rebeat has the song strip and the timeline;
-   should the tracker get a keyboard-driven section list too (insert, delete, repeats), or is
-   Position ▲▼ enough (proposed)?
+Jeroen kept every default except the colors:
+
+1. **Edit mode**: Esc. The "FT2 keys" setting (off by default) makes Space edit mode and
+   F1–F8 the octave while the tracker has focus; play/stop is then `Shift+Space` there.
+2. **Note-off**: `` ` `` and `1`.
+3. **Volume**: `01`–`7F` in hex (MIDI velocity); decimal in Settings.
+4. **Accent**: the command `S01`.
+5. **Colors**: from the current theme (D267), not FT2's steel blue.
+6. **The top panel**: shown by default; `Alt+P` makes the tracker compact.
+7. **A Track layout preset**: yes.
+8. **The order list**: Position ▲▼ only; the song strip and the timeline keep the song order.
 
 ## 12. Not in this batch
 
