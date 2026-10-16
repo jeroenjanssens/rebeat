@@ -52,6 +52,7 @@ const ANCHOR_ALIASES: Record<string, string> = {
   "pages-length-and-timing-per-page": "patterns-length-and-timing-per-pattern",
   "pages-playing-a-song": "patterns-playing-a-song",
   "drum-machine-the-page-strip": "drum-machine-the-song-strip",
+  "performance-the-controller-panel": "performance-the-keys-panel",
 };
 
 /** A guide anchor as it is now. */

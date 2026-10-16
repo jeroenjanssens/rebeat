@@ -123,14 +123,19 @@ export function Dock() {
     if (!restoreLayout(api)) {
       applyPreset(api, "compose");
     } else {
-      // Offer to add the new Controller panel to a saved layout that doesn't have it yet.
+      // saved layouts keep the titles they had: a renamed panel (Controller → Keys) takes its new one
+      for (const p of api.panels) {
+        const def = panelDef(p.id);
+        if (def && p.title !== def.title) p.api.setTitle(def.title);
+      }
+      // Offer to add the new Keys panel (the Keys panel then) to a saved layout that doesn't have it yet.
       const TOAST_KEY = "rebeat.controller-panel-offered";
       const hasController = api.panels.some((p) => p.id === "controller");
       const hasPerform = api.panels.some((p) => p.id === "performance");
       if (!hasController && hasPerform && !localStorage.getItem(TOAST_KEY)) {
         localStorage.setItem(TOAST_KEY, "1");
         setTimeout(() => {
-          toast("New: Controller panel added. Open it via Panels → Controller.");
+          toast("New: Keys panel added. Open it via Panels → Keys.");
           openPanel(api, "controller", { referencePanel: "performance", direction: "below" });
         }, 1000);
       }

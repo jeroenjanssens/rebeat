@@ -56,3 +56,15 @@ test("Play and Stop are as wide, so the bar doesn't shift", async ({ page }) => 
   expect((await play.boundingBox())!.width).toBe(before);
   await play.click();
 });
+
+test("double-clicking the master's scope opens the Master scope, the keys' the Keys panel", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 2400, height: 800 });
+  await openApp(page);
+  const scopes = page.getByTestId("transport").getByTestId("top-scope");
+  await scopes.nth(0).dblclick();
+  await expect(page.locator(".dv-tab.dv-active-tab", { hasText: "Master scope" })).toBeVisible();
+  await scopes.nth(1).dblclick();
+  await expect(page.locator(".dv-tab.dv-active-tab", { hasText: /^Keys$/ })).toBeVisible();
+});

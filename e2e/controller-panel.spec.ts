@@ -1,5 +1,5 @@
 /**
- * Controller panel e2e tests.
+ * Keys panel e2e tests.
  *
  * Checks:
  * - The panel opens via the command palette.
@@ -634,7 +634,7 @@ test("knob 2 is the transpose in Chord and Key mode; the bass is a stepper (D148
   await expect(bass).toHaveText("Off");
 });
 
-test("the Controller panel has the Keys drop-down too", async ({ page }) => {
+test("the Keys panel has the Keys drop-down too", async ({ page }) => {
   await midiDevices(page, ["Minilab3 MIDI"]);
   await page.getByTestId("midi-use-detected").click();
   await page.keyboard.press("Escape");

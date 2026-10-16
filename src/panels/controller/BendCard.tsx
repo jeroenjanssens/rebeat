@@ -1,5 +1,5 @@
 /**
- * The Controller panel's Bend card (D222): a bend for every note the keys play, in one of seven
+ * The Keys panel's Bend card (D222): a bend for every note the keys play, in one of seven
  * shapes, each with its own amount, time, delay and curve; which notes bend, how many, how much
  * harder notes bend; and what the MiniLab's pitch strip bends (D225). Synths only for now.
  */

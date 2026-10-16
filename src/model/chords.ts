@@ -1,5 +1,5 @@
 /**
- * The chord a set of notes makes (D135, D136), for the Controller panel's "A3 + C4 + E4 = Am".
+ * The chord a set of notes makes (D135, D136), for the Keys panel's "A3 + C4 + E4 = Am".
  * Pure: the notes' pitch classes are looked up in a dictionary of chord symbols with every note
  * tried as the root, and the most likely reading wins. A bass that isn't the root is written
  * after a slash ("C/E", "D7/C").

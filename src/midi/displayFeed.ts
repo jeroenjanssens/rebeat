@@ -1,5 +1,5 @@
 /**
- * Display feed (WS-E, D126): keeps the MiniLab 3's OLED screen (and the Controller panel's
+ * Display feed (WS-E, D126): keeps the MiniLab 3's OLED screen (and the Keys panel's
  * mirrored display) current with what Rebeat is doing:
  *
  *  - What the keys play (the exact sound, and from where: the synth editor in focus, a track,

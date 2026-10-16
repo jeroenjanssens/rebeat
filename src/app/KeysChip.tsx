@@ -20,7 +20,7 @@ import { useLibrary } from "../library/library";
 
 /**
  * The keys chip: what the keys play (D126), and a menu to change it. In the top bar, and in the
- * Controller panel's header (so a maximized panel can change it too).
+ * Keys panel's header (so a maximized panel can change it too).
  */
 export function KeysChip({
   className = "inline-flex",

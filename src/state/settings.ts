@@ -136,7 +136,7 @@ export interface Settings {
   };
   /** The keys play what the active synth editor edits (D132). */
   keysFollowEditor: boolean;
-  /** The Controller panel's cards that are folded (D213), by id. */
+  /** The Keys panel's cards that are folded (D213), by id. */
   controllerFolds: Record<string, boolean>;
   /** What a controller's pads 1–8 do: play tracks 1–8 (Drum), make chords (Chord, D137), or
    * add to Key mode's chords (Key, D138). */

@@ -69,7 +69,7 @@ export type KeysTarget =
   /** A library sound: a catalog entry ("catalog", its id) or a sample ("sample", its id). */
   | { kind: "sound"; source: "catalog" | "sample"; id: string; name: string };
 
-/** Where a held note came from (for the monitor and the Controller panel). */
+/** Where a held note came from (for the monitor and the Keys panel). */
 export type KeysSource = "midi" | "screen" | "computer" | "piano-roll" | "auto";
 
 /**
@@ -100,7 +100,7 @@ interface KeysState {
   status: "ready" | "loading" | "error";
   /** Recent library sounds put on the keys (newest first, at most 8). */
   recent: Extract<KeysTarget, { kind: "sound" }>[];
-  /** The keys that are down and the notes each one plays (for the Controller panel). */
+  /** The keys that are down and the notes each one plays (for the Keys panel). */
   sounding: KeyNotes[];
   /** The chord pads held (pad index 0..7, in the order pressed), D137. */
   pads: number[];
@@ -383,7 +383,7 @@ interface Voice {
 
 /**
  * A note the keys play started (`on`) or stopped sounding, at an audio time (D156): the
- * Controller panel lights its key then, so a strum, a slop, an arpeggio or a pattern shows as it
+ * Keys panel lights its key then, so a strum, a slop, an arpeggio or a pattern shows as it
  * sounds. `pitch` null: everything stopped (Stop).
  */
 export type KeysLight = (pitch: number | null, on: boolean, at: number, velocity: number) => void;

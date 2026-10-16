@@ -68,9 +68,9 @@ The **Arturia MiniLab 3** has a few extras:
 
 A keyboard or chord instrument without knobs (such as the Telepathic Instruments **Orchid**) needs no map: its notes play the selected Notes track, chords and all, and its Start/Stop (if it sends them) play and stop Rebeat. Choose **Custom** to build a map for any other controller from scratch.
 
-### The Controller panel
+### The Keys panel
 
-The [Controller](panel:controller) panel shows a live top-down picture of your controller. Open it from the **Panels** menu or by applying the **Perform** layout ({{key:layout.perform}}).
+The [Keys](panel:controller) panel shows a live top-down picture of your controller. Open it from the **Panels** menu or by applying the **Perform** layout ({{key:layout.perform}}).
 
 - **The header** is one row: the map in use (click it for another map or the MIDI settings), the **Pads** switch, the **Key** in Key and Next mode, and the same **Keys** drop-down as the top bar (what the keys play, and **Edit sound**), so you can change it with the panel maximized.
 - **The settings** are cards next to the picture (under it when the panel is narrow): **Chords**, **Bass** and **Suggest** in Chord, Key and Next mode, and **Play** in every mode. Click a card's title to fold it; folds are remembered.
@@ -86,7 +86,7 @@ You can click or tap the keys and pads directly in the panel — they play exact
 
 ### Chord pads {#performance-chord-pads}
 
-The **Pads** switch at the top of the Controller panel sets what your controller's pads 1–8 do:
+The **Pads** switch at the top of the Keys panel sets what your controller's pads 1–8 do:
 
 - **Drum** (the default): they play tracks 1–8 of the drum machine.
 - **Key**: [Key mode](#performance-key-mode), below.
@@ -110,7 +110,7 @@ In **Key** mode, like the Orchid's Key Mode, every key plays the chord that belo
 
 - **Pads 5–8** add the key's own sixth, seventh or ninth: G with m7 (or M7) plays G7 in C major, C plays Cmaj7.
 - **Pads 1–4** play their chord on the key exactly as you pressed it, so you can borrow chords from outside the key (B♭ with Maj in C major); two of them make a secret chord, as in Chord mode.
-- **The key**: the **Key** chip in the Controller panel picks a root and a scale (major, minor, Dorian, Phrygian, Lydian, Mixolydian, harmonic minor), or copies the pattern's key.
+- **The key**: the **Key** chip in the Keys panel picks a root and a scale (major, minor, Dorian, Phrygian, Lydian, Mixolydian, harmonic minor), or copies the pattern's key.
 - **Transpose** moves everything the keys play by semitones, in every pad mode. Click its number to go back to 0. It starts at 0 in every session.
 
 On a MiniLab 3, the **black knob** (the main encoder) is the Key dial in Key mode:
@@ -124,7 +124,7 @@ In Drum and Chord mode the knob browses sounds, as before.
 
 ### Play styles {#performance-play-styles}
 
-The **Play** card in the Controller panel changes how the keys play, in every pad mode: what you play on a MIDI keyboard, on the picture's keys or on the computer keyboard. Each style is a switch, and they work together (a strummed, humanized pattern with an arpeggio on top is fine). They're remembered, like Voicing and Bass, because they belong to how you play, not to a song.
+The **Play** card in the Keys panel changes how the keys play, in every pad mode: what you play on a MIDI keyboard, on the picture's keys or on the computer keyboard. Each style is a switch, and they work together (a strummed, humanized pattern with an arpeggio on top is fine). They're remembered, like Voicing and Bass, because they belong to how you play, not to a song.
 
 - **Strum** plays a chord's notes one after another, like a guitar: the time from the first note to the last (10 to 250 ms), and **Up** (low to high), **Down** or **Alt** (alternating; on a pattern down on the beat and up in between, as a guitarist strums).
 - **Slop** humanizes: every note a little later at random (up to 40 ms) and a little louder or softer. A strummed chord with some slop sounds like a hand.
@@ -185,7 +185,7 @@ Each shape keeps its own values: switching from Scoop to Fall and back keeps you
 
 ### Suggestions: the next chord {#performance-suggestions}
 
-**Suggest** (the Controller panel's Suggest card, in Chord, Key and Next mode) suggests what could come next after each chord you play, and marks **the key to press** for the three best on the picture's keys: the bigger the dot, the better, the chord's name next to it. Each key is the one closest to the last key you played, so your hand moves least (every note name is on the MiniLab's 25 keys at least twice). In Chord mode a dot on a pad says which chord type to hold with it. Hover a dot for the chord, its roman numeral, what it does and why it fits ("V: home, the strongest resolution", "IV: continues the four-chord pop progression"); press the dot to play it.
+**Suggest** (the Keys panel's Suggest card, in Chord, Key and Next mode) suggests what could come next after each chord you play, and marks **the key to press** for the three best on the picture's keys: the bigger the dot, the better, the chord's name next to it. Each key is the one closest to the last key you played, so your hand moves least (every note name is on the MiniLab's 25 keys at least twice). In Chord mode a dot on a pad says which chord type to hold with it. Hover a dot for the chord, its roman numeral, what it does and why it fits ("V: home, the strongest resolution", "IV: continues the four-chord pop progression"); press the dot to play it.
 
 The colors say what a chord does:
 

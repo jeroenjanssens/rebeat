@@ -2,6 +2,7 @@ import { useEffect, useReducer } from "react";
 import * as engine from "../engine/engine";
 import { Scope, type ScopeSource } from "../components/Scope";
 import { onThemeChange, token } from "../render/theme";
+import { focusPanel } from "./openers";
 import { useStore } from "../state/store";
 
 /** A scope tile's narrowest width in the top bar, and the gap between tiles. */
@@ -64,6 +65,7 @@ function Tile({
   title,
   selected,
   onClick,
+  onDoubleClick,
   children,
 }: {
   size: ScopeSize;
@@ -71,15 +73,17 @@ function Tile({
   title: string;
   selected?: boolean;
   onClick?: () => void;
+  onDoubleClick?: () => void;
   children: React.ReactNode;
 }) {
   return (
     <div
       className={`relative flex-1 overflow-hidden rounded ${SIZES[size].tile} ${
-        onClick ? "cursor-pointer" : ""
+        onClick || onDoubleClick ? "cursor-pointer" : ""
       } ${selected ? "ring-1 ring-accent" : ""}`}
       title={title}
       onClick={onClick}
+      onDoubleClick={onDoubleClick}
       data-testid="top-scope"
     >
       {children}
@@ -94,7 +98,8 @@ function Tile({
 
 /**
  * The scopes in the top bar (or on the row under it): the master, the keys, then one per track
- * in the drum machine's order. A track's tile selects it.
+ * in the drum machine's order. A track's tile selects it; a double-click on the master or the keys
+ * opens their panel.
  */
 export function ScopeStrip({ size = "bar" }: { size?: ScopeSize }) {
   const tracks = useStore((s) => s.project.tracks);
@@ -111,10 +116,20 @@ export function ScopeStrip({ size = "bar" }: { size?: ScopeSize }) {
       data-hint="transport.scopes"
       data-testid="top-scopes"
     >
-      <Tile size={size} label="Master" title="The master output">
+      <Tile
+        size={size}
+        label="Master"
+        title="The master output: double-click for the Master scope panel"
+        onDoubleClick={() => focusPanel("master-scope")}
+      >
         <Scope source={MASTER} color={master} meter={size === "large"} />
       </Tile>
-      <Tile size={size} label="Keys" title="What the keys play">
+      <Tile
+        size={size}
+        label="Keys"
+        title="What the keys play: double-click for the Keys panel"
+        onDoubleClick={() => focusPanel("controller")}
+      >
         <Scope source={KEYS} color={keys} meter={size === "large"} />
       </Tile>
       {tracks.map((t) => (

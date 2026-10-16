@@ -28,7 +28,7 @@ linked, and tempo changes, automation and audio on the timeline (all anchored to
 schema 10), with the demo song Long Way Home; and then **automation as a table** (§0.6p,
 D196–D205, `PLAN-automation-editor.md`): a lane's points in the Inspector, eases in and out per
 point and on tempo ramps, schema 11; and **a tidier interface** (§0.6q, D206–D219,
-`PLAN-ui-cleanup.md`): the Controller panel's cards, a smaller top bar with ▾ menus, every effect
+`PLAN-ui-cleanup.md`): the Keys panel's cards, a smaller top bar with ▾ menus, every effect
 knob automatable with a grouped knob picker, a full Keys strip, copying effects, eight new
 effects, Auto at beat speeds; and **bends, the synth on the timeline** (§0.6r, D220–D240,
 `PLAN-bend-and-lanes.md`): a Bend card (seven shapes per note, recorded with the notes, schema
@@ -223,7 +223,7 @@ src/
                        MiniLab 3, MPK Mini MK3, Launchkey Mini MK3/MK4; slot kinds),
                        keysKnobs.ts (pure static metadata for the 8 stepped knobs in Chord/Key mode:
                        slot, name, target, values count; used by audio-io/midi.ts and its unit test),
-                       controllerEvents.ts (what each control did, for the Controller panel),
+                       controllerEvents.ts (what each control did, for the Keys panel),
                        display.ts (a device's screen text, mirrored), displayFeed.ts (names to show),
                        padColors.ts (what the pads light in, D144)
   library/             samples and instruments:
@@ -249,7 +249,7 @@ src/
   panels/              one folder per Dockview panel: drum-machine, library, inspector, mixer,
                        master-scope, piano-roll, sample-editor, performance, synth-editor, guide,
                        beatbox (recordings list, HitWaveform, RecordDialog, ConvertView, ModelView),
-                       controller (the MiniLab 3 drawn live, other maps as lists; the settings as
+                       controller (the Keys panel, D264: the MiniLab 3 drawn live, other maps as lists; the settings as
                        Cards: Chords, Bass, Suggest, Play, D213; Bend, D222),
                        synth-editor (SynthEditorPanel.tsx: the shell and EditorView; basic.tsx:
                        the Basic view macros/voice/scope; matrix.tsx: macroDef, Macros, Matrix;
@@ -606,7 +606,7 @@ onPatchEdit` hook, debounced `saveSoundSoon`).
     (`useMidi.monitor`) says what each message did
   - CC1 = mod wheel, CC64 = sustain, pitch bend and aftertouch go to the keys' voice
   - every message also becomes a controller event (`midi/controllerEvents.ts`: which control,
-    its value, the target and its new value), which the Controller panel and the display feed
+    its value, the target and its new value), which the Keys panel and the display feed
     use; `browse:sound`/`browse:section` targets step through the Playable list
   - MIDI learn maps CCs and notes to targets: `track:<id>:sound.x`, `track:<id>:volume`,
     `track:<id>:fx:<fxId>:<param>`, `track:<id>:synth:<path>`, `bus:<id>`, `master:volume`,
@@ -614,7 +614,7 @@ onPatchEdit` hook, debounced `saveSoundSoon`).
   - `applyTarget` sets them
 - `audio-io/controllers/`: Launchpad (Mini MK3, X, Pro MK3) and Push 2/3 as step sequencers
   (sysex for the pad colors).
-- **Device displays** (`midi/display.ts`): `showOnDisplay` keeps the text (the Controller panel
+- **Device displays** (`midi/display.ts`): `showOnDisplay` keeps the text (the Keys panel
   mirrors it) and hands it to drivers; `audio-io/controllers/minilab3.ts` writes the MiniLab 3's
   screen over SysEx (format from community research, unconfirmed on the device; Arturia's DAW
   handshake only when ticked in Settings → MIDI). `midi/displayFeed.ts` decides what to show.
@@ -793,7 +793,7 @@ dq, dv, key)` from the positions at the start (`selectionStarts`, `clampGroupDq`
   (unmuted, 0 dB unless recording, D134); samples from the keys go through `playKeysSample`.
   What the keys play is announced as it sounds (`onKeysLight`, at audio times) and pitch bend and
   the mod wheel as they arrive (`onKeysControl`); `keysPlayInto` says whether that's a given synth
-  editor's sound: the Controller panel's picture and the synth editor's piano and wheels (D262)
+  editor's sound: the Keys panel's picture and the synth editor's piano and wheels (D262)
   follow them. A key can play several notes (in-key chord mode, chord pads): `noteOn` starts each through
   `startNote` and keeps them per key, so pads can change a held chord (`revoice`, D137).
   The play styles (D149–D154) sit in that path: a note with a delay (strum, slop) or a rhythm
@@ -929,7 +929,7 @@ likely to need:
 | Physical models: exciters, resonators, bodies, CPU | D249–D256                 |
 | Patch v3, new factory synths, demo song, wizard    | D257–D261                 |
 | The synth editor's piano follows the device        | D262                      |
-| Scopes in the top bar (master, keys, every track)  | D263                      |
+| Scopes in the top bar (master, keys, every track)  | D263–D264                 |
 
 Feature batches and their acceptance criteria are in PLAN.md §0.6b–§0.6h. Known limitations are
 in §0.7.

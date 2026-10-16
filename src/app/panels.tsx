@@ -157,7 +157,7 @@ export const PANELS: PanelDef[] = [
   },
   {
     id: "controller",
-    title: "Controller",
+    title: "Keys",
     icon: Joystick,
     component: ControllerPanel,
     minWidth: 300,

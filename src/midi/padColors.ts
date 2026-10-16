@@ -1,6 +1,6 @@
 /**
  * The colors of a controller's pads 1–8 (D144), the same on the device (the MiniLab 3's pad
- * lights) and in the Controller panel: in Drum mode each pad has the color of the track it plays,
+ * lights) and in the Keys panel: in Drum mode each pad has the color of the track it plays,
  * in Chord and Key mode the chord types (pads 1–4) are blue and the extensions (5–8) purple. With
  * Shift held the MiniLab shows its own colors for the pads' second functions. Pure, no browser
  * APIs.

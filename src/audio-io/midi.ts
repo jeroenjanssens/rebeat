@@ -651,7 +651,7 @@ const STEPPED: Record<
   },
 };
 
-/** Turn a keys setting knob by `steps` (the Controller panel's picture, D213): knob `i` (0..7)
+/** Turn a keys setting knob by `steps` (the Keys panel's picture, D213): knob `i` (0..7)
  * in Chord, Key and Next mode. */
 export function turnKeysKnob(i: number, steps: number) {
   const k = STEPPED[`knob${i + 1}`];
@@ -1050,7 +1050,7 @@ function padCC(m: MidiMessage, index: number) {
  * A fader or knob sends up to a few hundred messages a second; every commit re-renders what
  * shows the target (for a track: its row, the Inspector, the synth editor). So continuous
  * values are applied at most once per frame (about 60 a second), the newest one winning; the
- * controller events (the Controller panel) still see every message.
+ * controller events (the Keys panel) still see every message.
  */
 const pending = new Map<string, number>();
 let flushTimer = 0;

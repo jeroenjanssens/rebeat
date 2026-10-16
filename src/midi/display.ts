@@ -1,6 +1,6 @@
 /**
  * A controller's display (the MiniLab 3's screen): what Rebeat shows on it. `showOnDisplay` keeps
- * the text (the Controller panel mirrors it) and hands it to the drivers of connected devices
+ * the text (the Keys panel mirrors it) and hands it to the drivers of connected devices
  * (`audio-io/controllers/minilab3.ts` registers one). Pure, no browser APIs.
  */
 import { create } from "zustand";

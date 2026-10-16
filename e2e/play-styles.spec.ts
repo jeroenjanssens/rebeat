@@ -1,6 +1,6 @@
 /**
  * E2E: the keys' play styles (PLAN-playstyles.md, D149–D154): what the arpeggiator and a strum
- * record (record the result), Latch, and the knobs and the Play row in the Controller panel.
+ * record (record the result), Latch, and the knobs and the Play row in the Keys panel.
  */
 import { expect, test, type Page } from "@playwright/test";
 import { midiDevices, midiKeyboard } from "./helpers";
@@ -235,7 +235,7 @@ test("the keys light up as their notes sound: a strum one by one, an arpeggio a 
   expect(new Set((await lit()).slice(3).map((l) => l.key)).size).toBe(3);
 });
 
-/** The Controller panel in Next mode on the Royal road in C major, the keys on a Notes track. */
+/** The Keys panel in Next mode on the Royal road in C major, the keys on a Notes track. */
 async function autoSetup(page: Page, more: object = {}) {
   await midiDevices(page, ["Minilab3 MIDI"]);
   await page.getByTestId("midi-use-detected").click();

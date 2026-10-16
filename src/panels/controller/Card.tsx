@@ -1,5 +1,5 @@
 /**
- * The Controller panel's settings cards (D213): a title that folds the card (remembered), and a
+ * The Keys panel's settings cards (D213): a title that folds the card (remembered), and a
  * way for the picture's knob labels to point at one (it unfolds, scrolls into view and flashes).
  */
 import { useEffect, useRef, type ReactNode } from "react";

@@ -1,5 +1,5 @@
 /**
- * The Controller panel's Play card (D149–D153, D213): how the keys play, in every pad mode.
+ * The Keys panel's Play card (D149–D153, D213): how the keys play, in every pad mode.
  * Strum, Slop, the arpeggiator, a pattern, Latch and Balance, each on its own and all of them
  * together.
  */

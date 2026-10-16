@@ -1,5 +1,5 @@
 /**
- * Controller panel (WS-D): a live top-down picture of the connected MIDI controller.
+ * Keys panel (WS-D): a live top-down picture of the connected MIDI controller.
  * For the Arturia MiniLab 3 it shows an SVG of the device; for other maps it shows a generic
  * slot list; with no controller connected it shows a "Plug in a controller" prompt.
  */

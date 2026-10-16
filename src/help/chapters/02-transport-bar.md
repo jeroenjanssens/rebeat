@@ -28,7 +28,7 @@ The bar along the top of the window has what you need all the time: playing, rec
 
 ## Scopes {#transport-bar-scopes}
 
-Between the buttons on the left and the ones on the right, the bar shows a small oscilloscope of the **master** output, of what the **keys** play (the Keys strip and the keys playing a track), and of **every track**, in the drum machine's order, each in its track's color. A scope draws only while its sound plays. Click a track's scope to select the track.
+Between the buttons on the left and the ones on the right, the bar shows a small oscilloscope of the **master** output, of what the **keys** play (the Keys strip and the keys playing a track), and of **every track**, in the drum machine's order, each in its track's color. A scope draws only while its sound plays. Click a track's scope to select the track. Double-click the master's to open the [Master scope](panel:master-scope) panel, the keys' to open the [Keys](panel:controller) panel.
 
 When the window is too narrow for all of them, the scopes move to a row of their own under the bar, and a waveform button takes their place: click it to fold that row or show it again (the choice is saved). Make the window wider and they come back into the bar.
 
@@ -40,7 +40,7 @@ On narrow windows some controls hide; they're always available in the command pa
 
 ## The keys {#keys-target}
 
-The **Keys** chip in the transport bar (and in the Controller panel) shows what the keys play: by default it follows the selected track (the chip reads "Keys · _track name_"). Click it to open a menu:
+The **Keys** chip in the transport bar (and in the Keys panel) shows what the keys play: by default it follows the selected track (the chip reads "Keys · _track name_"). Click it to open a menu:
 
 - **Follow selected track** — the keys always play whatever track you click on in the drum machine. This is the default.
 - **A specific track** — the keys stay on that track even when you select a different one. Useful when you want to play a bass line while editing the drums above it.
