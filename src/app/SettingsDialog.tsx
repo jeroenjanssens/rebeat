@@ -5,16 +5,77 @@ import { ACCENTS, THEMES, useSettings, type Settings, type ThemeId } from "../st
 import { CalibrationDialog } from "./CalibrationDialog";
 import { MidiSettings } from "./MidiSettings";
 import { useShell } from "./shell";
+import { setTrackerSettings, trackerSettings } from "../state/tracker";
 
-type Tab = "appearance" | "audio" | "midi" | "project" | "storage";
+type Tab = "appearance" | "audio" | "midi" | "tracker" | "project" | "storage";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "appearance", label: "Appearance" },
   { id: "audio", label: "Audio" },
   { id: "midi", label: "MIDI" },
+  { id: "tracker", label: "Tracker" },
   { id: "project", label: "Projects" },
   { id: "storage", label: "Storage" },
 ];
+
+/** The tracker's settings (D274, D270): FT2 keys, decimal volumes, new notes' volume, the text. */
+function TrackerSettings() {
+  useSettings((s) => s.tracker);
+  const t = trackerSettings();
+  return (
+    <>
+      <Row label="FT2 keys" hint="Space: edit mode, F1–F8: octave, Shift+Space: play">
+        <Toggle
+          value={t.ft2Keys}
+          onChange={(ft2Keys) => setTrackerSettings({ ft2Keys })}
+          hint="app.settings.tracker.ft2"
+        />
+      </Row>
+      <Row label="Volumes" hint="Hex 01–7F, or decimal 1–127">
+        <Segmented
+          value={t.decimal ? "dec" : "hex"}
+          options={[
+            { id: "hex", label: "Hex" },
+            { id: "dec", label: "Decimal" },
+          ]}
+          onChange={(v) => setTrackerSettings({ decimal: v === "dec" })}
+          hint="app.settings.tracker.decimal"
+        />
+      </Row>
+      <Row label="New notes' volume" hint="What a typed note gets (1–127)">
+        <input
+          type="range"
+          min={1}
+          max={127}
+          value={t.volume}
+          onChange={(e) => setTrackerSettings({ volume: Number(e.target.value) })}
+          data-hint="app.settings.tracker.volume"
+          aria-label="New notes' volume"
+        />
+        <span className="num w-8 text-[11px] text-dim">{t.volume}</span>
+      </Row>
+      <Row label="Text size">
+        <Segmented
+          value={String(t.scale)}
+          options={["1", "1.5", "2", "2.5", "3"].map((id) => ({ id, label: `×${id}` }))}
+          onChange={(v) => setTrackerSettings({ scale: Number(v) })}
+          hint="app.settings.tracker.scale"
+        />
+      </Row>
+      <Row label="Top panel">
+        <Segmented
+          value={t.compact ? "off" : "on"}
+          options={[
+            { id: "on", label: "Shown" },
+            { id: "off", label: "Hidden" },
+          ]}
+          onChange={(v) => setTrackerSettings({ compact: v === "off" })}
+          hint="app.settings.tracker.compact"
+        />
+      </Row>
+    </>
+  );
+}
 
 function Row({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
@@ -409,6 +470,7 @@ export function SettingsDialog() {
               </>
             )}
             {tab === "midi" && <MidiSettings />}
+            {tab === "tracker" && <TrackerSettings />}
             {tab === "project" && (
               <>
                 <Row label="Autosave" hint="Saves to this browser while you work">

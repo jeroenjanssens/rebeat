@@ -25,19 +25,19 @@ import {
   describeCursor,
   enterDigit,
   enterFxLetter,
-  enterNote,
   enterOff,
   moveRows,
   selectionBlock,
   setClip,
   setTrackerSettings,
+  takeNote,
+  takesNotes,
   trackerContext,
   trackerSettings,
   useTracker,
   type TrackerContext,
 } from "../../state/tracker";
 import { lockLabel, rowDigits, rowLabel, rowSegments, type Role } from "../../model/trackerText";
-import { writeOff } from "../../model/trackerEdit";
 import { STEP_SIZES, type StepSize } from "../../model/types";
 import { trackerPalette, type TrackerPalette } from "./palette";
 import type { PanelProps } from "../../app/panels";
@@ -86,10 +86,10 @@ const OFF_KEYS = new Set(["Backquote", "Digit1"]);
 
 const SOURCE: KeysSource = "tracker";
 
-/** A note key that's down: its preview's release, and where edit mode wrote it. */
+/** A note key that's down: its preview's release, and what ends the note it wrote. */
 interface Held {
   release: () => void;
-  wrote: { trackId: string; row: number; col: number } | null;
+  ended: (() => void) | null;
 }
 
 /** The note keys, digits and letters, while the tracker has focus. */
@@ -107,12 +107,7 @@ function useTrackerKeys(root: React.RefObject<HTMLDivElement | null>) {
         held.delete(e.code);
         h.release();
         // recording while playing: the note ends where the key came up
-        const playRow = useTracker.getState().playRow;
-        if (h.wrote && useStore.getState().playing && playRow !== null && playRow > h.wrote.row) {
-          const ctx = trackerContext();
-          const w = h.wrote;
-          useStore.getState().commit((p) => void writeOff(p, ctx.at, w.trackId, playRow, w.col));
-        }
+        h.ended?.();
         return true;
       }
       if (!inside(e) || e.metaKey || e.ctrlKey) return false;
@@ -148,14 +143,10 @@ function useTrackerKeys(root: React.RefObject<HTMLDivElement | null>) {
           const pitch = Math.max(0, Math.min(127, (settings.octave + 1) * 12 + semis));
           const velocity = settings.volume / 127;
           const release = noteOn(pitch, velocity, SOURCE);
-          let wrote: Held["wrote"] = null;
-          if (edit && !(useStore.getState().playing && useStore.getState().recording)) {
-            // a key while another is down is a chord: the next column on the first one's row
-            const chord = [...held.values()].find((h) => h.wrote)?.wrote;
-            const r = enterNote(pitch, velocity, chord ? { chordOf: chord.row } : {});
-            if (r) wrote = { trackId: c.col.track.id, ...r };
-          }
-          held.set(code, { release, wrote });
+          // a key while another is down is a chord: the next column on the first one's row
+          const chord = [...held.values()].some((h) => h.ended);
+          const ended = takesNotes() ? takeNote(pitch, velocity, chord) : null;
+          held.set(code, { release, ended });
           return true;
         }
         if (OFF_KEYS.has(code)) {

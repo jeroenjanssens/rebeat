@@ -343,6 +343,40 @@ export function enterNote(pitch: number, velocity?: number, opts: { chordOf?: nu
   return { row, col };
 }
 
+/** Whether notes played now are written by the tracker: it has focus and edit mode is on, and
+ * Rec isn't recording them already (the keys do that while playing, D273). */
+export function takesNotes() {
+  const t = useTracker.getState();
+  const s = useStore.getState();
+  return t.focused && t.edit && !(s.playing && s.recording);
+}
+
+let lastEntry: { at: number; row: number } | null = null;
+
+/**
+ * A note played in edit mode (a note key, a MIDI key, D273): written at the cursor (the playhead,
+ * while playing). A key pressed while another is held (`chord`), or without `chord` (MIDI) one
+ * within 30 ms of the last, makes a chord: the next note columns on the same row. Returns what to do when the key comes up:
+ * while playing, the note ends where the playhead is then.
+ */
+export function takeNote(pitch: number, velocity: number, chord?: boolean): () => void {
+  const now = performance.now();
+  // the computer keys know whether another key is held; MIDI notes of a chord come within 30 ms
+  const together = chord ?? (!!lastEntry && now - lastEntry.at < 30);
+  const chordOf = together ? lastEntry?.row : undefined;
+  const r = enterNote(pitch, velocity, chordOf !== undefined ? { chordOf } : {});
+  if (!r) return () => {};
+  lastEntry = { at: now, row: r.row };
+  const ctx = trackerContext();
+  const trackId = cursorIn(ctx)?.col.track.id;
+  return () => {
+    const { playRow } = useTracker.getState();
+    if (!trackId || !useStore.getState().playing || playRow === null || playRow <= r.row) return;
+    const at = trackerContext().at;
+    useStore.getState().commit((p) => void writeOff(p, at, trackId, playRow, r.col));
+  };
+}
+
 /** A chord typed or played: the next free note column on the row. */
 function nextFreeColumn(col: TrackCols, row: number, from: number) {
   const fresh = trackerContext().cols.find((x) => x.track.id === col.track.id) ?? col;

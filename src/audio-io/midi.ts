@@ -66,6 +66,7 @@ import {
 import { emitControllerEvent, type ControlKind } from "../midi/controllerEvents";
 import { browsePlayable } from "../library/playable";
 import { KEYS_KNOBS_BY_SLOT } from "../midi/keysKnobs";
+import { takeNote, takesNotes } from "../state/tracker";
 
 export interface MidiPort {
   id: string;
@@ -977,6 +978,16 @@ function playNote(channel: number, note: number, velocity: number): string {
     // route to the keys' target (selected/locked track or library sound)
     const targetName = keysTargetName();
     releaseNote(note);
+    // the tracker in edit mode writes the note at its cursor (D273); the keys only play it
+    if (takesNotes()) {
+      const play = noteOn(note, velocity, "tracker");
+      const ended = takeNote(note, velocity);
+      held.set(note, () => {
+        play();
+        ended();
+      });
+      return `Written in the tracker, played on ${targetName}`;
+    }
     // noteOn handles scale lock, chord mode, live voice, recording and sustain
     held.set(note, noteOn(note, velocity, "midi"));
     return `Played on ${targetName}`;

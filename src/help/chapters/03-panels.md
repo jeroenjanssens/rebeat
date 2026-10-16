@@ -13,14 +13,15 @@ Your arrangement is remembered for next time.
 
 ## Layout presets
 
-The layout button in the transport bar (or the command palette) switches between four arrangements:
+The layout button in the transport bar (or the command palette) switches between five arrangements:
 
-| Preset      | Shortcut               | For                                                                                                            |
-| ----------- | ---------------------- | -------------------------------------------------------------------------------------------------------------- |
-| **Compose** | {{key:layout.compose}} | Library left, drum machine center, inspector right; mixer, sample editor and piano roll as tabs at the bottom. |
-| **Perform** | {{key:layout.perform}} | The drum machine with the Performance panel and the Master scope.                                              |
-| **Edit**    | {{key:layout.edit}}    | A large sample editor with the library and inspector, and the drum machine below.                              |
-| **Arrange** | {{key:layout.arrange}} | The [timeline](#timeline) across the top, the drum machine below it, the inspector and library at the side.    |
+| Preset      | Shortcut               | For                                                                                                                   |
+| ----------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| **Compose** | {{key:layout.compose}} | Library left, drum machine center, inspector right; mixer, sample editor and piano roll as tabs at the bottom.        |
+| **Perform** | {{key:layout.perform}} | The drum machine with the Performance panel and the Master scope.                                                     |
+| **Edit**    | {{key:layout.edit}}    | A large sample editor with the library and inspector, and the drum machine below.                                     |
+| **Arrange** | {{key:layout.arrange}} | The [timeline](#timeline) across the top, the drum machine below it, the inspector and library at the side.           |
+| **Track**   | {{key:layout.track}}   | The [tracker](#tracker) large, the library and inspector beside it; mixer, drum machine and piano roll as tabs below. |
 
 ## Bigger panels
 

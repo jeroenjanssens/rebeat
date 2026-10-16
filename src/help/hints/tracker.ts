@@ -70,6 +70,32 @@ const hints: Hints = {
     text: "A scope per track, as in FT2. Click one to mute its track, right-click to solo it.",
     guide: "tracker-the-screen",
   },
+  "app.settings.tracker.ft2": {
+    title: "FT2 keys",
+    text: "While the tracker has focus: Space turns edit mode on and off and F1–F8 set the octave, as in Fast Tracker 2. Shift+Space plays and stops then.",
+    guide: "tracker-the-keys",
+  },
+  "app.settings.tracker.decimal": {
+    title: "Volumes",
+    text: "The tracker's volume column in hex (01–7F, as trackers write it) or in decimal (1–127, as MIDI velocities are usually written).",
+    guide: "tracker-the-columns",
+  },
+  "app.settings.tracker.volume": {
+    title: "New notes' volume",
+    text: "The velocity a note gets when you type it with the note keys. Notes from a MIDI keyboard keep their own.",
+    guide: "tracker-the-columns",
+  },
+  "app.settings.tracker.scale": {
+    title: "Text size",
+    text: "How big the tracker's letters are: CSS pixels per pixel of its font.",
+    guide: "tracker-the-screen",
+  },
+  "app.settings.tracker.compact": {
+    title: "Top panel",
+    text: "The tracker's top panel (position, length, octave, the lamps, the scopes), or only the pattern and the status line.",
+    command: "tracker.compact",
+    guide: "tracker-the-screen",
+  },
 };
 
 export default hints;

@@ -3,7 +3,7 @@ import type { AddPanelOptions, DockviewApi, SerializedDockview } from "dockview-
 import { platform } from "../platform";
 import { panelDef } from "./panels";
 
-export type LayoutPreset = "compose" | "arrange" | "perform" | "edit";
+export type LayoutPreset = "compose" | "arrange" | "perform" | "edit" | "track";
 
 export const LAYOUT_PRESETS: { id: LayoutPreset; label: string }[] = [
   { id: "compose", label: "Compose" },
@@ -11,6 +11,7 @@ export const LAYOUT_PRESETS: { id: LayoutPreset; label: string }[] = [
   { id: "edit", label: "Edit" },
   // last, so the others keep their shortcuts (⌘⌥1–3)
   { id: "arrange", label: "Arrange" },
+  { id: "track", label: "Track" },
 ];
 
 const KEY = "rebeat.layout";
@@ -67,6 +68,20 @@ export function applyPreset(api: DockviewApi, preset: LayoutPreset) {
     api.getPanel("performance")?.api.setSize({ width: Math.round(width * 0.36) });
     api.getPanel("master-scope")?.api.setSize({ height: Math.round(height * 0.22) });
     api.getPanel("controller")?.api.setSize({ height: Math.round(height * 0.28) });
+  } else if (preset === "track") {
+    // the tracker large, the Library and the Inspector beside it, the mixer below (D265)
+    openPanel(api, "tracker");
+    openPanel(api, "library", { referencePanel: "tracker", direction: "left" });
+    openPanel(api, "inspector", { referencePanel: "tracker", direction: "right" });
+    openPanel(api, "mixer", { referencePanel: "tracker", direction: "below" });
+    openPanel(api, "drum-machine", { referencePanel: "mixer", direction: "within" });
+    openPanel(api, "piano-roll", { referencePanel: "mixer", direction: "within" });
+    api.getPanel("library")?.api.setSize({ width: Math.round(width * 0.16) });
+    api.getPanel("inspector")?.api.setSize({ width: Math.round(width * 0.19) });
+    api.getPanel("mixer")?.api.setSize({ height: Math.round(height * 0.26) });
+    api.getPanel("mixer")?.api.setActive();
+    api.getPanel("tracker")?.api.setActive();
+    return;
   } else {
     openPanel(api, "sample-editor");
     openPanel(api, "library", { referencePanel: "sample-editor", direction: "left" });
