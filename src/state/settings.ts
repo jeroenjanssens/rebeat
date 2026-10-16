@@ -187,6 +187,8 @@ export interface Settings {
   onboarded: boolean;
   /** Explain mode: detailed hover cards on buttons (D71). */
   explain: boolean;
+  /** The top bar's scopes on their own row (when they don't fit in the bar): shown or folded. */
+  scopesOpen: boolean;
   /** Sample sources you added by link (strudel.json, GitHub repositories), D74. */
   sampleSources: string[];
   /** Favorite instruments (catalog ids), D78. */
@@ -277,6 +279,7 @@ export const DEFAULT_SETTINGS: Settings = {
   freeFirstLoop: false,
   onboarded: false,
   explain: false,
+  scopesOpen: true,
   sampleSources: [],
   instrumentFavorites: [],
   synthView: "basic",

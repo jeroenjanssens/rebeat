@@ -11,6 +11,7 @@ import {
   Settings,
   Square,
   Timer,
+  AudioWaveform,
   CircleHelp,
   MessageSquareText,
 } from "lucide-react";
@@ -30,7 +31,9 @@ import { getLoad, startMainLoad } from "../engine/load";
 import { useSettings } from "../state/settings";
 import { useStore } from "../state/store";
 import { isExampleId } from "../templates/example-id";
+import { useElementSize } from "../render/useElementSize";
 import { KeysChip } from "./KeysChip";
+import { ScopeStrip, scopesWidth, useScopeCount } from "./ScopeStrip";
 import { LAYOUT_PRESETS, applyPreset, openPanel } from "./layouts";
 import { openGuide } from "./openers";
 import { PANELS } from "./panels";
@@ -461,6 +464,15 @@ export function TransportBar() {
   const explain = useSettings((s) => s.explain);
   const layoutRef = useRef<HTMLButtonElement>(null);
   const [beats, unit] = project.timeSignature;
+  // the scopes fill the room between the left and right buttons; when that's too narrow for
+  // every tile they go to a row of their own under the bar, which folds
+  const spaceRef = useRef<HTMLDivElement>(null);
+  const spaceSize = useElementSize(spaceRef);
+  const space = spaceSize.width;
+  const measured = spaceSize.height > 0;
+  const scopeCount = useScopeCount();
+  const scopesInline = space >= scopesWidth(scopeCount) + 16;
+  const scopesOpen = useSettings((s) => s.scopesOpen);
 
   const layoutItems = (): MenuItem[] => [
     ...LAYOUT_PRESETS.map((l) => ({
@@ -477,226 +489,263 @@ export function TransportBar() {
   ];
 
   return (
-    <header
-      className="@container flex h-11 shrink-0 items-center gap-2 overflow-x-auto whitespace-nowrap border-b border-line bg-panel px-3"
-      data-testid="transport"
-    >
-      <span className="text-[15px] font-bold tracking-tight">
-        re<span className="text-lit">beat</span>
-      </span>
-      <button
-        className="hidden max-w-[220px] items-center gap-1.5 truncate rounded px-1.5 py-0.5 text-[12px] text-dim hover:bg-surface hover:text-ink @[700px]:flex"
-        title="Projects (Ctrl/Cmd+O)"
-        onClick={() => set({ homeOpen: true })}
-        data-testid="project-name"
-        data-hint="transport.project"
+    <>
+      <header
+        className="@container flex h-11 shrink-0 items-center gap-2 overflow-x-auto whitespace-nowrap border-b border-line bg-panel px-3"
+        data-testid="transport"
       >
-        <span className="truncate">{project.name}</span>
-        {isExampleId(projectId) ? (
-          <span
-            className="label rounded border border-line px-1 !text-[8.5px]"
-            title="An example: your first change makes a copy"
-            data-testid="example-badge"
-          >
-            Example
-          </span>
-        ) : (
-          <SaveDot />
-        )}
-      </button>
-      <div className="mx-1 h-5 w-px bg-line" />
-
-      <button
-        className="hw-btn !min-h-[28px] !flex-row gap-1.5"
-        data-lit={playing}
-        onClick={clock.toggle}
-        onContextMenu={learnCommand("transport.toggle", "Play / stop")}
-        title="Play / stop (Space)"
-        data-testid="play"
-        data-hint="transport.play"
-      >
-        {playing ? (
-          <Square size={12} fill="currentColor" />
-        ) : (
-          <Play size={12} fill="currentColor" />
-        )}
-        {playing ? "Stop" : "Play"}
-      </button>
-      <Split
-        onMenu={(el) => popover(el, () => <RecordingPopover />)}
-        menuTitle="Recording: automation, overdub or replace, snap, the grid, Clip length"
-        menuHint="transport.record.menu"
-        testId="record-menu"
-      >
-        <button
-          className="hw-btn relative !min-h-[28px] !flex-row gap-1.5 !rounded-r-none"
-          data-lit={recording}
-          style={recording ? { color: "#ef4444", borderColor: "#ef4444" } : undefined}
-          onClick={() => setUi({ recording: !recording })}
-          onContextMenu={learnCommand("transport.record", "Record")}
-          title={
-            recordAutomation
-              ? "Record (R), with automation armed: knob turns become points"
-              : "Record (R): live pad recording and armed Clip tracks"
-          }
-          data-hint="transport.record"
-        >
-          <Circle size={11} fill={recording ? "currentColor" : "none"} />
-          Rec
-          {recordAutomation && (
-            <span
-              className="num rounded-sm bg-accent px-[3px] text-[8.5px] leading-[12px] text-black"
-              data-testid="record-automation-badge"
-            >
-              A
-            </span>
-          )}
-        </button>
-      </Split>
-      <Position />
-      <Split
-        onMenu={(el) => popover(el, () => <TempoPopover />)}
-        menuTitle="Tempo & groove: tap, time signature, swing"
-        menuHint="transport.tempo.menu"
-        testId="transport-tempo-menu"
-      >
-        <span className="inline-flex items-center gap-1" data-hint="transport.bpm">
-          <DragValue
-            label={tempoChanges ? "BPM ∿" : "BPM"}
-            value={shownTempo}
-            min={20}
-            max={300}
-            step={0.1}
-            defaultValue={120}
-            title={
-              tempoChanges
-                ? "The tempo now (the song has tempo changes) · dragging overrides them until Back to automation"
-                : undefined
-            }
-            format={(v) => (Number.isInteger(v) ? v.toFixed(0) : v.toFixed(1))}
-            onChange={setTempo}
-          />
-          {(beats !== 4 || unit !== 4) && (
-            <span className="num pr-1.5 text-[10.5px] text-dim">
-              {beats}/{unit}
-            </span>
-          )}
+        <span className="text-[15px] font-bold tracking-tight">
+          re<span className="text-lit">beat</span>
         </span>
-      </Split>
-      <Split
-        onMenu={(el) => popover(el, () => <ClickPopover />)}
-        menuTitle="Metronome and count-in"
-        menuHint="transport.click.menu"
-        testId="click-menu"
-      >
         <button
-          className="hw-btn !min-h-[28px] !flex-row gap-1 !rounded-r-none"
-          data-lit={project.metronome}
-          onClick={() => commit((p) => void (p.metronome = !p.metronome))}
-          onContextMenu={learnCommand("transport.metronome", "Metronome on/off")}
-          title={`Metronome (K)${project.countIn ? " · count-in on" : ""}`}
-          data-hint="transport.metronome"
+          className="hidden max-w-[220px] items-center gap-1.5 truncate rounded px-1.5 py-0.5 text-[12px] text-dim hover:bg-surface hover:text-ink @[700px]:flex"
+          title="Projects (Ctrl/Cmd+O)"
+          onClick={() => set({ homeOpen: true })}
+          data-testid="project-name"
+          data-hint="transport.project"
         >
-          <Timer size={12} />
-          {project.countIn && <span className="num text-[9px] text-dim">1234</span>}
+          <span className="truncate">{project.name}</span>
+          {isExampleId(projectId) ? (
+            <span
+              className="label rounded border border-line px-1 !text-[8.5px]"
+              title="An example: your first change makes a copy"
+              data-testid="example-badge"
+            >
+              Example
+            </span>
+          ) : (
+            <SaveDot />
+          )}
         </button>
-      </Split>
-      <div
-        className="segmented"
-        title="Playback mode (L)"
-        data-hint="transport.playmode"
-        onContextMenu={learnCommand("transport.mode", "Loop / song")}
-      >
+        <div className="mx-1 h-5 w-px bg-line" />
+
         <button
-          data-active={playMode === "loop"}
-          onClick={() => useStore.getState().setPlayMode("loop")}
+          className="hw-btn !min-h-[28px] !flex-row gap-1.5"
+          data-lit={playing}
+          onClick={clock.toggle}
+          onContextMenu={learnCommand("transport.toggle", "Play / stop")}
+          title="Play / stop (Space)"
+          data-testid="play"
+          data-hint="transport.play"
         >
-          Loop
+          {playing ? (
+            <Square size={12} fill="currentColor" />
+          ) : (
+            <Play size={12} fill="currentColor" />
+          )}
+          {playing ? "Stop" : "Play"}
+        </button>
+        <Split
+          onMenu={(el) => popover(el, () => <RecordingPopover />)}
+          menuTitle="Recording: automation, overdub or replace, snap, the grid, Clip length"
+          menuHint="transport.record.menu"
+          testId="record-menu"
+        >
+          <button
+            className="hw-btn relative !min-h-[28px] !flex-row gap-1.5 !rounded-r-none"
+            data-lit={recording}
+            style={recording ? { color: "#ef4444", borderColor: "#ef4444" } : undefined}
+            onClick={() => setUi({ recording: !recording })}
+            onContextMenu={learnCommand("transport.record", "Record")}
+            title={
+              recordAutomation
+                ? "Record (R), with automation armed: knob turns become points"
+                : "Record (R): live pad recording and armed Clip tracks"
+            }
+            data-hint="transport.record"
+          >
+            <Circle size={11} fill={recording ? "currentColor" : "none"} />
+            Rec
+            {recordAutomation && (
+              <span
+                className="num rounded-sm bg-accent px-[3px] text-[8.5px] leading-[12px] text-black"
+                data-testid="record-automation-badge"
+              >
+                A
+              </span>
+            )}
+          </button>
+        </Split>
+        <Position />
+        <Split
+          onMenu={(el) => popover(el, () => <TempoPopover />)}
+          menuTitle="Tempo & groove: tap, time signature, swing"
+          menuHint="transport.tempo.menu"
+          testId="transport-tempo-menu"
+        >
+          <span className="inline-flex items-center gap-1" data-hint="transport.bpm">
+            <DragValue
+              label={tempoChanges ? "BPM ∿" : "BPM"}
+              value={shownTempo}
+              min={20}
+              max={300}
+              step={0.1}
+              defaultValue={120}
+              title={
+                tempoChanges
+                  ? "The tempo now (the song has tempo changes) · dragging overrides them until Back to automation"
+                  : undefined
+              }
+              format={(v) => (Number.isInteger(v) ? v.toFixed(0) : v.toFixed(1))}
+              onChange={setTempo}
+            />
+            {(beats !== 4 || unit !== 4) && (
+              <span className="num pr-1.5 text-[10.5px] text-dim">
+                {beats}/{unit}
+              </span>
+            )}
+          </span>
+        </Split>
+        <Split
+          onMenu={(el) => popover(el, () => <ClickPopover />)}
+          menuTitle="Metronome and count-in"
+          menuHint="transport.click.menu"
+          testId="click-menu"
+        >
+          <button
+            className="hw-btn !min-h-[28px] !flex-row gap-1 !rounded-r-none"
+            data-lit={project.metronome}
+            onClick={() => commit((p) => void (p.metronome = !p.metronome))}
+            onContextMenu={learnCommand("transport.metronome", "Metronome on/off")}
+            title={`Metronome (K)${project.countIn ? " · count-in on" : ""}`}
+            data-hint="transport.metronome"
+          >
+            <Timer size={12} />
+            {project.countIn && <span className="num text-[9px] text-dim">1234</span>}
+          </button>
+        </Split>
+        <div
+          className="segmented"
+          title="Playback mode (L)"
+          data-hint="transport.playmode"
+          onContextMenu={learnCommand("transport.mode", "Loop / song")}
+        >
+          <button
+            data-active={playMode === "loop"}
+            onClick={() => useStore.getState().setPlayMode("loop")}
+          >
+            Loop
+          </button>
+          <button
+            data-active={playMode === "song"}
+            onClick={() => useStore.getState().setPlayMode("song")}
+          >
+            Song
+          </button>
+        </div>
+        {Object.keys(overridden).length > 0 && (
+          <button
+            className="hw-btn !min-h-[26px] !text-lit"
+            title="You turned automated knobs or typed a tempo: bring their automation back"
+            data-hint="timeline.back-to-automation"
+            data-testid="transport-back-to-automation"
+            onClick={backToAutomation}
+          >
+            ⟲ Auto
+          </button>
+        )}
+
+        <div
+          ref={spaceRef}
+          className="flex h-full min-w-0 flex-1 items-center px-2 py-1.5"
+          style={{ minWidth: measured && !scopesInline ? 56 : 0 }}
+        >
+          {measured &&
+            (scopesInline ? (
+              <ScopeStrip />
+            ) : (
+              <button
+                className="tool-btn"
+                title={scopesOpen ? "Fold the scopes" : "Show the scopes under the bar"}
+                data-hint="transport.scopes.fold"
+                data-testid="scopes-fold"
+                data-active={scopesOpen}
+                aria-pressed={scopesOpen}
+                onClick={() => useSettings.getState().set({ scopesOpen: !scopesOpen })}
+              >
+                <AudioWaveform size={14} />
+                <ChevronDown size={11} className={scopesOpen ? "rotate-180" : ""} />
+              </button>
+            ))}
+        </div>
+
+        <KeysChip className="hidden @[760px]:inline-flex" />
+        <span className="hidden @[1100px]:flex">
+          <CpuMeter />
+        </span>
+        <span className="hidden @[960px]:inline" data-hint="transport.masterlevel">
+          <LevelMeter
+            read={() => engine.masterLevel()}
+            width={64}
+            height={11}
+            title="Master level"
+          />
+        </span>
+        <AudioStatus />
+        <div className="mx-1 h-5 w-px bg-line" />
+        <button
+          className="tool-btn"
+          title="Command palette (Ctrl/Cmd+K)"
+          onClick={() => set({ paletteOpen: true })}
+          data-hint="app.palette"
+        >
+          <CommandIcon size={14} />
         </button>
         <button
-          data-active={playMode === "song"}
-          onClick={() => useStore.getState().setPlayMode("song")}
+          ref={layoutRef}
+          className="tool-btn"
+          title="Layouts and panels"
+          onClick={() => dropdown(layoutRef.current!, layoutItems())}
+          data-hint="app.layouts"
         >
-          Song
+          <LayoutPanelLeft size={14} />
         </button>
-      </div>
-      {Object.keys(overridden).length > 0 && (
         <button
-          className="hw-btn !min-h-[26px] !text-lit"
-          title="You turned automated knobs or typed a tempo: bring their automation back"
-          data-hint="timeline.back-to-automation"
-          data-testid="transport-back-to-automation"
-          onClick={backToAutomation}
+          className="tool-btn"
+          title="Full screen (Ctrl/Cmd+Shift+F)"
+          onClick={() => (fullscreen ? platform.fullscreen.exit() : platform.fullscreen.enter())}
+          data-hint="app.fullscreen"
         >
-          ⟲ Auto
+          {fullscreen ? <Minimize size={14} /> : <Expand size={14} />}
         </button>
+        <button
+          className="tool-btn"
+          title="Explain mode (Shift+F1)"
+          data-hint="transport.explain"
+          data-active={explain}
+          aria-pressed={explain}
+          onClick={() => useSettings.getState().set({ explain: !explain })}
+          data-testid="toggle-explain"
+        >
+          <MessageSquareText size={14} />
+        </button>
+        <button
+          className="tool-btn"
+          title="Guide (F1)"
+          onClick={() => openGuide()}
+          data-testid="open-guide"
+          data-hint="app.guide"
+        >
+          <CircleHelp size={14} />
+        </button>
+        <button
+          className="tool-btn"
+          title="Settings (Ctrl/Cmd+,)"
+          onClick={() => set({ settingsOpen: true })}
+          data-testid="open-settings"
+          data-hint="app.settings"
+        >
+          <Settings size={14} />
+        </button>
+      </header>
+      {measured && !scopesInline && scopesOpen && (
+        <div
+          className="shrink-0 border-b border-line bg-panel px-3 py-1.5"
+          data-testid="scopes-row"
+        >
+          <ScopeStrip wrap />
+        </div>
       )}
-
-      <div className="flex-1" />
-
-      <KeysChip className="hidden @[760px]:inline-flex" />
-      <span className="hidden @[1100px]:flex">
-        <CpuMeter />
-      </span>
-      <span className="hidden @[960px]:inline" data-hint="transport.masterlevel">
-        <LevelMeter read={() => engine.masterLevel()} width={64} height={11} title="Master level" />
-      </span>
-      <AudioStatus />
-      <div className="mx-1 h-5 w-px bg-line" />
-      <button
-        className="tool-btn"
-        title="Command palette (Ctrl/Cmd+K)"
-        onClick={() => set({ paletteOpen: true })}
-        data-hint="app.palette"
-      >
-        <CommandIcon size={14} />
-      </button>
-      <button
-        ref={layoutRef}
-        className="tool-btn"
-        title="Layouts and panels"
-        onClick={() => dropdown(layoutRef.current!, layoutItems())}
-        data-hint="app.layouts"
-      >
-        <LayoutPanelLeft size={14} />
-      </button>
-      <button
-        className="tool-btn"
-        title="Full screen (Ctrl/Cmd+Shift+F)"
-        onClick={() => (fullscreen ? platform.fullscreen.exit() : platform.fullscreen.enter())}
-        data-hint="app.fullscreen"
-      >
-        {fullscreen ? <Minimize size={14} /> : <Expand size={14} />}
-      </button>
-      <button
-        className="tool-btn"
-        title="Explain mode (Shift+F1)"
-        data-hint="transport.explain"
-        data-active={explain}
-        aria-pressed={explain}
-        onClick={() => useSettings.getState().set({ explain: !explain })}
-        data-testid="toggle-explain"
-      >
-        <MessageSquareText size={14} />
-      </button>
-      <button
-        className="tool-btn"
-        title="Guide (F1)"
-        onClick={() => openGuide()}
-        data-testid="open-guide"
-        data-hint="app.guide"
-      >
-        <CircleHelp size={14} />
-      </button>
-      <button
-        className="tool-btn"
-        title="Settings (Ctrl/Cmd+,)"
-        onClick={() => set({ settingsOpen: true })}
-        data-testid="open-settings"
-        data-hint="app.settings"
-      >
-        <Settings size={14} />
-      </button>
-    </header>
+    </>
   );
 }

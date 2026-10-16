@@ -147,6 +147,7 @@ src/
                        - dialogs: Settings (+ MidiSettings, Calibration), ProjectBrowser, Export,
                          SampleExport, Welcome, WavetableDialog (Make a wavetable)
                        - openers.ts: open a sample/synth editor tab, the guide, focus a panel
+                       - ScopeStrip.tsx (D263: the top bar's scopes, inline or on a folding row)
                        - shell.ts (dock API handle), hintLayer.ts (explain mode)
   platform/            the Platform interface; web.ts and electron.ts (files, storage, full screen);
                        nothing else touches those browser APIs directly
@@ -928,6 +929,7 @@ likely to need:
 | Physical models: exciters, resonators, bodies, CPU | D249–D256                 |
 | Patch v3, new factory synths, demo song, wizard    | D257–D261                 |
 | The synth editor's piano follows the device        | D262                      |
+| Scopes in the top bar (master, keys, every track)  | D263                      |
 
 Feature batches and their acceptance criteria are in PLAN.md §0.6b–§0.6h. Known limitations are
 in §0.7.

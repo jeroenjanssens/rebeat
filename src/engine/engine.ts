@@ -1390,6 +1390,40 @@ export function masterWaveform(): [Float32Array, Float32Array] | null {
   }) as [Float32Array, Float32Array];
 }
 
+/** The master output as one line ((L + R) / 2, the last 1024 samples), for the top bar's scope. */
+export function masterMono(): Float32Array | null {
+  const m = S.master;
+  if (!m) return null;
+  const out = buf("mastermono", 1024);
+  out.fill(0);
+  for (let i = 0; i < 2; i++) {
+    const a = m.analysers[i];
+    const b = buf(`S.master${i}`, a.fftSize);
+    a.getFloatTimeDomainData(b);
+    const from = b.length - out.length;
+    for (let j = 0; j < out.length; j++) out[j] += b[from + j] / 2;
+  }
+  return out;
+}
+
+/**
+ * Everything the keys play as one line: the Keys strip (a library sound) and the tracks' live
+ * channels (D126) summed, or null while no keys channel exists.
+ */
+export function keysWaveform(): Float32Array | null {
+  const chans = [...S.liveChannels.values()];
+  if (keysChannelEntry) chans.push(keysChannelEntry.channel);
+  if (!chans.length) return null;
+  const out = buf("keyswave", chans[0].analyser.fftSize);
+  out.fill(0);
+  for (const ch of chans) {
+    const b = buf("keyspart", ch.analyser.fftSize);
+    ch.analyser.getFloatTimeDomainData(b);
+    for (let j = 0; j < Math.min(out.length, b.length); j++) out[j] += b[j];
+  }
+  return out;
+}
+
 export function masterAnalysers() {
   return ensureMaster().analysers;
 }

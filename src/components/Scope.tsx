@@ -4,8 +4,16 @@ import { onFrame } from "../render/raf";
 import { alpha, token } from "../render/theme";
 import { useCanvas } from "../render/useCanvas";
 
+/** What a scope shows when it isn't a track: its samples (null when silent) and its peak. */
+export interface ScopeSource {
+  wave: () => Float32Array | null;
+  level: () => number;
+}
+
 interface Props {
-  trackId: string;
+  trackId?: string;
+  /** Read from here instead of the track (the master, the keys); no spectrum. */
+  source?: ScopeSource;
   color: string;
   meter?: boolean;
   className?: string;
@@ -25,7 +33,14 @@ export function triggerIndex(w: Float32Array, span: number): number {
  * Per-track oscilloscope + level meter. Draws only while the track makes sound;
  * otherwise it shows a dim, still line and costs nothing.
  */
-export function Scope({ trackId, color, meter = true, className = "", mode = "wave" }: Props) {
+export function Scope({
+  trackId = "",
+  source,
+  color,
+  meter = true,
+  className = "",
+  mode = "wave",
+}: Props) {
   const state = useRef({ level: 0, peak: 0, peakAt: 0, active: true });
 
   const draw = (ctx: CanvasRenderingContext2D, w: number, h: number, now: number) => {
@@ -40,8 +55,8 @@ export function Scope({ trackId, color, meter = true, className = "", mode = "wa
 
     const mid = h / 2;
     ctx.lineWidth = 1.25;
-    const wave = s.level >= THRESHOLD ? engine.waveform(trackId) : null;
-    const spec = wave && mode === "spectrum" ? engine.spectrum(trackId) : null;
+    const wave = s.level >= THRESHOLD ? (source ? source.wave() : engine.waveform(trackId)) : null;
+    const spec = wave && !source && mode === "spectrum" ? engine.spectrum(trackId) : null;
     if (spec) {
       // log-frequency bars from 30 Hz
       ctx.fillStyle = color;
@@ -107,7 +122,7 @@ export function Scope({ trackId, color, meter = true, className = "", mode = "wa
     () =>
       onFrame((now) => {
         const s = state.current;
-        const level = engine.level(trackId);
+        const level = source ? source.level() : engine.level(trackId);
         const peakVisible = s.peak > THRESHOLD && now - s.peakAt < 1300;
         s.level = Math.max(level, s.level * 0.8);
         if (level >= s.peak || now - s.peakAt > 1200) {
@@ -125,7 +140,7 @@ export function Scope({ trackId, color, meter = true, className = "", mode = "wa
         draw(ctx, width, height, now);
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- draw/ref/size are accessed through stable refs; re-register the callback when visual params change
-    [trackId, color, mode],
+    [trackId, source, color, mode],
   );
 
   // the canvas is out of the layout flow: its default size must never stretch the row it's in

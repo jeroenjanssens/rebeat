@@ -110,6 +110,16 @@ const hints: Hints = {
     text: "The output level of the master mix, left and right channels. Green is healthy; yellow is loud; red means the signal is clipping.",
     guide: "transport-bar",
   },
+  "transport.scopes": {
+    title: "Scopes",
+    text: "A small oscilloscope of the master output, of what the keys play, and of every track, in the drum machine's order. A track's line moves while it makes sound; click its scope to select the track. When the bar is too narrow for all of them, they move to a row under the bar.",
+    guide: "transport-bar-scopes",
+  },
+  "transport.scopes.fold": {
+    title: "Show or fold the scopes",
+    text: "The bar is too narrow for every scope, so they're on a row of their own under it. Click to show or fold that row; a wider window puts them back in the bar.",
+    guide: "transport-bar-scopes",
+  },
   "transport.audiostatus": {
     title: "Audio status",
     text: "Green means audio is running normally. Yellow means it's starting up. Red means an error — click to try starting again.",
