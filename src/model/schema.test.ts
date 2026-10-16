@@ -13,7 +13,7 @@ import { curveAt, lanePoints, snapStep } from "./arrangement";
 import { makeEffect } from "./effects";
 import { makePatch } from "./synth";
 import { patchOf } from "../library/synthTrack";
-import type { Track } from "./types";
+import type { Pattern, Track } from "./types";
 
 describe("project schema", () => {
   it("round-trips through JSON", () => {
@@ -387,6 +387,35 @@ describe("migration 12 → 13 (D257)", () => {
     expect(patch.version).toBe(3);
     expect(patch.source).toBe("oscillators");
     expect(patch.osc[0]).toMatchObject({ type: "analog", shape: 1 });
+  });
+});
+
+describe("migration 13 → 14 (D268, D269)", () => {
+  it("loads a version 13 project unchanged", () => {
+    const p = demoProject();
+    const v13 = { ...JSON.parse(JSON.stringify(serializeProject(p))), schemaVersion: 13 };
+    expect(deserializeProject(v13)).toEqual(p);
+  });
+
+  it("keeps the tracker's columns of tracks that exist, and valid column hints", () => {
+    const p = demoProject();
+    const [a] = p.tracks;
+    const data = JSON.parse(JSON.stringify(serializeProject(p)));
+    data.project.tracker = {
+      columns: {
+        [a.id]: { notes: 12, fx: 2, locks: ["sound.cutoff", "sound.cutoff", 3] },
+        gone: { notes: 2 },
+      },
+    };
+    const lane = Object.values(data.project.patterns as Record<string, Pattern>)[0].lanes[a.id];
+    lane.steps[0].notes = [
+      { pitch: 60, length: 1, velocity: 0.8, col: 3 },
+      { pitch: 64, length: 1, velocity: 0.8, col: 9 },
+    ];
+    const d = deserializeProject(data);
+    expect(d.tracker).toEqual({ columns: { [a.id]: { notes: 8, fx: 2, locks: ["sound.cutoff"] } } });
+    const notes = Object.values(d.patterns)[0].lanes[a.id].steps[0].notes!;
+    expect(notes.map((n) => n.col)).toEqual([3, undefined]);
   });
 });
 

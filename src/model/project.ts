@@ -52,6 +52,20 @@ export interface Project {
   regions?: AudioRegion[];
   /** The owners (track ids, bus ids, "master") whose lanes are hidden on the timeline (D233). */
   timelineFolded?: string[];
+  /** The tracker's columns per track (D268, schema 14): view data, saved without an undo step. */
+  tracker?: TrackerView;
+}
+
+/** How many columns the tracker shows for a track, at least (it shows more when a step needs). */
+export interface TrackerColumns {
+  notes?: number;
+  fx?: number;
+  /** Lock columns: the parameters, in order ("sound.cutoff"…). */
+  locks?: string[];
+}
+
+export interface TrackerView {
+  columns: Record<string, TrackerColumns>;
 }
 
 export type PlayMode = "loop" | "song";

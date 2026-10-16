@@ -63,6 +63,8 @@ export interface Note {
    * `step + offset` rather than exactly at the step boundary. Range: −0.5..0.5 of a step.
    */
   offset?: number;
+  /** The tracker's note column it was typed in (D269, schema 14): a hint, kept while it's free. */
+  col?: number;
 }
 
 /**

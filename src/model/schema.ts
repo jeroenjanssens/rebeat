@@ -5,7 +5,7 @@
 import { defaultBuses, defaultMaster, defaultPerf } from "./effects";
 import { uid } from "./id";
 import { EFFECT_PARAMS, MIX_PARAMS, SOUND_PARAMS, defaultParams } from "./params";
-import { emptyLane, type Project } from "./project";
+import { emptyLane, type Project, type TrackerColumns } from "./project";
 import { steppedPoints } from "./steppedLanes";
 import { sanitizeBend } from "./bend";
 import { clampBpm } from "./tempoMap";
@@ -22,7 +22,7 @@ import {
 } from "./types";
 import { convertSynthKnobs, defaultSynth } from "../library/synthTrack";
 
-export const SCHEMA_VERSION = 13;
+export const SCHEMA_VERSION = 14;
 
 export interface SerializedProject {
   format: "rebeat-project";
@@ -164,6 +164,8 @@ const migrations: Record<number, Migration> = {
   // 12 → 13: synth patches version 3 (D257: wavetable oscillators, physical models); a track's
   // patch is upgraded when it's read (upgradePatch), so nothing moves here
   12: (p) => p,
+  // 13 → 14: the tracker (D268, D269): a note's column hint and the tracker's columns, optional
+  13: (p) => p,
 };
 
 /** The number of values of an effect knob a target names (0: smooth, or not an effect's). */
@@ -290,6 +292,9 @@ export function normalizeProject(p: Project): Project {
             n.offset = Math.max(-0.5, Math.min(0.5, n.offset));
             if (n.offset === 0) delete n.offset;
           }
+          // the tracker's column hint (D269): a column, 0–7
+          if (n.col !== undefined && !(Number.isInteger(n.col) && n.col >= 0 && n.col < 8))
+            delete n.col;
           // a note's bend (D224): kept when it's one, else dropped
           if (n.bend !== undefined) {
             const bend = sanitizeBend(n.bend);
@@ -362,6 +367,26 @@ function normalizeArrangement(p: Project) {
       : [];
     if (list.length) p.timelineFolded = list;
     else delete p.timelineFolded;
+  }
+  if (p.tracker !== undefined) {
+    const columns: Record<string, TrackerColumns> = {};
+    const int = (v: unknown, lo: number, hi: number) =>
+      typeof v === "number" && Number.isInteger(v) ? Math.max(lo, Math.min(hi, v)) : undefined;
+    for (const [id, c] of Object.entries(p.tracker?.columns ?? {})) {
+      if (!trackIds.has(id) || !c || typeof c !== "object") continue;
+      const out: TrackerColumns = {};
+      const notes = int(c.notes, 1, 8);
+      const fx = int(c.fx, 1, 4);
+      if (notes) out.notes = notes;
+      if (fx) out.fx = fx;
+      if (Array.isArray(c.locks)) {
+        const locks = [...new Set(c.locks.filter((k) => typeof k === "string"))];
+        if (locks.length) out.locks = locks;
+      }
+      if (Object.keys(out).length) columns[id] = out;
+    }
+    if (Object.keys(columns).length) p.tracker = { columns };
+    else delete p.tracker;
   }
   if (p.regions) {
     p.regions = p.regions.filter(
