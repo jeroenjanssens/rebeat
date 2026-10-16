@@ -87,7 +87,8 @@ export function trackerPalette(): TrackerPalette {
     cursorText: display,
     playBand: mixColor(display, lit, 0.2),
     select: mixColor(display, accent, 0.35),
-    shade: mixColor(display, "#000000", 0.35),
+    // the rows between a track's steps: tinted toward the chrome, so they read as "not a step"
+    shade: mixColor(display, chrome, 0.16),
   };
   return cached;
 }

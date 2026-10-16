@@ -129,7 +129,12 @@ export function rowSegments(
   const lane = pattern.lanes[track.id];
   const step = place.step !== undefined ? lane?.steps[place.step] : undefined;
   const base = place.ghost ? "dim" : undefined;
+  const between = place.step === undefined;
+  // between a Hits track's steps nothing can go; a Notes track's notes can start there
+  if (between && track.mode === "hits")
+    return { segments, ghost: place.ghost, shaded: true, offGrid: false };
   fields.forEach((f, i) => {
+    if (between && f.kind !== "note") return;
     if (f.kind === "note") {
       const nf = layout.notes[f.col]?.get(place.row);
       const text = !nf ? "···" : nf.kind === "off" ? "===" : trackerNote(nf.pitch);

@@ -1,6 +1,7 @@
 # Plan: a Tracker panel, fully keyboard driven, in the look of Fast Tracker 2
 
-Status: agreed 2026-10-16, not built yet. Jeroen: the colors come from the current theme
+Status: agreed and built 2026-10-16 on the `tracker` branch (PLAN.md §0.6u lists what changed
+from this plan). Jeroen: the colors come from the current theme
 instead of FT2's steel blue (D267), and every other default stands (§11).
 How we'd work: a `tracker` branch, commit early and often, e2e once at the end of the batch.
 

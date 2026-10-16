@@ -1,6 +1,6 @@
 # Rebeat — Product & Technical Plan
 
-> **Status (2026-10-15):** All phases of §7 are implemented (M, G, 0–10), plus the batches in §0.6b–§0.6t, the latest being a cleanup batch (§0.6t, `PLAN-cleanup.md`). Repo: `github.com/jeroenjanssens/rebeat` (public; `main` deploys to GitHub Pages). §0 describes the current code; §0.7 lists known limitations and what is left for later.
+> **Status (2026-10-15):** All phases of §7 are implemented (M, G, 0–10), plus the batches in §0.6b–§0.6t, the latest being the tracker (§0.6u, `PLAN-tracker.md`, on the `tracker` branch). Repo: `github.com/jeroenjanssens/rebeat` (public; `main` deploys to GitHub Pages). §0 describes the current code; §0.7 lists known limitations and what is left for later.
 > Every open question in §6 has a **default**. All defaults were accepted when Phase M was started, except where §6 records a different choice. To change one, refer to it by number (e.g. "D7: B").
 
 ---
@@ -103,6 +103,7 @@ Key implementation patterns:
 0. Beatbox to step tracks (§0.6h, D105–D118) ✅ merged into `main` (2026-10-10). Decide whether the shipped model may train on beatboxset1 (CC BY-SA, D108). Record and
    label your own sounds (and friends'), export them, and train model 2 with them (`ml/README.md`).
 0b. MIDI controllers (§0.6i, D119–D125) ✅ merged into `main` (2026-10-10). With a device: check what it sends (the Monitor in Settings → MIDI) and fix its map.
+0u. The tracker (§0.6u, D265–D277, `PLAN-tracker.md`) ✅ on the `tracker` branch (2026-10-16), made from `cleanup` (it has the top bar's scopes, D263–D264). Later: bends as commands (1xx, 2xx, 4xy, Wxy), tempo changes and automation as a master column. Ask before merging.
 0t. Cleanup batch (§0.6t, `PLAN-cleanup.md`) ✅ on `cleanup` branch (2026-10-15): correctness (undo/redo invariant, Electron IPC sender check, tempo-aware looper), perf (synth core −27%, knob-list cache), React (selectors, memoization), canvas (frame-loop only), exhaustive-deps reasons, duplication removed, big-file splits, lazy dialogs, ESLint type rules. Ask before merging to `main`.
 0k. Bends per note, every synth knob and switch automatable, stepped lanes, folding lanes, moving many points, Sweeps and Bends (§0.6r, D220–D240) ✅ on `main` (2026-10-14). With the MiniLab 3: the Bend card's Strip on Newest note. Later: bends on sampled instruments, recording the strip on one note, MPE.
 0j. A tidier interface, effects everywhere (§0.6q, D206–D219) ✅ on `main` (2026-10-13): the Controller panel's cards, a smaller top bar, every effect knob automatable with a grouped knob picker, a full Keys strip, copying effects, eight new effects, Auto at beat speeds, Edit sound following the editor.
@@ -851,6 +852,37 @@ The plan is `PLAN-cleanup.md` (11 phases). A summary of what changed:
 - SynthCore bench (a) dense analog: 1453 ms → 1060 ms (−27%); (b) physical model: 240 ms → 189 ms (−21%)
 - Startup bundle entry chunk: 1,300 kB raw / 367 kB gz → 1,220 kB raw / 342 kB gz; new lazy chunks: Export, Settings, Welcome, WavetableDialog, ProjectBrowser, SampleExport (~180 kB total), examples (~45 kB)
 - ESLint time (type-aware `no-floating-promises` for `src/`): ~9.3 s → ~10.6 s (+14%)
+
+### 0.6u The tracker (agreed and done 2026-10-16) ✅
+
+The plan is `PLAN-tracker.md`; Jeroen took every default except the colors, which come from the
+theme (D267). What's built:
+
+- **The model** (`model/tracker.ts`, `trackerEdit.ts`, `trackerText.ts`, pure, unit-tested): the
+  row grid (Rows Auto, ×1–×4), each track's grid (rows per step, ghost rows for shorter tracks),
+  note columns (a note's column hint, `Note.col`), the effect commands both ways, every edit as
+  a recipe (notes, note-offs, volumes, commands, locks, rows, blocks, the clipboard), and the
+  text of every field. Schema 14: `Note.col`, `Project.tracker.columns` (view data, `editView`).
+- **The panel** (`panels/tracker/`): FT2's top panel (Pos, Patt, Len, Octave, Step, BPM, Add,
+  Rows, the Edit and Follow lamps, a scope per track: click mutes, right-click solos), the
+  pattern on one canvas in our pixel font (`render/pixelFont.ts`), the cursor row in the middle,
+  the playhead and Follow, a status line that describes the field under the cursor
+  (`aria-live`). Colors from the theme (`panels/tracker/palette.ts`), text picked for contrast
+  with what's behind it.
+- **The keys**: scoped commands (`Command.scope`, `scopesOf`, D275) in `app/trackerCommands.ts`,
+  every one in the palette and rebindable; the note keys, digits and command letters in a key
+  hook that runs first while the tracker has focus. Previews play through the keys with the
+  source `"tracker"` (nothing written by the keys, D276). Edit mode while playing writes at the
+  playhead and ends the note on the key's release; a MIDI keyboard writes at the cursor, chords
+  in the next columns (`state/tracker.ts: takeNote`).
+- **Around it**: Settings → Tracker (FT2 keys, decimal volumes, new notes' volume, text size,
+  top panel), the Track layout (⌘⌥5), the guide chapter `05-tracker.md`, hints, e2e
+  `tracker.spec.ts`.
+
+Deviations from the plan: a selection spans whole tracks (not single fields); Insert and
+Backspace move a track's steps by one of its own steps; the rows between a Hits track's steps
+take nothing (the plan had them set the nudge: `Nxx` does); colors mix in sRGB, not oklab; the
+font is 5×7 in a 6×9 cell; bends as commands (1xx, 2xx, 4xy, Wxy) are left for later and say so.
 
 ### 0.7 Known limitations and later work
 
@@ -1805,6 +1837,53 @@ Wavetables and physical models (§0.6s, `PLAN-wavetable-physical.md`):
   takes the new title. "Settings → MIDI → Controller" stays: that's the device. Double-clicking
   the top bar's master scope opens the Master scope panel, the keys' scope the Keys panel. Alt: scrolling the strip; hiding some tracks;
   a panel.
+- **D265 — The tracker.** A panel that shows the edited pattern as rows of text, top to bottom,
+  edited from the keyboard alone, over the same steps as the drum machine (no new data model). In
+  the look of Fast Tracker 2: bevels, a dark pattern area, hex row numbers, the cursor row in
+  the middle. Alt: a separate tracker data model; a piano-roll-like vertical view.
+- **D266 — Our own pixel font.** 5×7 glyphs drawn by us, scaled by whole device pixels from an
+  atlas per color (`render/pixelFont.ts`): crisp, and no font license (D6 is open). Alt: a free
+  bitmap font file; the app's monospace font.
+- **D267 — The theme's colors.** Jeroen (2026-10-16): instead of FT2's steel blue, a color from
+  the current theme: the accent mixed into the raised surface (30%) for the chrome, lighter and
+  darker for the bevels, the theme's darkest surface for the pattern; text colors picked for
+  contrast with what's behind them (a light theme's darkest surface can be dark). Alt: an FT2
+  palette; a choice of both.
+- **D268 — Columns.** Notes tracks: 1–8 note columns (note + volume), then effect columns, then
+  lock columns; Hits: one note column (the hit's note: the hit note plus the step's pitch, up to
+  an octave); Clip: one field (Loop, Once, Off). A column plays one note at a time: a new note
+  ends the one sounding there; a note's length shows as a note-off. Column counts are view data
+  (`Project.tracker`, through `editView`). Alt: Renoise's per-column delay and pan.
+- **D269 — A note's column hint** (`Note.col`, schema 14): the column a note was typed in, kept
+  while it's free, so a note doesn't jump columns after an edit. Alt: no hint (columns from the
+  notes alone).
+- **D270 — Volumes 01–7F**, MIDI velocity in hex; decimal (1–127) in Settings. Alt: FT2's 00–40.
+- **D271 — Effect commands.** An FT2 letter where Rebeat does the same thing (`3xx` glide,
+  `9xx` sample start, `ECx` cut, `EDx` delay, `Rxx` ratchet), a letter FT2 left free otherwise
+  (`Nxx` nudge, `Yxx` probability, `Ixy` condition, `S01` accent). Each writes a step field;
+  FT2 commands without a counterpart are refused with what to use instead. Alt: FT2's letters
+  for everything.
+- **D272 — Rows and polyrhythms.** Rows: Auto (the coarsest grid every track's steps land on), or
+  ×1–×4. Between a Notes track's steps a note gets an offset; a shorter track's repeats are
+  ghost rows that edit what they repeat; tracks off the grid show `~ROWS`. Alt: one row per
+  pattern step only.
+- **D273 — Edit mode, Follow, recording.** Esc toggles edit mode (Renoise's key; FT2's Space with
+  the FT2 keys setting). Playing in edit mode writes at the playhead and ends the note where the
+  key comes up; with Rec on as well, the keys record as everywhere. MIDI notes are entered at the
+  cursor, a chord (within 30 ms) across note columns. The cursor's track is the selected track.
+  Alt: a separate record button.
+- **D274 — The keyboard.** Two octaves of note keys by physical key, note-off on `` ` `` and `1`,
+  Alt+[ ] the octave, Alt+0–9 Add, F9–F12 jumps, Insert/Backspace rows, Shift+arrows select,
+  Mod+C/X/V, Mod+↑↓ transpose, Mod+I interpolate, Enter hears the row. Alt: FT2's F-keys for
+  everything.
+- **D275 — Scoped commands.** A command can have a `scope`: its keys only apply while the focus
+  is inside an element with that `data-scope`, and win over global ones there; the shortcuts
+  dialog unbinds a key only within the same scope. Alt: a private key handler per panel.
+- **D276 — Previews through the keys.** The tracker plays notes with `noteOn(…, "tracker")`, a
+  source that writes nothing (no step entry, no pad input, no recording), so the tracker is the
+  only one writing. Alt: `engine.holdNote` directly (bypasses the keys' voice and sustain).
+- **D277 — Schema 14.** `Note.col?` and `Project.tracker?`, both optional; the migration only
+  bumps the version.
 - **D35 — Build order.** ✅ The phases in §7, starting with the mockup (Phase M), each ending with something you can play with.
 
 ---

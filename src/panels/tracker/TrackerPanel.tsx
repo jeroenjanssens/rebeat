@@ -307,9 +307,7 @@ function draw(
       const seg = rowSegments(col, ctx.pattern, r, ctx.settings.decimal);
       if (seg.shaded) {
         g.fillStyle = pal.shade;
-        g.globalAlpha = 0.6;
         g.fillRect(x, y, col.width * cw, ch);
-        g.globalAlpha = 1;
       }
       if (block && block.trackIds.includes(col.track.id) && r >= block.from && r <= block.to) {
         g.fillStyle = pal.select;
@@ -353,7 +351,12 @@ function draw(
     const color = c && r === c.row ? pal.text : bar ? pal.chromeText : pal.chromeDim;
     drawText(g, rowLabel(r, digits), cw / 2, y, color, px);
   }
-  // the header: track number and name, its color, mute and solo, the lock columns' names
+  // the header: track number and name, its color, mute and solo, the lock columns' names (a
+  // track scrolled half out on the left stays out of the row numbers)
+  g.save();
+  g.beginPath();
+  g.rect(numW, 0, W - numW, H);
+  g.clip();
   for (const col of ctx.cols) {
     const x = xOf(col.x);
     if (x + col.width * cw < numW || x > W) continue;
@@ -384,6 +387,7 @@ function draw(
     g.fillStyle = pal.light;
     g.fillRect(x, 0, px, H);
   }
+  g.restore();
   g.fillStyle = pal.dark;
   g.fillRect(numW - px, 0, px, H);
 }

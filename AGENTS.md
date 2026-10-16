@@ -41,7 +41,9 @@ a physical model (an exciter into a string, a tube or a bank of partials, and a 
 version 3 and schema 13, 27 new factory synths, the demo song Wood, Wire and Glass; and a
 **cleanup batch** (§0.6t, `PLAN-cleanup.md`): a raft of correctness, performance and tooling
 improvements across 11 phases — errors and tests, perf, React, DSP, imports, schema, duplication,
-big-file splits, bundle, robustness, and ESLint. Left: tests with real hardware (mic, MIDI,
+big-file splits, bundle, robustness, and ESLint; and **the tracker** (§0.6u, D265–D277,
+`PLAN-tracker.md`, on the `tracker` branch): a Tracker panel, the pattern as rows of text in the
+look of Fast Tracker 2 (in the theme's colors), fully keyboard driven, schema 14. Left: tests with real hardware (mic, MIDI,
 Launchpad/Push), signing the desktop release, the license (D6), and the "later" items in
 PLAN.md §0.7. The repository is public and `main` deploys to GitHub Pages.
 
@@ -120,7 +122,7 @@ pnpm prettier --write src e2e && pnpm tsc --noEmit && pnpm eslint . && pnpm vite
   && pnpm playwright test --workers=4
 ```
 
-Expect about 660 unit tests and about 270 e2e tests (around 7 minutes, most of it the golden
+Expect about 725 unit tests and about 300 e2e tests (around 7 minutes, most of it the golden
 levels renders). Visual changes are
 also checked in a real browser: a throwaway Playwright spec that takes a screenshot works well
 (delete it afterwards).
@@ -148,6 +150,7 @@ src/
                          SampleExport, Welcome, WavetableDialog (Make a wavetable)
                        - openers.ts: open a sample/synth editor tab, the guide, focus a panel
                        - ScopeStrip.tsx (D263: the top bar's scopes, inline or on a folding row)
+                       - trackerCommands.ts (D274, D275: the tracker's keys as scoped commands)
                        - shell.ts (dock API handle), hintLayer.ts (explain mode)
   platform/            the Platform interface; web.ts and electron.ts (files, storage, full screen);
                        nothing else touches those browser APIs directly
@@ -161,6 +164,9 @@ src/
                          automated, knob values, thinning), ease.ts (D196: eases in and out, composed
                          `in(out(t))`)
                        - fixtures/v6/ (every example and template as schema 6 saved it, gzipped)
+                       - tracker.ts (D268–D272: the row grid, a track's rows, note columns, the
+                         effect commands), trackerEdit.ts (its edits as recipes, blocks, the
+                         clipboard), trackerText.ts (each field's place and text)
                        - synth.ts (patch v3: wavetable oscillators, the physical model; macros,
                          refreshMacros), synthV1.ts (old patches, read only)
                        - wavetables.ts (D242–D246: the 16 factory tables, mip levels, cutting a
@@ -192,6 +198,8 @@ src/
                        - perform.ts (D149): the play styles' scheduler (timed notes on the audio
                          clock) and rhythm engine (arp, patterns); keys.ts plays through it
                        - trackActions, effectActions, clipActions
+                       - tracker.ts (D265–D277): the tracker's cursor, edit mode, selection,
+                         clipboard and actions (`takeNote`: MIDI and the note keys in edit mode)
                        - timelineActions (sections, tempo changes, automation, regions: one commit
                          each; folding lanes; moving a selection across lanes), pointSelection
                          (D235: the points selected in every lane, the rectangle), bendControls
@@ -256,14 +264,16 @@ src/
                        switches.tsx: Group, Box, and switch atoms Choice/Toggle/SwitchSelect/BoxToggle),
                        timeline (D184: ruler, Tempo lane, sections, track rows, curve lanes, regions;
                        canvases cover only the visible part, ViewCanvas; dragListeners.ts: pointer
-                       event helpers shared across timeline drag gestures); inspector/automation/
+                       event helpers shared across timeline drag gestures); tracker (D265:
+                       TrackerPanel.tsx, palette.ts, lockPicker.ts); inspector/automation/
                        (D199–D204: the point table, its sources, ScrubField, parsing)
   components/          Encoder (knob), Fader, MiniFader, DragValue, Keyboard (piano), Scope,
                        PeaksCanvas, Playhead, Menu (contextMenu/dropdown, headings), Dialog, Toast,
                        EffectEditor, fxMenus (Add effect by group, copy/paste, Copy to…), EqCurve,
                        KnobPicker (D208), glide (smooth resets), soundIcons…
   render/              raf.ts (one shared animation loop), useCanvas, useElementSize (a hook that
-                       tracks an element's ResizeObserver dimensions), theme (tokens), thumbnail
+                       tracks an element's ResizeObserver dimensions), theme (tokens, mixColor),
+                       thumbnail, pixelFont.ts (D266: the tracker's bitmap font)
   help/                chapters/*.md (the user guide, one file per topic), guide.ts (renderer),
                        hints/ (explain-mode texts keyed by data-hint ids)
   templates/           builder.ts (song-writing helpers), example-id.ts (lightweight example
@@ -374,11 +384,11 @@ fill?: "last" | "all", steps? }`. The settings are the section's own (D183): its
   `Project.timelineFolded?` are the timeline's folds (D233).
 - `Note.bend?` (D220, schema 12): a note's own bend (`NoteBend`: shape, amount, time, delay, unit
   "s" | "q", ease, rate); `model/bend.ts` says where it is at a moment.
-- **Schema**: `model/schema.ts`, currently `SCHEMA_VERSION = 13` (8: MIDI mappings' `mode`; 9: `Note.offset`, a
+- **Schema**: `model/schema.ts`, currently `SCHEMA_VERSION = 14` (8: MIDI mappings' `mode`; 9: `Note.offset`, a
   note's own start within its step, −0.5..0.5; 10: sections' settings, tempo changes, automation,
   regions, all optional; 11: eases per point, `hold` became an ease out of None; 12: `Note.bend`,
   folded lanes, and lanes on stepped effect knobs turned into points on their bands; 13: synth
-  patches version 3, upgraded when read).
+  patches version 3, upgraded when read; 14: the tracker's `Note.col` and `Project.tracker`).
   - Every change to the saved shape bumps the version and adds a migration plus a test.
   - `migrate` + `normalizeProject` run on every load.
   - Migration 5 → 6 converted the old SOUND knobs on synth tracks into patch edits (it changes
@@ -870,6 +880,14 @@ dq, dv, key)` from the positions at the start (`selectionStarts`, `clampGroupDq`
   automation override and the record-automation subscriber) compare `s.lastCommitTime ===
 prev.lastCommitTime` to skip history moves. Comparing `s.past.length < prev.past.length`
   is wrong because redo also grows `past`.
+- **Commands can be scoped** (D275): `Command.scope` keys only match while the focus is inside an
+  element with that `data-scope` (`scopesOf`), and win over a global command with the same key
+  there. The tracker's commands are scoped to `"tracker"`; its note keys, digits and command
+  letters are a key hook added with `first = true`, so it runs before the pad view's.
+- **The tracker writes its own notes** (D276): its previews call `noteOn(…, "tracker")`, a source
+  that writes nothing (no step entry at the drum machine's cursor, no pad input, no recording). A
+  new path that previews notes for an editor should use it too, or a stopped transport's step
+  entry writes them at `ui.cursor`.
 - **Project load resets per-session state in `state/keys.ts`.** On `loadProject` (the store's
   `loads` counter, not `projectId`: forking an example changes the id while you may be holding a
   chord), a subscriber in keys.ts releases every held voice and clears `chordPads`, `dialDown`,
@@ -930,6 +948,7 @@ likely to need:
 | Patch v3, new factory synths, demo song, wizard    | D257–D261                 |
 | The synth editor's piano follows the device        | D262                      |
 | Scopes in the top bar (master, keys, every track)  | D263–D264                 |
+| The tracker: look, columns, commands, keys, rows   | D265–D277                 |
 
 Feature batches and their acceptance criteria are in PLAN.md §0.6b–§0.6h. Known limitations are
 in §0.7.
