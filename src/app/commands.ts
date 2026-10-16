@@ -20,6 +20,11 @@ export interface Command {
   hidden?: boolean;
   /** Also fires while typing in an input. */
   global?: boolean;
+  /**
+   * Only while the focus is inside an element with this `data-scope` (D275, the tracker); there
+   * it wins over an unscoped command with the same key.
+   */
+  scope?: string;
 }
 
 const registry = new Map<string, Command>();
@@ -107,6 +112,14 @@ const CODE_NAMES: Record<string, string> = {
   Slash: "/",
   Backslash: "\\",
   Backquote: "`",
+  Home: "Home",
+  End: "End",
+  PageUp: "PgUp",
+  PageDown: "PgDn",
+  Insert: "Insert",
+  ScrollLock: "ScrollLock",
+  NumpadDivide: "Num/",
+  NumpadMultiply: "Num*",
 };
 
 /** The key part of a shortcut, from the physical key (layout-independent for letters/digits). */
@@ -148,19 +161,36 @@ export function formatKeys(keys: string): string {
     .join("");
 }
 
-/** Find the command bound to a shortcut. */
-export function commandForShortcut(shortcut: string): Command | undefined {
+/** Find the command bound to a shortcut: a scoped one first (when its scope is active). */
+export function commandForShortcut(shortcut: string, scopes: string[] = []): Command | undefined {
   const overrides = useSettings.getState().shortcuts;
-  for (const c of registry.values()) if (keysFor(c, overrides).includes(shortcut)) return c;
-  return undefined;
+  let plain: Command | undefined;
+  for (const c of registry.values()) {
+    if (!keysFor(c, overrides).includes(shortcut)) continue;
+    if (c.scope === undefined) plain ??= c;
+    else if (scopes.includes(c.scope)) return c;
+  }
+  return plain;
+}
+
+/** The scopes the focus is in (`data-scope` on the element or its ancestors). */
+export function scopesOf(el: Element | null): string[] {
+  const out: string[] = [];
+  for (let e = el?.closest?.("[data-scope]"); e; e = e.parentElement?.closest("[data-scope]"))
+    out.push(e.getAttribute("data-scope")!);
+  return out;
 }
 
 type KeyHook = (e: KeyboardEvent, down: boolean) => boolean;
 const hooks: KeyHook[] = [];
 
-/** Handle raw keys before shortcuts (e.g. keyboard pads). Return true when the key was used. */
-export function addKeyHook(fn: KeyHook): () => void {
-  hooks.push(fn);
+/**
+ * Handle raw keys before shortcuts (e.g. keyboard pads). Return true when the key was used.
+ * `first`: before the hooks already there (a focused panel's keys, the tracker's).
+ */
+export function addKeyHook(fn: KeyHook, first = false): () => void {
+  if (first) hooks.unshift(fn);
+  else hooks.push(fn);
   return () => {
     hooks.splice(hooks.indexOf(fn), 1);
   };
@@ -177,7 +207,7 @@ export function installKeyboard(win: Window = window): () => void {
     if (!isTyping) for (const h of hooks) if (h(e, true)) return e.preventDefault();
     const shortcut = eventShortcut(e);
     if (!shortcut) return;
-    const c = commandForShortcut(shortcut);
+    const c = commandForShortcut(shortcut, scopesOf(e.target as Element | null));
     if (!c || (isTyping && !c.global)) return;
     if (c.enabled && !c.enabled()) return;
     e.preventDefault();

@@ -13,6 +13,7 @@ import { trackFullscreen } from "./app/PanelFrame";
 import { SettingsDialog } from "./app/SettingsDialog";
 import { ShortcutsDialog } from "./app/ShortcutsDialog";
 import { TransportBar } from "./app/TransportBar";
+import { trackerCommands } from "./app/trackerCommands";
 import { useAppearance } from "./app/useAppearance";
 import { ToastHost, toast } from "./components/Toast";
 
@@ -48,6 +49,7 @@ export function App() {
   useEffect(() => {
     const offs = [
       registerCommands(defaultCommands()),
+      registerCommands(trackerCommands()),
       installKeyboard(),
       installHints(window),
       trackFullscreen(),

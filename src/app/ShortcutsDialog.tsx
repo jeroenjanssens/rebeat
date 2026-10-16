@@ -27,8 +27,10 @@ export function ShortcutsDialog() {
       if (sc) {
         const shortcuts = { ...useSettings.getState().shortcuts };
         // a shortcut belongs to one command: unbind it elsewhere
+        // (within its scope: the tracker's keys don't take a global command's)
+        const scope = commands.find((c) => c.id === recording)?.scope;
         for (const c of commands)
-          if (c.id !== recording && keysFor(c, shortcuts).includes(sc))
+          if (c.id !== recording && c.scope === scope && keysFor(c, shortcuts).includes(sc))
             shortcuts[c.id] = keysFor(c, shortcuts)
               .filter((k) => k !== sc)
               .join(" | ");

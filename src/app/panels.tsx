@@ -13,6 +13,7 @@ import {
   BookOpen,
   Cable,
   Joystick,
+  Rows4,
   ChartGantt,
 } from "lucide-react";
 import { DrumMachine } from "../panels/drum-machine/DrumMachine";
@@ -47,6 +48,9 @@ const TimelinePanel = lazyPanel(() =>
 );
 const ControllerPanel = lazyPanel(() =>
   import("../panels/controller/ControllerPanel").then((m) => m.ControllerPanel),
+);
+const TrackerPanel = lazyPanel(() =>
+  import("../panels/tracker/TrackerPanel").then((m) => m.TrackerPanel),
 );
 
 export interface PanelProps {
@@ -162,6 +166,14 @@ export const PANELS: PanelDef[] = [
     component: ControllerPanel,
     minWidth: 300,
     minHeight: 160,
+  },
+  {
+    id: "tracker",
+    title: "Tracker",
+    icon: Rows4,
+    component: TrackerPanel,
+    minWidth: 360,
+    minHeight: 200,
   },
 ];
 

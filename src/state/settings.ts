@@ -3,6 +3,7 @@ import { DEFAULT_PLAY_STYLE, type PlayStyle } from "../model/perform";
 import { create } from "zustand";
 import type { MidiMapping } from "../model/project";
 import type { Effect } from "../model/types";
+import type { RowsSetting } from "../model/tracker";
 import type { PadsChannel } from "../midi/mapping";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { platform } from "../platform";
@@ -191,6 +192,19 @@ export interface Settings {
   scopesOpen: boolean;
   /** The top bar's scopes large, on the row under it. */
   scopesLarge: boolean;
+  /** The tracker (D265–D277): its octave, Add (rows the cursor moves after a note), row grid,
+   * font scale (CSS pixels per font pixel), compact view, FT2 keys, decimal volumes, and the
+   * volume new notes get (01–7F). */
+  tracker: {
+    octave: number;
+    add: number;
+    rows: RowsSetting;
+    scale: number;
+    compact: boolean;
+    ft2Keys: boolean;
+    decimal: boolean;
+    volume: number;
+  };
   /** Sample sources you added by link (strudel.json, GitHub repositories), D74. */
   sampleSources: string[];
   /** Favorite instruments (catalog ids), D78. */
@@ -283,6 +297,16 @@ export const DEFAULT_SETTINGS: Settings = {
   explain: false,
   scopesOpen: true,
   scopesLarge: false,
+  tracker: {
+    octave: 4,
+    add: 1,
+    rows: "auto",
+    scale: 1.5,
+    compact: false,
+    ft2Keys: false,
+    decimal: false,
+    volume: 100,
+  },
   sampleSources: [],
   instrumentFavorites: [],
   synthView: "basic",

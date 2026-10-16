@@ -70,7 +70,9 @@ export type KeysTarget =
   | { kind: "sound"; source: "catalog" | "sample"; id: string; name: string };
 
 /** Where a held note came from (for the monitor and the Keys panel). */
-export type KeysSource = "midi" | "screen" | "computer" | "piano-roll" | "auto";
+/** Where a key came from. The tracker's previews (D276) only play: they write nothing (the
+ * tracker writes its own notes). */
+export type KeysSource = "midi" | "screen" | "computer" | "piano-roll" | "auto" | "tracker";
 
 /**
  * A synth editor the keys can follow (D132): its track, or a library sound's own voice (D91).
@@ -465,10 +467,11 @@ function startNoteLater(
   delay: number,
   hitAt = audioNow(),
   role?: NoteRole,
+  writes = true,
 ): Voice {
   const v: Voice = { release: () => {}, recordId: null, pending: true };
   v.cancel = schedule(hitAt + delay, (at) => {
-    const record = useStore.getState().playing;
+    const record = writes && useStore.getState().playing;
     Object.assign(v, startNote(out, pitch, velocity, { at, hitAt, spread: delay, record, role }), {
       pending: false,
     });
@@ -816,9 +819,14 @@ function press(
   if (melody) startVoices(p, kc, style, kc.notes);
   else if (rhythmOn(style)) {
     // the rhythm plays it; while stopped, step entry writes the chord as it is (D149)
-    if (!isAuto) stepEntry(out, kc.notes, velocity);
+    if (!isAuto && source !== "tracker") stepEntry(out, kc.notes, velocity);
   } else startVoices(p, kc, style, kc.notes, at);
-  if (!isAuto && (out.kind === "sample" || out.kind === "voice") && out.track.mode !== "notes")
+  if (
+    !isAuto &&
+    source !== "tracker" &&
+    (out.kind === "sample" || out.kind === "voice") &&
+    out.track.mode !== "notes"
+  )
     padInput(out.track, velocity);
   if (isAuto) {
     autoPress = p;
@@ -879,8 +887,11 @@ function startVoices(p: Pressed, kc: KeyChord, style: PlayStyle, which: number[]
     p.voices.set(
       n,
       delay > 0.0005
-        ? startNoteLater(out, n, vel, spread, hitAt, roleOf(n))
-        : startNote(out, n, vel, { role: roleOf(n) }),
+        ? startNoteLater(out, n, vel, spread, hitAt, roleOf(n), p.source !== "tracker")
+        : startNote(out, n, vel, {
+            role: roleOf(n),
+            ...(p.source === "tracker" ? { record: false } : {}),
+          }),
     );
   });
 }

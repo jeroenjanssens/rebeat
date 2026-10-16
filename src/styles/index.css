@@ -1276,3 +1276,148 @@ kbd,
     box-shadow: 0 0 0 2px transparent;
   }
 }
+
+/* ── The tracker (D265, D267): FT2's bevels in the theme's colors (set on .tracker) ── */
+.tracker {
+  background: var(--ft-chrome);
+  color: var(--ft-text);
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 10.5px;
+  text-transform: uppercase;
+}
+.tracker:focus-visible .ft-pattern-wrap,
+.tracker:focus .ft-pattern-wrap {
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.ft-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  padding: 3px;
+  border-bottom: 1px solid var(--ft-dark);
+}
+.ft-box {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 3px 4px;
+  background: var(--ft-chrome);
+  border: 2px solid;
+  border-color: var(--ft-light) var(--ft-dark) var(--ft-dark) var(--ft-light);
+}
+.ft-row {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 17px;
+}
+.ft-label {
+  width: 46px;
+  color: var(--ft-text);
+  letter-spacing: 0.04em;
+}
+.ft-value {
+  min-width: 34px;
+  padding: 0 4px;
+  line-height: 15px;
+  background: var(--ft-pattern);
+  color: var(--ft-value);
+  border: 1px solid;
+  border-color: var(--ft-dark) var(--ft-light) var(--ft-light) var(--ft-dark);
+  text-align: right;
+}
+.ft-wide {
+  min-width: 70px;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+  text-transform: none;
+}
+.ft-btn {
+  width: 17px;
+  height: 16px;
+  font-size: 8px;
+  line-height: 1;
+  color: var(--ft-text);
+  background: var(--ft-chrome);
+  border: 1px solid;
+  border-color: var(--ft-light) var(--ft-dark) var(--ft-dark) var(--ft-light);
+}
+.ft-btn:active {
+  border-color: var(--ft-dark) var(--ft-light) var(--ft-light) var(--ft-dark);
+}
+.ft-lamp {
+  height: 16px;
+  padding: 0 6px;
+  color: var(--ft-dim);
+  background: var(--ft-chrome);
+  border: 1px solid;
+  border-color: var(--ft-light) var(--ft-dark) var(--ft-dark) var(--ft-light);
+}
+.ft-lamp[data-on="true"] {
+  color: var(--ft-pattern);
+  background: var(--ft-on);
+  border-color: var(--ft-dark) var(--ft-light) var(--ft-light) var(--ft-dark);
+}
+.ft-scopes {
+  flex: 1;
+  flex-direction: row;
+  min-width: 120px;
+  gap: 2px;
+}
+.ft-scope {
+  position: relative;
+  flex: 1;
+  min-width: 34px;
+  max-width: 110px;
+  cursor: pointer;
+  border: 1px solid;
+  border-color: var(--ft-dark) var(--ft-light) var(--ft-light) var(--ft-dark);
+}
+.ft-scope[data-muted="true"] {
+  opacity: 0.35;
+}
+.ft-scope[data-solo="true"] {
+  outline: 1px solid var(--ft-on);
+}
+.ft-scope-name {
+  position: absolute;
+  left: 3px;
+  top: 1px;
+  font-size: 8.5px;
+  color: var(--ft-dim);
+  pointer-events: none;
+  max-width: calc(100% - 6px);
+  overflow: hidden;
+  white-space: nowrap;
+}
+.ft-pattern-wrap {
+  background: var(--ft-pattern);
+  border: 2px solid;
+  border-color: var(--ft-dark) var(--ft-light) var(--ft-light) var(--ft-dark);
+  margin: 0 3px;
+}
+.ft-status {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  height: 20px;
+  padding: 0 6px;
+  font-size: 10px;
+  text-transform: none;
+  border-top: 1px solid var(--ft-light);
+}
+.ft-status [data-error="true"] {
+  color: var(--ft-on);
+}
+.ft-mode {
+  padding: 0 5px;
+  color: var(--ft-dim);
+  border: 1px solid var(--ft-dark);
+}
+.ft-mode[data-on="true"] {
+  color: var(--ft-pattern);
+  background: var(--ft-on);
+}

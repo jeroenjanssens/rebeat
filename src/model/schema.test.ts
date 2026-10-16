@@ -413,7 +413,9 @@ describe("migration 13 → 14 (D268, D269)", () => {
       { pitch: 64, length: 1, velocity: 0.8, col: 9 },
     ];
     const d = deserializeProject(data);
-    expect(d.tracker).toEqual({ columns: { [a.id]: { notes: 8, fx: 2, locks: ["sound.cutoff"] } } });
+    expect(d.tracker).toEqual({
+      columns: { [a.id]: { notes: 8, fx: 2, locks: ["sound.cutoff"] } },
+    });
     const notes = Object.values(d.patterns)[0].lanes[a.id].steps[0].notes!;
     expect(notes.map((n) => n.col)).toEqual([3, undefined]);
   });
