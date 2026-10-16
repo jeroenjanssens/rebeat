@@ -189,6 +189,8 @@ export interface Settings {
   explain: boolean;
   /** The top bar's scopes on their own row (when they don't fit in the bar): shown or folded. */
   scopesOpen: boolean;
+  /** The top bar's scopes large, on the row under it. */
+  scopesLarge: boolean;
   /** Sample sources you added by link (strudel.json, GitHub repositories), D74. */
   sampleSources: string[];
   /** Favorite instruments (catalog ids), D78. */
@@ -280,6 +282,7 @@ export const DEFAULT_SETTINGS: Settings = {
   onboarded: false,
   explain: false,
   scopesOpen: true,
+  scopesLarge: false,
   sampleSources: [],
   instrumentFavorites: [],
   synthView: "basic",

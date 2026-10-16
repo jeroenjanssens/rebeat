@@ -12,6 +12,8 @@ import {
   Square,
   Timer,
   AudioWaveform,
+  Maximize2,
+  Minimize2,
   CircleHelp,
   MessageSquareText,
 } from "lucide-react";
@@ -471,8 +473,12 @@ export function TransportBar() {
   const space = spaceSize.width;
   const measured = spaceSize.height > 0;
   const scopeCount = useScopeCount();
-  const scopesInline = space >= scopesWidth(scopeCount) + 16;
+  const scopesLarge = useSettings((s) => s.scopesLarge);
+  // room for every tile, the padding and the expand button
+  const scopesFit = space >= scopesWidth(scopeCount) + 16 + 32;
+  const scopesInline = scopesFit && !scopesLarge;
   const scopesOpen = useSettings((s) => s.scopesOpen);
+  const scopesRow = measured && (scopesLarge || (!scopesFit && scopesOpen));
 
   const layoutItems = (): MenuItem[] => [
     ...LAYOUT_PRESETS.map((l) => ({
@@ -533,7 +539,12 @@ export function TransportBar() {
           ) : (
             <Play size={12} fill="currentColor" />
           )}
-          {playing ? "Stop" : "Play"}
+          {/* both words in one cell, the other one hidden: the button keeps the wider one's width
+              so the bar doesn't shift when it toggles */}
+          <span className="grid">
+            <span className={`col-start-1 row-start-1 ${playing ? "" : "invisible"}`}>Stop</span>
+            <span className={`col-start-1 row-start-1 ${playing ? "invisible" : ""}`}>Play</span>
+          </span>
         </button>
         <Split
           onMenu={(el) => popover(el, () => <RecordingPopover />)}
@@ -647,13 +658,13 @@ export function TransportBar() {
 
         <div
           ref={spaceRef}
-          className="flex h-full min-w-0 flex-1 items-center px-2 py-1.5"
-          style={{ minWidth: measured && !scopesInline ? 56 : 0 }}
+          className="flex h-full min-w-0 flex-1 items-center gap-1 px-2 py-1.5"
+          style={{ minWidth: measured && !scopesInline ? 90 : 0 }}
         >
           {measured &&
             (scopesInline ? (
               <ScopeStrip />
-            ) : (
+            ) : scopesLarge ? null : (
               <button
                 className="tool-btn"
                 title={scopesOpen ? "Fold the scopes" : "Show the scopes under the bar"}
@@ -667,6 +678,19 @@ export function TransportBar() {
                 <ChevronDown size={11} className={scopesOpen ? "rotate-180" : ""} />
               </button>
             ))}
+          {measured && (
+            <button
+              className="tool-btn shrink-0"
+              title={scopesLarge ? "Smaller scopes" : "Larger scopes, on a row under the bar"}
+              data-hint="transport.scopes.expand"
+              data-testid="scopes-expand"
+              data-active={scopesLarge}
+              aria-pressed={scopesLarge}
+              onClick={() => useSettings.getState().set({ scopesLarge: !scopesLarge })}
+            >
+              {scopesLarge ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+            </button>
+          )}
         </div>
 
         <KeysChip className="hidden @[760px]:inline-flex" />
@@ -738,12 +762,12 @@ export function TransportBar() {
           <Settings size={14} />
         </button>
       </header>
-      {measured && !scopesInline && scopesOpen && (
+      {scopesRow && (
         <div
           className="shrink-0 border-b border-line bg-panel px-3 py-1.5"
           data-testid="scopes-row"
         >
-          <ScopeStrip wrap />
+          <ScopeStrip size={scopesLarge ? "large" : "row"} />
         </div>
       )}
     </>

@@ -1797,7 +1797,8 @@ Wavetables and physical models (§0.6s, `PLAN-wavetable-physical.md`):
   scope of the master ((L + R) / 2), the keys (the Keys strip and the tracks' live channels,
   summed) and every track in order, in its color; a track's scope selects it. When the room left
   is narrower than every tile at 40 px, they move to a row under the bar that wraps, and a button
-  in their place folds it (`settings.scopesOpen`). Alt: scrolling the strip; hiding some tracks;
+  in their place folds it (`settings.scopesOpen`). An expand button puts large scopes (with meters)
+  on that row (`settings.scopesLarge`). Alt: scrolling the strip; hiding some tracks;
   a panel.
 - **D35 — Build order.** ✅ The phases in §7, starting with the mockup (Phase M), each ending with something you can play with.
 

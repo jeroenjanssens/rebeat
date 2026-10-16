@@ -32,6 +32,8 @@ Between the buttons on the left and the ones on the right, the bar shows a small
 
 When the window is too narrow for all of them, the scopes move to a row of their own under the bar, and a waveform button takes their place: click it to fold that row or show it again (the choice is saved). Make the window wider and they come back into the bar.
 
+The button with the arrows next to them makes them **larger**: big scopes with a level meter each, on a row under the bar (also saved). Click it again for the small ones.
+
 The same settings are also where you use them: the drum machine's header has the grid (**Q**) and the pattern's swing, the piano roll's has Overdub/Replace and Snap, the Timeline has **Loop / Song**, **Arm** (automation) and the time signature on its ruler, and a Clip track's Inspector has its record length.
 
 On narrow windows some controls hide; they're always available in the command palette.

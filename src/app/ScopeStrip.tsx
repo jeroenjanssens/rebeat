@@ -37,13 +37,36 @@ export function scopesWidth(count: number): number {
   return count * SCOPE_MIN + (count - 1) * SCOPE_GAP;
 }
 
+/** In the bar, on the row under it (when they don't fit), or large on that row (expanded). */
+export type ScopeSize = "bar" | "row" | "large";
+
+const SIZES: Record<ScopeSize, { strip: string; tile: string; label: string }> = {
+  bar: {
+    strip: "h-full w-full justify-center",
+    tile: "h-full min-w-[40px] max-w-[120px]",
+    label: "text-[8.5px] leading-[12px]",
+  },
+  row: {
+    strip: "flex-wrap",
+    tile: "h-8 min-w-[40px] max-w-[120px]",
+    label: "text-[8.5px] leading-[12px]",
+  },
+  large: {
+    strip: "flex-wrap",
+    tile: "h-[72px] min-w-[120px] max-w-[260px]",
+    label: "text-[10px] leading-[16px]",
+  },
+};
+
 function Tile({
+  size,
   label,
   title,
   selected,
   onClick,
   children,
 }: {
+  size: ScopeSize;
   label: string;
   title: string;
   selected?: boolean;
@@ -52,7 +75,7 @@ function Tile({
 }) {
   return (
     <div
-      className={`relative h-full min-w-[40px] max-w-[120px] flex-1 overflow-hidden rounded ${
+      className={`relative flex-1 overflow-hidden rounded ${SIZES[size].tile} ${
         onClick ? "cursor-pointer" : ""
       } ${selected ? "ring-1 ring-accent" : ""}`}
       title={title}
@@ -60,7 +83,9 @@ function Tile({
       data-testid="top-scope"
     >
       {children}
-      <span className="pointer-events-none absolute left-1 top-0 max-w-[calc(100%-12px)] truncate text-[8.5px] font-semibold uppercase leading-[12px] text-dim">
+      <span
+        className={`pointer-events-none absolute left-1 top-0 max-w-[calc(100%-12px)] truncate font-semibold uppercase text-dim ${SIZES[size].label}`}
+      >
         {label}
       </span>
     </div>
@@ -71,7 +96,7 @@ function Tile({
  * The scopes in the top bar (or on the row under it): the master, the keys, then one per track
  * in the drum machine's order. A track's tile selects it.
  */
-export function ScopeStrip({ wrap = false }: { wrap?: boolean }) {
+export function ScopeStrip({ size = "bar" }: { size?: ScopeSize }) {
   const tracks = useStore((s) => s.project.tracks);
   const selectedTrackId = useStore((s) => s.selectedTrackId);
   const [, redraw] = useReducer((n: number) => n + 1, 0);
@@ -81,26 +106,27 @@ export function ScopeStrip({ wrap = false }: { wrap?: boolean }) {
 
   return (
     <div
-      className={`flex min-w-0 ${wrap ? "flex-wrap [&>*]:h-8" : "h-full w-full justify-center"}`}
+      className={`flex min-w-0 ${SIZES[size].strip}`}
       style={{ gap: SCOPE_GAP }}
       data-hint="transport.scopes"
       data-testid="top-scopes"
     >
-      <Tile label="Master" title="The master output">
-        <Scope source={MASTER} color={master} meter={false} />
+      <Tile size={size} label="Master" title="The master output">
+        <Scope source={MASTER} color={master} meter={size === "large"} />
       </Tile>
-      <Tile label="Keys" title="What the keys play">
-        <Scope source={KEYS} color={keys} meter={false} />
+      <Tile size={size} label="Keys" title="What the keys play">
+        <Scope source={KEYS} color={keys} meter={size === "large"} />
       </Tile>
       {tracks.map((t) => (
         <Tile
           key={t.id}
+          size={size}
           label={t.name}
           title={`${t.name}: click to select the track`}
           selected={t.id === selectedTrackId}
           onClick={() => useStore.getState().setUi({ selectedTrackId: t.id })}
         >
-          <Scope trackId={t.id} color={t.color} meter={false} />
+          <Scope trackId={t.id} color={t.color} meter={size === "large"} />
         </Tile>
       ))}
     </div>

@@ -115,6 +115,11 @@ const hints: Hints = {
     text: "A small oscilloscope of the master output, of what the keys play, and of every track, in the drum machine's order. A track's line moves while it makes sound; click its scope to select the track. When the bar is too narrow for all of them, they move to a row under the bar.",
     guide: "transport-bar-scopes",
   },
+  "transport.scopes.expand": {
+    title: "Larger scopes",
+    text: "Puts large versions of the scopes, with a level meter each, on a row under the bar. Click again to make them small (back in the bar when it has room).",
+    guide: "transport-bar-scopes",
+  },
   "transport.scopes.fold": {
     title: "Show or fold the scopes",
     text: "The bar is too narrow for every scope, so they're on a row of their own under it. Click to show or fold that row; a wider window puts them back in the bar.",
