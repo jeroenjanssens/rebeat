@@ -480,18 +480,24 @@ export function TransportBar() {
   const scopesOpen = useSettings((s) => s.scopesOpen);
   const scopesRow = measured && (scopesLarge || (!scopesFit && scopesOpen));
 
+  // each group in alphabetical order
+  const byName = (a: string, b: string) => a.localeCompare(b);
   const layoutItems = (): MenuItem[] => [
-    ...LAYOUT_PRESETS.map((l) => ({
-      label: `Layout: ${l.label}`,
-      onSelect: () => dock.api && applyPreset(dock.api, l.id),
-    })),
+    ...[...LAYOUT_PRESETS]
+      .sort((a, b) => byName(a.label, b.label))
+      .map((l) => ({
+        label: `Layout: ${l.label}`,
+        onSelect: () => dock.api && applyPreset(dock.api, l.id),
+      })),
     { separator: true },
-    ...PANELS.map((p) => ({
-      label: `Show ${p.title}`,
-      icon: p.icon,
-      checked: !!dock.api?.getPanel(p.id),
-      onSelect: () => dock.api && openPanel(dock.api, p.id),
-    })),
+    ...[...PANELS]
+      .sort((a, b) => byName(a.title, b.title))
+      .map((p) => ({
+        label: `Show ${p.title}`,
+        icon: p.icon,
+        checked: !!dock.api?.getPanel(p.id),
+        onSelect: () => dock.api && openPanel(dock.api, p.id),
+      })),
   ];
 
   return (
