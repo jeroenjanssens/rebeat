@@ -22,6 +22,8 @@ import { useStore } from "../state/store";
 import { playingProject } from "../state/automationOverride";
 import {
   audioNow,
+  heardNow,
+  syncDrawToOutput,
   effectsStep,
   initEngine,
   panic,
@@ -137,6 +139,10 @@ export function pageDuration(pattern: Pattern, bpm: number, globalSwing = 0.5) {
   for (let i = 0; i < pattern.stepCount; i++) d += stepDuration(pattern, bpm, i, globalSwing);
   return d;
 }
+
+/** Where the song is that you hear right now (D278): `positionAt` the heard time, for visuals
+ * that follow the music (the tracker's playhead). */
+export const heardPosition = () => positionAt(heardNow());
 
 /** Where the playhead is right now (for progress bars). */
 export function position() {
@@ -598,6 +604,8 @@ export function play() {
   if (at.repeat) cycles.set(slotId, at.repeat);
   pageStep = at.step - 1;
   s.setUi({ playing: true, playSlotId: slotId, queuedSlotId: null });
+  // the step lights show what's heard (D278); the output's latency can change between plays
+  syncDrawToOutput();
   let start = audioNow() + 0.06;
   if (project.countIn) {
     const beat = 60 / tempoAt(playingProject(project), from);

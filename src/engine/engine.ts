@@ -174,6 +174,29 @@ export function withScope<T>(scope: EngineScope, fn: () => T): T {
 const raw = () => Tone.getContext().rawContext as AudioContext;
 export const audioNow = () => Tone.getContext().currentTime;
 
+/**
+ * How long after the audio clock a sound is heard (D278): the context's own buffer plus the
+ * output's latency (built-in speakers a few ms, Bluetooth up to a quarter second). Anything that
+ * shows the music as it plays should follow `heardNow`, not `audioNow`.
+ */
+export function outputDelay(): number {
+  const ctx = Tone.getContext().rawContext as AudioContext;
+  const d = (ctx.baseLatency || 0) + (ctx.outputLatency || 0);
+  return Number.isFinite(d) ? Math.max(0, Math.min(0.5, d)) : 0;
+}
+
+/** The audio time of what's heard right now. */
+export const heardNow = () => audioNow() - outputDelay();
+
+/** Tone.Draw (the step lights, `onStep`) fires when a step is heard, not when the clock gets to
+ * it: its anticipation goes negative by the output delay. */
+export function syncDrawToOutput() {
+  const draw = Tone.getDraw();
+  const d = outputDelay();
+  draw.anticipation = 0.008 - d;
+  draw.expiration = Math.max(0.25, d + 0.2);
+}
+
 // ---------- graph ----------
 
 function ensureMaster() {

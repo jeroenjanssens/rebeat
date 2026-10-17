@@ -192,7 +192,8 @@ function usePlayhead() {
           if (t.playRow !== null) useTracker.setState({ playRow: null });
           return;
         }
-        const pos = clock.position();
+        // the row you hear, not the one the audio clock is at (D278: output latency)
+        const pos = clock.heardPosition();
         const ctx = trackerContext();
         const row =
           pos.pattern.id === ctx.pattern.id ? Math.floor(pos.progress * ctx.rows + 1e-6) : null;
