@@ -34,7 +34,8 @@ type W = {
 
 const midi = (page: Page, d: number[]) => page.evaluate((d) => (window as never as W).__midi(d), d);
 
-/** The first Notes track, selected, its notes cleared, recording on and playing. */
+/** The first Notes track, selected, its notes cleared, recording on and playing (looping its
+ * section). */
 async function recordOnNotesTrack(page: Page): Promise<string> {
   const id = await page.evaluate(() => {
     const s = (window as never as W).__rebeat.store.getState();
@@ -46,6 +47,9 @@ async function recordOnNotesTrack(page: Page): Promise<string> {
       }
     });
     s.setUi({ recording: true, selectedTrackId: t.id });
+    // the section stays put: in Song mode a slow machine could move on to the next one while the
+    // keys are held, and the notes before it would be in another pattern
+    (s as unknown as { setPlayMode(m: string): void }).setPlayMode("loop");
     return t.id;
   });
   await page.keyboard.press("Space");
@@ -79,7 +83,17 @@ test("the arpeggiator plays held keys one at a time and records each note (D151)
   await setStyle(page, { arp: { on: true, rate: "1/16", mode: "up" } });
   const trackId = await recordOnNotesTrack(page);
   for (const n of [60, 64, 67]) await midi(page, [0x90, n, 100]);
-  await page.waitForTimeout(1200);
+  // held until the arpeggio has gone round (a fixed wait got too few notes on a slow machine, or
+  // ran past the loop's end)
+  await expect
+    .poll(
+      async () => {
+        const st = await recorded(page, trackId);
+        return st.length >= 5 && new Set(st.flatMap((s) => s.notes.map((n) => n.pitch))).size;
+      },
+      { timeout: 10_000, intervals: [25] },
+    )
+    .toBe(3);
   for (const n of [60, 64, 67]) await midi(page, [0x80, n, 0]);
   await page.keyboard.press("Space");
   const steps = await recorded(page, trackId);

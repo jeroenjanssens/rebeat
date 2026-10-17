@@ -890,6 +890,9 @@ function startVoices(p: Pressed, kc: KeyChord, style: PlayStyle, which: number[]
         ? startNoteLater(out, n, vel, spread, hitAt, roleOf(n), p.source !== "tracker")
         : startNote(out, n, vel, {
             role: roleOf(n),
+            // a start time that has already passed (Auto's change, reached late on a busy
+            // machine) still records where it belongs, not where it came out
+            ...(at !== undefined ? { hitAt } : {}),
             ...(p.source === "tracker" ? { record: false } : {}),
           }),
     );
