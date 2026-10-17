@@ -16,7 +16,7 @@ export async function importXm(file: File): Promise<{ project: Project; notes: s
   const ids = await importItems(
     samples.map((s) => ({
       name: `${s.name.replace(/[/\\]/g, "-") || "sample"}.wav`,
-      data: encodeWav([s.pcm], XM_RATE, 16),
+      data: encodeWav(s.channels, XM_RATE, 16),
       folder,
     })),
   );

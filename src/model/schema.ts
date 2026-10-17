@@ -22,7 +22,7 @@ import {
 } from "./types";
 import { convertSynthKnobs, defaultSynth } from "../library/synthTrack";
 
-export const SCHEMA_VERSION = 14;
+export const SCHEMA_VERSION = 15;
 
 export interface SerializedProject {
   format: "rebeat-project";
@@ -166,6 +166,8 @@ const migrations: Record<number, Migration> = {
   12: (p) => p,
   // 13 → 14: the tracker (D268, D269): a note's column hint and the tracker's columns, optional
   13: (p) => p,
+  // 14 → 15: a note's bend can be an arpeggio (D284, imported modules); nothing to change
+  14: (p) => p,
 };
 
 /** The number of values of an effect knob a target names (0: smooth, or not an effect's). */

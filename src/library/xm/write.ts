@@ -26,7 +26,15 @@ export interface XmSpec {
   restart?: number;
   /** Each pattern: rows × channels cells (missing cells are empty). */
   patterns: Partial<XmCell>[][][];
-  instruments: { name?: string; keymap?: number[]; samples: XmSampleSpec[] }[];
+  instruments: {
+    name?: string;
+    keymap?: number[];
+    samples: XmSampleSpec[];
+    volumeEnvelope?: { points: [number, number][]; sustain?: number; loop?: [number, number] };
+    panEnvelope?: { points: [number, number][]; sustain?: number; loop?: [number, number] };
+    fadeout?: number;
+    vibrato?: { type: number; sweep: number; depth: number; rate: number };
+  }[];
 }
 
 export function writeXm(spec: XmSpec): ArrayBuffer {
@@ -80,9 +88,34 @@ export function writeXm(spec: XmSpec): ArrayBuffer {
     u16(inst.samples.length);
     u32(40);
     for (let i = 0; i < 96; i++) u8(inst.keymap?.[i] ?? 0);
-    for (let i = 0; i < 96; i++) u8(0); // envelopes
-    // points, sustain and loop points, envelope types, vibrato, fadeout, reserved: 18 bytes
-    for (let i = 0; i < 18; i++) u8(0);
+    const env = (e?: { points: [number, number][] }) => {
+      for (let i = 0; i < 12; i++) {
+        u16(e?.points[i]?.[0] ?? 0);
+        u16(e?.points[i]?.[1] ?? 0);
+      }
+    };
+    env(inst.volumeEnvelope);
+    env(inst.panEnvelope);
+    const ve = inst.volumeEnvelope;
+    const pe = inst.panEnvelope;
+    u8(ve?.points.length ?? 0);
+    u8(pe?.points.length ?? 0);
+    u8(ve?.sustain ?? 0);
+    u8(ve?.loop?.[0] ?? 0);
+    u8(ve?.loop?.[1] ?? 0);
+    u8(pe?.sustain ?? 0);
+    u8(pe?.loop?.[0] ?? 0);
+    u8(pe?.loop?.[1] ?? 0);
+    const type = (e?: { sustain?: number; loop?: unknown }) =>
+      e ? 1 | (e.sustain !== undefined ? 2 : 0) | (e.loop ? 4 : 0) : 0;
+    u8(type(ve));
+    u8(type(pe));
+    u8(inst.vibrato?.type ?? 0);
+    u8(inst.vibrato?.sweep ?? 0);
+    u8(inst.vibrato?.depth ?? 0);
+    u8(inst.vibrato?.rate ?? 0);
+    u16(inst.fadeout ?? 0);
+    u16(0);
     const encoded = inst.samples.map((s) => encode(s));
     inst.samples.forEach((s, i) => {
       const unit = s.bits === 16 ? 2 : 1;

@@ -109,3 +109,63 @@ test("loads an .xm module as a new project that plays", async ({ page }) => {
     .toBeGreaterThan(0.01);
   await page.keyboard.press("Space");
 });
+
+test("an imported arpeggio and vibrato bend the sample as they play (D284–D286)", async ({
+  page,
+}) => {
+  await openApp(page);
+  const rows = Array.from({ length: 16 }, () => [] as XmSpec["patterns"][0][0]);
+  // the lead: C-4 with an arpeggio to the octave (0C0) for four rows, then vibrato (48F)
+  rows[0][0] = { note: C4, instrument: 1, effect: 0, param: 0xc0 };
+  for (let r = 1; r < 4; r++) rows[r][0] = { effect: 0, param: 0xc0 };
+  rows[8][0] = { note: C4, instrument: 1, effect: 4, param: 0x8f };
+  for (let r = 9; r < 16; r++) rows[r][0] = { effect: 4, param: 0 };
+  const sine = Float32Array.from({ length: 32 }, (_, i) => Math.sin((2 * Math.PI * i) / 32));
+  const spec: XmSpec = {
+    name: "Bends",
+    channels: 1,
+    orders: [0],
+    patterns: [rows],
+    instruments: [
+      { name: "Lead", samples: [{ data: sine, loopStart: 0, loopLength: 32, loopType: 1 }] },
+    ],
+  };
+  await page.keyboard.press("ControlOrMeta+O");
+  const chooser = page.waitForEvent("filechooser");
+  await page.getByRole("button", { name: /Import .rebeat or .xm/ }).click();
+  await (
+    await chooser
+  ).setFiles({ name: "bends.xm", mimeType: "audio/x-xm", buffer: Buffer.from(writeXm(spec)) });
+  await expect(page.getByTestId("project-name")).toContainText("Bends");
+
+  // the pitch in 40 ms windows (two ticks at 125 BPM), cycles counted with hysteresis
+  const pitches = await page.evaluate(async () => {
+    const r = (window as Any).__rebeat;
+    const p = r.store.getState().project;
+    const b: AudioBuffer = await r.renderProject(p, { soloTrackId: p.tracks[0].id, tail: 0 });
+    const x = b.getChannelData(0);
+    const win = Math.round(b.sampleRate * 0.02);
+    const out: number[] = [];
+    for (let at = 0; at + win <= x.length; at += win) {
+      let n = 0;
+      let up = false;
+      for (let i = at; i < at + win; i++) {
+        if (!up && x[i] > 0.05) {
+          up = true;
+          n++;
+        } else if (up && x[i] < -0.05) up = false;
+      }
+      out.push(n / 0.02);
+    }
+    return out;
+  });
+  // a row is 120 ms: the arpeggio in the first four rows (0–480 ms), the vibrato from 960 ms
+  const arp = pitches.slice(1, 23);
+  expect(arp.some((f) => f > 450)).toBe(true);
+  expect(arp.some((f) => f > 200 && f < 320)).toBe(true);
+  const plain = pitches.slice(28, 46);
+  expect(plain.every((f) => f > 200 && f < 320)).toBe(true);
+  const vib = pitches.slice(52, 90);
+  // depth F: about a semitone either way (247–277 Hz)
+  expect(Math.max(...vib) - Math.min(...vib)).toBeGreaterThan(20);
+});

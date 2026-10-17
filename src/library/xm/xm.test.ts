@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { convertXm, renderSample, XM_RATE } from "./convert";
+import { envAt, releaseSeconds } from "./envelope";
+import { bendAt } from "../../model/bend";
 import { parseXm, XmError } from "./parse";
 import { writeXm, type XmSpec } from "./write";
 
@@ -28,8 +30,8 @@ function song(): XmSpec {
   a[2][0] = { note: C4, instrument: 1, effect: 0x0e, param: 0x94 }; // retrigger every 4 ticks
   a[6][0] = { note: C4 + 2, instrument: 1, effect: 0x0e, param: 0xd3 }; // delay 3 ticks
   a[10][0] = { note: C4, instrument: 1, effect: 0x0e, param: 0xc3 }; // cut after 3 ticks
-  a[12][2] = { note: C4 + 5, effect: 0x03 }; // a glide, the channel's instrument
-  a[14][1] = { effect: 0x00, param: 0x37 }; // an arpeggio: not played
+  a[12][2] = { note: C4 + 5, effect: 0x03, param: 0x10 }; // a glide, a semitone a tick
+  a[14][1] = { effect: 0x07, param: 0x37 }; // tremolo: not played
   const b = rows(16);
   b[0][0] = { note: C4, instrument: 1, effect: 0x0f, param: 3 }; // speed 3: twice as fast
   b[7][0] = { effect: 0x0d, param: 0 }; // pattern break after row 7
@@ -140,11 +142,12 @@ describe("a module as a project (D280–D283)", () => {
     expect(at0.find((n) => n.pitch === 60)!.length).toBe(8);
     expect(at0.find((n) => n.pitch === 60)!.velocity).toBeCloseTo(0.5);
     expect(at0.find((n) => n.pitch === 67)!.length).toBe(12);
-    expect(steps[12].notes![0]).toMatchObject({ pitch: 65, slide: true });
+    // the glide comes in from G, two semitones above
+    expect(steps[12].notes![0]).toMatchObject({ pitch: 65, bend: { shape: "scoop", amount: 2 } });
   });
 
   it("lists what it doesn't play", () => {
-    expect(notes.join(" ")).toMatch(/arpeggios/);
+    expect(notes.join(" ")).toMatch(/tremolo/);
   });
 });
 
@@ -158,7 +161,7 @@ describe("rendering samples (D283)", () => {
   const s = parseXm(writeXm(song())).instruments[1].samples[0];
 
   it("tunes a sample so C-4 plays it at FT2's 8363 Hz, and plays its loop out", () => {
-    const out = renderSample(s, 60, 3);
+    const [out] = renderSample(s, 60, 3);
     expect(out.length).toBe(XM_RATE * 3);
     // a 32-frame cycle at 8363 Hz is 261 Hz: middle C
     expect(pitchOf(out)).toBeGreaterThan(255);
@@ -166,13 +169,156 @@ describe("rendering samples (D283)", () => {
   });
 
   it("renders it at C-5's pitch for a zone rooted on C-5 (the sampler plays it as it is there)", () => {
-    const f = pitchOf(renderSample(s, 72, 2));
+    const f = pitchOf(renderSample(s, 72, 2)[0]);
     expect(f).toBeGreaterThan(510);
     expect(f).toBeLessThan(535);
   });
 
   it("follows the relative note", () => {
-    const up = renderSample({ ...s, relativeNote: 12 }, 60, 2);
+    const [up] = renderSample({ ...s, relativeNote: 12 }, 60, 2);
     expect(pitchOf(up)).toBeGreaterThan(510);
+  });
+});
+
+/** One channel, one looped instrument (and its envelopes), the rows given. */
+function one(
+  cells: Record<number, XmSpec["patterns"][0][0][0]>,
+  inst: Partial<XmSpec["instruments"][0]> = {},
+): XmSpec {
+  const p = rows(16);
+  for (const [r, c] of Object.entries(cells)) p[Number(r)][0] = c;
+  return {
+    channels: 1,
+    orders: [0],
+    patterns: [p],
+    instruments: [
+      {
+        name: "Lead",
+        samples: [{ data: cycle(32), loopStart: 0, loopLength: 32, loopType: 1 }],
+        ...inst,
+      },
+    ],
+  };
+}
+const convert = (spec: XmSpec) => convertXm(parseXm(writeXm(spec)));
+const firstNotes = (r: ReturnType<typeof convert>) => {
+  const p = r.project;
+  return p.patterns[p.slots[0].patternId].lanes[p.tracks[0].id].steps;
+};
+
+describe("FT2's effects (D284–D289)", () => {
+  it("plays an arpeggio as an Arp bend on the note: no retrigger, a step a tick", () => {
+    const r = convert(
+      one({
+        0: { note: C4, instrument: 1, effect: 0, param: 0x37 },
+        1: { effect: 0, param: 0x37 },
+        2: { effect: 0, param: 0x37 },
+        3: { effect: 0, param: 0x37 },
+        8: { note: 97 },
+      }),
+    );
+    const steps = firstNotes(r);
+    expect(steps.flatMap((s) => s.notes ?? []).length).toBe(1);
+    const b = steps[0].notes![0].bend!;
+    expect(b).toMatchObject({ shape: "arp", amount: 3, second: 7, rate: 24, time: 1, unit: "q" });
+    // at 125 BPM a tick is 20 ms: C, D#, G, C…, then the note itself after the four rows
+    const secPerQ = 60 / 125;
+    expect([0.01, 0.03, 0.05, 0.07].map((t) => bendAt(b, t, null, secPerQ))).toEqual([0, 3, 7, 0]);
+    expect(bendAt(b, 0.5, null, secPerQ)).toBe(0);
+  });
+
+  it("plays vibrato as a Shake from its row, slides as a Rise by what they add up to", () => {
+    const vib = firstNotes(
+      convert(one({ 0: { note: C4, instrument: 1 }, 2: { effect: 4, param: 0x48 } })),
+    );
+    expect(vib[0].notes![0].bend).toMatchObject({
+      shape: "shake",
+      amount: 0.5,
+      rate: 1.5,
+      delay: 0.5,
+    });
+    const up = firstNotes(
+      convert(one({ 0: { note: C4, instrument: 1, effect: 1, param: 0x10 }, 1: { effect: 1 } })),
+    );
+    // 16/16 of a semitone on each of 5 ticks, two rows (01 repeats the last speed)
+    expect(up[0].notes![0].bend).toMatchObject({ shape: "rise", amount: 10 });
+  });
+
+  it("keeps the larger of two pitch effects, and says so", () => {
+    const r = convert(
+      one({
+        0: { note: C4, instrument: 1, effect: 4, param: 0x42 },
+        1: { effect: 2, param: 0x20 },
+      }),
+    );
+    expect(firstNotes(r)[0].notes![0].bend).toMatchObject({ shape: "rise", amount: -10 });
+    expect(r.notes.join(" ")).toMatch(/two pitch effects/);
+  });
+
+  it("plays the volume envelope into the sample, a zone per octave, the release from the fadeout", () => {
+    const envelope = {
+      points: [
+        [0, 64],
+        [10, 32],
+        [20, 32],
+      ] as [number, number][],
+      sustain: 1,
+    };
+    const r = convert(
+      one(
+        { 0: { note: C4, instrument: 1 }, 4: { note: 97 }, 8: { note: C4 + 12, instrument: 1 } },
+        { volumeEnvelope: envelope, fadeout: 1024 },
+      ),
+    );
+    const t = r.project.tracks[0];
+    expect(t.sound?.source).toBe("multi");
+    expect(t.sound?.zones?.map((z) => z.note)).toEqual([60, 72]);
+    // 32768 / 1024 = 32 ticks of 20 ms after key-off
+    expect(
+      releaseSeconds(
+        parseXm(writeXm(one({}, { volumeEnvelope: envelope, fadeout: 1024 }))).instruments[0],
+        0.02,
+      ),
+    ).toBeCloseTo(0.64);
+    const [ch] = r.samples[0].channels;
+    const level = (from: number) => Math.max(...ch.subarray(from, from + 400).map(Math.abs));
+    // full at the start, half from the sustain point on (tick 10 = 0.2 s)
+    expect(level(0)).toBeGreaterThan(0.9);
+    expect(level(Math.round(0.4 * XM_RATE))).toBeCloseTo(0.5, 1);
+    expect(envAt(envelope, 5)).toBe(48);
+  });
+
+  it("makes a panning envelope stereo", () => {
+    const pan = {
+      points: [
+        [0, 0],
+        [1, 0],
+      ] as [number, number][],
+    };
+    const r = convert(one({ 0: { note: C4, instrument: 1 } }, { panEnvelope: pan }));
+    const [l, rr] = r.samples[0].channels;
+    expect(rr).toBeDefined();
+    expect(Math.max(...l.subarray(0, 400).map(Math.abs))).toBeGreaterThan(0.9);
+    expect(Math.max(...rr.subarray(0, 400).map(Math.abs))).toBe(0);
+  });
+
+  it("turns panning and volume slides into automation on the instrument's track", () => {
+    const r = convert(
+      one({
+        0: { note: C4, instrument: 1, volume: 0x50, effect: 8, param: 0x00 },
+        2: { effect: 0x0a, param: 0x08 },
+        6: { note: C4, instrument: 1, volume: 0x50 },
+      }),
+    );
+    const id = r.project.tracks[0].id;
+    const lanes = r.project.automation ?? [];
+    const pan = lanes.find((l) => l.target === `track:${id}:mix.pan`)!;
+    const level = lanes.find((l) => l.target === `track:${id}:volume`)!;
+    expect(pan.points[0]).toMatchObject({ at: 0, value: 0 });
+    // A08: 8 down on each of 5 ticks over row 2, from 64: 24 / 64 → a fader at 0.8 × √0.375
+    const ramp = level.points.filter((p) => p.at > 0.4 && p.at < 0.8);
+    expect(ramp.map((p) => Math.round(p.value * 100) / 100)).toEqual([0.8, 0.49]);
+    // the next note starts at 0 dB again
+    expect(level.points.find((p) => Math.abs(p.at - 1.5) < 1e-6)?.value).toBe(0.8);
   });
 });

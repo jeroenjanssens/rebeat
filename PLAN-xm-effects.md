@@ -1,6 +1,8 @@
 # Plan: FT2's envelopes, fadeouts, vibrato, slides, arpeggios and panning in imported modules
 
-Status: proposal, 2026-10-17. Nothing built. Decisions D284–D290 are proposals with defaults; §6
+Status: agreed (Jeroen: "go", every proposed default) and built 2026-10-17 on the `tracker`
+branch. One change from this plan: arpeggios became an Arp bend, not notes per tick (D284 in
+PLAN.md says why). Decisions D284–D290 are proposals with defaults; §6
 lists what's Jeroen's to settle. Builds on the `.xm` import (D279–D283).
 
 The idea in one line: **write each FT2 effect into what Rebeat already has where it fits (notes,

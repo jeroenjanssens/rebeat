@@ -390,6 +390,37 @@ describe("migration 12 → 13 (D257)", () => {
   });
 });
 
+describe("migration 14 → 15 (D284)", () => {
+  it("loads a version 14 project unchanged, and keeps an Arp bend", () => {
+    const p = demoProject();
+    const v14 = { ...JSON.parse(JSON.stringify(serializeProject(p))), schemaVersion: 14 };
+    expect(deserializeProject(v14)).toEqual(p);
+    const data = JSON.parse(JSON.stringify(serializeProject(p)));
+    const track = p.tracks.find((t) => t.mode === "notes")!;
+    const lane = Object.values(data.project.patterns as Record<string, Pattern>)[0].lanes[track.id];
+    lane.steps[0].on = true;
+    lane.steps[0].notes = [
+      {
+        pitch: 60,
+        length: 4,
+        velocity: 0.8,
+        bend: { shape: "arp", amount: 3, second: 7, rate: 24, time: 1, delay: 0, unit: "q" },
+      },
+    ];
+    const d = deserializeProject(data);
+    const bend = Object.values(d.patterns)[0].lanes[track.id].steps[0].notes![0].bend;
+    expect(bend).toEqual({
+      shape: "arp",
+      amount: 3,
+      second: 7,
+      rate: 24,
+      time: 1,
+      delay: 0,
+      unit: "q",
+    });
+  });
+});
+
 describe("migration 13 → 14 (D268, D269)", () => {
   it("loads a version 13 project unchanged", () => {
     const p = demoProject();

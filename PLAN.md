@@ -882,7 +882,10 @@ theme (D267). What's built:
 Since then (2026-10-17): visuals follow what's heard (D278: the tracker's playhead and the step
 lights wait for the output latency), and **Fast Tracker 2 modules load** (D279–D283,
 `library/xm/`: `parse.ts` reads `.xm`, `convert.ts` makes the project and renders the samples,
-`importXm.ts` puts them in the library; Import .rebeat or .xm in the project browser).
+`importXm.ts` puts them in the library; Import .rebeat or .xm in the project browser), with
+FT2's effects (D284–D290, `PLAN-xm-effects.md`): bends on samples, arpeggios as an Arp bend,
+vibrato and slides as bends, envelopes played into the samples with the release from the fadeout,
+panning and volume changes as automation; schema 15.
 
 Deviations from the plan: a selection spans whole tracks (not single fields); Insert and
 Backspace move a track's steps by one of its own steps; the rows between a Hits track's steps
@@ -1918,6 +1921,36 @@ Wavetables and physical models (§0.6s, `PLAN-wavetable-physical.md`):
   (forward or ping-pong) played out for the longest note (2–12 s) with a short fade at its end; a
   note's length ends it, as a key-off would. Alt: loop points in the sample settings (Rebeat's
   samples don't loop yet).
+- **D284 — Arpeggios as an Arp bend** (schema 15). The plan had notes per tick; a step holds one
+  note per pitch, and at speed 6 an arpeggio plays each of its pitches twice a row, so ticks were
+  lost, and every tick restarted the sample and its baked envelope. FT2 only changes the pitch of
+  the sounding note: a bend shape `arp` (`amount` = x, `second` = y, `rate` = ticks per quarter
+  note, over `time` from `delay`) does that, on samples and synths (`bendAt`). A note with two
+  stretches of arpeggio starts again at the second. The Bend card doesn't offer it. Alt: notes per
+  tick (lost ticks, retriggers).
+- **D285 — Bends on samples.** The sampler voice moves its source's playback rate along `bendAt`
+  (a curve sampled every 5 ms; Fall and Doit from the release), for played and held notes, so the
+  Bend card works on samples and multi-samples too (`model/tracks.ts: bendable`). The source is
+  found between Tone's attack and release (its `triggerAttackRelease` forgets it). Hits of a
+  sample, smplr and SoundFonts don't bend. Alt: a sampler of our own.
+- **D286 — Vibrato and slides as bends.** 4xy/6xy/volume column Sx, Vx and an instrument's vibrato
+  a Shake (depth y/16 semitone, speed x/64 of a cycle a tick), slides a Rise by their sum (x/16 a
+  tick from the second tick; fine E1x/E2x, extra fine X1x/X2x), a tone portamento a Scoop from the
+  note before; one bend a note, the larger movement wins and the toast counts the rest. Alt:
+  splitting the note.
+- **D287 — Envelopes played into the samples.** The volume envelope up to its sustain point (and
+  its loop) at the song's start tempo, a panning envelope as stereo; instruments with an envelope
+  get a zone per octave they play; the release is the rest of the envelope or the fadeout
+  (32768 / fadeout ticks), whichever ends first, and an instant release without an envelope (FT2
+  cuts the note). Alt: a per-note volume curve in the engine.
+- **D288 — Panning as automation.** 8xx, E8x, the volume column's Px set the pan, Pxy and the
+  column's slides ramp it, a new note takes its sample's panning; a pan lane on the instrument's
+  track, only when it has such changes. Alt: a track per instrument and pan.
+- **D289 — Volume slides as level automation.** Axy, 5xy, 6xy, EAx, EBx, the column's slides and a
+  volume set during a note: a level lane relative to the note's velocity (0 dB at each new note,
+  the fader at 0.8 × √(volume ratio)). Alt: per-note gain curves (schema change).
+- **D290 — Tests.** Each effect has a unit test on the converter; the e2e test renders an imported
+  arpeggio and vibrato and measures the pitch tick by tick.
 - **D35 — Build order.** ✅ The phases in §7, starting with the mockup (Phase M), each ending with something you can play with.
 
 ---

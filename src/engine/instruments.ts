@@ -96,8 +96,9 @@ export function setBendTempo(s: number) {
   secPerQ = s;
 }
 
-/** How often a sample's bend curve is sampled (seconds), and its longest stretch. */
-const BEND_STEP = 0.01;
+/** How often a sample's bend curve is sampled (seconds: an arpeggio's tick is 20 ms at 125 BPM),
+ * and its longest stretch. */
+const BEND_STEP = 0.005;
 const BEND_MAX = 30;
 
 type ActiveSources = Map<number, Tone.ToneBufferSource[]>;
@@ -172,10 +173,13 @@ function samplerVoice(src: Sound, dest: Tone.InputNode): InstrumentVoice {
         const length = n.length * step * 0.95;
         // a Fall or a Doit sounds on after the note (D221)
         const tail = n.bend ? releaseTail(n.bend, secPerQ) : 0;
-        sampler.triggerAttackRelease(midiToHz(n.pitch), length + tail, time, n.velocity);
+        // attack and release apart: the release forgets the note's sources, and a bend needs its
+        // source (Tone's triggerAttackRelease does just this)
+        sampler.triggerAttack(midiToHz(n.pitch), time, n.velocity);
         const src = n.bend && newestSource(sampler, n.pitch);
         if (src && n.bend)
           bendRate(src, n.bend, time, 0, length + tail, atRelease(n.bend) ? length : null);
+        sampler.triggerRelease(midiToHz(n.pitch), time + length + tail);
       }
     },
     hold(pitch, velocity, time, bend) {

@@ -3,7 +3,9 @@
  * of the note. Pure, so the synth's worklet, the tests and the piano roll's drawing share it.
  */
 import { easeAt, inShape, outShape, type Ease } from "./ease";
-import { BEND_SHAPES, type BendShape, type NoteBend } from "./types";
+import { BEND_SHAPES, type NoteBend, type NoteBendShape } from "./types";
+
+const NOTE_BEND_SHAPES: readonly NoteBendShape[] = [...BEND_SHAPES, "arp"];
 
 /** The bend's movement from 0 to 1 over its time, shaped by its ease. */
 export function bendEase(e: Ease | undefined, t: number): number {
@@ -42,6 +44,14 @@ export function bendAt(b: NoteBend, t: number, released: number | null, secPerQ:
     return a * bendEase(b.ease, (t - released - delay) / time);
   }
   if (b.shape === "scoop") return t < delay ? a : a * (1 - bendEase(b.ease, (t - delay) / time));
+  if (b.shape === "arp") {
+    // FT2's arpeggio (D284): the note, +amount, +second, one step each tick, for its time
+    if (t < delay || t >= delay + time) return 0;
+    const rate = b.rate ?? 50;
+    const hz = b.unit === "q" ? rate / secPerQ : rate;
+    const i = Math.floor((t - delay) * hz + 1e-9) % 3;
+    return i === 0 ? 0 : i === 1 ? a : (b.second ?? 0);
+  }
   if (t < delay) return 0;
   const u = (t - delay) / time;
   if (b.shape === "dip") {
@@ -61,13 +71,14 @@ export function bendAt(b: NoteBend, t: number, released: number | null, secPerQ:
 /** A saved bend, checked (D224): undefined when it isn't one. */
 export function sanitizeBend(v: unknown): NoteBend | undefined {
   const b = v as Partial<NoteBend> | null;
-  if (!b || typeof b !== "object" || !BEND_SHAPES.includes(b.shape as BendShape)) return undefined;
+  if (!b || typeof b !== "object" || !NOTE_BEND_SHAPES.includes(b.shape as NoteBendShape))
+    return undefined;
   const num = (x: unknown) => (typeof x === "number" && Number.isFinite(x) ? x : NaN);
   const amount = num(b.amount);
   const time = num(b.time);
   if (Number.isNaN(amount) || Number.isNaN(time)) return undefined;
   const out: NoteBend = {
-    shape: b.shape as BendShape,
+    shape: b.shape as NoteBendShape,
     amount: Math.max(-24, Math.min(24, amount)),
     time: Math.max(0.001, time),
     delay: Math.max(0, num(b.delay) || 0),
@@ -75,10 +86,15 @@ export function sanitizeBend(v: unknown): NoteBend | undefined {
   };
   if (b.ease && typeof b.ease === "object" && typeof b.ease.type === "string") out.ease = b.ease;
   if (b.shape === "shake") out.rate = Math.max(0.1, Math.min(20, num(b.rate) || 5.5));
+  if (b.shape === "arp") {
+    out.rate = Math.max(0.1, Math.min(400, num(b.rate) || 50));
+    out.second = Math.max(-24, Math.min(24, num(b.second) || 0));
+  }
   return out;
 }
 
-const SHAPE_NAME: Record<BendShape, string> = {
+const SHAPE_NAME: Record<NoteBendShape, string> = {
+  arp: "Arp",
   scoop: "Scoop",
   fall: "Fall",
   doit: "Doit",
@@ -99,5 +115,6 @@ export function describeBend(b: NoteBend): string {
         ? `${Math.round(v * 1000)} ms`
         : `${Math.round(v * 10) / 10} s`;
   const delay = b.delay > 0 ? ` after ${t(b.delay)}` : "";
+  if (b.shape === "arp") return `Arp 0 +${b.amount} +${b.second ?? 0}, ${t(b.time)}${delay}`;
   return `${SHAPE_NAME[b.shape]} ${amount}, ${t(b.time)}${delay}`;
 }

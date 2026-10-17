@@ -35,14 +35,24 @@ export interface XmSample {
   data: Float32Array;
 }
 
+/** An envelope: points of (tick, value 0–64), an optional sustain point and loop (indexes). */
+export interface XmEnvelope {
+  points: [number, number][];
+  sustain?: number;
+  loop?: [number, number];
+}
+
 export interface XmInstrument {
   name: string;
   /** For each of the 96 notes, the sample it plays (index into `samples`). */
   keymap: number[];
   samples: XmSample[];
+  /** How much the volume falls per tick after key-off, of 32768 (0: it doesn't). */
   fadeout: number;
-  hasVolumeEnvelope: boolean;
-  vibrato: boolean;
+  volumeEnvelope?: XmEnvelope;
+  panEnvelope?: XmEnvelope;
+  /** The instrument's own vibrato: type, sweep (ticks to full depth), depth and rate. */
+  vibrato?: { type: number; sweep: number; depth: number; rate: number };
 }
 
 export interface XmModule {
@@ -144,8 +154,6 @@ export function parseXm(buffer: ArrayBuffer): XmModule {
       keymap: new Array(96).fill(0),
       samples: [],
       fadeout: 0,
-      hasVolumeEnvelope: false,
-      vibrato: false,
     };
     if (sampleCount === 0) {
       at = start + size;
@@ -155,9 +163,30 @@ export function parseXm(buffer: ArrayBuffer): XmModule {
     need(at, 243);
     const sampleHeaderSize = v.getUint32(at + 29, true) || 40;
     inst.keymap = [...bytes.subarray(at + 33, at + 33 + 96)];
-    const volType = bytes[at + 233];
-    inst.hasVolumeEnvelope = !!(volType & 1);
-    inst.vibrato = bytes[at + 237] > 0 || bytes[at + 238] > 0;
+    // the envelopes: 12 points each, then their counts, sustain and loop points, and types
+    const envelope = (points: number, count: number, sus: number, loop: number, type: number) => {
+      if (!(type & 1) || count < 1) return undefined;
+      const n = Math.min(12, count);
+      const env: XmEnvelope = {
+        points: Array.from({ length: n }, (_, i) => [
+          v.getUint16(points + 4 * i, true),
+          Math.min(64, v.getUint16(points + 4 * i + 2, true)),
+        ]),
+      };
+      if (type & 2 && bytes[sus] < n) env.sustain = bytes[sus];
+      if (type & 4 && bytes[loop] < n && bytes[loop + 1] < n && bytes[loop] <= bytes[loop + 1])
+        env.loop = [bytes[loop], bytes[loop + 1]];
+      return env;
+    };
+    inst.volumeEnvelope = envelope(at + 129, bytes[at + 225], at + 227, at + 228, bytes[at + 233]);
+    inst.panEnvelope = envelope(at + 177, bytes[at + 226], at + 230, at + 231, bytes[at + 234]);
+    if (bytes[at + 237] && bytes[at + 238])
+      inst.vibrato = {
+        type: bytes[at + 235],
+        sweep: bytes[at + 236],
+        depth: bytes[at + 237],
+        rate: bytes[at + 238],
+      };
     inst.fadeout = v.getUint16(at + 239, true);
     at = start + size;
     const headers: (Omit<XmSample, "data" | "length" | "loopStart" | "loopLength"> & {

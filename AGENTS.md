@@ -245,8 +245,9 @@ src/
                        - audition.ts (previews), online kits (onlineKits, onlineImport, sources)
                        - synths.ts (91 factory synths), instruments.ts (catalog), userInstruments.ts
                          (Your sounds, SoundFonts, multi-samples, preset copies)
-                       - xm/ (D279–D283: Fast Tracker 2 modules: parse.ts, convert.ts (a track per
-                         instrument, samples rendered and tuned), write.ts (for tests), importXm.ts)
+                       - xm/ (D279–D290: Fast Tracker 2 modules: parse.ts, convert.ts (a track per
+                         instrument, samples rendered and tuned, effects as bends and automation),
+                         envelope.ts, write.ts (for tests), importXm.ts)
                        - synthTrack.ts (a track's synth: patch, macros, editPatch, soundDefs), libraryEdit.ts
                          (editing a library synth without a track), synthFile.ts + rbsynth.ts
                          (.rbsynth files), downloads, drop, sort
@@ -386,11 +387,11 @@ fill?: "last" | "all", steps? }`. The settings are the section's own (D183): its
   `Project.timelineFolded?` are the timeline's folds (D233).
 - `Note.bend?` (D220, schema 12): a note's own bend (`NoteBend`: shape, amount, time, delay, unit
   "s" | "q", ease, rate); `model/bend.ts` says where it is at a moment.
-- **Schema**: `model/schema.ts`, currently `SCHEMA_VERSION = 14` (8: MIDI mappings' `mode`; 9: `Note.offset`, a
+- **Schema**: `model/schema.ts`, currently `SCHEMA_VERSION = 15` (8: MIDI mappings' `mode`; 9: `Note.offset`, a
   note's own start within its step, −0.5..0.5; 10: sections' settings, tempo changes, automation,
   regions, all optional; 11: eases per point, `hold` became an ease out of None; 12: `Note.bend`,
   folded lanes, and lanes on stepped effect knobs turned into points on their bands; 13: synth
-  patches version 3, upgraded when read; 14: the tracker's `Note.col` and `Project.tracker`).
+  patches version 3, upgraded when read; 14: the tracker's `Note.col` and `Project.tracker`; 15: the Arp bend, D284).
   - Every change to the saved shape bumps the version and adds a migration plus a test.
   - `migrate` + `normalizeProject` run on every load.
   - Migration 5 → 6 converted the old SOUND knobs on synth tracks into patch edits (it changes
@@ -955,6 +956,7 @@ likely to need:
 | The synth editor's piano follows the device        | D262                      |
 | Scopes in the top bar (master, keys, every track)  | D263–D264                 |
 | The tracker: look, columns, commands, keys, rows   | D265–D277                 |
+| Heard time; loading FT2 modules and their effects  | D278–D290                 |
 
 Feature batches and their acceptance criteria are in PLAN.md §0.6b–§0.6h. Known limitations are
 in §0.7.

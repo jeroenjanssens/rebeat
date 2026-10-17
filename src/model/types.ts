@@ -30,13 +30,17 @@ export interface Step {
 /** The shapes a note's bend can take (D220). */
 export const BEND_SHAPES = ["scoop", "fall", "doit", "dip", "rise", "next", "shake"] as const;
 export type BendShape = (typeof BEND_SHAPES)[number];
+/** A note's bend can also be an arpeggio (D284, schema 15): the note, +`amount`, +`second`, a step
+ * each `rate` (per second, or per quarter note), FT2's 0xy. Imports write it; the Bend card
+ * doesn't offer it. */
+export type NoteBendShape = BendShape | "arp";
 
 /**
  * A note's own bend (D220, schema 12): a pitch movement that starts with the note (or, for a
  * Fall or a Doit, with its release) and ends with it. Synths and samples (D225, D285).
  */
 export interface NoteBend {
-  shape: BendShape;
+  shape: NoteBendShape;
   /** Semitones, −24..24; the sign is the direction (a Scoop of −2 starts 2 below). */
   amount: number;
   /** How long the movement takes, and how long the note waits before it starts. */
@@ -46,8 +50,10 @@ export interface NoteBend {
   unit: "s" | "q";
   /** The movement's ease (Linear when absent). */
   ease?: Ease;
-  /** Shake: the vibrato's rate, in Hz ("s") or cycles per quarter note ("q"). */
+  /** Shake: the vibrato's rate, in Hz ("s") or cycles per quarter note ("q"); Arp: its steps. */
   rate?: number;
+  /** Arp: the third note, semitones above the note. */
+  second?: number;
 }
 
 export interface Note {
