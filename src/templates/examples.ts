@@ -9,6 +9,7 @@ import { EXAMPLE_PREFIX } from "./example-id";
 import { longWayHome } from "./arrangement";
 import { sweepsAndBends } from "./sweeps";
 import { woodWireAndGlass } from "./woodWireGlass";
+import { pixelPulse } from "./pixelPulse";
 import { gravelRoad } from "./gravelRoad";
 import { makeEffect } from "../model/effects";
 import type { Project } from "../model/project";
@@ -427,6 +428,13 @@ export const EXAMPLES: Example[] = [
     artist: "Rebeat demo · wavetables and physical models",
     year: 2026,
     create: woodWireAndGlass,
+  },
+  {
+    id: "pixel-pulse",
+    name: "Pixel Pulse",
+    artist: "Rebeat demo · arps, bends on samples, pan and level",
+    year: 2026,
+    create: pixelPulse,
   },
   {
     id: "gravel-road",

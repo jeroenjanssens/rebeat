@@ -10,6 +10,7 @@ import {
   STEP_SIZE_QUARTERS,
   type Lane,
   type Note,
+  type NoteBend,
   type Pattern,
   type Step,
   type Track,
@@ -179,7 +180,7 @@ export function soundingAt(placed: PlacedRowNote[], col: number, row: number) {
 // ---------- effect commands (D271) ----------
 
 /** The effect commands, in the order they fill a step's effect columns. */
-export const FX_ORDER = ["3", "9", "E", "N", "R", "Y", "I", "S"] as const;
+export const FX_ORDER = ["0", "1", "2", "3", "4", "9", "E", "N", "R", "Y", "I", "S", "W"] as const;
 export type FxLetter = (typeof FX_ORDER)[number];
 
 /** The lock a sample track's `9xx` writes (FT2's sample offset). */
@@ -198,10 +199,39 @@ const hex1 = (n: number) =>
 /** Whether `9xx` (sample start) applies to a track: one-shot hits of a sample. */
 export const hasSampleStart = (track: Track) => player(track) === "drum";
 
-/** A step's effect commands (fields that aren't at their default), e.g. `["N90", "R03"]`. */
-export function stepFx(step: Step, track: Track): string[] {
+/** The bend shapes `Wxy` names by x (1–5); the others have commands of their own. */
+const W_SHAPES = ["scoop", "fall", "doit", "dip", "next"] as const;
+
+/**
+ * A note's bend as FT2's command (D293): an Arp `0xy`, a Rise `1xx` up or `2xx` down by xx
+ * semitones, a Shake `4xy` (speed and depth as FT2's vibrato, at 6 ticks a row), the other
+ * shapes `Wxy` (x the shape, y the semitones). `q`: quarter notes per step.
+ */
+export function bendCode(b: NoteBend, q: number): string {
+  if (b.shape === "arp") return `0${hex1(b.amount)}${hex1(b.second ?? 0)}`;
+  if (b.shape === "rise") return `${b.amount >= 0 ? 1 : 2}${hex2(Math.abs(b.amount))}`;
+  if (b.shape === "shake") {
+    // cycles per quarter note (Hz at 120 BPM when timed in seconds) as FT2's speed
+    const perQ = b.unit === "q" ? (b.rate ?? 5.5) : (b.rate ?? 5.5) * 0.5;
+    const x = Math.max(1, Math.min(15, Math.round((perQ * q * 64) / 6)));
+    return `4${hex1(x)}${hex1(Math.max(1, Math.min(15, b.amount * 16)))}`;
+  }
+  const i = W_SHAPES.indexOf(b.shape as (typeof W_SHAPES)[number]);
+  return `W${hex1(i + 1)}${hex1(Math.min(15, Math.abs(b.amount)))}`;
+}
+
+/** The letter of a bend's command. */
+const bendLetter = (b: NoteBend) => bendCode(b, 0.25)[0];
+
+/** A step's effect commands (fields that aren't at their default), e.g. `["N90", "R03"]`. `q`:
+ * quarter notes per step (for bends). */
+export function stepFx(step: Step, track: Track, q = 0.25): string[] {
   const out: string[] = [];
+  const bent = track.mode === "notes" ? step.notes?.find((n) => n.bend)?.bend : undefined;
+  const bend = bent ? bendCode(bent, q) : null;
+  if (bend && bend[0] <= "2") out.push(bend);
   if (track.mode === "notes" && step.notes?.some((n) => n.slide)) out.push("300");
+  if (bend?.[0] === "4") out.push(bend);
   const start = step.locks?.[SAMPLE_START];
   if (hasSampleStart(track) && start !== undefined) out.push(`9${hex2(start * 255)}`);
   if (track.mode === "hits" && step.gate < 1 - EPS)
@@ -211,6 +241,7 @@ export function stepFx(step: Step, track: Track): string[] {
   if (step.probability < 1 - EPS) out.push(`Y${hex2(step.probability * 255)}`);
   if (step.condition) out.push(conditionCode(step.condition));
   if (step.accent) out.push("S01");
+  if (bend?.[0] === "W") out.push(bend);
   return out;
 }
 
@@ -223,7 +254,12 @@ function conditionCode(c: string): string {
 
 /** What each command means, in words (the status line and the guide). */
 export const FX_NAMES: Record<FxLetter, string> = {
+  "0": "arpeggio: the note, +x, +y, a step each tick",
+  "1": "rise: up xx semitones over the note",
+  "2": "rise: down xx semitones over the note",
   "3": "glide into this note",
+  "4": "vibrato: speed x, depth y",
+  W: "a bend: x 1 Scoop, 2 Fall, 3 Doit, 4 Dip, 5 Next; y semitones",
   "9": "sample start",
   E: "cut (ECx) or delay (EDx)",
   N: "nudge",
@@ -235,10 +271,6 @@ export const FX_NAMES: Record<FxLetter, string> = {
 
 /** Why an FT2 command that Rebeat doesn't have isn't accepted, and what to use instead. */
 const NOT_HERE: Record<string, string> = {
-  "0": "Arpeggios are the track's own: the arpeggiator in the Inspector",
-  "1": "Bends come later: use the Bend card for now",
-  "2": "Bends come later: use the Bend card for now",
-  "4": "Bends come later: use the Bend card for now",
   A: "Rebeat has no volume slides: automate the track's level on the timeline",
   B: "The song's order is the sections: the song strip or the timeline",
   C: "The volume is the column next to the note",
@@ -246,7 +278,6 @@ const NOT_HERE: Record<string, string> = {
   F: "Tempo changes live on the timeline's Tempo lane",
   G: "The master level is in the mixer",
   P: "Panning is the track's own: the mixer, or a lock column on Pan",
-  W: "Bends come later: use the Bend card for now",
 };
 
 export function fxLetter(cmd: string): FxLetter | undefined {
@@ -258,14 +289,70 @@ export function fxLetter(cmd: string): FxLetter | undefined {
  * Write a command (`"R03"`, `"EC8"`, `"IF1"`) into a step. Returns null when it was written, or
  * why it wasn't. Use inside a recipe.
  */
-export function applyFx(step: Step, track: Track, cmd: string): string | null {
+export function applyFx(step: Step, track: Track, cmd: string, q = 0.25): string | null {
   const code = cmd.toUpperCase();
   const letter = code[0];
   const x = parseInt(code[1] ?? "0", 16);
   const y = parseInt(code[2] ?? "0", 16);
   const xx = parseInt(code.slice(1, 3) || "0", 16);
   if (Number.isNaN(xx) && letter !== "I") return `${code} isn't a command`;
+  const bends = "0124W".includes(letter);
+  if (bends && (track.mode !== "notes" || !step.notes?.length))
+    return "A bend goes on a note of a Notes track";
+  /** Give every note of the step a bend, timed by its length (in quarter notes). */
+  const bendAll = (make: (len: number) => NoteBend | null) => {
+    for (const n of step.notes ?? []) {
+      const b = make(n.length * q);
+      if (b) n.bend = b;
+      else delete n.bend;
+    }
+    return null;
+  };
   switch (letter) {
+    case "0":
+      return bendAll((len) =>
+        x || y
+          ? { shape: "arp", amount: x, second: y, rate: 6 / q, time: len, delay: 0, unit: "q" }
+          : null,
+      );
+    case "1":
+    case "2":
+      return bendAll((len) =>
+        xx
+          ? {
+              shape: "rise",
+              amount: Math.min(24, xx) * (letter === "1" ? 1 : -1),
+              time: Math.max(0.001, len),
+              delay: 0,
+              unit: "q",
+            }
+          : null,
+      );
+    case "4":
+      return bendAll(() =>
+        y
+          ? {
+              shape: "shake",
+              amount: y / 16,
+              // FT2: x/64 of a cycle a tick, 6 ticks a row
+              rate: ((Math.max(1, x) / 64) * 6) / q,
+              time: 0.001,
+              delay: 0,
+              unit: "q",
+            }
+          : null,
+      );
+    case "W": {
+      const shape = W_SHAPES[x - 1];
+      if (!shape) return "W1 Scoop, W2 Fall, W3 Doit, W4 Dip, W5 Next, then the semitones";
+      const sign = shape === "doit" || shape === "next" ? 1 : -1;
+      const time = { scoop: 0.2, fall: 0.5, doit: 0.3, dip: 0.5, next: 0.3 }[shape];
+      return bendAll((len) =>
+        y
+          ? { shape, amount: sign * y, time, delay: shape === "next" ? len / 2 : 0, unit: "q" }
+          : null,
+      );
+    }
     case "3":
       if (track.mode !== "notes" || !step.notes?.length)
         return "Glide (3xx) goes on a note of a Notes track";
@@ -316,6 +403,10 @@ export function applyFx(step: Step, track: Track, cmd: string): string | null {
 
 /** Take a command's field back to its default. Use inside a recipe. */
 export function clearFx(step: Step, track: Track, letter: FxLetter) {
+  if ("0124W".includes(letter)) {
+    for (const n of step.notes ?? []) if (n.bend && bendLetter(n.bend) === letter) delete n.bend;
+    return;
+  }
   switch (letter) {
     case "3":
       for (const n of step.notes ?? []) delete n.slide;
@@ -404,7 +495,7 @@ export function trackLayout(
   let most = 0;
   if (grid.onGrid)
     for (let s = 0; s < grid.length; s++) {
-      const list = stepFx(lane.steps[s], track);
+      const list = stepFx(lane.steps[s], track, laneQuarters(pattern, lane));
       if (list.length) fx.set(s * grid.k, list);
       most = Math.max(most, list.length);
     }

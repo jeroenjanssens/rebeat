@@ -5,6 +5,7 @@ import type { Project } from "./project";
 import {
   applyFx,
   autoRows,
+  clearFx,
   noteColumns,
   placeNotes,
   stepFx,
@@ -136,6 +137,40 @@ describe("effect commands (D271)", () => {
     n.notes = [{ pitch: 60, length: 1, velocity: 0.8 }];
     expect(applyFx(n, keys, "300")).toBeNull();
     expect(stepFx(n, keys)).toEqual(["300"]);
+  });
+
+  it("writes and shows bends as FT2's commands (D293)", () => {
+    const { keys, kick } = project();
+    const step = () => {
+      const st = emptyStep();
+      st.notes = [{ pitch: 60, length: 8, velocity: 0.8 }];
+      return st;
+    };
+    for (const [cmd, shape] of [
+      ["037", "arp"],
+      ["10C", "rise"],
+      ["207", "rise"],
+      ["448", "shake"],
+      ["W12", "scoop"],
+      ["W30", ""],
+    ] as const) {
+      const st = step();
+      expect(applyFx(st, keys, cmd)).toBeNull();
+      const n = st.notes![0];
+      if (!shape) {
+        expect(n.bend).toBeUndefined();
+        continue;
+      }
+      expect(n.bend?.shape).toBe(shape);
+      expect(stepFx(st, keys)).toEqual([cmd]);
+    }
+    // an arpeggio over the note's length: 8 sixteenths, 2 quarter notes, 24 ticks a quarter
+    const st = step();
+    applyFx(st, keys, "047");
+    expect(st.notes![0].bend).toMatchObject({ amount: 4, second: 7, time: 2, rate: 24, unit: "q" });
+    clearFx(st, keys, "0");
+    expect(st.notes![0].bend).toBeUndefined();
+    expect(applyFx(emptyStep(), kick, "037")).toMatch(/Notes track/);
   });
 
   it("says why FT2 commands Rebeat doesn't have aren't accepted", () => {

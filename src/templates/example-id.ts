@@ -32,6 +32,11 @@ export const EXAMPLE_META: ExampleMeta[] = [
     name: "Wood, Wire and Glass",
     artist: "Rebeat demo · wavetables and physical models",
   },
+  {
+    id: "pixel-pulse",
+    name: "Pixel Pulse",
+    artist: "Rebeat demo · arps, bends on samples, pan and level",
+  },
   { id: "gravel-road", name: "Gravel Road", artist: "Rebeat demo · country" },
   { id: "around-the-world", name: "Around the World", artist: "Daft Punk" },
 ];

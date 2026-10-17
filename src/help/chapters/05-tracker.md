@@ -32,19 +32,24 @@ Commands on a step that's off show dimmed: they're kept, but nothing plays them.
 
 Where Rebeat does the same thing as Fast Tracker 2, the command has FT2's letter; the rest use letters FT2 didn't. Each command writes a setting the drum machine also has.
 
-| Command | What it does                                                                                               |
-| ------- | ---------------------------------------------------------------------------------------------------------- |
-| `3xx`   | Glide into this note (any digits; Notes tracks)                                                            |
-| `9xx`   | Sample start: `xx` out of `FF` into the sample (hits of a sample)                                          |
-| `ECx`   | Cut: the hit ends after `x` sixteenths of the step (Hits tracks)                                           |
-| `EDx`   | Delay by `x` sixteenths of the step (shown as `Nxx` afterwards)                                            |
-| `Nxx`   | Nudge: `80` on the grid, lower is earlier, higher later (up to half a step)                                |
-| `Rxx`   | Ratchet: `02`–`08` hits in the step                                                                        |
-| `Yxx`   | Probability: `FF` always, `80` half the time                                                               |
-| `Ixy`   | Condition: the `x`th of every `y` loops (`I12`, `I22`, `I13`, `I14`), `IF1` on a fill, `IF0` not on a fill |
-| `S01`   | Accent                                                                                                     |
+| Command | What it does                                                                                                 |
+| ------- | ------------------------------------------------------------------------------------------------------------ |
+| `0xy`   | Arpeggio: the note, +x and +y semitones, a step each tick, over the note (an [Arp bend](#performance-bends)) |
+| `1xx`   | Rise: the note slides up xx semitones (hex: 0C is an octave) over its length                                 |
+| `2xx`   | The same, down                                                                                               |
+| `3xx`   | Glide into this note (any digits; Notes tracks)                                                              |
+| `4xy`   | Vibrato: speed x, depth y (y sixteenths of a semitone), as FT2's at 6 ticks a row (a Shake)                  |
+| `9xx`   | Sample start: `xx` out of `FF` into the sample (hits of a sample)                                            |
+| `ECx`   | Cut: the hit ends after `x` sixteenths of the step (Hits tracks)                                             |
+| `EDx`   | Delay by `x` sixteenths of the step (shown as `Nxx` afterwards)                                              |
+| `Nxx`   | Nudge: `80` on the grid, lower is earlier, higher later (up to half a step)                                  |
+| `Rxx`   | Ratchet: `02`–`08` hits in the step                                                                          |
+| `Yxx`   | Probability: `FF` always, `80` half the time                                                                 |
+| `Ixy`   | Condition: the `x`th of every `y` loops (`I12`, `I22`, `I13`, `I14`), `IF1` on a fill, `IF0` not on a fill   |
+| `S01`   | Accent                                                                                                       |
+| `Wxy`   | The other bends: x is 1 Scoop, 2 Fall, 3 Doit, 4 Dip or 5 Next, y the semitones                              |
 
-FT2 commands Rebeat doesn't have (volume slides, jumps, the tempo) aren't taken: the status line says what to use instead, such as the timeline's Tempo lane.
+The bend commands (0, 1, 2, 4, W) are a note's [bend](#performance-bends): a note has one, and its piano roll and Inspector show it too. FT2 commands Rebeat doesn't have (volume slides, jumps, the tempo) aren't taken: the status line says what to use instead, such as the timeline's Tempo lane.
 
 ## The keys
 
@@ -116,3 +121,7 @@ On finer rows, the rows between a track's steps are shaded. A note typed on one 
 - **Panning and volume changes** become [automation](#timeline-automation) on the instrument's track: 8xx, E8x and the volume column's Px set the pan, Pxy and the column's slides move it; Axy, 5xy, 6xy, EAx, EBx, the column's slides and a volume set during a note move its level (back to 0 dB at the next note). Two channels playing one instrument share its track, so when they pan or fade it differently at once, the later one wins.
 
 What Rebeat doesn't play yet (tremolo, sample offsets, global volume, multi retriggers, tremor, a few E commands) is listed when the song loads.
+
+## Pixel Pulse
+
+The example song **Pixel Pulse** (140 BPM, C minor) is written with what the FT2 import brought, so you can hear it without a module. Its **Arp** track holds one note a bar, and an **Arp** bend makes it the bar's chord, a step every tick as a tracker's 037 or 047 would (in the break 07C: the fifth and the octave). The **808 Bass** is the 808 kick played as notes, a sample that bends: it scoops into each bar, rises a tone into the next section and falls away at the very end. The square **Lead** in the chorus has vibrato that builds on its long notes, glides in from the note before and slides up an octave out of the chorus. On the timeline, the Arp fades in and swings left and right (a beat at a time in the break), and the song fades out. Open it in the tracker: the bends show as each note's bend in the piano roll and the Inspector.

@@ -1958,6 +1958,17 @@ Wavetables and physical models (§0.6s, `PLAN-wavetable-physical.md`):
   level lane is scaled to −18 dB RMS, peaks below −1 dB), sample offsets (9xx, hundreds per song)
   as a hit's sample start, and names in code page 437. Alt: a fixed gain per channel count (the
   songs differed by 10 dB at the same count).
+- **D292 — Pixel Pulse.** A demo song for what the FT2 effects brought, written the Rebeat way
+  from built-in sounds: a chiptune synth whose one note a bar is the chord through an Arp bend
+  (037, 047, 07C in the break), the 808 kick as a bass that bends (Scoops, Rises, a Fall: a sample
+  bending), a square lead with building vibrato, glides and a slide up an octave, and the arp's
+  pan and level automated, the song fading out. Golden levels recorded for it. Alt: a demo `.xm`
+  (its samples would have to be built in).
+- **D293 — Bends as the tracker's commands.** A note's bend shows and is typed as FT2's command:
+  `0xy` an Arp, `1xx`/`2xx` a Rise up/down by xx semitones over the note, `4xy` a Shake (FT2's
+  speed and depth at 6 ticks a row), `Wxy` the other shapes (x: 1 Scoop, 2 Fall, 3 Doit, 4 Dip,
+  5 Next). `3xx` stays the glide. Alt: 1xx/2xx as FT2's speed per tick (they don't round-trip
+  with a bend's total).
 - **D35 — Build order.** ✅ The phases in §7, starting with the mockup (Phase M), each ending with something you can play with.
 
 ---

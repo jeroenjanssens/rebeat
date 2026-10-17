@@ -516,6 +516,11 @@ export function enterFxLetter(letter: string) {
 
 /** Where a command starts when it's typed without digits: its plain value. */
 const STARTS: Record<string, string> = {
+  "0": "37",
+  "1": "0C",
+  "2": "0C",
+  "4": "48",
+  W: "12",
   "3": "00",
   "9": "00",
   E: "C8",

@@ -956,7 +956,8 @@ likely to need:
 | The synth editor's piano follows the device        | D262                      |
 | Scopes in the top bar (master, keys, every track)  | D263–D264                 |
 | The tracker: look, columns, commands, keys, rows   | D265–D277                 |
-| Heard time; loading FT2 modules and their effects  | D278–D290                 |
+| Heard time; loading FT2 modules and their effects  | D278–D291                 |
+| Pixel Pulse; bends as the tracker's commands       | D292–D293                 |
 
 Feature batches and their acceptance criteria are in PLAN.md §0.6b–§0.6h. Known limitations are
 in §0.7.

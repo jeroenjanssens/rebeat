@@ -22,7 +22,15 @@ import {
   type FxLetter,
   type TrackGrid,
 } from "./tracker";
-import { emptyStep, type Lane, type Note, type Pattern, type Step, type Track } from "./types";
+import {
+  STEP_SIZE_QUARTERS,
+  emptyStep,
+  type Lane,
+  type Note,
+  type Pattern,
+  type Step,
+  type Track,
+} from "./types";
 
 /** Where an edit happens: the pattern and its grid. */
 export interface EditAt {
@@ -190,7 +198,9 @@ export function writeFx(p: Project, at: EditAt, trackId: string, row: number, cm
   if (typeof t === "string") return t;
   const s = stepOn(t, row);
   if (typeof s === "string") return s;
-  return applyFx(s.step, t.track, cmd);
+  // bends are timed in quarter notes: the lane's step size
+  const q = STEP_SIZE_QUARTERS[t.lane.stepSizeOverride ?? t.pattern.stepSize];
+  return applyFx(s.step, t.track, cmd, q);
 }
 
 export function removeFx(p: Project, at: EditAt, trackId: string, row: number, letter: FxLetter) {
