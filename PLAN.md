@@ -1951,6 +1951,13 @@ Wavetables and physical models (§0.6s, `PLAN-wavetable-physical.md`):
   the fader at 0.8 × √(volume ratio)). Alt: per-note gain curves (schema change).
 - **D290 — Tests.** Each effect has a unit test on the converter; the e2e test renders an imported
   arpeggio and vibrato and measures the pitch tick by tick.
+- **D291 — Real modules.** Tried on seven of The Mod Archive's most favourited `.xm` files (kept
+  outside the repository; `XM_DIR=… pnpm vitest run real` converts a folder of them): they load in
+  2–5 s (13 s for a 15 MB one with 117 instruments). Three fixes came of it: the level (FT2's sum
+  of channels was 3–15 dB too loud and clipped: three sections are rendered and every fader and
+  level lane is scaled to −18 dB RMS, peaks below −1 dB), sample offsets (9xx, hundreds per song)
+  as a hit's sample start, and names in code page 437. Alt: a fixed gain per channel count (the
+  songs differed by 10 dB at the same count).
 - **D35 — Build order.** ✅ The phases in §7, starting with the mockup (Phase M), each ending with something you can play with.
 
 ---

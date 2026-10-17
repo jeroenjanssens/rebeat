@@ -71,6 +71,10 @@ export interface XmModule {
 
 const EMPTY: XmCell = { note: 0, instrument: 0, volume: 0, effect: 0, param: 0 };
 
+/** FT2 wrote names in the DOS character set (code page 437): its upper half. */
+const CP437 =
+  "ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜ¢£¥₧ƒáíóúñÑªº¿⌐¬½¼¡«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■ ";
+
 export class XmError extends Error {}
 
 /** Read an `.xm` file. Throws XmError when it isn't one. */
@@ -78,7 +82,9 @@ export function parseXm(buffer: ArrayBuffer): XmModule {
   const bytes = new Uint8Array(buffer);
   const v = new DataView(buffer);
   const text = (at: number, n: number) =>
-    String.fromCharCode(...bytes.subarray(at, Math.min(bytes.length, at + n)))
+    [...bytes.subarray(at, Math.min(bytes.length, at + n))]
+      .map((b) => (b < 0x80 ? String.fromCharCode(b) : CP437[b - 0x80]))
+      .join("")
       .replace(/\0.*$/s, "")
       .trimEnd();
   if (bytes.length < 80 || text(0, 17) !== "Extended Module:")

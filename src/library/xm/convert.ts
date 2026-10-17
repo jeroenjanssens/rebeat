@@ -104,6 +104,8 @@ interface Event {
   cut?: number;
   /** Ticks per row where it starts. */
   spd: number;
+  /** Where in its sample it starts (9xx), 0..1. */
+  start?: number;
   /** Pitch effects while it sounds (D286): vibrato from a row, slides over rows (semitones), a
    * glide into it from the note before (semitones, over rows). */
   vib?: { row: number; speed: number; depth: number };
@@ -124,6 +126,7 @@ interface Memory {
   tone: number;
   volSlide: number;
   panSlide: number;
+  offset: number;
 }
 
 const memory = (): Memory => ({
@@ -136,12 +139,12 @@ const memory = (): Memory => ({
   tone: 0,
   volSlide: 0,
   panSlide: 0,
+  offset: 0,
 });
 
 /** What FT2 does that isn't played, by name (counted). */
 const IGNORED: Record<number, string> = {
   0x7: "tremolo (7xy)",
-  0x9: "sample offsets (9xx)",
   0x10: "global volume (Gxx)",
   0x11: "global volume slides (Hxy)",
   0x15: "envelope positions (Lxx)",
@@ -274,6 +277,12 @@ export function convertXm(mod: XmModule, fileName = ""): XmImport {
             spd,
             arps: [],
           };
+          // a sample offset (9xx, 256 frames a step): a hit's sample start (D291)
+          if (fx === 0x09) {
+            m.offset = cell.param || m.offset;
+            const frac = (m.offset * 256) / sample.length;
+            if (frac > 0 && frac < 1) e.start = frac;
+          }
           // tone portamento: the note glides in from the one that was sounding (D286)
           if (porta && before !== undefined && before !== cell.note && m.tone) {
             const semis = before - cell.note;
@@ -394,8 +403,10 @@ export function convertXm(mod: XmModule, fileName = ""): XmImport {
           if (e.delay) step.nudge = e.delay;
           if (e.ratchet > 1) step.ratchet = e.ratchet;
           if (e.cut !== undefined && e.cut < 1) step.gate = e.cut;
+          if (e.start !== undefined) step.locks = { ...step.locks, "sound.start": e.start };
           continue;
         }
+        if (e.start !== undefined) note("sample offsets on notes (9xx)");
         const n: Note = { pitch: piece.pitch, length: piece.length, velocity: e.velocity };
         if (Math.abs(offset) > 1e-6) n.offset = Math.max(-0.5, Math.min(0.5, offset));
         if (piece.bend) n.bend = piece.bend;

@@ -64,6 +64,8 @@ export async function importProjectFile(file?: File) {
 
 /** A Fast Tracker 2 module (D279): a new project, its samples in the library under FT2. */
 async function importModule(f: File) {
+  // reading, rendering and measuring a module takes a few seconds
+  toast(`Loading ${f.name}…`, "info", 6000);
   try {
     const { importXm } = await import("../library/xm/importXm");
     const { project, notes } = await importXm(f);
