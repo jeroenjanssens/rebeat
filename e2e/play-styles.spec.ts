@@ -369,12 +369,25 @@ test("room for a take: Fit the pattern, or in song mode Add sections and record 
   await expect(room).toContainText("the song has 1 bar from here");
   await page.getByTestId("add-pages").click();
   await expect(room).toHaveCount(0);
+  // stop as soon as the last section's chord is in, most of a bar before the song comes round
+  // again (a fixed wait raced the second time through on a slow machine, and under load the
+  // second round's first chord could land a step late)
   await page.evaluate(() =>
     (window as never as W).__rebeat.store.getState().setUi({ recording: true }),
   );
   await page.getByTestId("auto").click();
   await page.keyboard.press("Space");
-  await page.waitForTimeout(5600);
+  await expect
+    .poll(
+      () =>
+        page.evaluate((id) => {
+          const s = (window as never as W).__rebeat.store.getState();
+          const last = s.project.slots[s.project.slots.length - 1];
+          return !!s.project.patterns[last.patternId].lanes[id].steps[0].notes?.length;
+        }, trackId),
+      { timeout: 15_000, intervals: [20] },
+    )
+    .toBe(true);
   await page.keyboard.press("Space");
   const perPage = await page.evaluate((id) => {
     const s = (window as never as W).__rebeat.store.getState();
