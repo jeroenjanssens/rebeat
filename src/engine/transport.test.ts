@@ -9,6 +9,8 @@ vi.mock("./metronome", () => ({ click: vi.fn(), silenceMetronome: vi.fn() }));
 vi.mock("./ticker", () => ({ startTicker: vi.fn() }));
 vi.mock("./engine", () => ({
   audioNow: () => 0,
+  heardNow: () => 0,
+  syncDrawToOutput: () => {},
   initEngine: vi.fn(),
   startClip: vi.fn(),
   stopAll: vi.fn(),

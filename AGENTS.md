@@ -245,6 +245,8 @@ src/
                        - audition.ts (previews), online kits (onlineKits, onlineImport, sources)
                        - synths.ts (91 factory synths), instruments.ts (catalog), userInstruments.ts
                          (Your sounds, SoundFonts, multi-samples, preset copies)
+                       - xm/ (D279–D283: Fast Tracker 2 modules: parse.ts, convert.ts (a track per
+                         instrument, samples rendered and tuned), write.ts (for tests), importXm.ts)
                        - synthTrack.ts (a track's synth: patch, macros, editPatch, soundDefs), libraryEdit.ts
                          (editing a library synth without a track), synthFile.ts + rbsynth.ts
                          (.rbsynth files), downloads, drop, sort
@@ -884,6 +886,10 @@ prev.lastCommitTime` to skip history moves. Comparing `s.past.length < prev.past
   element with that `data-scope` (`scopesOf`), and win over a global command with the same key
   there. The tracker's commands are scoped to `"tracker"`; its note keys, digits and command
   letters are a key hook added with `first = true`, so it runs before the pad view's.
+- **Visuals that follow the music use the heard time** (D278): `engine.heardNow()` /
+  `transport.heardPosition()` (the audio clock minus the output latency). `Tone.Draw` already
+  waits for it (`syncDrawToOutput` at Play); a new playhead drawn from `onFrame` should read
+  `heardPosition`, not `position`.
 - **The tracker writes its own notes** (D276): its previews call `noteOn(…, "tracker")`, a source
   that writes nothing (no step entry at the drum machine's cursor, no pad input, no recording). A
   new path that previews notes for an editor should use it too, or a stopped transport's step

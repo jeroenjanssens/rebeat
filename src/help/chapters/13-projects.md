@@ -9,7 +9,7 @@ The [project browser](command:project.home) ({{key:project.home}}, or click the 
 - **New project**: start from **Empty** (four step tracks of drum hits), **808 starter** (an 808 kit with a groove and a break) or **Loop station** (a beat and three Clip tracks).
 - **Examples**: the demo and the classics. Changing an example makes a copy in your projects.
 - **Your projects**: click to open; double-click the name to rename; the buttons duplicate, export and delete (right-click works too).
-- **Import .rebeat**: open a project file (or drop it on the browser).
+- **Import .rebeat or .xm**: open a project file (or drop it on the browser), or load a [Fast Tracker 2 module](#tracker-loading-fast-tracker-2-songs) as a new project.
 
 ## Saving a project file
 

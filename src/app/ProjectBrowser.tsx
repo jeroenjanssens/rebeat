@@ -75,7 +75,7 @@ export function ProjectBrowser() {
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => {
         e.preventDefault();
-        const f = [...e.dataTransfer.files].find((x) => /\.(rebeat|zip)$/i.test(x.name));
+        const f = [...e.dataTransfer.files].find((x) => /\.(rebeat|zip|xm)$/i.test(x.name));
         if (f) void importProjectFile(f);
       }}
     >
@@ -91,7 +91,7 @@ export function ProjectBrowser() {
             onClick={() => importProjectFile()}
             data-hint="app.project.import"
           >
-            <Upload size={13} /> Import .rebeat
+            <Upload size={13} /> Import .rebeat or .xm
           </button>
           <button className="tool-btn" title="Close (Esc)" onClick={() => set({ homeOpen: false })}>
             <X size={16} />

@@ -194,7 +194,7 @@ export function defaultCommands(): Command[] {
     },
     {
       id: "project.import",
-      title: "Import .rebeat…",
+      title: "Import .rebeat or .xm…",
       category: "Project",
       run: () => void projectActions.importProjectFile(),
     },

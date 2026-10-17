@@ -879,6 +879,11 @@ theme (D267). What's built:
   top panel), the Track layout (⌘⌥5), the guide chapter `05-tracker.md`, hints, e2e
   `tracker.spec.ts`.
 
+Since then (2026-10-17): visuals follow what's heard (D278: the tracker's playhead and the step
+lights wait for the output latency), and **Fast Tracker 2 modules load** (D279–D283,
+`library/xm/`: `parse.ts` reads `.xm`, `convert.ts` makes the project and renders the samples,
+`importXm.ts` puts them in the library; Import .rebeat or .xm in the project browser).
+
 Deviations from the plan: a selection spans whole tracks (not single fields); Insert and
 Backspace move a track's steps by one of its own steps; the rows between a Hits track's steps
 take nothing (the plan had them set the nudge: `Nxx` does); colors mix in sRGB, not oklab; the
@@ -1884,6 +1889,35 @@ Wavetables and physical models (§0.6s, `PLAN-wavetable-physical.md`):
   only one writing. Alt: `engine.holdNote` directly (bypasses the keys' voice and sustain).
 - **D277 — Schema 14.** `Note.col?` and `Project.tracker?`, both optional; the migration only
   bumps the version.
+- **D278 — Visuals follow what's heard.** A sound is heard `baseLatency + outputLatency` after
+  the audio clock (a few ms on built-in speakers, up to a quarter second over Bluetooth). The
+  tracker's playhead reads `transport.heardPosition()`, and `Tone.Draw` (the step lights) gets a
+  negative anticipation of the same delay, set at every Play. Recording in the tracker writes at
+  the heard row (Rec already compensates). Alt: a latency setting to tune by hand.
+- **D279 — Loading Fast Tracker 2 modules.** `.xm` files (FT2's own format; also what MilkyTracker
+  and OpenMPT save), as a new project from Import or a drop on the project browser; their samples
+  go into the library under FT2/<song>. `.mod`, `.s3m` and `.it` are left for later. Alt: a
+  player that plays modules as they are (not editable).
+- **D280 — A track per instrument.** An XM channel changes instruments from row to row; a track
+  has one sound, so each instrument used becomes a track and every channel's notes for it go
+  there (overlaps become chords). A one-shot sample played within an octave of its most common
+  note is a Hits track tuned to that note; the rest are Notes tracks playing the sample, or a
+  multi-sample (one zone per sample the keymap uses, rooted in the middle of its keys). Alt: a
+  track per channel (its most used instrument).
+- **D281 — The order list as sections.** One section per entry (a pattern played again is a
+  clone); Dxx shortens a section to its row; a jump back (Bxx) ends the song; patterns over 128
+  rows split into parts. Alt: repeats for runs of one pattern.
+- **D282 — A row is a step.** 1/16 steps at `6 × BPM / speed` (1/32 or 1/8 when that is out of
+  40–300), and Fxx changes as tempo changes anchored to their section and row. Notes last until
+  the next note, key-off, ECx or volume 0 in their channel, into the next section; the volume
+  column and Cxx are the velocity; 3xx a glide, EDx a delay, ECx a cut, E9x a ratchet. What isn't
+  played (envelopes, fadeouts, vibrato, slides, arpeggios, panning…) is counted and listed in the
+  toast. Alt: tempo from the first row only.
+- **D283 — Samples rendered at 44.1 kHz.** Tuned as FT2 plays them (C-4 at 8363 Hz, moved by the
+  relative note and finetune) for the zone's root, with linear interpolation, and a loop
+  (forward or ping-pong) played out for the longest note (2–12 s) with a short fade at its end; a
+  note's length ends it, as a key-off would. Alt: loop points in the sample settings (Rebeat's
+  samples don't loop yet).
 - **D35 — Build order.** ✅ The phases in §7, starting with the mockup (Phase M), each ending with something you can play with.
 
 ---

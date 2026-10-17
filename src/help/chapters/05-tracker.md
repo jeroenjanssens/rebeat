@@ -100,3 +100,15 @@ Play with edit mode on and the notes you play are written at the playhead's row,
 A row is one step of the pattern. A track with its own step size (in the drum machine's track settings) needs finer rows: **Rows: Auto** picks the fewest rows per step on which every track's steps land, so a 1/16T track next to 1/16 ones gets three rows per step. **×1** to **×4** set it yourself; a track whose steps don't sit on those rows shows `~ROWS` and can't be edited until they do.
 
 On finer rows, the rows between a track's steps are shaded. A note typed on one of them starts between the steps (as a note started off the grid does in the piano roll). A track shorter than the pattern repeats in the drum machine; in the tracker its repeats are dimmed, and editing one edits the step it repeats. The rows after a section's own shorter length are dimmed too.
+
+## Loading Fast Tracker 2 songs
+
+**Import .rebeat or .xm** in the [project browser](command:project.home) (or the command palette) loads a Fast Tracker 2 module (`.xm`) as a new project, and you can drop one on the project browser too. Its samples go into the library, under **FT2** and the song's name.
+
+- **A track per instrument.** In FT2 a channel can play another instrument on every row; in Rebeat a track has one sound. So each instrument becomes a track, and the notes of every channel that play it go there (as a chord where they overlap). A drum (a sample that doesn't loop, played within an octave) becomes a Hits track; the rest become Notes tracks that play the sample, or several samples by the instrument's keymap.
+- **The song.** Each entry of the order list becomes a section, so a pattern that plays again is a clone. A pattern break (Dxx) makes its section shorter, and a jump back (Bxx), where a song loops, is where it ends.
+- **The tempo.** A row stays a row: the speed and BPM become the tempo (6 ticks at 125 BPM is 125 BPM in sixteenths), and a speed or BPM change (Fxx) becomes a tempo change on the [timeline](#timeline).
+- **Notes** last until the next note or key-off in their channel (into the next section too). The volume column and Cxx become the velocity; 3xx is a glide, EDx a delay, ECx a cut and E9x a ratchet.
+- **Samples** are tuned as FT2 plays them (C-4 at 8363 Hz, with each sample's relative note and finetune). A looping sample is played out for as long as its longest note, and a note's length ends it.
+
+What Rebeat doesn't play (volume and panning envelopes, fadeouts, vibrato, slides, arpeggios, panning, global volume…) is listed when the song loads. The rest you can rebuild: automation on the timeline, the Bend card, the arpeggiator.

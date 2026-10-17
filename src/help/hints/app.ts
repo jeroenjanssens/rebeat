@@ -194,8 +194,8 @@ const hints: Hints = {
 
   // ── Project browser ──────────────────────────────────────────────────────
   "app.project.import": {
-    title: "Import .rebeat",
-    text: "Open a .rebeat file from your computer. You can also drag a file directly onto the project browser.",
+    title: "Import .rebeat or .xm",
+    text: "Open a .rebeat file from your computer, or load a Fast Tracker 2 module (.xm) as a new project. You can also drag a file directly onto the project browser.",
     command: "project.import",
     guide: "projects-saving-a-project-file",
   },

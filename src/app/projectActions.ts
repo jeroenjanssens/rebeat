@@ -48,8 +48,9 @@ export async function exportProject(id = useStore.getState().projectId) {
 }
 
 export async function importProjectFile(file?: File) {
-  const f = file ?? (await platform.files.open({ accept: [".rebeat", ".zip"] }))[0];
+  const f = file ?? (await platform.files.open({ accept: [".rebeat", ".zip", ".xm"] }))[0];
   if (!f) return;
+  if (/\.xm$/i.test(f.name)) return importModule(f);
   try {
     const project = await importRebeat(f);
     await saveNow();
@@ -58,6 +59,26 @@ export async function importProjectFile(file?: File) {
     toast(`Imported “${project.name}”`);
   } catch (e) {
     toast(`Import failed: ${e instanceof Error ? e.message : e}`, "error");
+  }
+}
+
+/** A Fast Tracker 2 module (D279): a new project, its samples in the library under FT2. */
+async function importModule(f: File) {
+  try {
+    const { importXm } = await import("../library/xm/importXm");
+    const { project, notes } = await importXm(f);
+    await saveNow();
+    await createProject(project);
+    useShell.getState().set({ homeOpen: false });
+    const tracks = project.tracks.length;
+    const skipped = notes.length ? ` Not played: ${notes.join(", ")}.` : "";
+    toast(
+      `Loaded “${project.name}”: ${tracks} track${tracks === 1 ? "" : "s"}, ${project.slots.length} sections.${skipped}`,
+      "info",
+      notes.length ? 9000 : 3500,
+    );
+  } catch (e) {
+    toast(`Couldn't load the module: ${e instanceof Error ? e.message : e}`, "error");
   }
 }
 
