@@ -159,7 +159,7 @@ The **keys in the picture light up as their notes sound**: a strum's notes one a
 
 ### Bends {#performance-bends}
 
-The **Bend** card gives the notes the keys play a bend of their own: a sax's scoop into a note, a brass fall at its end, a guitarist's bend up to the next note. It works with any keyboard (the MiniLab's strip can only bend everything at once), on **synths**; a sampled instrument doesn't bend yet, and the card says so.
+The **Bend** card gives the notes the keys play a bend of their own: a sax's scoop into a note, a brass fall at its end, a guitarist's bend up to the next note. It works with any keyboard (the MiniLab's strip can only bend everything at once), on **synths** and **samples** (a sample or a multi-sample playing notes); a sampled instrument from the library (a piano, a SoundFont) doesn't bend yet, and the card says so.
 
 | Shape     | What you hear                                                                     |
 | --------- | --------------------------------------------------------------------------------- |

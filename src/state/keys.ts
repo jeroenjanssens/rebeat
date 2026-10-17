@@ -57,8 +57,7 @@ import {
   type Pool,
 } from "./perform";
 import type { NoteBend, Track } from "../model/types";
-import { isSynthTrack } from "../library/synthTrack";
-import { player } from "../model/tracks";
+import { bendable, player } from "../model/tracks";
 import { recordNoteOff, recordNoteOn, playedNotes, padInput, keyRoot } from "./input";
 import { useSettings } from "./settings";
 import { useStore } from "./store";
@@ -284,18 +283,19 @@ export function keysTrack(): Track | undefined {
   return s.project.tracks.find((x) => x.id === id);
 }
 
-/** Whether what the keys play can bend per note (a synth, D225): the Bend card says so. */
+/** Whether what the keys play can bend per note (a synth or a sample, D225, D285): the Bend card
+ * says so. */
 export function keysPlaySynth(): boolean {
   if (keysEditor()) {
     const track = keysTrack();
-    return !!track && isSynthTrack(track);
+    return !!track && bendable(track);
   }
   if (useKeys.getState().target.kind === "sound") {
     const track = getKeysChannel()?.track;
-    return !!track && isSynthTrack(track);
+    return !!track && bendable(track);
   }
   const track = keysTrack();
-  return !!track && isSynthTrack(track);
+  return !!track && bendable(track);
 }
 
 /**
@@ -425,9 +425,9 @@ function bendKey(): Key | null {
   return (slot && st.project.patterns?.[slot.patternId]?.keyOverride) || st.project.key || null;
 }
 
-/** A note's bend from the Bend card (D222), for a sound that can bend (a synth, D225). */
+/** A note's bend from the Bend card (D222), for a sound that can bend (D225, D285). */
 function bendOf(track: Track | undefined, pitch: number, velocity: number, t: NoteTiming) {
-  if (!track || !isSynthTrack(track)) return undefined;
+  if (!track || !bendable(track)) return undefined;
   return bendFor(playStyle(), t.role ?? ALONE, velocity, pitch, bendKey(), Math.random());
 }
 

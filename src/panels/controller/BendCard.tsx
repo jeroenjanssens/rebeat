@@ -1,7 +1,7 @@
 /**
  * The Keys panel's Bend card (D222): a bend for every note the keys play, in one of seven
  * shapes, each with its own amount, time, delay and curve; which notes bend, how many, how much
- * harder notes bend; and what the MiniLab's pitch strip bends (D225). Synths only for now.
+ * harder notes bend; and what the MiniLab's pitch strip bends (D225). Synths and samples (D285).
  */
 import type { ReactNode } from "react";
 import { Music } from "lucide-react";
@@ -273,7 +273,7 @@ export function BendCard({ minilab }: { minilab: boolean }) {
         )}
         {!synth && (
           <p className="text-[10.5px] leading-snug text-faint" data-testid="bend-synths-only">
-            Bends play on synths. The keys play {name} now: nothing bends.
+            Bends play on synths and samples. The keys play {name} now: nothing bends.
           </p>
         )}
       </div>

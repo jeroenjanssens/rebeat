@@ -14,6 +14,7 @@ import { CATALOG, sustainsByLooping } from "../library/instruments";
 import { toUnit } from "../model/params";
 import { midiToHz, noteName } from "../model/notes";
 import type { Note, NoteBend, Sound, Track } from "../model/types";
+import { atRelease, bendAt, bendSeconds, releaseTail } from "../model/bend";
 import { getBuffer } from "./samples";
 import { db } from "../storage/db";
 
@@ -53,7 +54,7 @@ export interface InstrumentVoice {
   /** Synths: mod wheel, aftertouch and pitch bend; modulation reports for the editor. */
   synth?: WorkletSynth;
   /** Start a held note; the returned function releases it (keyboards, MIDI). `bend`: its own
-   * bend (D223; synths only, the others ignore it). */
+   * bend (D223; synths and samples, D285; smplr and SoundFonts ignore it). */
   hold?(pitch: number, velocity: number, time: number, bend?: NoteBend): (end: number) => void;
   dispose(): void;
   /** For sampled instruments: whether the samples are loaded. */
@@ -89,6 +90,54 @@ function synthVoice(track: Track, src: Sound, dest: Tone.Gain): InstrumentVoice 
   };
 }
 
+/** Seconds per quarter note for bends timed in quarters; the engine sets it as it plays. */
+let secPerQ = 0.5;
+export function setBendTempo(s: number) {
+  secPerQ = s;
+}
+
+/** How often a sample's bend curve is sampled (seconds), and its longest stretch. */
+const BEND_STEP = 0.01;
+const BEND_MAX = 30;
+
+type ActiveSources = Map<number, Tone.ToneBufferSource[]>;
+
+/** The source a Tone.Sampler just started for a note (it keeps them by MIDI note). */
+function newestSource(sampler: Tone.Sampler, pitch: number) {
+  const active = (sampler as unknown as { _activeSources: ActiveSources })._activeSources;
+  const list = active?.get(Math.round(pitch));
+  return list?.[list.length - 1];
+}
+
+/**
+ * A sample's bend (D285): its source's playback rate follows `bendAt` from `time`, `from`
+ * seconds into the note, for `span` seconds; `released`: when it was let go (seconds into it).
+ */
+function bendRate(
+  src: Tone.ToneBufferSource,
+  bend: NoteBend,
+  time: number,
+  from: number,
+  span: number,
+  released: number | null,
+) {
+  const base = src.playbackRate.value;
+  const n = Math.max(2, Math.ceil(Math.min(BEND_MAX, span) / BEND_STEP) + 1);
+  const values = Array.from(
+    { length: n },
+    (_, i) => base * 2 ** (bendAt(bend, from + (i * span) / (n - 1), released, secPerQ) / 12),
+  );
+  src.playbackRate.cancelScheduledValues(time);
+  src.playbackRate.setValueCurveAtTime(values, time, Math.max(0.005, Math.min(BEND_MAX, span)));
+}
+
+/** How long a held note's bend moves before it settles (a Shake never settles). */
+function heldSpan(bend: NoteBend) {
+  if (bend.shape === "shake") return BEND_MAX;
+  const { time, delay } = bendSeconds(bend, secPerQ);
+  return time + delay;
+}
+
 /** A sample across the keyboard, or several at their notes (a multi-sample, D82). */
 function samplerVoice(src: Sound, dest: Tone.InputNode): InstrumentVoice {
   let sampler: Tone.Sampler | null = null;
@@ -119,15 +168,31 @@ function samplerVoice(src: Sound, dest: Tone.InputNode): InstrumentVoice {
     play(notes, time, step) {
       make();
       if (!sampler) return;
-      for (const n of notes)
-        sampler.triggerAttackRelease(midiToHz(n.pitch), n.length * step * 0.95, time, n.velocity);
+      for (const n of notes) {
+        const length = n.length * step * 0.95;
+        // a Fall or a Doit sounds on after the note (D221)
+        const tail = n.bend ? releaseTail(n.bend, secPerQ) : 0;
+        sampler.triggerAttackRelease(midiToHz(n.pitch), length + tail, time, n.velocity);
+        const src = n.bend && newestSource(sampler, n.pitch);
+        if (src && n.bend)
+          bendRate(src, n.bend, time, 0, length + tail, atRelease(n.bend) ? length : null);
+      }
     },
-    hold(pitch, velocity, time) {
+    hold(pitch, velocity, time, bend) {
       make();
       const s = sampler;
       if (!s) return () => {};
       s.triggerAttack(midiToHz(pitch), time, velocity);
-      return (end) => s.triggerRelease(midiToHz(pitch), end);
+      const src = bend && newestSource(s, pitch);
+      if (src && bend && !atRelease(bend)) bendRate(src, bend, time, 0, heldSpan(bend), null);
+      return (end) => {
+        if (src && bend && atRelease(bend)) {
+          // the bend starts at the release, and the note sounds until it's done
+          const tail = releaseTail(bend, secPerQ);
+          bendRate(src, bend, end, end - time, tail, end - time);
+          s.triggerRelease(midiToHz(pitch), end + tail);
+        } else s.triggerRelease(midiToHz(pitch), end);
+      };
     },
     releaseAll(time) {
       sampler?.releaseAll(time);

@@ -25,6 +25,14 @@ export function player(t: Pick<Track, "mode" | "sound">): Player {
   return "voice";
 }
 
+/** Whether a track's notes can bend (D225, D285): a synth, or a sample or multi-sample playing
+ * notes. Sampled instruments (smplr, SoundFonts) don't. */
+export function bendable(t: Pick<Track, "mode" | "sound">): boolean {
+  const src = t.sound?.source;
+  if (src === "synth") return true;
+  return (src === "sample" || src === "multi") && player(t) === "voice";
+}
+
 /** Clip mode is for samples (or a track without a sound yet, waiting for a recording). */
 export const canClip = (s: Sound | undefined) => !s || s.source === "sample";
 

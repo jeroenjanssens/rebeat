@@ -33,7 +33,7 @@ export type BendShape = (typeof BEND_SHAPES)[number];
 
 /**
  * A note's own bend (D220, schema 12): a pitch movement that starts with the note (or, for a
- * Fall or a Doit, with its release) and ends with it. Synths only for now (D225).
+ * Fall or a Doit, with its release) and ends with it. Synths and samples (D225, D285).
  */
 export interface NoteBend {
   shape: BendShape;

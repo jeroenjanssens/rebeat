@@ -14,7 +14,7 @@ import { FxChain, automatedParams, schedule, type AutoEvent } from "./effects";
 import { getBuffer, sampleInfo } from "./samples";
 import { disposeWarper, warper } from "./stretch";
 import type { StretchNode } from "signalsmith-stretch";
-import { createInstrument, instrumentKey, type InstrumentVoice } from "./instruments";
+import { createInstrument, instrumentKey, setBendTempo, type InstrumentVoice } from "./instruments";
 import { detectRootNote } from "../library/pitch";
 import type { WorkletSynth } from "./synth/node";
 import { macroValues } from "../library/synthTrack";
@@ -669,6 +669,8 @@ function playNotes(track: Track, velocity: number, time: number, o: TriggerOptio
   const pitched = shift ? notes.map((n) => ({ ...n, pitch: n.pitch + shift })) : notes;
   // Notes with a non-zero offset (D128) start at time + offset × stepDur; clamp to audioNow()
   // so a negative offset on the very first scheduled step never goes below the context's time.
+  // bends timed in quarter notes follow the tempo (samples, D285)
+  setBendTempo(60 / (S.tempo ?? useStore.getState().project.bpm));
   const hasOffsets = pitched.some((n) => n.offset);
   if (hasOffsets) {
     for (const n of pitched) {
@@ -743,6 +745,7 @@ export function holdNote(
   const v = S.live ? liveInstrument(track) : instrument(track);
   const t = at;
   S.activeUntil.set(track.id, Infinity);
+  setBendTempo(60 / (S.tempo ?? useStore.getState().project.bpm));
   const release =
     v.hold?.(pitch + shift, velocity, t, bend) ??
     // instruments without held notes: a long note

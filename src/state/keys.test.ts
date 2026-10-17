@@ -56,6 +56,7 @@ vi.mock("./input", () => ({
 // --- model/tracks mock ---
 vi.mock("../model/tracks", () => ({
   player: (t: { mode: string }) => (t.mode === "notes" ? "voice" : "drum"),
+  bendable: (t: { sound?: { source?: string } }) => t.sound?.source === "synth",
 }));
 
 // --- store mock ---
