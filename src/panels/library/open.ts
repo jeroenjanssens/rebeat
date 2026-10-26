@@ -32,7 +32,7 @@ export const editorLabel = (c: CatalogInstrument) =>
 function plays(t: Track, c: CatalogInstrument) {
   const i = t.sound;
   if (t.mode === "clip" || !i) return false;
-  if (c.id.startsWith("user:")) return i.from === c.id;
+  if (c.source.from) return i.from === c.source.from;
   return !i.from && i.source === c.source.source && i.preset === c.source.preset;
 }
 

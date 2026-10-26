@@ -30,6 +30,17 @@ describe("instrument catalog", () => {
       expect(CATALOG.some((c) => c.source.preset === p)).toBe(true);
   });
 
+  it("has a Stage Grand: the grand piano's samples through its own effects", () => {
+    const grand = CATALOG.find((c) => c.id === "smplr:piano")!;
+    const stage = CATALOG.find((c) => c.id === "smplr:piano:stage")!;
+    expect(stage.source).toMatchObject({ source: "smplr", preset: "piano", name: "Stage Grand" });
+    expect(stage.collection).toBe(grand.collection);
+    expect(stage.effects!.map((fx) => fx.name)).toEqual(["Parametric EQ", "Compressor", "Reverb"]);
+    // the plain grand stays as it was
+    expect(grand.source.from).toBeUndefined();
+    expect(grand.effects).toBeUndefined();
+  });
+
   it("names General MIDI instruments readably and groups them by program", () => {
     expect(gmName("acoustic_grand_piano")).toBe("Acoustic Grand Piano");
     expect(gmName("lead_8_bass__lead")).toBe("Lead 8 (Bass + Lead)");

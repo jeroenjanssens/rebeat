@@ -1969,6 +1969,16 @@ Wavetables and physical models (§0.6s, `PLAN-wavetable-physical.md`):
   speed and depth at 6 ticks a row), `Wxy` the other shapes (x: 1 Scoop, 2 Fall, 3 Doit, 4 Dip,
   5 Next). `3xx` stays the glide. Alt: 1xx/2xx as FT2's speed per tick (they don't round-trip
   with a bend's total).
+- **D294 — The Stage Grand.** A grand piano in the voicing of a stage piano (the bright,
+  forward sound of a Nord's grands), which a band mix asks for: the Splendid Grand's samples
+  through a Parametric EQ (low cut 40 Hz, −3 dB at 350 Hz, +2.5 dB at 3.2 kHz, a +3 dB shelf at
+  9 kHz), a gentle compressor (3:1, 15 ms attack) and a small room, as the catalog entry's effects,
+  so they're the track's to change. Its sound has `from: "smplr:piano:stage"` to tell it from the
+  Grand Piano (Used in project, the library's "plays"); the sound pickers list only the plain one.
+  Library previews and the keys playing it from the library now play an entry's effects (Your
+  sounds saved with effects did without them before). Alt: Nord's own samples (licensed to Nord
+  instruments only, a closed format); another open grand, brighter to begin with (not looked for
+  yet).
 - **D35 — Build order.** ✅ The phases in §7, starting with the mockup (Phase M), each ending with something you can play with.
 
 ---

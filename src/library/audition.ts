@@ -5,6 +5,7 @@ import { getBuffer } from "../engine/samples";
 import { nextBeatTime } from "../engine/transport";
 import { useSettings } from "../state/settings";
 import { useStore } from "../state/store";
+import { FxChain } from "../engine/effects";
 import { createInstrument, patchOf, type InstrumentVoice } from "../engine/instruments";
 import { makeTrack } from "../model/project";
 import type { CatalogInstrument } from "./instruments";
@@ -90,7 +91,7 @@ export function setPreviewVolume(v: number) {
 
 // ---------- instruments (D78) ----------
 
-let preview: { id: string; voice: InstrumentVoice; gain: Tone.Gain } | null = null;
+let preview: { id: string; voice: InstrumentVoice; gain: Tone.Gain; fx?: FxChain } | null = null;
 
 /** A new input into the library's preview output (at the preview volume). */
 export function previewInput(): Tone.Gain {
@@ -110,15 +111,21 @@ function previewVoice(c: CatalogInstrument): InstrumentVoice {
   out ??= previewOut(ctx);
   out.gain.value = useSettings.getState().previewVolume;
   const gain = new Tone.Gain(1);
-  gain.connect(out);
+  const bpm = useStore.getState().project.bpm;
+  // what you hear is what a track gets: the sound through its effects (the Stage Grand's)
+  let fx: FxChain | undefined;
+  if (c.effects?.length) {
+    fx = new FxChain(gain, out);
+    fx.sync(c.effects, bpm);
+  } else gain.connect(out);
   // samplers play library samples: make sure they're decoded
   for (const z of c.source.zones ?? []) void loadSample(z.sampleId);
   if (c.source.source === "sample" && c.source.sampleId) void loadSample(c.source.sampleId);
   const track = makeTrack("notes", c.low ? "bass" : "keys", c.name, c.name, [], c.source);
   Object.assign(track.params, c.params ?? {});
   const voice = createInstrument(track, gain);
-  voice.update(track, useStore.getState().project.bpm);
-  preview = { id: c.id, voice, gain };
+  voice.update(track, bpm);
+  preview = { id: c.id, voice, gain, fx };
   return voice;
 }
 
@@ -128,6 +135,7 @@ export function stopPreview() {
   p.voice.releaseAll(audioNow());
   setTimeout(() => {
     p.voice.dispose();
+    p.fx?.dispose();
     p.gain.dispose();
   }, 3000);
   preview = null;

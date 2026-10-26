@@ -4,6 +4,7 @@
  * from smplr's hosts, each collection with its own license.
  */
 import type { Effect, Sound } from "../model/types";
+import { makeEffect } from "../model/effects";
 import { GM_NAMES, MALLET_NAMES, SMOLKEN_NAMES, VCSL_NAMES } from "./instrumentNames";
 import { FACTORY_SYNTHS } from "./synths";
 
@@ -143,6 +144,54 @@ const smplr = (
   low: LOW.test(name),
 });
 
+/**
+ * The grand piano as a stage piano would voice it (D294): brighter and more forward than the
+ * sample as recorded, the low mids thinned so it cuts through a band, a gentle compressor that
+ * keeps the attack, and a small room. It's the same samples, so `from` tells it apart.
+ */
+const stageEffect = (id: string, name: string, params: Record<string, number>) => ({
+  ...makeEffect(name, params),
+  id: `fx-stage-${id}`,
+});
+const STAGE_GRAND: CatalogInstrument = {
+  ...smplr("piano", "Stage Grand", "Pianos & keys", "Acoustic", COLLECTIONS.splendid),
+  id: "smplr:piano:stage",
+  note: "A bright, forward grand that cuts through a mix, in the style of a stage piano",
+  source: { source: "smplr", preset: "piano", name: "Stage Grand", from: "smplr:piano:stage" },
+  effects: [
+    // low cut 40 Hz, low shelf 120 Hz −1.5 dB, 350 Hz −3 dB, 3.2 kHz +2.5 dB, 9 kHz shelf +3 dB
+    stageEffect("eq", "Parametric EQ", {
+      lowCut: 0.1,
+      lowFreq: 0.26,
+      lowGain: 0.45,
+      p1Freq: 0.41,
+      p1Gain: 0.4,
+      p1Q: 0.33,
+      p2Freq: 0.74,
+      p2Gain: 0.58,
+      p2Q: 0.27,
+      highFreq: 0.88,
+      highGain: 0.6,
+    }),
+    // −22 dB, 3:1, 15 ms attack (the hammer comes through), 150 ms release, +3 dB
+    stageEffect("comp", "Compressor", {
+      threshold: 0.63,
+      ratio: 0.105,
+      attack: 0.66,
+      release: 0.51,
+      makeup: 0.125,
+    }),
+    // a room of about a second, damped above 8 kHz
+    stageEffect("room", "Reverb", {
+      size: 0.35,
+      decay: 0.55,
+      predelay: 0.42,
+      damp: 0.35,
+      mix: 0.15,
+    }),
+  ],
+};
+
 /** Built-in and streamed instruments (your own are added by the library). */
 const SYNTH_GROUPS = ["Bass", "Leads", "Pads", "Keys", "Plucks & stabs", "Percussion", "FX"];
 
@@ -161,6 +210,7 @@ export const CATALOG: CatalogInstrument[] = [
       low: s.group === "Bass",
     })),
   smplr("piano", "Grand Piano", "Pianos & keys", "Acoustic", COLLECTIONS.splendid),
+  STAGE_GRAND,
   smplr("epiano:CP80", "Electric Grand (CP80)", "Pianos & keys", "Electric", COLLECTIONS.epianos),
   smplr("epiano:PianetT", "Pianet T", "Pianos & keys", "Electric", COLLECTIONS.epianos),
   smplr(

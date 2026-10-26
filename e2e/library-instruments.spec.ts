@@ -14,6 +14,7 @@ type W = {
             mode: string;
             sound?: { source: string; preset: string };
             params: Record<string, number>;
+            effects: { name: string }[];
           }[];
         };
       };
@@ -74,6 +75,30 @@ test("Enter adds an instrument track; favorites and search include instruments",
   await page.getByTestId("library-search").fill("trumpet");
   await expect(list(page).locator('[data-instrument="smplr:sf:trumpet"]')).toHaveCount(1);
   await expect(list(page).locator('[data-instrument="smplr:sf:muted_trumpet"]')).toHaveCount(1);
+});
+
+test("the Stage Grand adds the grand piano with its EQ, compressor and room (D294)", async ({
+  page,
+}) => {
+  await go(page, "Pianos & keys");
+  const stage = list(page).locator('[data-instrument="smplr:piano:stage"]');
+  await expect(stage).toContainText("Stage Grand");
+  await stage.click();
+  const before = (await tracks(page)).length;
+  await list(page).press("Enter");
+  await expect.poll(async () => (await tracks(page)).length).toBe(before + 1);
+  const t = (await tracks(page)).at(-1)!;
+  expect(t.sound).toEqual({
+    source: "smplr",
+    preset: "piano",
+    name: "Stage Grand",
+    from: "smplr:piano:stage",
+  });
+  expect(t.effects.map((fx) => fx.name)).toEqual(["Parametric EQ", "Compressor", "Reverb"]);
+  // Used in project has the Stage Grand, not the plain grand
+  await go(page, "Used in project");
+  await expect(list(page).locator('[data-instrument="smplr:piano:stage"]')).toHaveCount(1);
+  await expect(list(page).locator('[data-instrument="smplr:piano"]')).toHaveCount(0);
 });
 
 test("the keyboard plays the selected instrument without moving the step cursor", async ({

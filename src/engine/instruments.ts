@@ -24,7 +24,11 @@ export const SYNTH_PRESETS = FACTORY_SYNTHS;
 export { patchOf, voiceSound };
 
 /** Sampled instruments from the catalog (D78), for pickers. */
-export const SAMPLED_INSTRUMENTS = CATALOG.filter((c) => c.source.source === "smplr").map((c) => ({
+// (not the ones that are another's samples with effects, such as the Stage Grand: pickers set
+// only the sound)
+export const SAMPLED_INSTRUMENTS = CATALOG.filter(
+  (c) => c.source.source === "smplr" && !c.source.from,
+).map((c) => ({
   id: c.source.preset!,
   name: c.name,
   family: c.family,

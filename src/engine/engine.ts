@@ -359,6 +359,8 @@ interface KeysChannel {
   voice: InstrumentVoice;
   /** The library sound as a track (not in the project): its level and sends are the strip's. */
   track: Track;
+  /** The sound as it came, before the strip's mix (its own effects, such as the Stage Grand's). */
+  sound: Track;
 }
 
 /** The Keys strip (D126, D212): level, sends, pan (as a track's), mute and insert effects. */
@@ -375,7 +377,8 @@ const withMix = (track: Track, mix: KeysMix): Track => ({
   ...track,
   volume: mix.volume,
   mute: !!mix.mute,
-  effects: mix.effects ?? [],
+  // the sound's own effects, then the strip's
+  effects: [...track.effects, ...(mix.effects ?? [])],
   params: {
     ...track.params,
     "mix.sendA": mix.sendA,
@@ -400,7 +403,7 @@ export function createKeysChannel(sound: Track, mix: KeysMix): KeysChannel {
   ch.update(track, !track.mute, useStore.getState().project.bpm);
   const v = createInstrument(track, ch.input);
   v.update(track, useStore.getState().project.bpm);
-  keysChannelEntry = { channel: ch, voice: v, track };
+  keysChannelEntry = { channel: ch, voice: v, track, sound };
   return keysChannelEntry;
 }
 
@@ -408,7 +411,7 @@ export function createKeysChannel(sound: Track, mix: KeysMix): KeysChannel {
 export function setKeysChannelMix(mix: KeysMix) {
   const e = keysChannelEntry;
   if (!e) return;
-  e.track = withMix(e.track, mix);
+  e.track = withMix(e.sound, mix);
   e.channel.update(e.track, !e.track.mute, useStore.getState().project.bpm);
 }
 
