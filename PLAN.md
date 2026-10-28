@@ -20,7 +20,7 @@
 
 - macOS; Node 25, pnpm 12, `just` 1.45. Use `pnpm` for JS dependencies (`pnpm-workspace.yaml` allows only Electron's install script). For any Python tooling, use `uv` (never `pip`).
 - `just dev` (Vite on http://localhost:5173), `just check` (tsc for app + Electron, eslint, vitest), `just e2e` (Playwright, Chromium), `just build`, `just preview`, `just desktop` (Electron against the dev server), `just desktop-build` (package into `release/`), `just e2e-desktop`, `just fmt`, `just clean`.
-- CI: `.github/workflows/ci.yml` (check, build, e2e on every push), `.github/workflows/pages.yml` (every push to main is published to GitHub Pages: https://jeroenjanssens.github.io/rebeat/, with `BASE=/rebeat/`), `.github/workflows/desktop.yml` (manual or `v*` tags: macOS/Windows/Linux builds).
+- CI: `.github/workflows/ci.yml` (check, build, e2e on every push), `.github/workflows/pages.yml` (every push to main is published to GitHub Pages: https://rebeat.jeroenjanssens.com/), `.github/workflows/desktop.yml` (manual or `v*` tags: macOS/Windows/Linux builds).
 - In dev builds `window.__rebeat` exposes the engine, transport, store and more (`hints`, `commands()`, `dock`, `perf`, `library`, `renderPatch`, `synths`, `previews()`) for debugging and e2e tests; see AGENTS.md §7.
 
 ### 0.3 Code map

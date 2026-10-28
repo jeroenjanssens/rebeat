@@ -6,8 +6,7 @@ import { VitePWA } from "vite-plugin-pwa";
 import { visualizer } from "rollup-plugin-visualizer";
 
 export default defineConfig({
-  // GitHub Pages serves the site under /rebeat/ (BASE=/rebeat/ in pages.yml); the desktop app and
-  // local builds use the root
+  // everything is served from the root; set BASE to build for a subdirectory
   base: process.env.BASE ?? "/",
   plugins: [
     react(),

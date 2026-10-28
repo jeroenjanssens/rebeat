@@ -1,5 +1,4 @@
-# Publishes the web app to GitHub Pages (https://jeroenjanssens.github.io/rebeat/) on every push
-# to main. The site lives under /rebeat/, hence BASE.
+# Publishes the web app to GitHub Pages (https://rebeat.jeroenjanssens.com/) on every push to main.
 name: Pages
 
 on:
@@ -28,8 +27,6 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm vite build
-        env:
-          BASE: /rebeat/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
